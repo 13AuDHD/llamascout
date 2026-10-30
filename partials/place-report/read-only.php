@@ -52,7 +52,7 @@ if (
             if (
                 ($visibility[$key] ?? 'community') === 'public'
                 && !empty($answer['approved_report'])
-                && ($answer['state'] ?? '') === 'answered'
+                && in_array(($answer['state'] ?? ''), ['answered', 'unknown'], true)
             ) {
                 $publicPlaceReportAttribution[$key] = $answer['approved_report'];
                 $memberId = (int) ($answer['approved_report']['contributor_id'] ?? 0);
