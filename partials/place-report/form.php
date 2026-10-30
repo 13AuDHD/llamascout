@@ -370,6 +370,12 @@ $renderSelect =
                 $field['options']
                 ?? []
             );
+
+        $legacyValues =
+            (array) (
+                $field['legacy_values']
+                ?? []
+            );
         ?>
 
         <select
@@ -429,6 +435,15 @@ $renderSelect =
 
 
             <?php if (!$knownCurrent): ?>
+                <?php
+                $legacyCurrentLabel =
+                    array_key_exists(
+                        $current,
+                        $legacyValues
+                    )
+                        ? (string) $legacyValues[$current]
+                        : '';
+                ?>
 
                 <option
                     value="<?= $e(
@@ -437,9 +452,10 @@ $renderSelect =
                     selected
                 >
                     <?= $e(
-                        $current
+                        $legacyCurrentLabel !== ''
+                            ? $legacyCurrentLabel
+                            : $current . ' (previous entry)'
                     ) ?>
-                    (previous entry)
                 </option>
 
             <?php endif; ?>

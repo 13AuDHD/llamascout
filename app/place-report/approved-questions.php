@@ -366,8 +366,8 @@ function llama_place_report_approved_reconciliation(): array
             'current_keys' => [
                 'amenity_toilets',
             ],
-            'status' => 'answer_options_mismatch',
-            'compatibility' => 'preserve_existing_yes_no_unknown',
+            'status' => 'resolved_typed_storage_with_presence_mirror',
+            'compatibility' => 'backfill_legacy_yes_no_and_mirror_presence',
         ],
         'camp_host' => [
             'approved_label' => 'Camp Host',

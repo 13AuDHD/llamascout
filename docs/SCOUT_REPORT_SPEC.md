@@ -418,6 +418,56 @@ For new reports, Yes means a campground host is normally available during the Pl
 
 Existing Seasonal records must remain displayable and must not be erased merely because the active answer vocabulary has been simplified.
 
+4.11 Toilets Answer Model
+
+Toilets is one approved Place Amenities question with a richer answer vocabulary than the historical boolean field.
+
+Canonical key:
+
+`amenity_toilets`
+
+Active answers are:
+
+* Pit toilet
+* Flush toilet
+* Portable toilet
+* No toilets
+* Unknown through the canonical answer-state system
+* Unanswered through the canonical answer-state system
+
+Canonical storage:
+
+`place_amenities.toilet_type`
+
+Canonical stored values:
+
+* `pit`
+* `flush`
+* `portable`
+* `no`
+
+Historical compatibility value:
+
+* `present_unknown_type` = a toilet is known to exist, but the historical record did not identify the type
+
+Legacy compatibility storage:
+
+`place_amenities.toilets`
+
+The legacy boolean column remains synchronized as a presence mirror:
+
+* pit, flush, portable, present_unknown_type -> true
+* no -> false
+* Unknown or Unanswered -> null
+
+Existing historical Yes values are backfilled to `present_unknown_type`.
+
+Existing historical No values are backfilled to `no`.
+
+The richer canonical field must not guess a toilet type when the source only proves that toilets exist.
+
+Imported source data may populate the richer type only when the source evidence is specific enough.
+
 ⸻
 
 5. Place and Site Ownership

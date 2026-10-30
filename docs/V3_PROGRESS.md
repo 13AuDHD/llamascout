@@ -743,11 +743,13 @@ Continue canonical definition reconciliation with the next confirmed answer-type
 
 ## M1-007: Camp Host Answer Vocabulary
 
-**Status:** Ready for review
+**Status:** Completed
 
 **Date:** 2026-10-29
 
 **Base branch:** `v3-development`
+
+**Merged into `v3-development`:** `107b876de94932ee3706b33563546cc4c9230702`
 
 ### Objective
 
@@ -818,3 +820,118 @@ It remains unresolved until a safe storage migration or dual-storage design is a
 ### Next
 
 Continue with the next mismatch that can be corrected without an undefined storage migration.
+
+
+## M1-008: Toilets Typed Storage Migration
+
+**Status:** Ready for review
+
+**Date:** 2026-10-29
+
+**Base branch:** `v3-development`
+
+### Objective
+
+Resolve the Toilets answer-model mismatch using a safe dual-storage migration.
+
+### Canonical question
+
+Key:
+
+`amenity_toilets`
+
+Active answers:
+
+- Pit toilet
+- Flush toilet
+- Portable toilet
+- No toilets
+- Unknown
+- Unanswered
+
+Unknown and Unanswered continue to use the canonical answer-state system.
+
+### Canonical storage
+
+The canonical question now stores its richer answer in:
+
+`place_amenities.toilet_type`
+
+Canonical stored values:
+
+- `pit`
+- `flush`
+- `portable`
+- `no`
+
+Historical compatibility value:
+
+- `present_unknown_type`
+
+### Legacy compatibility
+
+The existing SQL column:
+
+`place_amenities.toilets`
+
+remains a compatibility presence mirror.
+
+New canonical answers mirror as:
+
+- pit -> true
+- flush -> true
+- portable -> true
+- present_unknown_type -> true
+- no -> false
+- Unknown/Unanswered -> null
+
+This allows older code that only understands toilet presence to continue working while V3 uses the richer answer.
+
+### One-time SQL migration required
+
+Before code using this field is deployed against a database, add the nullable `toilet_type` column and backfill existing boolean records.
+
+Existing Yes becomes `present_unknown_type`.
+
+Existing No becomes `no`.
+
+Unknown/null remains null.
+
+### RIDB compatibility
+
+The RIDB canonical importer continues to populate the legacy presence column and now also populates the richer type when source evidence is specific enough.
+
+Recognized source distinctions include:
+
+- Flush toilet -> `flush`
+- Pit or vault toilet -> `pit`
+- Portable toilet -> `portable`
+- Generic known toilet presence -> `present_unknown_type`
+
+The importer does not guess a specific type when the source only proves that a toilet exists.
+
+### Accessibility dependency
+
+Accessible Toilet is applicable when the canonical toilet answer indicates a toilet is present:
+
+- pit
+- flush
+- portable
+- present_unknown_type
+
+It is not applicable when the answer is No.
+
+### Verification
+
+- Canonical key remains `amenity_toilets`.
+- Approved group remains Place Amenities.
+- Approved stored-question projection remains 264.
+- Canonical storage points to `amenities.toilet_type`.
+- Legacy presence mirror points to `amenities.toilets`.
+- Existing historical Yes/No can be backfilled without guessing type.
+- RIDB type enrichment preserves specificity when known.
+- No existing column is renamed or removed.
+
+### Next
+
+After review, merge the application changes and run the one-time SQL migration before this V3 code is deployed against the database.
