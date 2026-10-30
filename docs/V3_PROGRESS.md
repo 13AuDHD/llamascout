@@ -824,11 +824,13 @@ Continue with the next mismatch that can be corrected without an undefined stora
 
 ## M1-008: Toilets Typed Storage Migration
 
-**Status:** Ready for review
+**Status:** Completed
 
 **Date:** 2026-10-29
 
 **Base branch:** `v3-development`
+
+**Merged into `v3-development`:** `f69fc5a07529d0b517c86c2b5d4d553fa5398b19`
 
 ### Objective
 
@@ -935,3 +937,55 @@ It is not applicable when the answer is No.
 ### Next
 
 After review, merge the application changes and run the one-time SQL migration before this V3 code is deployed against the database.
+
+
+## M1-009: Keep Parking-to-Site Distance Buckets
+
+**Status:** Ready for review
+
+**Date:** 2026-10-30
+
+**Base branch:** `v3-development`
+
+### Decision
+
+The existing Walking Distance from Vehicle buckets remain the approved V3 answer model.
+
+Canonical key:
+
+`walking_distance_from_vehicle`
+
+### Approved V3 answers
+
+- At / beside vehicle
+- Under 50 ft
+- 50-100 ft
+- 100-250 ft
+- 250-500 ft
+- 500+ ft / short hike
+- Unknown
+- Unanswered
+
+### Rationale
+
+The older approved Scout Report PDF describes the answer as a distance in feet.
+
+V3 intentionally keeps the existing buckets because they provide enough practical accessibility and Site-fit information without requiring a false level of measurement precision.
+
+### Preservation
+
+No field type, storage path, answer values, historical data, scope, rendering, or database schema changes.
+
+The reconciliation item is reclassified as an explicit V3 override rather than an unresolved mismatch.
+
+### Verification
+
+- Canonical key remains `walking_distance_from_vehicle`.
+- Existing bucket values remain unchanged.
+- Site Accessibility grouping remains unchanged.
+- Site scope remains unchanged.
+- Approved stored-question projection remains 264.
+
+### Next
+
+Continue with the next unresolved canonical answer-vocabulary mismatch.

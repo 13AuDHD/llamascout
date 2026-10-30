@@ -468,6 +468,31 @@ The richer canonical field must not guess a toilet type when the source only pro
 
 Imported source data may populate the richer type only when the source evidence is specific enough.
 
+4.12 Parking-to-Site Distance Buckets
+
+Distance from parking to the usable Site remains a bucketed accessibility question in V3.
+
+Canonical key:
+
+`walking_distance_from_vehicle`
+
+Approved V3 answers remain:
+
+* At / beside vehicle
+* Under 50 ft
+* 50-100 ft
+* 100-250 ft
+* 250-500 ft
+* 500+ ft / short hike
+* Unknown
+* Unanswered
+
+The older approved Scout Report PDF describes this value in feet, but V3 intentionally keeps the existing distance buckets because they are sufficiently precise for the accessibility and Site-fit purpose of the question.
+
+No exact-foot measurement is required.
+
+Existing storage, historical answers, and display labels remain unchanged.
+
 ⸻
 
 5. Place and Site Ownership
