@@ -203,6 +203,8 @@ function llama_place_report_fields(): array
      */
     $approvedQuestions = llama_place_report_approved_question_lookup();
     $approvedGroupPages = llama_place_report_approved_group_page_lookup();
+    $approvedCompoundComponents =
+        llama_place_report_approved_compound_component_lookup();
 
     foreach ($f as $key => &$field) {
         $approved = $approvedQuestions[$key] ?? null;
@@ -218,6 +220,26 @@ function llama_place_report_fields(): array
         $field['approved_report_page'] = $page['page'] ?? null;
         $field['approved_report_page_label'] = $page['page_label'] ?? null;
         $field['approved_accent_role'] = $page['accent_role'] ?? null;
+
+        $compound =
+            $approvedCompoundComponents[$key]
+            ?? null;
+
+        $field['approved_compound_question'] =
+            $compound['compound_key']
+            ?? null;
+
+        $field['approved_compound_question_label'] =
+            $compound['compound_label']
+            ?? null;
+
+        $field['approved_compound_component_role'] =
+            $compound['role']
+            ?? null;
+
+        $field['approved_compound_component_label'] =
+            $compound['component_label']
+            ?? null;
     }
     unset($field);
 
