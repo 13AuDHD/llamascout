@@ -631,7 +631,7 @@ $renderField =
                 </span>
 
                 <?php if ($reference !== ''): ?>
-                    <small class="place-report-answer-context">
+                    <small class="place-report-answer-context" data-place-report-reference>
                         Current answer: <?= $e($reference) ?>
                     </small>
                 <?php endif; ?>
@@ -1203,8 +1203,8 @@ $renderField =
             <?php endif; ?>
 
             <?php if ($reference !== ''): ?>
-                <small class="place-report-answer-context">
-                    Current answer: <?= $e($reference) ?>
+                <small class="place-report-answer-context" data-place-report-reference>
+                        Current answer: <?= $e($reference) ?>
                 </small>
             <?php endif; ?>
 
@@ -1281,8 +1281,8 @@ $renderCompoundField =
                         <?php $renderSelect($field, $current); ?>
                         <?php $componentReference = $referenceFor((string) $componentKey); ?>
                         <?php if ($componentReference !== ''): ?>
-                            <small class="place-report-answer-context">
-                                Current answer: <?= $e($componentReference) ?>
+                            <small class="place-report-answer-context" data-place-report-reference>
+                        Current answer: <?= $e($componentReference) ?>
                             </small>
                         <?php endif; ?>
                     </label>
@@ -1486,8 +1486,8 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
                     ?>
 
                     <?php if ($coordinateReference !== ''): ?>
-                        <small class="place-report-answer-context">
-                            Current answer: <?= $e($coordinateReference) ?>
+                        <small class="place-report-answer-context" data-place-report-reference>
+                        Current answer: <?= $e($coordinateReference) ?>
                         </small>
                     <?php endif; ?>
 
