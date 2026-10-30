@@ -867,6 +867,70 @@ M2-002 does not:
 
 Later Milestone 2 work may add historical contribution/report identity to the same answer envelope without changing its state/value semantics.
 
+4.18 First Current-Answer Consumer Migration
+
+The Site detail report API is the first active consumer migrated to the canonical current-answer model.
+
+Interface:
+
+`api/place-campsite-detail.php?mode=report`
+
+The API now reads effective Site report answers through:
+
+`llama_place_report_current_answer_model()`
+
+It no longer rebuilds Place, Area, Site, and campsite baseline precedence inside the endpoint.
+
+### Compatibility projections
+
+The canonical envelope can be projected back into the existing flat value maps through:
+
+`llama_place_report_current_answer_values()`
+
+Supported projections are:
+
+* `effective`
+* `inherited`
+* `local`
+* `scoped_override`
+* `baseline`
+
+Unknown answers are converted back to the existing Unknown transport token when a legacy flat map is required.
+
+Unanswered answers are omitted from flat projections.
+
+### Site detail response compatibility
+
+The existing Site detail JSON response remains unchanged.
+
+The endpoint still returns:
+
+* `report_inherited_values`
+* `report_override_values`
+* `report_override_keys`
+* `report_warnings`
+
+For compatibility, `report_override_values` continues to mean all Site-local values, including campsite baseline values.
+
+The name is historical and is not redefined in this migration because the JavaScript already depends on its current behavior.
+
+### Warning compatibility
+
+Site report warnings are still calculated from the same effective current answers.
+
+The only change is that the effective values now come from the canonical answer envelope.
+
+### Non-goals
+
+M2-003 does not:
+
+* change the Site detail JSON contract
+* change Site switching JavaScript
+* change current-answer precedence
+* change persistence or moderation
+* change database schema
+* expose new provenance fields to the client
+
 ⸻
 
 5. Place and Site Ownership
