@@ -168,13 +168,15 @@ The audit is based on static repository evidence. It does not certify deployed r
 
 ## V3-004: Database and Historical Records Audit
 
-**Status:** Ready for review
+**Status:** Completed
 
 **Date:** 2026-10-29
 
 **Base branch:** `v3-development`
 
 **Base commit:** `b068871dcbf5f38f89e72ada657841af47b002e9`
+
+**Merged into `v3-development`:** `d616f2d33067ec01e9d95e17771bd8b12263508b`
 
 ### Result
 
@@ -216,4 +218,47 @@ This static audit does not certify live schema, stored data quality, deployment 
 
 ### Next planned task
 
-**V3-005: Permissions and Moderation Audit.** It has not been started.
+**V3-005: Permissions and Moderation Audit.** See the task record below.
+
+## V3-005: Permissions and Moderation Audit
+
+**Status:** Ready for review
+
+**Date:** 2026-10-29
+
+**Base branch:** `v3-development`
+
+### Result
+
+Created `docs/audits/05-permissions-and-moderation.md`, a static audit of authentication, roles, Complete Access, earned Place access, contributor capabilities, Scout/Master Scout authority, Admin/Owner authority, self-review protections, and publication workflows.
+
+### Confirmed findings
+
+- Owner inherits Admin; Master Scout inherits Scout; legacy Master Scout slug compatibility remains active.
+- Paid membership is intentionally narrower than Complete Access. Owner/Admin, active Scouts, valid memberships, and complimentary grants can receive Complete Access through separate paths.
+- Place-specific earned access currently recognizes original/new-Place contributors only.
+- The approved V3 rule that the first legitimate new Site contributor inside an existing Place earns Place access is not currently implemented.
+- Member updates require both contribution eligibility and Complete Access to the selected Place.
+- Master Scout moderation requires an active Master Scout profile and explicitly blocks self-review.
+- Master Scout approval reuses the shared publication engine but publishes new Places as Active rather than Featured.
+- Admin moderation uses Admin-role authorization, CSRF checks, transactions, locking, and audit logging; no equivalent contributor-ID self-review prohibition was found in the reviewed Admin path.
+- The current canonical report registry does not yet provide the V3 Public/Community field-level authorization classification.
+- Resource permissions are not represented in the current Place/Area/Site reporting target model.
+
+### Important risks
+
+- Contribution role labeling and active Scout entitlement are separate concepts, so expired Scout status may require explicit role-policy review.
+- A future caller that checks only generic `submit_update` capability could omit the required Place Complete Access gate.
+- Owner-only boundaries could be lost if future code treats Owner simply as Admin everywhere.
+- Earned access for new Sites needs durable criteria to avoid rewarding duplicate or trivial submissions.
+- Public/Community enforcement must be shared by backend services so website, API, and mobile clients cannot diverge.
+
+### Verification
+
+- Inspected authentication role inheritance, membership/Complete Access, contribution capability, Place-specific access, Add Place, updates, Admin moderation, Master Scout moderation, and membership grant code.
+- Distinguished contribution capabilities from content-access permissions and moderation authority.
+- Did not access production data, change role assignments, alter authorization behavior, or modify application files.
+
+### Next planned task
+
+**V3-006: External Data Import Audit.** It has not been started.
