@@ -97,6 +97,12 @@ if ($siteHistoryReportedKeys) {
                                             $displayData,
                                             $questionKey
                                         );
+                                        // A recorded unchecked checkbox is an explicit
+                                        // negative, not an unanswered observation.
+                                        if (($field['type'] ?? '') === 'checkbox'
+                                            && $value === false) {
+                                            $text = 'No';
+                                        }
                                         if ($text === null || $text === '') {
                                             // An explicitly answered null is not a No, Unknown,
                                             // or an omitted question.
