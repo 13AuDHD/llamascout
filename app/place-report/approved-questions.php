@@ -136,6 +136,143 @@ function llama_place_report_approved_source_fields(): array
 {
     return [
         'official_address' => [
+            'label' => 'Official Address',
+            'group' => 'basic',
+            'page' => 'place',
+            'page_label' => 'Place details',
+            'accent_role' => 'place',
+            'answer_type' => 'text',
+            'source_bundle' => 'facility_public',
+            'source_key' => 'address',
+            'visibility' => 'public',
+            'editable' => false,
+            'status' => 'active',
+        ],
+        'official_phone' => [
+            'label' => 'Phone Number',
+            'group' => 'basic',
+            'page' => 'place',
+            'page_label' => 'Place details',
+            'accent_role' => 'place',
+            'answer_type' => 'phone',
+            'source_bundle' => 'facility_public',
+            'source_key' => 'phone',
+            'visibility' => 'public',
+            'editable' => false,
+            'status' => 'active',
+        ],
+        'official_email' => [
+            'label' => 'Email Address',
+            'group' => 'basic',
+            'page' => 'place',
+            'page_label' => 'Place details',
+            'accent_role' => 'place',
+            'answer_type' => 'email',
+            'source_bundle' => 'facility_public',
+            'source_key' => 'email',
+            'visibility' => 'public',
+            'editable' => false,
+            'status' => 'active',
+        ],
+        'official_links' => [
+            'label' => 'Official Links',
+            'group' => 'basic',
+            'page' => 'place',
+            'page_label' => 'Place details',
+            'accent_role' => 'place',
+            'answer_type' => 'links',
+            'source_bundle' => 'facility_public',
+            'source_key' => 'links',
+            'visibility' => 'public',
+            'editable' => false,
+            'status' => 'active',
+        ],
+    ];
+}
+
+/**
+ * Approved compound questions.
+ *
+ * A compound question has one user-facing identity but preserves multiple
+ * existing component keys for storage, validation, and historical data.
+ */
+function llama_place_report_approved_compound_questions(): array
+{
+    return [
+        'season_begins' => [
+            'label' => 'Season Begins',
+            'group' => 'seasonal_access',
+            'page' => 'place',
+            'page_label' => 'Place details',
+            'accent_role' => 'place',
+            'display_format' => 'month_day',
+            'components' => [
+                'approach_closure_month' => [
+                    'role' => 'month',
+                    'label' => 'Month',
+                ],
+                'approach_closure_day' => [
+                    'role' => 'day',
+                    'label' => 'Day',
+                ],
+            ],
+            'status' => 'active',
+        ],
+        'season_ends' => [
+            'label' => 'Season Ends',
+            'group' => 'seasonal_access',
+            'page' => 'place',
+            'page_label' => 'Place details',
+            'accent_role' => 'place',
+            'display_format' => 'month_day',
+            'components' => [
+                'approach_reopening_month' => [
+                    'role' => 'month',
+                    'label' => 'Month',
+                ],
+                'approach_reopening_day' => [
+                    'role' => 'day',
+                    'label' => 'Day',
+                ],
+            ],
+            'status' => 'active',
+        ],
+    ];
+}
+
+/**
+ * Map persisted component keys back to their user-facing compound question.
+ */
+function llama_place_report_approved_compound_component_lookup(): array
+{
+    $lookup = [];
+
+    foreach (llama_place_report_approved_compound_questions() as $compoundKey => $compound) {
+        foreach ((array) ($compound['components'] ?? []) as $componentKey => $component) {
+            $lookup[(string) $componentKey] = [
+                'compound_key' => $compoundKey,
+                'compound_label' => (string) ($compound['label'] ?? $compoundKey),
+                'group' => (string) ($compound['group'] ?? ''),
+                'page' => (string) ($compound['page'] ?? ''),
+                'accent_role' => (string) ($compound['accent_role'] ?? ''),
+                'role' => (string) ($component['role'] ?? ''),
+                'component_label' => (string) ($component['label'] ?? $componentKey),
+            ];
+        }
+    }
+
+    return $lookup;
+}
+
+/**
+ * Known differences between the approved Scout Report PDF and the current
+ * implementation. These records make the migration work machine-readable
+ * without changing current storage or rendering behavior.
+ */
+function llama_place_report_approved_reconciliation(): array
+{
+    return [
+        'official_address' => [
             'approved_label' => 'Official Address',
             'approved_group' => 'basic',
             'canonical_key' => 'official_address',
@@ -167,45 +304,6 @@ function llama_place_report_approved_source_fields(): array
             'status' => 'canonical_source_field',
             'compatibility' => 'facility_public_projection',
         ],
-    ];
-}
-
-/**
- * Known differences between the approved Scout Report PDF and the current
- * implementation. These records make the migration work machine-readable
- * without changing current storage or rendering behavior.
- */
-function llama_place_report_approved_reconciliation(): array
-{
-    return [
-        'official_address' => [
-            'approved_label' => 'Official Address',
-            'approved_group' => 'basic',
-            'current_keys' => [],
-            'status' => 'outside_registry',
-            'compatibility' => 'official_source_projection',
-        ],
-        'official_phone' => [
-            'approved_label' => 'Phone Number',
-            'approved_group' => 'basic',
-            'current_keys' => [],
-            'status' => 'outside_registry',
-            'compatibility' => 'official_source_projection',
-        ],
-        'official_email' => [
-            'approved_label' => 'Email Address',
-            'approved_group' => 'basic',
-            'current_keys' => [],
-            'status' => 'outside_registry',
-            'compatibility' => 'official_source_projection',
-        ],
-        'official_links' => [
-            'approved_label' => 'Official Links',
-            'approved_group' => 'basic',
-            'current_keys' => [],
-            'status' => 'outside_registry',
-            'compatibility' => 'official_source_projection',
-        ],
         'seasonal_access_begin' => [
             'approved_label' => 'Season Begins',
             'approved_group' => 'seasonal_access',
@@ -213,7 +311,7 @@ function llama_place_report_approved_reconciliation(): array
                 'approach_closure_month',
                 'approach_closure_day',
             ],
-            'status' => 'split_current_keys',
+            'status' => 'canonical_compound_question',
             'compatibility' => 'preserve_existing_month_day_storage',
         ],
         'seasonal_access_end' => [
@@ -223,7 +321,7 @@ function llama_place_report_approved_reconciliation(): array
                 'approach_reopening_month',
                 'approach_reopening_day',
             ],
-            'status' => 'split_current_keys',
+            'status' => 'canonical_compound_question',
             'compatibility' => 'preserve_existing_month_day_storage',
         ],
         'site_overhead_clearance' => [
@@ -424,6 +522,89 @@ function llama_place_report_approved_registry_issues(): array
         }
     }
 
+    $compoundComponents = [];
+
+    foreach (llama_place_report_approved_compound_questions() as $compoundKey => $compound) {
+        $groupKey = (string) ($compound['group'] ?? '');
+        $pageKey = (string) ($compound['page'] ?? '');
+        $components = (array) ($compound['components'] ?? []);
+
+        if ($compoundKey === '' || $groupKey === '' || $pageKey === '') {
+            $issues[] =
+                'Approved compound question has a missing key, group, or page.';
+            continue;
+        }
+
+        if (!isset($groups[$groupKey])) {
+            $issues[] =
+                'Approved compound question '
+                . $compoundKey
+                . ' references unknown group '
+                . $groupKey
+                . '.';
+        }
+
+        if (($assignedGroups[$groupKey] ?? null) !== $pageKey) {
+            $issues[] =
+                'Approved compound question '
+                . $compoundKey
+                . ' does not match its group page assignment.';
+        }
+
+        if (count($components) < 2) {
+            $issues[] =
+                'Approved compound question '
+                . $compoundKey
+                . ' must contain at least two component fields.';
+        }
+
+        foreach ($components as $componentKey => $component) {
+            $componentKey = (string) $componentKey;
+
+            if (isset($compoundComponents[$componentKey])) {
+                $issues[] =
+                    'Compound component '
+                    . $componentKey
+                    . ' is assigned to both '
+                    . $compoundComponents[$componentKey]
+                    . ' and '
+                    . $compoundKey
+                    . '.';
+                continue;
+            }
+
+            $compoundComponents[$componentKey] =
+                $compoundKey;
+
+            $componentGroup =
+                null;
+
+            foreach ($groups as $candidateGroupKey => $definition) {
+                if (in_array($componentKey, (array) ($definition[1] ?? []), true)) {
+                    $componentGroup =
+                        $candidateGroupKey;
+                    break;
+                }
+            }
+
+            if ($componentGroup !== $groupKey) {
+                $issues[] =
+                    'Compound component '
+                    . $componentKey
+                    . ' does not belong to approved group '
+                    . $groupKey
+                    . '.';
+            }
+
+            if (trim((string) ($component['role'] ?? '')) === '') {
+                $issues[] =
+                    'Compound component '
+                    . $componentKey
+                    . ' is missing its component role.';
+            }
+        }
+    }
+
     foreach (llama_place_report_approved_source_fields() as $key => $field) {
         $groupKey = (string) ($field['group'] ?? '');
         $pageKey = (string) ($field['page'] ?? '');
@@ -487,6 +668,7 @@ function llama_place_report_approved_registry_summary(): array
         'current_projection_groups' => count($groups),
         'current_projection_questions' => $questions,
         'approved_source_fields' => count(llama_place_report_approved_source_fields()),
+        'approved_compound_questions' => count(llama_place_report_approved_compound_questions()),
         'approved_pages' => count(llama_place_report_approved_pages()),
         'approved_page_groups' => count(llama_place_report_approved_group_page_lookup()),
         'known_reconciliation_items' =>

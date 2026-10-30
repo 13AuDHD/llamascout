@@ -1136,6 +1136,77 @@ $renderField =
     };
 
 
+$renderCompoundField =
+    static function (
+        string $compoundKey,
+        array $componentFields
+    ) use (
+        $e,
+        $valueFor,
+        $renderSelect
+    ): void {
+        $definitions =
+            llama_place_report_approved_compound_questions();
+
+        $definition =
+            $definitions[$compoundKey]
+            ?? null;
+
+        if (!is_array($definition)) {
+            return;
+        }
+
+        $label =
+            (string) (
+                $definition['label']
+                ?? $compoundKey
+            );
+        ?>
+        <div
+            class="contribution-field contribution-field-compound"
+            data-report-compound-question="<?= $e($compoundKey) ?>"
+        >
+            <span class="place-report-field-label">
+                <span><?= $e($label) ?></span>
+            </span>
+
+            <div class="place-report-compound-controls">
+                <?php foreach ((array) ($definition['components'] ?? []) as $componentKey => $component): ?>
+                    <?php
+                    if (!isset($componentFields[$componentKey])) {
+                        continue;
+                    }
+
+                    $field =
+                        $componentFields[$componentKey];
+
+                    $current =
+                        (string) $valueFor(
+                            (string) $componentKey,
+                            $field
+                        );
+
+                    $componentLabel =
+                        (string) (
+                            $component['label']
+                            ?? $field['label']
+                            ?? $componentKey
+                        );
+                    ?>
+                    <label
+                        class="place-report-compound-control"
+                        data-report-field="<?= $e((string) $componentKey) ?>"
+                    >
+                        <span><?= $e($componentLabel) ?></span>
+                        <?php $renderSelect($field, $current); ?>
+                    </label>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php
+    };
+
+
 ?>
 
 <script
@@ -1360,8 +1431,49 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
                     <?php endif; ?>
                     <?php if ($approvedSection['fields']): ?>
                         <div class="contribution-grid">
-                            <?php foreach ($approvedSection['fields'] as $field): ?>
-                                <?php $renderField($field); ?>
+                            <?php
+                            $renderedCompoundQuestions = [];
+                            ?>
+                            <?php foreach ($approvedSection['fields'] as $fieldKey => $field): ?>
+                                <?php
+                                $compoundKey =
+                                    trim(
+                                        (string) (
+                                            $field['approved_compound_question']
+                                            ?? ''
+                                        )
+                                    );
+
+                                if ($compoundKey !== '') {
+                                    if (isset($renderedCompoundQuestions[$compoundKey])) {
+                                        continue;
+                                    }
+
+                                    $renderedCompoundQuestions[$compoundKey] = true;
+                                    $componentFields = [];
+
+                                    foreach ($approvedSection['fields'] as $candidateKey => $candidateField) {
+                                        if (
+                                            (string) (
+                                                $candidateField['approved_compound_question']
+                                                ?? ''
+                                            ) === $compoundKey
+                                        ) {
+                                            $componentFields[(string) $candidateKey] =
+                                                $candidateField;
+                                        }
+                                    }
+
+                                    $renderCompoundField(
+                                        $compoundKey,
+                                        $componentFields
+                                    );
+
+                                    continue;
+                                }
+
+                                $renderField($field);
+                                ?>
                             <?php endforeach; ?>
                         </div>
                     <?php endif; ?>

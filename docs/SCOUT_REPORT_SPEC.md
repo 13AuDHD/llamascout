@@ -342,6 +342,38 @@ Interfaces must consume these canonical definitions for labels, grouping, and so
 
 This rule does not require copying official source values into ordinary community answer storage.
 
+4.8 Compound Questions
+
+A compound question has one user-facing question identity while preserving multiple existing component keys underneath.
+
+This pattern is used when the stored components are independently valid but presenting them as separate questions makes the Scout Report harder to understand.
+
+Seasonal Access uses two approved compound questions:
+
+**Season Begins**
+
+* Canonical presentation key: `season_begins`
+* Stored month: `approach_closure_month`
+* Stored day: `approach_closure_day`
+* Published format: Month Day, for example `April 30`
+
+**Season Ends**
+
+* Canonical presentation key: `season_ends`
+* Stored month: `approach_reopening_month`
+* Stored day: `approach_reopening_day`
+* Published format: Month Day, for example `September 15`
+
+The year is intentionally not stored because these describe recurring seasonal access, not one calendar year's closure.
+
+Editable interfaces present Month and Day controls together inside one compound question card.
+
+Published Scout Reports combine the component answers into one card.
+
+The existing component keys remain authoritative for persistence, validation, historical compatibility, and update handling.
+
+Compound presentation must not create duplicate storage or discard partial historical values.
+
 ⸻
 
 5. Place and Site Ownership
