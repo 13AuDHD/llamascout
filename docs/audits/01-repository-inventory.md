@@ -1,8 +1,11 @@
 # V3-001 Repository and Infrastructure Inventory
 
-**Status:** Ready for review  
-**Inventory date:** 2026-10-29  
-**Base branch:** `v3-development`  
+**Status:** Ready for review
+
+**Inventory date:** 2026-10-29
+
+**Base branch:** `v3-development`
+
 **Base commit:** `463462c9e64143908d0e77895393b2372a12e7aa`
 
 ## Purpose and method
