@@ -79,3 +79,43 @@ function llama_scout_report_latest_approved_answers(
 
     return $answers;
 }
+
+/**
+ * Annotate existing published answers with matching immutable report evidence.
+ * Do not replace published values here: imported baseline precedence and
+ * scoped inheritance remain owned by the current-answer model.
+ *
+ * This function accepts a verified reporting target and must only be used
+ * behind normal target authorization and question visibility checks.
+ */
+function llama_scout_report_attach_matching_history(
+    array $answers,
+    array $observations
+): array {
+    foreach ($observations as $key => $observation) {
+        if (!isset($answers[$key]) || !is_array($answers[$key])) {
+            continue;
+        }
+        $current = $answers[$key];
+        if (empty($current['recorded'])
+            || !empty($current['imported'])
+            || !empty($current['inherited'])
+            || !empty($current['baseline'])
+            || ($current['state'] ?? '') !== ($observation['state'] ?? '')) {
+            continue;
+        }
+        if (($current['state'] ?? '') === 'answered'
+            && llama_scout_report_json($current['value'] ?? null)
+                !== llama_scout_report_json($observation['value'] ?? null)) {
+            continue;
+        }
+        $answers[$key]['approved_report'] = [
+            'id' => $observation['report_id'],
+            'contributor_id' => $observation['contributor_id'],
+            'visit_date' => $observation['visit_date'],
+            'submitted_at' => $observation['submitted_at'],
+            'source_channel' => $observation['source_channel'],
+        ];
+    }
+    return $answers;
+}
