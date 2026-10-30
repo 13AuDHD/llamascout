@@ -104,10 +104,16 @@ function llama_scout_report_attach_matching_history(
             || ($current['state'] ?? '') !== ($observation['state'] ?? '')) {
             continue;
         }
-        if (($current['state'] ?? '') === 'answered'
-            && llama_scout_report_json($current['value'] ?? null)
-                !== llama_scout_report_json($observation['value'] ?? null)) {
-            continue;
+        if (($current['state'] ?? '') === 'answered') {
+            $field = llama_place_report_fields()[(string) $key] ?? null;
+            if (!is_array($field)
+                || !llama_place_report_values_equal(
+                    $current['value'] ?? null,
+                    $observation['value'] ?? null,
+                    $field
+                )) {
+                continue;
+            }
         }
         $answers[$key]['approved_report'] = [
             'id' => $observation['report_id'],
