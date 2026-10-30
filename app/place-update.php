@@ -1980,6 +1980,35 @@ function llama_place_update_approve(
     );
 
 
+    // Confirm each approved Place observation reached the current
+    // published projection before the moderation transaction commits.
+    $publishedAnswers = llama_place_report_current_place_answers($db, $placeId);
+    foreach ($reportAnswers as $key => $submittedValue) {
+        $field = llama_place_report_fields()[$key] ?? null;
+        $publishedAnswer = $publishedAnswers[$key] ?? null;
+        if (!is_array($field) || !is_array($publishedAnswer) || empty($publishedAnswer['recorded'])) {
+            throw new RuntimeException(
+                'An approved Place update answer was not published. Approval was cancelled.'
+            );
+        }
+        $expected = llama_place_report_submission_answer($field, $submittedValue);
+        if (
+            ($publishedAnswer['state'] ?? '') !== $expected['state']
+            || (
+                $expected['state'] === 'answered'
+                && !llama_place_report_values_equal(
+                    $publishedAnswer['value'] ?? null,
+                    $expected['value'],
+                    $field
+                )
+            )
+        ) {
+            throw new RuntimeException(
+                'An approved Place update answer did not match the published value. Approval was cancelled.'
+            );
+        }
+    }
+
     $finalCurrentValues =
         llama_place_update_current_values(
             $db,
