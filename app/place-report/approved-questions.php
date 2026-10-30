@@ -424,6 +424,48 @@ function llama_place_report_approved_registry_issues(): array
         }
     }
 
+    foreach (llama_place_report_approved_source_fields() as $key => $field) {
+        $groupKey = (string) ($field['group'] ?? '');
+        $pageKey = (string) ($field['page'] ?? '');
+        $sourceKey = (string) ($field['source_key'] ?? '');
+
+        if ($key === '' || $groupKey === '' || $pageKey === '') {
+            $issues[] =
+                'Approved source field has a missing key, group, or page.';
+            continue;
+        }
+
+        if (!isset($groups[$groupKey])) {
+            $issues[] =
+                'Approved source field '
+                . $key
+                . ' references unknown group '
+                . $groupKey
+                . '.';
+        }
+
+        if (($assignedGroups[$groupKey] ?? null) !== $pageKey) {
+            $issues[] =
+                'Approved source field '
+                . $key
+                . ' does not match its group page assignment.';
+        }
+
+        if (!empty($field['editable'])) {
+            $issues[] =
+                'Approved source field '
+                . $key
+                . ' must remain read-only.';
+        }
+
+        if ($sourceKey === '') {
+            $issues[] =
+                'Approved source field '
+                . $key
+                . ' is missing its source key.';
+        }
+    }
+
     return $issues;
 }
 
