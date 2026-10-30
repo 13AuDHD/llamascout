@@ -80,7 +80,7 @@ $placeReportSections =
  * storage and site switching. Unlisted legacy fields are not displayed.
  */
 $publicReportGroups =
-    llama_place_report_approved_groups_in_page_order();
+    llama_place_report_effective_report_groups($placeReportFields);
 
 $approvedGroupPages =
     llama_place_report_approved_group_page_lookup();
