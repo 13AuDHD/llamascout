@@ -267,11 +267,13 @@ Created `docs/audits/05-permissions-and-moderation.md`, a static audit of authen
 
 ## V3-006: External Data Import Audit
 
-**Status:** Ready for review
+**Status:** Completed
 
 **Date:** 2026-10-29
 
 **Base branch:** `v3-development`
+
+**Merged into `v3-development`:** `539d8212248cc57347609b10a2fcb56ff1ead190`
 
 ### Result
 
@@ -306,4 +308,46 @@ Created `docs/audits/06-external-data.md`, a static audit of RIDB, NPS, USFS, BL
 
 ### Next planned task
 
-**V3-007: Approved Scout Report Reconciliation.** It has not been started.
+**V3-007: Approved Scout Report Reconciliation.** See the task record below.
+
+## V3-007: Approved Scout Report Reconciliation
+
+**Status:** Ready for review
+
+**Date:** 2026-10-29
+
+**Base branch:** `v3-development`
+
+### Result
+
+Created `docs/audits/07-scout-report-reconciliation.md`, a complete trace of the approved Scout Report PDF against the current canonical reporting registry.
+
+### Confirmed findings
+
+- The approved PDF contains 266 visible questionnaire entries when imported official information and questionnaire-only moderator notes are included.
+- The current approved-question registry contains 263 slots, and the count difference can be fully explained by identified structural mismatches.
+- Official Address, Phone Number, Email Address, and Official Links are currently outside the approved canonical question registry.
+- Seasonal Access represents two approved date questions as four separate month/day questions.
+- Site Overhead Clearance and Parking Clearance are two approved questions but currently share `overhead_clearance_feet`.
+- `flat_walking_surface` is currently marked approved but is not in the approved PDF.
+- Notes for Moderator correctly exists as workflow metadata rather than a public approved card.
+- Toilet type, Camp Host, permission-style rules, Seasonal Access dates, parking distance, and several legacy answer vocabularies differ from the approved answer specification.
+- Most approved questions already map cleanly to stable canonical field keys.
+- Existing historical/legacy values must be preserved while approved metadata is corrected.
+
+### Milestone 0 conclusion
+
+The existing backend, moderation, storage, scope, import, access, and shared-form infrastructure is reusable. The primary reporting foundation needs targeted reconciliation rather than a ground-up backend replacement.
+
+The recommended first Milestone 1 implementation is a bounded canonical-definition task that makes approved question identity, labels, groups, order, scope, answer types, options, current keys, and compatibility status explicit and machine-verifiable without simultaneously rewriting persistence.
+
+### Verification
+
+- Compared all eight pages of the approved Scout Report against `llama_place_report_approved_question_groups()` and relevant final field metadata.
+- Traced every approved question to an implementation key, a documented non-registry presentation path, workflow metadata, or an explicit missing/distinct-key gap.
+- Reviewed known dependencies, hidden/compatibility behavior, answer-option differences, and historical preservation requirements.
+- Did not modify application code, database schema, production data, or the approved specification.
+
+### Next
+
+**Milestone 0 Completion Gate.** Review audit findings and approve a small initial Milestone 1 implementation task before changing application behavior.
