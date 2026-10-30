@@ -665,6 +665,37 @@ Later interface migration must consume this metadata through shared authorizatio
 
 Fetching a Community field internally for SEO, moderation, completion, or other server-side processing does not authorize exposing the answer publicly.
 
+4.15 Shared Visibility Authorization
+
+Question visibility decisions must use the canonical Public / Community classification rather than interface-specific section lists.
+
+The shared reporting layer provides one visibility decision:
+
+* Public questions are available at Public and Community access.
+* Community questions require Community access.
+* Missing or invalid visibility never grants access.
+
+This question-level decision does not grant access to a Place or Site.
+
+Location-level restrictions, including restricted dispersed-Site discoverability, are evaluated independently and remain authoritative.
+
+### Locked public Scout Report preview
+
+The locked public Scout Report preview is the first interface migrated to canonical visibility.
+
+It now:
+
+* reads question order and grouping from the approved Scout Report registry
+* lists only Community questions as locked
+* does not label Public questions as Members only
+* uses canonical compound-question labels such as Season Begins and Season Ends
+* preserves the separate locked Description presentation
+* no longer uses legacy reporting section names as an access-control mechanism
+
+This migration changes how the locked preview determines which questions are protected.
+
+It does not expose Community answers to public users and does not change Complete Access eligibility.
+
 ⸻
 
 5. Place and Site Ownership
