@@ -630,13 +630,13 @@ $renderField =
                     ) ?>
                 </span>
 
-                <?php if ($reference !== ''): ?>
-                    <small class="place-report-answer-context" data-place-report-reference>
-                        Current answer: <?= $e($reference) ?>
-                    </small>
-                <?php endif; ?>
-
             </label>
+
+            <?php if ($reference !== ''): ?>
+                <small class="place-report-answer-context" data-place-report-reference>
+                    Current answer: <?= $e($reference) ?>
+                </small>
+            <?php endif; ?>
 
             <?php
             return;
