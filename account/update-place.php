@@ -125,11 +125,11 @@ $placeId =
  * COMPLETE ACCESS REQUIRED
  * =========================================================
  *
- * The update form is pre-filled with the complete published
- * Place report, including information that is normally hidden
- * behind Complete Access.
+ * The report form shows complete current Place answers as reference
+ * context, including information that is normally hidden behind Complete
+ * Access. Those current answers are not preloaded as the Scout's report.
  *
- * Never render that form unless this user is entitled to see
+ * Never render that reference context unless this user is entitled to see
  * the complete data for this specific Place.
  *
  * Free contributors retain access to Places they originally
@@ -164,7 +164,7 @@ if (
 
             <p>
                 You do not have access to the complete information
-                for this Place, so its update form cannot be opened.
+                for this Place, so its report form cannot be opened.
             </p>
 
             <p>
@@ -1172,7 +1172,7 @@ $e =
              * This is the same field definition and rendering
              * system used by the rest of the Place workflow.
              */
-            /* Reporting target is displayed inside the established update form. */
+            /* Reporting target is displayed inside the established report form. */
             require_once dirname(__DIR__) . '/app/place-report/report-targets.php';
             $availableReportTargets = llama_report_targets(db(), $placeId);
 
@@ -1286,7 +1286,7 @@ $e =
                     <input type="hidden" name="report_target_source" value="<?= $e($reportTargetSource) ?>" data-report-target-source>
                     <input type="hidden" name="report_target_id" value="<?= (int) $reportTargetId ?>" data-report-target-id>
                     <p class="place-update-report-target-status" data-report-target-status role="status">
-                        Entire Place updates use the existing review process.
+                        Entire Place reports use the same review process.
                     </p>
                 </div>
             </section>
@@ -1310,7 +1310,7 @@ $e =
                 <p data-scoped-field-notice role="status"></p>
             </section>
             <?php
-            /* Use the same final layout definitions as the shared editable form. */
+            /* Use the same final layout definitions as the shared report form. */
             $scopedReportLayoutGroups = llama_place_report_layout_groups();
             $scopedReportLayoutGroups['legacy_review'] = [
                 'review' => 'Questions for Review',
