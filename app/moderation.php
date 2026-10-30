@@ -1243,6 +1243,34 @@ $name = trim(
         (int) $firstSite['id']
     );
 
+    // Verify the first Site and every approved Site answer were published
+    // in this transaction before the Add Place approval can be committed.
+    $firstSiteId = (int) $firstSite['id'];
+    $publishedFirstSite = llama_place_campsite($db, $placeId, $firstSiteId);
+    if (!$publishedFirstSite) {
+        throw new RuntimeException(
+            'The approved Place has no published first Site. Approval was cancelled.'
+        );
+    }
+
+    $publishedSiteAnswers = llama_scoped_report_load(
+        $db,
+        $placeId,
+        'site',
+        $firstSiteId,
+        'campsite_record'
+    );
+    foreach ($submissionAnswers['site_answers'] as $key => $value) {
+        if (
+            !array_key_exists($key, $publishedSiteAnswers)
+            || llama_scout_report_json($publishedSiteAnswers[$key])
+                !== llama_scout_report_json($value)
+        ) {
+            throw new RuntimeException(
+                'An approved first-Site answer was not published. Approval was cancelled.'
+            );
+        }
+    }
 
     $provenance = $db->prepare(
         'INSERT INTO place_provenance
