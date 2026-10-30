@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/scoped-answers.php';
+
 /**
  * Canonical read-only current-answer model.
  *
