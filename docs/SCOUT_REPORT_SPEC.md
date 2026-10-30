@@ -374,6 +374,29 @@ The existing component keys remain authoritative for persistence, validation, hi
 
 Compound presentation must not create duplicate storage or discard partial historical values.
 
+4.9 Site and Parking Clearance
+
+Site Overhead Clearance and Parking Clearance are separate Site questions.
+
+**Site Overhead Clearance**
+
+* Canonical key: `overhead_clearance_feet`
+* Page: Site details
+* Group: Site Info
+* Meaning: lowest practical overhead clearance across the usable Site area itself
+* Existing historical values remain attached to this key
+
+**Parking Clearance**
+
+* Canonical key: `parking_clearance_feet`
+* Page: Site details
+* Group: Parking and Maneuvering
+* Meaning: lowest practical overhead clearance over the primary parking or driveway area
+
+The existing `overhead_clearance_feet` key must not be repurposed as Parking Clearance because its existing label, help text, and historical meaning describe Site overhead clearance.
+
+The new Parking Clearance field uses the existing scoped JSON detail model and does not require a database schema migration.
+
 ⸻
 
 5. Place and Site Ownership
