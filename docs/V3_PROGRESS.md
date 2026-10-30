@@ -117,6 +117,8 @@ PHP CLI is not installed in the Codex environment, so the repository's read-only
 
 **Base commit:** `99d4752a0e2903d53db827a8ee31076ccdbfbaed`
 
+**Pull request:** [#10 — V3-003: Reporting Interface Audit](https://github.com/13AuDHD/llamascout/pull/10)
+
 ### Result
 
 Created `docs/audits/03-reporting-interfaces.md`, a static end-to-end audit of the Scout Report interfaces. It covers:
