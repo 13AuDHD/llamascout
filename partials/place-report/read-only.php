@@ -19,7 +19,7 @@ $placeReportSections =
     llama_place_report_sections();
 
 /*
- * Public Scout Report groups follow the approved questionnaire.
+ * Published Scout Report groups follow the canonical two-page definition.
  * The shared field registry remains authoritative for labels, answer values,
  * storage and site switching. Unlisted legacy fields are not displayed.
  */
