@@ -41,13 +41,18 @@ foreach ($siteHistoryReports as $report) {
                                 $siteHistoryFields[$questionKey]['label'] ?? $questionKey
                             ) ?></th>
                             <?php foreach ($siteHistoryReports as $report): ?>
-                                <?php $answer = $report['answers'][$questionKey] ?? null; ?>
-                                <td>
-                                    <?php if ($answer === null): ?>
+                                <?php
+                                $answer = $report['answers'][$questionKey] ?? null;
+                                $answerState = $answer === null
+                                    ? 'unanswered'
+                                    : (string) ($answer['state'] ?? '');
+                                ?>
+                                <td class="compare-site-answer-<?= $escapeSiteHistory($answerState) ?>">
+                                    <?php if ($answerState === 'unanswered'): ?>
                                         Not answered
-                                    <?php elseif (($answer['state'] ?? '') === 'unknown'): ?>
+                                    <?php elseif ($answerState === 'unknown'): ?>
                                         Unknown
-                                    <?php else: ?>
+                                    <?php elseif ($answerState === 'answered'): ?>
                                         <?php
                                         // Reuse the same formatting rules as published Scout cards.
                                         $field = $siteHistoryFields[$questionKey];
@@ -63,10 +68,14 @@ foreach ($siteHistoryReports as $report) {
                                             $questionKey
                                         );
                                         if ($text === null || $text === '') {
-                                            $text = 'No value recorded';
+                                            // An explicitly answered null is not a No, Unknown,
+                                            // or an omitted question.
+                                            $text = 'Answered (no value)';
                                         }
                                         ?>
                                         <?= $escapeSiteHistory($text) ?>
+                                    <?php else: ?>
+                                        Invalid answer state
                                     <?php endif; ?>
                                 </td>
                             <?php endforeach; ?>
