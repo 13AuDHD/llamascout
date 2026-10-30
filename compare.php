@@ -123,6 +123,9 @@ if ($compareMode === 'places') {
    COMPARE REPORTS
    ========================================================= */
 
+$reportSiteId = max(0, (int) ($_GET['site'] ?? 0));
+$siteHistoryReports = [];
+$siteHistoryError = '';
 $reportPlaceSlug = '';
 $reportPlace = null;
 $hasReportPlaceAccess = false;
@@ -237,6 +240,37 @@ if ($compareMode === 'reports') {
     }
 }
 
+
+// Site report history uses the existing comparison page and access policy.
+// Unlike legacy Place report versions, it reads the immutable Site ledger.
+if ($compareMode === 'reports' && $reportSiteId > 0 && $reportPlaceSlug !== '') {
+    $siteHistoryReports = [];
+    $siteAccessPlace = place_public_by_slug($reportPlaceSlug);
+    $siteHistoryAllowed = $siteAccessPlace
+        && user_has_place_complete_access((int) $siteAccessPlace['id'], $currentUserId);
+    $hasReportPlaceAccess = (bool) $siteHistoryAllowed;
+    if ($siteHistoryAllowed) {
+        try {
+            require_once __DIR__ . '/app/place-report.php';
+            $db = db();
+            $placeId = (int) $siteAccessPlace['id'];
+            $verifiedSite = llama_report_verified_target(
+                $db, $placeId, 'site', 'campsite_record', $reportSiteId
+            );
+            $siteHistoryReports = llama_scout_report_target_history(
+                $db, $placeId,
+                (string) $verifiedSite['scope'],
+                (string) $verifiedSite['source'],
+                (int) $verifiedSite['id']
+            );
+        } catch (Throwable $exception) {
+            $siteHistoryError = 'Site report history could not be loaded.';
+            if (function_exists('llama_log_caught_exception')) {
+                llama_log_caught_exception($exception, 'compare.site-history');
+            }
+        }
+    }
+}
 
 $hasCurrentCompareAccess =
     $compareMode === 'reports'
@@ -386,6 +420,13 @@ require __DIR__ . '/partials/header.php';
                     </a>
                 </div>
             </section>
+
+        <?php elseif ($compareMode === 'reports' && $reportSiteId > 0): ?>
+            <?php if ($siteHistoryError !== ''): ?>
+                <section class="compare-empty"><p><?= htmlspecialchars($siteHistoryError, ENT_QUOTES, 'UTF-8') ?></p></section>
+            <?php else: ?>
+                <?php require __DIR__ . '/partials/compare/site-report-history.php'; ?>
+            <?php endif; ?>
 
         <?php elseif ($compareMode === 'reports'): ?>
 
