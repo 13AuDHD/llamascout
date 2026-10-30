@@ -384,8 +384,8 @@ function llama_place_report_approved_reconciliation(): array
             'current_keys' => [
                 'walking_distance_from_vehicle',
             ],
-            'status' => 'answer_type_mismatch',
-            'compatibility' => 'preserve_existing_distance_buckets',
+            'status' => 'approved_v3_bucket_override',
+            'compatibility' => 'retain_existing_distance_buckets',
         ],
         'permission_answer_vocabulary' => [
             'approved_label' => null,
