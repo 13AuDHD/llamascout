@@ -8,7 +8,7 @@ This file records completed and reviewable V3 implementation-plan tasks. Work pr
 **Date:** 2026-10-29  
 **Base branch:** `v3-development`  
 **Base commit:** `463462c9e64143908d0e77895393b2372a12e7aa`  
-**Pull request:** Pending creation
+**Pull request:** [#8 — V3-001: Repository and Infrastructure Inventory](https://github.com/13AuDHD/llamascout/pull/8)
 
 ### Result
 
