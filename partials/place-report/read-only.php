@@ -483,6 +483,14 @@ $renderValue =
                     </strong>
                 </div>
 
+                <?= llama_icon(
+                    $icon,
+                    [
+                        'class' => 'scout-report-value-icon',
+                    ]
+                ) ?>
+            <?php endif; ?>
+
                 <?php
                 $publicAttribution =
                     !$isCampsiteSwitchable
@@ -502,13 +510,6 @@ $renderValue =
                     </small>
                 <?php endif; ?>
 
-                <?= llama_icon(
-                    $icon,
-                    [
-                        'class' => 'scout-report-value-icon',
-                    ]
-                ) ?>
-            <?php endif; ?>
         </div>
         <?php
     };
