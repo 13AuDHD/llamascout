@@ -984,6 +984,41 @@
                             displayValue;
                     }
 
+                    // Refresh attribution with each selected Site. Never
+                    // leave the previous Site's contributor on a new card.
+                    let sourceLine = card.querySelector(
+                        '.scout-report-answer-source'
+                    );
+                    const source = site.report_answer_sources?.[key];
+                    if (source && !isUnanswered && !isUnknown) {
+                        if (!sourceLine) {
+                            sourceLine = document.createElement('small');
+                            sourceLine.className = 'scout-report-answer-source';
+                            const valueContent = card.querySelector(
+                                '.scout-report-value-content, .scout-rating-content'
+                            );
+                            valueContent?.append(sourceLine);
+                        }
+                        const date = clean(source.visitDate || source.submittedAt);
+                        const isoDate = date.substring(0, 10);
+                        const dateLabel = /^\\d{4}-\\d{2}-\\d{2}$/.test(isoDate)
+                            ? new Date(isoDate + 'T12:00:00').toLocaleDateString(
+                                undefined, { year: 'numeric', month: 'short', day: 'numeric' }
+                            )
+                            : '';
+                        const contributorId = Number(source.contributorId) || 0;
+                        if (sourceLine) {
+                            sourceLine.textContent = [
+                                dateLabel,
+                                contributorId > 0 ? 'Member #' + contributorId : ''
+                            ].filter(Boolean).join(' · ');
+                            sourceLine.hidden = !sourceLine.textContent;
+                        }
+                    } else if (sourceLine) {
+                        sourceLine.textContent = '';
+                        sourceLine.hidden = true;
+                    }
+
                     card.hidden =
                         false;
 
