@@ -31,41 +31,96 @@ if ($hasMemberAccess):
     <?php
     $lockedScoutSections = [];
     $schemaFields = llama_place_report_fields();
+    $approvedGroups =
+        llama_place_report_approved_question_groups();
 
-    foreach (
-        llama_place_report_sections()
-        as $sectionKey => $section
-    ) {
-        if (
-            in_array(
-                $sectionKey,
-                [
-                    'basic',
-                    'location',
-                    'amenities',
-                    'summaries',
-                ],
-                true
-            )
-        ) {
-            continue;
-        }
+    $descriptionField =
+        $schemaFields['description']
+        ?? null;
 
+    $lockedDescriptionIsCommunity =
+        is_array($descriptionField)
+        && !llama_place_report_field_visibility_allows(
+            $descriptionField,
+            false
+        )
+        && llama_place_report_field_visibility_allows(
+            $descriptionField,
+            true
+        );
+
+    foreach ($approvedGroups as $groupKey => [$groupLabel, $keys]) {
         $labels = [];
+        $renderedCompoundQuestions = [];
+        $groupIcon = 'info-circle';
 
-        foreach ($schemaFields as $field) {
+        foreach ((array) $keys as $key) {
+            $key =
+                (string) $key;
+
             if (
-                (string) $field['section']
-                !== $sectionKey
+                $key === 'description'
+                || !isset($schemaFields[$key])
             ) {
                 continue;
             }
 
-            $labels[] =
-                rtrim(
-                    (string) $field['label'],
-                    '*'
+            $field =
+                $schemaFields[$key];
+
+            if (
+                llama_place_report_field_visibility_allows(
+                    $field,
+                    false
+                )
+                || !llama_place_report_field_visibility_allows(
+                    $field,
+                    true
+                )
+            ) {
+                continue;
+            }
+
+            $compoundKey =
+                trim(
+                    (string) (
+                        $field['approved_compound_question']
+                        ?? ''
+                    )
                 );
+
+            if ($compoundKey !== '') {
+                if (isset($renderedCompoundQuestions[$compoundKey])) {
+                    continue;
+                }
+
+                $renderedCompoundQuestions[$compoundKey] =
+                    true;
+
+                $labels[] =
+                    (string) (
+                        $field['approved_compound_question_label']
+                        ?? $field['label']
+                        ?? $compoundKey
+                    );
+            } else {
+                $labels[] =
+                    rtrim(
+                        (string) (
+                            $field['label']
+                            ?? $key
+                        ),
+                        '*'
+                    );
+            }
+
+            if ($groupIcon === 'info-circle') {
+                $groupIcon =
+                    llama_place_report_field_icon(
+                        $key,
+                        $field
+                    );
+            }
         }
 
         if (!$labels) {
@@ -73,19 +128,19 @@ if ($hasMemberAccess):
         }
 
         $lockedScoutSections[] = [
+            'key' =>
+                (string) $groupKey,
             'title' =>
-                (string) $section['label'],
+                (string) $groupLabel,
             'icon' =>
-                (string) (
-                    $section['icon']
-                    ?? 'info-circle'
-                ),
+                $groupIcon,
             'fields' =>
                 $labels,
         ];
     }
     ?>
 
+    <?php if ($lockedDescriptionIsCommunity): ?>
     <section
         class="place-section locked-place-description"
         aria-labelledby="locked-about-heading"
@@ -115,6 +170,7 @@ if ($hasMemberAccess):
             The full place description is available with a Llama Scout membership.
         </p>
     </section>
+    <?php endif; ?>
 
     <section
         class="scout-report scout-report-locked"
