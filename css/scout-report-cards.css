@@ -107,11 +107,12 @@
 .scout-report-rating-item {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-rows: auto 4px auto;
+    grid-template-rows: auto 4px auto auto;
     grid-template-areas:
         "title title"
         ". ."
-        "value dots";
+        "value dots"
+        "source source";
     column-gap: 12px;
     row-gap: 8px;
     align-items: end;
@@ -174,11 +175,12 @@
 .scout-report-value-item {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-rows: auto 4px auto;
+    grid-template-rows: auto 4px auto auto;
     grid-template-areas:
         "title title"
         ". ."
-        "value icon";
+        "value icon"
+        "source source";
     column-gap: 12px;
     row-gap: 4px;
     align-items: end;
@@ -218,6 +220,23 @@
     font-size: 1.2rem;
     line-height: 1;
     text-align: center;
+}
+
+/* Member/source attribution lives in its own grid row beneath the answer. */
+.scout-report-value-item > .scout-report-value-content > .scout-report-answer-source,
+.scout-report-rating-item > .scout-rating-content > .scout-report-answer-source {
+    grid-area: source;
+    display: block;
+    min-width: 0;
+    font-size: .78rem;
+    line-height: 1.35;
+    font-weight: 400;
+    color: var(--text-muted);
+    overflow-wrap: anywhere;
+}
+
+.scout-report-answer-source[hidden] {
+    display: none !important;
 }
 
 /* Long-form answers are normal document flow so the card always grows
