@@ -1,0 +1,275 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * Authoritative approved Scout Report question inventory.
+ *
+ * This module is deliberately independent from presentation, persistence,
+ * applicability, and scope assignment. It provides the shared approved
+ * questionnaire identity/order used by the existing reporting system.
+ *
+ * M1-001 is a behavior-preserving extraction from flow-layout.php. Known
+ * differences between the approved PDF and the current implementation are
+ * recorded below as reconciliation metadata rather than silently "fixed" here.
+ */
+
+/**
+ * Approved question grouping and order from the completed Scout Report mapping.
+ *
+ * This inventory belongs to the shared reporting layer, not a page template.
+ * Keys continue to resolve their labels, answer choices, scope and storage
+ * through llama_place_report_fields().
+ */
+function llama_place_report_approved_question_groups(): array
+{
+    return [
+    'basic' => ['Basic', ['name','type','description']],
+    'location' => ['Location', ['latitude','longitude','elevation_feet','road','city','county','state','land_type','land_manager','region','activities']],
+    'amenities' => ['Amenities', ['amenity_toilets','amenity_potable_water','amenity_trash','amenity_dump_station','amenity_showers','amenity_picnic_shelter','amenity_wifi','amenity_laundry','amenity_dishwashing_station','amenity_playground','amenity_dog_park','amenity_amphitheater','amenity_campground_host','amenity_camp_store','amenity_trailhead','amenity_fishing_pier']],
+    'operating' => ['Operating Hours', ['place_open_year_round','seasonal_closure','season_begins','season_ends','place_open_24_hours','place_opening_time','place_closing_time']],
+    'road_conditions' => ['Road Conditions', ['approach_road_type','approach_permit_required','approach_fee_required','approach_road_fee','road_surface','road_width','approach_road_condition','approach_road_hazards','approach_deep_ruts','rocks','washboards','mud_risk','steep_grades','drop_off_exposure','water_crossings','downed_tree_risk','approach_access_restrictions']],
+    'vehicle_access' => ['Vehicle Access', ['approach_overhead_obstacles','sedan_accessible','high_clearance_recommended','four_wheel_drive_recommended','approach_turnaround_available']],
+    'seasonal_access' => ['Seasonal Access', ['best_months','approach_seasonal_closure','approach_closure_month','approach_closure_day','approach_reopening_month','approach_reopening_day','hurricane_risk','monsoon_risk','mud_season_risk','snow_risk','approach_winter_maintenance','approach_snow_chains','approach_seasonal_restrictions']],
+    'gate_access' => ['Gate Access', ['approach_gate_present','approach_gate_access_type','approach_gate_opens','approach_gate_closes','place_entrance_gate','place_gate_access_type','place_gate_opening_time','place_gate_closing_time']],
+    'nearest_services' => ['Nearest Services', ['nearest_town','nearest_fuel','nearest_ev_charging','nearest_propane','nearest_alcohol_sales','nearest_grocery','nearest_water','nearest_toilet','nearest_hospital']],
+    'site_info' => ['Site Info', ['site_number','site_accessible','tent_camping_suitable','rv_suitable','capacity_size_rating','max_people','vehicle_capacity','site_length_feet','site_width_feet','ground_condition','levelness','parking_grade']],
+    'fees' => ['Fees and Reservations', ['stay_limit_days','fee','extra_vehicle_fee','reservation_required','reservation_fee','reservation_url','membership_required','membership_fee','membership_url','parking_entrance_required','parking_entrance_fee','check_in_required','check_in_begins','check_out_required','checkout_ends','discounts_available']],
+    'setting' => ['Setting and Environment', ['landscape_primary','landscape_details','landscape_views','environment_water_nearby','environment_wildlife','critter_activity','environment_bugs','environment_sun_exposure','environment_shade','tree_cover','environment_open_sky','environment_notes']],
+    'parking' => ['Parking and Maneuvering', ['parking_surface','back_in','pull_through','turnaround_space','parking_size','parking_length_feet','max_vehicle_length_feet','max_rv_length_feet','overhead_clearance_feet','leveling_required','parking_notes']],
+    'site_accessibility' => ['Accessibility', ['accessible_picnic_table','accessible_toilet','wheelchair_friendly','mobility_device_friendly','step_free_access','flat_walking_surface','walking_distance_from_vehicle','accessibility_notes']],
+    'site_amenities' => ['Site Amenities', ['amenity_fire_ring','amenity_grill','amenity_picnic_table','amenity_lantern_post','site_potable_water','site_hookups_available','hookup_electric_service','hookup_water','hookup_sewer','tent_pad','tent_pad_width_feet','tent_pad_length_feet','amenity_bear_box','site_lake_access','site_river_access','site_trail_access','site_wifi_rating','site_amenities_notes']],
+    'connectivity_public' => ['Connectivity', ['connectivity_overall','connectivity_att','connectivity_t_mobile','connectivity_verizon','connectivity_other_cell','connectivity_satellite','connectivity_services_tested','connectivity_starlink_note']],
+    'daytime' => ['Daytime', ['daytime_social_interaction','daytime_noise','daytime_traffic','daytime_crowds','daytime_privacy','daytime_light_pollution','daytime_sensory_comfort','felt_safe_daytime_rating']],
+    'nighttime' => ['Nighttime', ['nighttime_social_interaction','nighttime_noise','nighttime_traffic','nighttime_crowds','nighttime_privacy','nighttime_light_pollution','nighttime_sensory_comfort','felt_safe_nighttime_rating']],
+    'specific_sensory' => ['Specific Sensory', ['sensory_dust_from_traffic','sensory_generator_noise','sensory_aircraft_noise','sensory_train_noise','sensory_dog_barking','sensory_wildlife_noise','sensory_wind_noise','sensory_strong_odors','sensory_smoke_risk','road_exposure','sensory_visual_exposure','sensory_predictability','sensory_summary']],
+    'safety_public' => ['Safety and Hazards', ['warning_possible_downed_trees','fall_hazard','wildlife_risk','wildfire_risk','flash_flood_risk','rockfall_risk','traffic_hazard','warning_blind_turn_traffic_nearby','emergency_access']],
+    'rules_public' => ['Rules and Restrictions', ['overnight_camping_allowed','dispersed_camping_allowed','designated_sites_only','pets_allowed','dogs_required_to_be_leashed','generator_restrictions','generator_prohibited','generator_quiet_hours','generator_quiet_hours_begin','generator_quiet_hours_end','generator_run_restrictions','generator_max_run_hours','generator_restriction_details','place_quiet_hours','place_quiet_hours_begin','place_quiet_hours_end','campfire_allowed','collecting_firewood','place_charcoal_grills_allowed','place_propane_fire_pits_allowed','fire_activity_permit_url','current_fire_restrictions_url','food_storage_required','pack_it_in_pack_it_out','place_alcohol_permitted','drone_use_legal','target_shooting_allowed','place_additional_rules']],
+    'experience_public' => ['Experience and Recommendations', ['site_rating','condition_rating','location_rating','experience_sunrise_view','experience_sunset_view','experience_overall_scenery','experience_stargazing','experience_sensory_retreat','experience_quiet_evening','recommended_remote_work','recommended_overnight_stop','recommended_extended_stay','recommended_solo_travel','recommended_families','recommended_large_groups','not_recommended_for','experience_summary']],
+    'notes_public' => ['Scout Notes', ['scout_note_1','scout_note_2','scout_note_3']],
+    'history_public' => ['Place History', ['visited_at','visit_length_of_stay','visit_setup_types']],
+];
+}
+
+/**
+ * Known differences between the approved Scout Report PDF and the current
+ * implementation. These records make the migration work machine-readable
+ * without changing current storage or rendering behavior.
+ */
+function llama_place_report_approved_reconciliation(): array
+{
+    return [
+        'official_address' => [
+            'approved_label' => 'Official Address',
+            'approved_group' => 'basic',
+            'current_keys' => [],
+            'status' => 'outside_registry',
+            'compatibility' => 'official_source_projection',
+        ],
+        'official_phone' => [
+            'approved_label' => 'Phone Number',
+            'approved_group' => 'basic',
+            'current_keys' => [],
+            'status' => 'outside_registry',
+            'compatibility' => 'official_source_projection',
+        ],
+        'official_email' => [
+            'approved_label' => 'Email Address',
+            'approved_group' => 'basic',
+            'current_keys' => [],
+            'status' => 'outside_registry',
+            'compatibility' => 'official_source_projection',
+        ],
+        'official_links' => [
+            'approved_label' => 'Official Links',
+            'approved_group' => 'basic',
+            'current_keys' => [],
+            'status' => 'outside_registry',
+            'compatibility' => 'official_source_projection',
+        ],
+        'seasonal_access_begin' => [
+            'approved_label' => 'Season Begins',
+            'approved_group' => 'seasonal_access',
+            'current_keys' => [
+                'approach_closure_month',
+                'approach_closure_day',
+            ],
+            'status' => 'split_current_keys',
+            'compatibility' => 'preserve_existing_month_day_storage',
+        ],
+        'seasonal_access_end' => [
+            'approved_label' => 'Season Ends',
+            'approved_group' => 'seasonal_access',
+            'current_keys' => [
+                'approach_reopening_month',
+                'approach_reopening_day',
+            ],
+            'status' => 'split_current_keys',
+            'compatibility' => 'preserve_existing_month_day_storage',
+        ],
+        'site_overhead_clearance' => [
+            'approved_label' => 'Site Overhead Clearance',
+            'approved_group' => 'site_info',
+            'current_keys' => [
+                'overhead_clearance_feet',
+            ],
+            'status' => 'shared_current_key',
+            'compatibility' => 'requires_distinct_future_identity',
+        ],
+        'parking_clearance' => [
+            'approved_label' => 'Parking Clearance',
+            'approved_group' => 'parking',
+            'current_keys' => [
+                'overhead_clearance_feet',
+            ],
+            'status' => 'shared_current_key',
+            'compatibility' => 'preserve_existing_overhead_clearance',
+        ],
+        'flat_walking_surface' => [
+            'approved_label' => null,
+            'approved_group' => null,
+            'current_keys' => [
+                'flat_walking_surface',
+            ],
+            'status' => 'extra_current_approved',
+            'compatibility' => 'preserve_historical_answers',
+        ],
+        'moderator_notes' => [
+            'approved_label' => 'Notes for Moderator',
+            'approved_group' => 'questionnaire_only',
+            'current_keys' => [
+                'contributor_notes',
+            ],
+            'status' => 'workflow_metadata',
+            'compatibility' => 'never_publish_as_scout_report_card',
+        ],
+        'toilet_type' => [
+            'approved_label' => 'Toilets',
+            'approved_group' => 'amenities',
+            'current_keys' => [
+                'amenity_toilets',
+            ],
+            'status' => 'answer_options_mismatch',
+            'compatibility' => 'preserve_existing_yes_no_unknown',
+        ],
+        'camp_host' => [
+            'approved_label' => 'Camp Host',
+            'approved_group' => 'amenities',
+            'current_keys' => [
+                'amenity_campground_host',
+            ],
+            'status' => 'answer_options_mismatch',
+            'compatibility' => 'preserve_existing_seasonal_value',
+        ],
+        'parking_to_site_distance' => [
+            'approved_label' => 'Distance parking to site',
+            'approved_group' => 'site_accessibility',
+            'current_keys' => [
+                'walking_distance_from_vehicle',
+            ],
+            'status' => 'answer_type_mismatch',
+            'compatibility' => 'preserve_existing_distance_buckets',
+        ],
+        'permission_answer_vocabulary' => [
+            'approved_label' => null,
+            'approved_group' => 'rules_public',
+            'current_keys' => [
+                'overnight_camping_allowed',
+                'dispersed_camping_allowed',
+                'campfire_allowed',
+                'collecting_firewood',
+                'place_charcoal_grills_allowed',
+                'place_propane_fire_pits_allowed',
+                'place_alcohol_permitted',
+                'drone_use_legal',
+                'target_shooting_allowed',
+            ],
+            'status' => 'answer_options_mismatch',
+            'compatibility' => 'preserve_legacy_conditional_values',
+        ],
+    ];
+}
+
+/**
+ * Static integrity checks for the approved inventory itself.
+ *
+ * This intentionally does not call llama_place_report_fields(), so it can be
+ * used while the field registry is being assembled without creating a cycle.
+ */
+function llama_place_report_approved_registry_issues(): array
+{
+    $issues = [];
+    $groups = llama_place_report_approved_question_groups();
+    $seen = [];
+    $count = 0;
+
+    foreach ($groups as $groupKey => $definition) {
+        $label = (string) ($definition[0] ?? '');
+        $keys = (array) ($definition[1] ?? []);
+
+        if ($groupKey === '' || $label === '') {
+            $issues[] = 'Approved question group has a missing key or label.';
+        }
+
+        foreach ($keys as $position => $key) {
+            $key = (string) $key;
+            $count++;
+
+            if ($key === '') {
+                $issues[] =
+                    'Approved question group '
+                    . $groupKey
+                    . ' contains an empty key at position '
+                    . $position
+                    . '.';
+                continue;
+            }
+
+            if (isset($seen[$key])) {
+                $issues[] =
+                    'Approved question key '
+                    . $key
+                    . ' appears in both '
+                    . $seen[$key]
+                    . ' and '
+                    . $groupKey
+                    . '.';
+                continue;
+            }
+
+            $seen[$key] = $groupKey;
+        }
+    }
+
+    if ($count !== 263) {
+        $issues[] =
+            'Current approved-question projection contains '
+            . $count
+            . ' slots; expected 263 until reconciliation migrations are applied.';
+    }
+
+    return $issues;
+}
+
+/**
+ * Small read-only snapshot useful to diagnostics and future tests.
+ */
+function llama_place_report_approved_registry_summary(): array
+{
+    $groups = llama_place_report_approved_question_groups();
+    $questions = 0;
+
+    foreach ($groups as $definition) {
+        $questions += count((array) ($definition[1] ?? []));
+    }
+
+    return [
+        'source' => 'Scout Report Final.pdf',
+        'approved_pdf_visible_entries' => 266,
+        'current_projection_groups' => count($groups),
+        'current_projection_questions' => $questions,
+        'known_reconciliation_items' =>
+            count(llama_place_report_approved_reconciliation()),
+        'issues' => llama_place_report_approved_registry_issues(),
+    ];
+}
