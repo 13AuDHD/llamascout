@@ -1017,7 +1017,7 @@
                         '.scout-report-answer-source'
                     );
                     const source = site.report_answer_sources?.[key];
-                    if (source && !isUnanswered && !isUnknown) {
+                    if (source && !isUnanswered) {
                         if (!sourceLine) {
                             sourceLine = document.createElement('small');
                             sourceLine.className = 'scout-report-answer-source';
