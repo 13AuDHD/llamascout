@@ -564,6 +564,16 @@ function llama_ridb_canonical_upsert_values(
                 $table === 'place_amenities'
                 && (int) $current === 0
                 && (int) $value === 1
+            )
+            || (
+                $table === 'place_amenities'
+                && $column === 'toilet_type'
+                && (string) $current === 'present_unknown_type'
+                && in_array(
+                    (string) $value,
+                    ['pit', 'flush', 'portable'],
+                    true
+                )
             );
 
         if (!$shouldWrite) {
