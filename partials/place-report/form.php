@@ -539,6 +539,7 @@ $renderField =
     ) use (
         $e,
         $valueFor,
+        $referenceFor,
         $renderSelect,
         $placeReportMode,
         $placeReportShowNameSuggestion,
@@ -554,6 +555,11 @@ $renderField =
             $valueFor(
                 $key,
                 $field
+            );
+
+        $reference =
+            $referenceFor(
+                $key
             );
 
         $wide =
@@ -618,6 +624,12 @@ $renderField =
                         $field['label']
                     ) ?>
                 </span>
+
+                <?php if ($reference !== ''): ?>
+                    <small class="place-report-answer-context">
+                        Current answer: <?= $e($reference) ?>
+                    </small>
+                <?php endif; ?>
 
             </label>
 
@@ -1185,6 +1197,12 @@ $renderField =
 
             <?php endif; ?>
 
+            <?php if ($reference !== ''): ?>
+                <small class="place-report-answer-context">
+                    Current answer: <?= $e($reference) ?>
+                </small>
+            <?php endif; ?>
+
 
         </<?= $fieldContainerTag ?>>
 
@@ -1199,6 +1217,7 @@ $renderCompoundField =
     ) use (
         $e,
         $valueFor,
+        $referenceFor,
         $renderSelect
     ): void {
         $definitions =
@@ -1255,6 +1274,12 @@ $renderCompoundField =
                     >
                         <span><?= $e($componentLabel) ?></span>
                         <?php $renderSelect($field, $current); ?>
+                        <?php $componentReference = $referenceFor((string) $componentKey); ?>
+                        <?php if ($componentReference !== ''): ?>
+                            <small class="place-report-answer-context">
+                                Current answer: <?= $e($componentReference) ?>
+                            </small>
+                        <?php endif; ?>
                     </label>
                 <?php endforeach; ?>
             </div>
@@ -1428,6 +1453,26 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
                         least 5 decimal places for each coordinate. Llama Scout
                         standardizes both values to 7 decimal places.
                     </small>
+
+                    <?php
+                    $latitudeReference =
+                        $referenceFor('latitude');
+
+                    $longitudeReference =
+                        $referenceFor('longitude');
+
+                    $coordinateReference =
+                        $latitudeReference !== ''
+                        && $longitudeReference !== ''
+                            ? $latitudeReference . ', ' . $longitudeReference
+                            : '';
+                    ?>
+
+                    <?php if ($coordinateReference !== ''): ?>
+                        <small class="place-report-answer-context">
+                            Current answer: <?= $e($coordinateReference) ?>
+                        </small>
+                    <?php endif; ?>
 
                     <input
                         type="hidden"
