@@ -52,6 +52,79 @@ function llama_place_report_approved_question_groups(): array
 }
 
 /**
+ * Approved two-page Scout Report presentation.
+ *
+ * The data foundation remains shared, but the full Scout Report must not be
+ * flattened into one overwhelming page. Place-wide information is presented
+ * on the Place page and Site-specific information is presented on the Site page.
+ *
+ * Accent roles are semantic. Presentation code maps "place" to the existing
+ * Place green treatment and "site" to the existing Site orange treatment.
+ * Hex values do not belong in canonical reporting metadata.
+ */
+function llama_place_report_approved_pages(): array
+{
+    return [
+        'place' => [
+            'label' => 'Place details',
+            'accent_role' => 'place',
+            'groups' => [
+                'basic',
+                'location',
+                'amenities',
+                'operating',
+                'road_conditions',
+                'vehicle_access',
+                'seasonal_access',
+                'gate_access',
+                'nearest_services',
+            ],
+        ],
+        'site' => [
+            'label' => 'Site details',
+            'accent_role' => 'site',
+            'groups' => [
+                'site_info',
+                'fees',
+                'setting',
+                'parking',
+                'site_accessibility',
+                'site_amenities',
+                'connectivity_public',
+                'daytime',
+                'nighttime',
+                'specific_sensory',
+                'safety_public',
+                'rules_public',
+                'experience_public',
+                'notes_public',
+                'history_public',
+            ],
+        ],
+    ];
+}
+
+/**
+ * Flatten approved page metadata to one lookup per approved group.
+ */
+function llama_place_report_approved_group_page_lookup(): array
+{
+    $lookup = [];
+
+    foreach (llama_place_report_approved_pages() as $pageKey => $page) {
+        foreach ((array) ($page['groups'] ?? []) as $groupKey) {
+            $lookup[(string) $groupKey] = [
+                'page' => $pageKey,
+                'page_label' => (string) ($page['label'] ?? ''),
+                'accent_role' => (string) ($page['accent_role'] ?? ''),
+            ];
+        }
+    }
+
+    return $lookup;
+}
+
+/**
  * Known differences between the approved Scout Report PDF and the current
  * implementation. These records make the migration work machine-readable
  * without changing current storage or rendering behavior.
