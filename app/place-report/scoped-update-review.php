@@ -144,8 +144,7 @@ function llama_scoped_update_build_payload(
 
     $answers = [];
     $originalAnswers = [];
-    $unknown =
-        llama_place_report_unknown_token();
+    $seen = [];
 
     foreach ($submitted as $answer) {
         if (!is_array($answer)) {
@@ -164,7 +163,7 @@ function llama_scoped_update_build_payload(
 
         if (
             $key === ''
-            || isset($answers[$key])
+            || isset($seen[$key])
         ) {
             throw new InvalidArgumentException(
                 $key === ''
@@ -172,6 +171,9 @@ function llama_scoped_update_build_payload(
                     : 'Each question can only be answered once.'
             );
         }
+
+        $seen[$key] =
+            true;
 
         $field =
             llama_scoped_report_field(
@@ -183,28 +185,29 @@ function llama_scoped_update_build_payload(
             $answer['value']
             ?? null;
 
-        $answerValue = llama_place_report_parse_answer($field, $raw);
-        if ($answerValue['state'] === 'unanswered') {
-            throw new InvalidArgumentException('Choose an answer for ' . $field['label'] . '.');
+        $answerValue =
+            llama_place_report_submission_answer(
+                $field,
+                $raw
+            );
+
+        /*
+         * Unanswered means this report contains no observation for the
+         * question. Match the Entire Place path by omitting it rather than
+         * converting it to No or treating it as a submitted correction.
+         */
+        if (!$answerValue['recorded']) {
+            continue;
         }
-        $value = $answerValue['state'] === 'unknown' ? $unknown : $answerValue['value'];
+
+        $value =
+            $answerValue['scoped_value'];
 
         $recorded =
             array_key_exists(
                 $key,
                 $before
             );
-
-        if (
-            $recorded
-            && llama_place_report_values_equal($before[$key], $value, $field)
-        ) {
-            throw new InvalidArgumentException(
-                'The answer for '
-                . $field['label']
-                . ' is already recorded.'
-            );
-        }
 
         $answers[$key] =
             $value;
@@ -220,6 +223,12 @@ function llama_scoped_update_build_payload(
             'effective_recorded' => array_key_exists($key, $effectiveBefore),
             'effective_value' => $effectiveBefore[$key] ?? null,
         ];
+    }
+
+    if (!$answers) {
+        throw new InvalidArgumentException(
+            'Answer at least one Area or Site question before submitting.'
+        );
     }
 
     $visited = (string) (llama_place_report_metadata($input, 'visited_at') ?? '');
