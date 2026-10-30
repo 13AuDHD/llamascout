@@ -321,6 +321,63 @@ function llama_place_report_approved_registry_issues(): array
             . ' slots; expected 263 until reconciliation migrations are applied.';
     }
 
+    $assignedGroups = [];
+
+    foreach (llama_place_report_approved_pages() as $pageKey => $page) {
+        $accentRole = (string) ($page['accent_role'] ?? '');
+
+        if (!in_array($pageKey, ['place', 'site'], true)) {
+            $issues[] =
+                'Unknown approved report page '
+                . $pageKey
+                . '.';
+        }
+
+        if ($accentRole !== $pageKey) {
+            $issues[] =
+                'Approved report page '
+                . $pageKey
+                . ' must use the matching semantic accent role.';
+        }
+
+        foreach ((array) ($page['groups'] ?? []) as $groupKey) {
+            $groupKey = (string) $groupKey;
+
+            if (!array_key_exists($groupKey, $groups)) {
+                $issues[] =
+                    'Approved report page '
+                    . $pageKey
+                    . ' references unknown group '
+                    . $groupKey
+                    . '.';
+                continue;
+            }
+
+            if (isset($assignedGroups[$groupKey])) {
+                $issues[] =
+                    'Approved question group '
+                    . $groupKey
+                    . ' is assigned to both '
+                    . $assignedGroups[$groupKey]
+                    . ' and '
+                    . $pageKey
+                    . ' pages.';
+                continue;
+            }
+
+            $assignedGroups[$groupKey] = $pageKey;
+        }
+    }
+
+    foreach (array_keys($groups) as $groupKey) {
+        if (!isset($assignedGroups[$groupKey])) {
+            $issues[] =
+                'Approved question group '
+                . $groupKey
+                . ' is not assigned to a report page.';
+        }
+    }
+
     return $issues;
 }
 
@@ -341,6 +398,8 @@ function llama_place_report_approved_registry_summary(): array
         'approved_pdf_visible_entries' => 266,
         'current_projection_groups' => count($groups),
         'current_projection_questions' => $questions,
+        'approved_pages' => count(llama_place_report_approved_pages()),
+        'approved_page_groups' => count(llama_place_report_approved_group_page_lookup()),
         'known_reconciliation_items' =>
             count(llama_place_report_approved_reconciliation()),
         'issues' => llama_place_report_approved_registry_issues(),
