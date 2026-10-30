@@ -1266,6 +1266,30 @@ function llama_scoped_update_approve(
         );
     }
 
+    /*
+     * Both the immutable report and published scoped answers are part of
+     * the moderator's transaction. Confirm that every approved answer is
+     * actually present before recording the approved contribution.
+     */
+    $publishedAnswers = llama_scoped_report_load(
+        $db,
+        $placeId,
+        $scope,
+        $targetId,
+        $source
+    );
+    foreach ($answers as $key => $value) {
+        if (
+            !array_key_exists($key, $publishedAnswers)
+            || llama_scout_report_json($publishedAnswers[$key])
+                !== llama_scout_report_json($value)
+        ) {
+            throw new RuntimeException(
+                'An approved Scout Report answer was not published. Approval was cancelled.'
+            );
+        }
+    }
+
     $contributionId =
         moderation_insert_contribution(
             $db,
