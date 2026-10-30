@@ -39,6 +39,9 @@ function llama_place_report_apply_site_parking_metadata(
         'overhead_clearance_feet' =>
             'Site overhead clearance (ft)',
 
+        'parking_clearance_feet' =>
+            'Parking clearance (ft)',
+
         'max_vehicle_length_feet' =>
             'Maximum vehicle length',
 
@@ -94,7 +97,10 @@ function llama_place_report_apply_site_parking_metadata(
             'Approximate usable width of the individual Site or overnight space.',
 
         'overhead_clearance_feet' =>
-            'Lowest practical overhead clearance within the Site or its immediate entry.',
+            'Lowest practical overhead clearance across the usable Site area, including branches, shelters, or other overhead obstacles within the Site itself.',
+
+        'parking_clearance_feet' =>
+            'Lowest practical overhead clearance over the primary parking or driveway area where the vehicle is actually positioned.',
 
         'max_vehicle_length_feet' =>
             'Largest single vehicle that can physically use this Site based on the parking space, maneuvering room, clearance, and immediate Site entry.',

@@ -33,10 +33,10 @@ function llama_place_report_approved_question_groups(): array
     'seasonal_access' => ['Seasonal Access', ['best_months','approach_seasonal_closure','approach_closure_month','approach_closure_day','approach_reopening_month','approach_reopening_day','hurricane_risk','monsoon_risk','mud_season_risk','snow_risk','approach_winter_maintenance','approach_snow_chains','approach_seasonal_restrictions']],
     'gate_access' => ['Gate Access', ['approach_gate_present','approach_gate_access_type','approach_gate_opens','approach_gate_closes','place_entrance_gate','place_gate_access_type','place_gate_opening_time','place_gate_closing_time']],
     'nearest_services' => ['Nearest Services', ['nearest_town','nearest_fuel','nearest_ev_charging','nearest_propane','nearest_alcohol_sales','nearest_grocery','nearest_water','nearest_toilet','nearest_hospital']],
-    'site_info' => ['Site Info', ['site_number','site_accessible','tent_camping_suitable','rv_suitable','capacity_size_rating','max_people','vehicle_capacity','site_length_feet','site_width_feet','ground_condition','levelness','parking_grade']],
+    'site_info' => ['Site Info', ['site_number','site_accessible','tent_camping_suitable','rv_suitable','capacity_size_rating','max_people','vehicle_capacity','site_length_feet','site_width_feet','overhead_clearance_feet','ground_condition','levelness','parking_grade']],
     'fees' => ['Fees and Reservations', ['stay_limit_days','fee','extra_vehicle_fee','reservation_required','reservation_fee','reservation_url','membership_required','membership_fee','membership_url','parking_entrance_required','parking_entrance_fee','check_in_required','check_in_begins','check_out_required','checkout_ends','discounts_available']],
     'setting' => ['Setting and Environment', ['landscape_primary','landscape_details','landscape_views','environment_water_nearby','environment_wildlife','critter_activity','environment_bugs','environment_sun_exposure','environment_shade','tree_cover','environment_open_sky','environment_notes']],
-    'parking' => ['Parking and Maneuvering', ['parking_surface','back_in','pull_through','turnaround_space','parking_size','parking_length_feet','max_vehicle_length_feet','max_rv_length_feet','overhead_clearance_feet','leveling_required','parking_notes']],
+    'parking' => ['Parking and Maneuvering', ['parking_surface','back_in','pull_through','turnaround_space','parking_size','parking_length_feet','max_vehicle_length_feet','max_rv_length_feet','parking_clearance_feet','leveling_required','parking_notes']],
     'site_accessibility' => ['Accessibility', ['accessible_picnic_table','accessible_toilet','wheelchair_friendly','mobility_device_friendly','step_free_access','flat_walking_surface','walking_distance_from_vehicle','accessibility_notes']],
     'site_amenities' => ['Site Amenities', ['amenity_fire_ring','amenity_grill','amenity_picnic_table','amenity_lantern_post','site_potable_water','site_hookups_available','hookup_electric_service','hookup_water','hookup_sewer','tent_pad','tent_pad_width_feet','tent_pad_length_feet','amenity_bear_box','site_lake_access','site_river_access','site_trail_access','site_wifi_rating','site_amenities_notes']],
     'connectivity_public' => ['Connectivity', ['connectivity_overall','connectivity_att','connectivity_t_mobile','connectivity_verizon','connectivity_other_cell','connectivity_satellite','connectivity_services_tested','connectivity_starlink_note']],
@@ -330,17 +330,17 @@ function llama_place_report_approved_reconciliation(): array
             'current_keys' => [
                 'overhead_clearance_feet',
             ],
-            'status' => 'shared_current_key',
-            'compatibility' => 'requires_distinct_future_identity',
+            'status' => 'resolved_existing_key',
+            'compatibility' => 'preserve_existing_overhead_clearance',
         ],
         'parking_clearance' => [
             'approved_label' => 'Parking Clearance',
             'approved_group' => 'parking',
             'current_keys' => [
-                'overhead_clearance_feet',
+                'parking_clearance_feet',
             ],
-            'status' => 'shared_current_key',
-            'compatibility' => 'preserve_existing_overhead_clearance',
+            'status' => 'resolved_distinct_key',
+            'compatibility' => 'new_field_preserves_legacy_site_clearance',
         ],
         'flat_walking_surface' => [
             'approved_label' => 'Flat Walking Surface',
@@ -458,11 +458,11 @@ function llama_place_report_approved_registry_issues(): array
         }
     }
 
-    if ($count !== 263) {
+    if ($count !== 264) {
         $issues[] =
             'Current approved-question projection contains '
             . $count
-            . ' slots; expected 263 until reconciliation migrations are applied.';
+            . ' slots; expected 264 after separating Site Overhead Clearance from Parking Clearance.';
     }
 
     $assignedGroups = [];

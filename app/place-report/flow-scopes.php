@@ -247,6 +247,7 @@ function llama_place_report_scope_overrides(): array
             'site_length_feet',
             'site_width_feet',
             'overhead_clearance_feet',
+            'parking_clearance_feet',
             'tent_pad',
             'tent_pad_length_feet',
             'tent_pad_width_feet',

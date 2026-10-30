@@ -577,11 +577,13 @@ Continue definition reconciliation with a mismatch that affects approved questio
 
 ## M1-005: Seasonal Access Compound Date Cards
 
-**Status:** Ready for review
+**Status:** Completed
 
 **Date:** 2026-10-29
 
 **Base branch:** `v3-development`
+
+**Merged into `v3-development`:** `ab428a86f6b69e5b5f269118445b74979a9862b4`
 
 ### Objective
 
@@ -663,3 +665,75 @@ This branch repairs those four source-field definitions and restores their recon
 ### Next
 
 Continue canonical definition reconciliation with the next confirmed mismatch.
+
+
+## M1-006: Separate Site and Parking Clearance
+
+**Status:** Ready for review
+
+**Date:** 2026-10-29
+
+**Base branch:** `v3-development`
+
+### Objective
+
+Resolve the approved Scout Report conflict where Site Overhead Clearance and Parking Clearance were represented by one shared key.
+
+### Historical preservation decision
+
+The existing `overhead_clearance_feet` field remains Site Overhead Clearance.
+
+This preserves its existing label, help meaning, storage path, and historical answers.
+
+It is not repurposed as Parking Clearance.
+
+### New canonical field
+
+Added:
+
+`parking_clearance_feet`
+
+Storage:
+
+`details.parking_clearance_feet`
+
+The new field uses the same feet-based answer options and Unknown support as the existing Site clearance field.
+
+### Approved grouping
+
+**Site Info**
+
+- `overhead_clearance_feet` = Site Overhead Clearance
+
+**Parking and Maneuvering**
+
+- `parking_clearance_feet` = Parking Clearance
+
+Both are Site-scoped.
+
+### Presentation meaning
+
+Site Overhead Clearance describes overhead obstacles across the usable Site area.
+
+Parking Clearance describes overhead clearance over the primary parking or driveway position.
+
+### Projection count
+
+The stored/current approved projection increases from 263 to 264 field slots because two approved questions now have two distinct persisted identities.
+
+The Seasonal Access compound presentation still combines four stored component fields into two visible cards.
+
+### Verification
+
+- Confirmed `overhead_clearance_feet` remains on its existing storage path.
+- Confirmed `parking_clearance_feet` uses a new scoped JSON detail path.
+- Confirmed both fields are Site-scoped.
+- Confirmed Site Overhead Clearance belongs to Site Info.
+- Confirmed Parking Clearance belongs to Parking and Maneuvering.
+- Confirmed no approved key is shared between the two clearance questions.
+- Confirmed the approved stored projection is now 264 field slots.
+- No database schema migration or historical data rewrite was performed.
+
+### Next
+
+Continue canonical definition reconciliation with the next confirmed answer-type or answer-option mismatch.

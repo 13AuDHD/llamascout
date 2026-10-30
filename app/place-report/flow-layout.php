@@ -352,6 +352,7 @@ function llama_place_report_layout_assignments(): array
          * How the Site is surfaced, positioned, and entered.
          */
         'site:parking_maneuvering' => [
+            'parking_clearance_feet',
             'max_vehicle_length_feet',
             'max_rv_length_feet',
             'parking_surface',
