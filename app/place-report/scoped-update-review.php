@@ -1007,7 +1007,8 @@ function llama_scoped_update_approve(
     array $update,
     int $updateId,
     int $reviewedBy,
-    string $notes
+    string $notes,
+    array &$copiedPhotoPaths
 ): int {
     $payload =
         $update['proposed'][
@@ -1196,6 +1197,64 @@ function llama_scoped_update_approve(
             ]
             ?? 0
         );
+
+    $photos =
+        is_array(
+            $update['photo_list']
+            ?? null
+        )
+            ? $update['photo_list']
+            : [];
+
+    $copyJournalStart =
+        count(
+            $copiedPhotoPaths
+        );
+
+    moderation_attach_place_photos_transactional(
+        $db,
+        $placeId,
+        (int) $update['user_id'],
+        $photos,
+        '/uploads/place-updates/'
+        . $updateId
+        . '/',
+        $copiedPhotoPaths
+    );
+
+    $reportPhotoPaths =
+        array_slice(
+            $copiedPhotoPaths,
+            $copyJournalStart
+        );
+
+    llama_scout_report_record_approved_update(
+        $db,
+        $updateId,
+        $update,
+        [
+            'scope' =>
+                $scope,
+
+            'source' =>
+                $source,
+
+            'id' =>
+                $targetId,
+
+            'label' =>
+                (string) (
+                    $payload['target_label']
+                    ?? $target['label']
+                    ?? ''
+                ),
+        ],
+        $answers,
+        $reviewedBy,
+        $notes,
+        $photos,
+        $reportPhotoPaths
+    );
 
     foreach ($answers as $key => $value) {
         llama_scoped_report_save(
