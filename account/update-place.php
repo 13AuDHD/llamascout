@@ -985,11 +985,11 @@ $e =
 
         <p class="place-update-intro">
 
-            Update anything that has changed.
-            The current Place information is already filled in.
-            Edit only what needs correcting or updating.
-            Llama Scout will automatically detect what changed
-            and send those changes for review.
+            Submit a new Scout report for what you observed.
+            Current answers are shown as reference only.
+            Answer only the questions you can confirm or update.
+            Questions you leave blank are not submitted and do not change
+            existing information.
 
         </p>
 
@@ -1003,8 +1003,9 @@ $e =
             <span>
                 If approved, this field work is recorded as
                 <strong><?= $e($currentContributionLabel) ?></strong>.
-                Your edits do not change the live Place immediately. A moderator
-                reviews the differences first, and only approved changes are published.
+                Your report does not change the live Place immediately. A moderator
+                reviews the submitted answers first, and only approved answers can
+                update the current Place summary. The report remains part of its history.
             </span>
 
         </div>
