@@ -30,11 +30,17 @@ function moderation_submission_editor_flatten(
                 : $prefix . '.' . $key;
 
         if (is_array($value)) {
-            $flat +=
-                moderation_submission_editor_flatten(
+            // An explicitly cleared multi-select is still a meaningful
+            // value. Dropping empty arrays hides that change from the
+            // moderator's before/after audit history.
+            if ($value === []) {
+                $flat[$path] = [];
+            } else {
+                $flat += moderation_submission_editor_flatten(
                     $value,
                     $path
                 );
+            }
         } else {
             $flat[$path] = $value;
         }
