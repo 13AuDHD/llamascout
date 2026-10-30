@@ -640,21 +640,61 @@ $publishedUnknownFields =
 
 /*
  * =========================================================
- * SHARED FORM VALUES
+ * CURRENT ANSWERS AS REFERENCE
  * =========================================================
  *
- * Normal update:
- *     Published Place values and answer state.
+ * Update This Place creates a new report. Current published answers are
+ * reference context only and must not preload the Scout's new report.
+ */
+
+$placeCurrentAnswerModel =
+    llama_place_report_current_answer_model(
+        $db,
+        $placeId,
+        [
+            'scope' =>
+                'place',
+
+            'source' =>
+                'place',
+
+            'id' =>
+                $placeId,
+        ]
+    );
+
+$placeCurrentAnswers =
+    (array) (
+        $placeCurrentAnswerModel['answers']
+        ?? []
+    );
+
+$placeReportReferenceValues =
+    llama_scoped_report_display_values(
+        llama_place_report_current_answer_values(
+            $placeCurrentAnswers,
+            'effective'
+        )
+    );
+
+
+/*
+ * =========================================================
+ * REPORT DRAFT VALUES
+ * =========================================================
+ *
+ * A new report starts blank.
  *
  * Needs Changes:
- *     Published Place values, overlaid with the contributor's
- *     latest proposed values and proposed Unknown state.
+ *     preload only the contributor's own proposed report answers so the
+ *     requested revision can be corrected without turning current published
+ *     Place state into editable form data.
  */
 
 $placeReportValues =
     llama_place_update_shared_form_values(
-        $currentValues,
-        $publishedUnknownFields,
+        [],
+        [],
         $isNeedsChanges
             ? $editProposed
             : [],
@@ -669,8 +709,8 @@ $placeReportValues =
  * PRESERVE FAILED POST
  * =========================================================
  *
- * The posted form must win over database values after an
- * unsuccessful submission.
+ * The Scout's posted draft must be restored after an unsuccessful
+ * submission. Current published answers remain reference-only.
  *
  * Checkbox inputs require special handling because unchecked
  * boxes do not appear in $_POST.
@@ -791,7 +831,7 @@ $placeReportExternalFieldKeys =
 
 
 $placeReportMode =
-    'contributor';
+    'update-report';
 
 
 $placeReportShowLocate =
