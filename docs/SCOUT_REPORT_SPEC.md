@@ -294,6 +294,22 @@ Interfaces may use tabs, steps, navigation, or separate URLs where appropriate, 
 
 The two surfaces share one canonical question system underneath. Separating presentation must never create duplicate question definitions, duplicate answer storage, or conflicting ownership.
 
+4.6 Explicit V3 Question Overrides
+
+The approved PDF remains authoritative unless an explicit V3 decision supersedes it.
+
+**Flat Walking Surface** is an approved V3 Site Accessibility question even though it is absent from the older approved Scout Report PDF.
+
+Canonical key:
+
+`flat_walking_surface`
+
+This question remains active on the Site details page under Accessibility.
+
+Its existing storage and historical answers are preserved.
+
+This is a deliberate specification override, not a compatibility-only or retired field.
+
 ⸻
 
 5. Place and Site Ownership
