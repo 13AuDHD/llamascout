@@ -57,19 +57,11 @@ function llama_place_report_with_campsite_baseline(array $resolved, array $site)
                 $resolved['overrides']
             );
 
-        $baselineImported =
-            !$isOverride
-            && $provider !== ''
-            && !str_contains(
-                strtolower($provider),
-                'llama scout'
-            );
-
         $featureSource = null;
         if (!$isOverride) {
-            // Only fields read directly from an imported feature can inherit
-            // that feature's own source date. Site-level timestamps are not
-            // evidence of when a specific fact was observed.
+            // Feature-backed questions can have their own provider and date.
+            // The remaining imported baseline questions use the Site facts
+            // record and its source_updated_at value.
             foreach ((array) ($site['features'] ?? []) as $feature) {
                 if ((string) ($feature['feature_key'] ?? '') !== (string) $key
                     || (string) ($feature['feature_value'] ?? '') !== (string) $_value) {
@@ -83,6 +75,15 @@ function llama_place_report_with_campsite_baseline(array $resolved, array $site)
                 break;
             }
         }
+
+        $effectiveProvider = !$isOverride
+            ? (trim((string) ($featureSource['source_provider'] ?? '')) ?: $provider)
+            : '';
+
+        $baselineImported =
+            !$isOverride
+            && $effectiveProvider !== ''
+            && !str_contains(strtolower($effectiveProvider), 'llama scout');
 
         $resolved['provenance'][$key] = [
             'scope' =>
@@ -113,7 +114,9 @@ function llama_place_report_with_campsite_baseline(array $resolved, array $site)
                     : null,
 
             'source_updated_at' =>
-                $featureSource['source_updated_at'] ?? null,
+                $baselineImported
+                    ? ($featureSource['source_updated_at'] ?? $site['source_updated_at'] ?? null)
+                    : null,
         ];
     }
 
