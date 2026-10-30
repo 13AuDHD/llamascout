@@ -412,11 +412,13 @@ After review and merge, the next bounded Milestone 1 task should begin correctin
 
 ## M1-002: Canonical Two-Page Report Surfaces
 
-**Status:** Ready for review
+**Status:** Completed
 
 **Date:** 2026-10-29
 
 **Base branch:** `v3-development`
+
+**Merged into `v3-development`:** `ccd4dfa1fb870e61b4d9c364ec9059459a0a16dd`
 
 ### Objective
 
@@ -469,3 +471,43 @@ It establishes metadata that later interfaces can consume while preserving one c
 ### Next
 
 After review and merge, proceed to the first definition-reconciliation change that corrects an approved mismatch while preserving historical storage.
+
+
+## M1-003: Keep Flat Walking Surface as an Approved V3 Question
+
+**Status:** Ready for review
+
+**Date:** 2026-10-29
+
+**Base branch:** `v3-development`
+
+### Decision
+
+Flat Walking Surface remains an active approved V3 Site Accessibility question.
+
+The older approved Scout Report PDF does not contain this question, but the V3 specification explicitly allows deliberate V3 decisions to supersede the older PDF.
+
+### Canonical identity
+
+- Key: `flat_walking_surface`
+- Page: Site details
+- Group: Accessibility
+- Status: Active
+- Existing storage: Preserved
+- Historical answers: Preserved
+
+### Changes
+
+- Reclassified the V3-007 reconciliation item from an unexplained extra question to an explicit approved V3 override.
+- Recorded the decision in `docs/SCOUT_REPORT_SPEC.md`.
+- Did not remove, rename, reorder, or change the existing field.
+
+### Verification
+
+- The approved question inventory remains 263 current slots.
+- Flat Walking Surface remains in the Site Accessibility group.
+- No persistence, rendering, answer options, database schema, or historical data changed.
+
+### Next
+
+Continue definition reconciliation with another confirmed mismatch that still requires correction.
