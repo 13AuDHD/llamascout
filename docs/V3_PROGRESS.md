@@ -644,6 +644,12 @@ Added integrity checks for:
 - missing component roles
 - component/group drift
 
+### Corrective repair
+
+During self-review, M1-005 found that the M1-004 official Basic source-field definitions had the wrong metadata shape on `v3-development`. The existing facility-info renderer expects canonical `label`, `group`, `page`, and `source_key` metadata.
+
+This branch repairs those four source-field definitions and restores their reconciliation status to `canonical_source_field`.
+
 ### Verification
 
 - Confirmed two canonical compound questions.
