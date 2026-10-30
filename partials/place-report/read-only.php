@@ -12,6 +12,41 @@ $placeReportData =
 $placeReportReadMode =
     (string) ($placeReportReadMode ?? 'scout-report');
 
+/*
+ * Only public Place questions receive first-render report attribution here.
+ * Site content is switched client-side and must receive its own provenance
+ * alongside its Site-scoped answer, not a Place-level attribution.
+ */
+$publicPlaceReportAttribution = [];
+if (
+    $placeReportReadMode === 'scout-report'
+    && !empty($place['id'])
+) {
+    try {
+        $placeId = (int) $place['id'];
+        $observations = llama_scout_report_latest_approved_answers(
+            db(), $placeId, 'place', 'place', $placeId
+        );
+        $visibility = llama_place_report_approved_question_visibility();
+        $published = llama_place_report_current_place_answers(db(), $placeId);
+        $matched = llama_scout_report_attach_matching_history($published, $observations);
+        foreach ($matched as $key => $answer) {
+            if (
+                ($visibility[$key] ?? 'community') === 'public'
+                && !empty($answer['approved_report'])
+                && ($answer['state'] ?? '') === 'answered'
+            ) {
+                $publicPlaceReportAttribution[$key] = $answer['approved_report'];
+            }
+        }
+    } catch (Throwable $exception) {
+        // Attribution is optional: never break the existing public cards.
+        if (function_exists('llama_log_caught_exception')) {
+            llama_log_caught_exception($exception, 'scout-report.attribution');
+        }
+    }
+}
+
 $placeReportFields =
     llama_place_report_fields();
 
@@ -239,7 +274,8 @@ $renderValue =
         $e,
         $localIcon,
         $campsiteSwitchableFields,
-        $renderSafeDescription
+        $renderSafeDescription,
+        $publicPlaceReportAttribution
     ): void {
         $state =
             llama_place_report_answer_state(
@@ -425,6 +461,25 @@ $renderValue =
                         <?php endif; ?>
                     </strong>
                 </div>
+
+                <?php
+                $publicAttribution =
+                    !$isCampsiteSwitchable
+                    ? ($publicPlaceReportAttribution[$key] ?? null)
+                    : null;
+                if (is_array($publicAttribution)):
+                    $observedOn = (string) (
+                        $publicAttribution['visit_date']
+                        ?: $publicAttribution['submitted_at']
+                    );
+                    $dateOnly = substr($observedOn, 0, 10);
+                    $displayDate = strtotime($dateOnly);
+                ?>
+                    <small class="scout-report-answer-source">
+                        <?= $e($displayDate !== false ? date('M j, Y', $displayDate) : $dateOnly) ?>
+                        · Member #<?= (int) $publicAttribution['contributor_id'] ?>
+                    </small>
+                <?php endif; ?>
 
                 <?= llama_icon(
                     $icon,
