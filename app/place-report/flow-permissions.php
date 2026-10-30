@@ -177,6 +177,8 @@ function llama_place_report_add_permission_fields(
             'fields' => [
                 'campfire_allowed',
                 'collecting_firewood',
+                'place_charcoal_grills_allowed',
+                'place_propane_fire_pits_allowed',
                 'drone_use_legal',
                 'target_shooting_allowed',
             ],
