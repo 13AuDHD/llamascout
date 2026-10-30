@@ -20,9 +20,10 @@ function llama_place_report_add_permission_fields(
     array &$fields,
     callable $add
 ): void {
-    $yesNoOptions = [
+    $overnightPermitOptions = [
         '0' => 'No',
         '1' => 'Yes',
+        '2' => 'With Permit',
     ];
 
     $permitOptions = [
@@ -37,16 +38,14 @@ function llama_place_report_add_permission_fields(
 
     $permissionDefinitions = [
         'overnight_camping_allowed' => [
-            'options' => $yesNoOptions,
+            'options' => $overnightPermitOptions,
             'legacy_values' => [
-                '2' => 'Permit required',
                 '3' => 'Conditional',
             ],
         ],
         'dispersed_camping_allowed' => [
-            'options' => $yesNoOptions,
+            'options' => $overnightPermitOptions,
             'legacy_values' => [
-                '2' => 'Permit required',
                 '3' => 'Conditional',
             ],
         ],
