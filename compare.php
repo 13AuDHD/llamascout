@@ -262,7 +262,8 @@ if ($compareMode === 'reports' && $reportSiteId > 0 && $reportPlaceSlug !== '') 
                 $db, $placeId,
                 (string) $verifiedSite['scope'],
                 (string) $verifiedSite['source'],
-                (int) $verifiedSite['id']
+                (int) $verifiedSite['id'],
+                LLAMA_COMPARE_MAX_REPORTS
             );
         } catch (Throwable $exception) {
             $siteHistoryError = 'Site report history could not be loaded.';
