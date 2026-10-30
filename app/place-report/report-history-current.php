@@ -147,3 +147,83 @@ function llama_place_report_current_answer_model_with_history(
     );
     return $model;
 }
+
+/**
+ * Read approved Site report history without changing current published values.
+ * The caller must verify the target and authorize Site-level access first.
+ *
+ * @return array<int,array<string,mixed>>
+ */
+function llama_scout_report_target_history(
+    PDO $db,
+    int $placeId,
+    string $scope,
+    string $source,
+    int $targetId,
+    int $limit = 50
+): array {
+    if ($placeId < 1 || $targetId < 1
+        || !in_array($scope, ['place', 'area', 'site'], true)
+        || trim($source) === '') {
+        throw new InvalidArgumentException('Invalid Scout Report history target.');
+    }
+    $limit = max(1, min($limit, 100));
+    $query = $db->prepare(
+        'SELECT r.id, r.revision_number, r.contributor_id,
+                u.username, r.visit_date, r.submitted_at,
+                r.source_channel, r.target_label
+         FROM scout_reports r
+         LEFT JOIN users u ON u.id = r.contributor_id
+         WHERE r.place_id = ?
+           AND r.target_scope = ?
+           AND r.target_source = ?
+           AND r.target_id = ?
+         ORDER BY r.id DESC
+         LIMIT ' . $limit
+    );
+    $query->execute([$placeId, $scope, $source, $targetId]);
+    $reports = [];
+    $ids = [];
+    while ($row = $query->fetch(PDO::FETCH_ASSOC)) {
+        $id = (int) $row['id'];
+        $ids[] = $id;
+        $reports[$id] = [
+            'reportId' => $id,
+            'revision' => (int) $row['revision_number'],
+            'username' => trim((string) ($row['username'] ?? '')) ?: 'Former member',
+            'visitDate' => $row['visit_date'],
+            'submittedAt' => $row['submitted_at'],
+            'sourceChannel' => $row['source_channel'],
+            'targetLabel' => $row['target_label'],
+            'answers' => [],
+        ];
+    }
+    if (!$ids) {
+        return [];
+    }
+    $marks = implode(',', array_fill(0, count($ids), '?'));
+    $answerQuery = $db->prepare(
+        'SELECT report_id, question_key, answer_state, value_json
+         FROM scout_report_answers
+         WHERE report_id IN (' . $marks . ')
+         ORDER BY report_id DESC, question_key ASC'
+    );
+    $answerQuery->execute($ids);
+    while ($answer = $answerQuery->fetch(PDO::FETCH_ASSOC)) {
+        $id = (int) $answer['report_id'];
+        if (!isset($reports[$id])) {
+            continue;
+        }
+        $state = (string) $answer['answer_state'];
+        if (!in_array($state, ['answered', 'unknown'], true)) {
+            continue;
+        }
+        $reports[$id]['answers'][(string) $answer['question_key']] = [
+            'state' => $state,
+            'value' => $state === 'answered'
+                ? json_decode((string) $answer['value_json'], true, 512, JSON_THROW_ON_ERROR)
+                : null,
+        ];
+    }
+    return array_values($reports);
+}
