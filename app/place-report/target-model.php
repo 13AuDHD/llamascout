@@ -105,7 +105,17 @@ function llama_place_report_target_model(PDO $db, int $placeId, array $target): 
     foreach (llama_place_report_current_values($db, $placeId) as $path => $value) {
         llama_place_report_set_path($data, $path, $value);
     }
-    $data['_answer_state'] = llama_place_report_published_answer_state($db, $placeId);
+
+    $data =
+        llama_place_report_derive_compatibility(
+            $data
+        );
+
+    $data['_answer_state'] =
+        llama_place_report_published_answer_state(
+            $db,
+            $placeId
+        );
     $scope = (string) $target['scope'];
     $source = (string) $target['source'];
     $id = (int) $target['id'];
