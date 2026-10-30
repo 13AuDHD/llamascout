@@ -1318,11 +1318,13 @@ Migrate the next reporting interface or read path to consume canonical visibilit
 
 ## M1-014: Canonical Published Report Page Ownership
 
-**Status:** Ready for review
+**Status:** Completed
 
 **Date:** 2026-10-30
 
 **Base branch:** `v3-development`
+
+**Merged into `v3-development`:** `ec6aa47f49bc0fbd3eaef606b093f7f86fa9fda7`
 
 ### Objective
 
@@ -1372,3 +1374,82 @@ No question storage, answers, access control, Site switching, database schema, o
 ### Next
 
 Review remaining Milestone 1 definition consumers and determine whether the canonical-definition completion gate is satisfied before beginning Milestone 2 answer/history work.
+
+
+## M1-015: Milestone 1 Completion Gate
+
+**Status:** Ready for review
+
+**Date:** 2026-10-30
+
+**Base branch:** `v3-development`
+
+### Objective
+
+Evaluate and enforce the Milestone 1 completion gate instead of continuing definition cleanup indefinitely.
+
+### Completion audit
+
+Added:
+
+`docs/audits/08-milestone-1-completion.md`
+
+Gate result:
+
+**PASS, contingent on merge of M1-015.**
+
+### Reconciliation result
+
+The canonical reconciliation registry contains no unresolved mismatch, conflict, missing-definition, or shared-key status.
+
+All tracked differences are now:
+
+- resolved
+- explicitly compatibility-preserved
+- workflow-only
+- or intentional V3 overrides
+
+### Interface result
+
+Reviewed the primary reporting interfaces:
+
+- Add Place
+- Update This Place
+- Admin Place editing
+- Moderation
+- Published Scout Report
+- Locked public Scout Report preview
+
+All retrieve question definitions from the shared Place Report field/approved registries rather than maintaining a competing approved question contract.
+
+### Diagnostic enforcement
+
+Expanded canonical contract diagnostics so future drift fails visibly.
+
+The diagnostics now enforce:
+
+- approved inventory integrity
+- finalized question group/order
+- page ownership
+- accent role
+- Public / Community visibility
+- reconciliation completion
+- exact visibility inventory coverage
+- storage identity
+- report ownership
+- answer-type support
+- Unknown support
+- applicability dependencies
+- storage adapters
+
+### Milestone 1 completion
+
+After this PR is merged:
+
+**Milestone 1: Canonical Reporting Definitions is complete.**
+
+Remaining reporting concerns involving answer precedence, persistence, immutable reports, provenance, partial updates, and history belong to Milestone 2.
+
+### Next
+
+Begin Milestone 2 with a bounded audit of the canonical current-answer read path before changing answer persistence behavior.
