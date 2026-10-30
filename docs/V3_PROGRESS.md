@@ -995,11 +995,13 @@ Continue with the next unresolved canonical answer-vocabulary mismatch.
 
 ## M1-010: Field-Specific Rule Permission Vocabularies
 
-**Status:** Ready for review
+**Status:** Completed
 
 **Date:** 2026-10-30
 
 **Base branch:** `v3-development`
+
+**Merged into `v3-development`:** `5c9f5548faea4f1fb3030f34d06e99b3e540d206`
 
 ### Objective
 
@@ -1080,3 +1082,58 @@ No database schema or SQL migration is required.
 ### Next
 
 Continue canonical definition reconciliation and review whether any unresolved reconciliation items remain before closing Milestone 1 definition cleanup.
+
+
+## M1-011: Restore With Permit for Overnight and Dispersed Camping
+
+**Status:** Ready for review
+
+**Date:** 2026-10-30
+
+**Base branch:** `v3-development`
+
+### Correction
+
+M1-010 incorrectly made Overnight Stay and Dispersed Camping active Yes/No-only questions.
+
+The approved V3 behavior is:
+
+- Yes
+- With Permit
+- No
+- Unknown
+- Unanswered
+
+Fields:
+
+- `overnight_camping_allowed`
+- `dispersed_camping_allowed`
+
+### Storage
+
+Existing numeric permission storage is preserved.
+
+- `0` = No
+- `1` = Yes
+- `2` = With Permit
+- `3` = Conditional, legacy-only
+
+No stored values are rewritten.
+
+### Existing dependencies
+
+The existing camping permit/conditions details and permit URL logic already activates for value `2`, so no additional persistence or applicability migration is required.
+
+Historical Conditional value `3` remains readable and can continue exposing its existing condition details.
+
+### Verification
+
+- Confirmed Overnight Stay offers With Permit as active value `2`.
+- Confirmed Dispersed Camping offers With Permit as active value `2`.
+- Confirmed Conditional remains legacy-only.
+- Confirmed no database schema or SQL migration is required.
+- Approved stored-question projection remains 264.
+
+### Next
+
+Continue Milestone 1 reconciliation from the corrected rule vocabulary.
