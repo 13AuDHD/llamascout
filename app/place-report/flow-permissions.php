@@ -20,31 +20,73 @@ function llama_place_report_add_permission_fields(
     array &$fields,
     callable $add
 ): void {
-    $options = [
+    $yesNoOptions = [
+        '0' => 'No',
+        '1' => 'Yes',
+    ];
+
+    $permitOptions = [
         '0' => 'No',
         '1' => 'Yes',
         '2' => 'Permit required',
+    ];
+
+    $legacyConditional = [
         '3' => 'Conditional',
     ];
 
-    $permissionKeys = [
-        'overnight_camping_allowed',
-        'dispersed_camping_allowed',
-        'campfire_allowed',
-        'collecting_firewood',
-        'drone_use_legal',
-        'target_shooting_allowed',
+    $permissionDefinitions = [
+        'overnight_camping_allowed' => [
+            'options' => $yesNoOptions,
+            'legacy_values' => [
+                '2' => 'Permit required',
+                '3' => 'Conditional',
+            ],
+        ],
+        'dispersed_camping_allowed' => [
+            'options' => $yesNoOptions,
+            'legacy_values' => [
+                '2' => 'Permit required',
+                '3' => 'Conditional',
+            ],
+        ],
+        'campfire_allowed' => [
+            'options' => $permitOptions,
+            'legacy_values' => $legacyConditional,
+        ],
+        'collecting_firewood' => [
+            'options' => $permitOptions,
+            'legacy_values' => $legacyConditional,
+        ],
+        'drone_use_legal' => [
+            'options' => $permitOptions,
+            'legacy_values' => $legacyConditional,
+        ],
+        'target_shooting_allowed' => [
+            'options' => $permitOptions,
+            'legacy_values' => $legacyConditional,
+        ],
     ];
 
-    foreach ($permissionKeys as $key) {
+    foreach ($permissionDefinitions as $key => $definition) {
         if (!isset($fields[$key])) {
             continue;
         }
 
         $fields[$key]['type'] = 'select';
-        $fields[$key]['options'] = $options;
+        $fields[$key]['options'] =
+            (array) ($definition['options'] ?? []);
+        $fields[$key]['legacy_values'] =
+            (array) ($definition['legacy_values'] ?? []);
         $fields[$key]['allow_unknown'] = true;
     }
+
+    $carTruckOptions = [
+        '0' => 'No',
+        '1' => 'Yes',
+        '2' => 'Permit required',
+        '3' => 'Conditional',
+    ];
 
     $labels = [
         'overnight_camping_allowed' =>
@@ -106,7 +148,7 @@ function llama_place_report_add_permission_fields(
         'rules.car_truck_camping',
         [
             'allow_unknown' => true,
-            'options' => $options,
+            'options' => $carTruckOptions,
             'points_categories' => ['seasons_rules_services'],
             'help' =>
                 'Record the documented or posted rule for sleeping overnight inside a car, SUV, van, pickup, or similar non-RV vehicle. This is not a parking-permission question: a vehicle may be allowed to park while sleeping in it is prohibited.',
