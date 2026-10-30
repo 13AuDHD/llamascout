@@ -202,12 +202,22 @@ function llama_place_report_fields(): array
      * Legacy fields remain registered without an approved question slot.
      */
     $approvedQuestions = llama_place_report_approved_question_lookup();
+    $approvedGroupPages = llama_place_report_approved_group_page_lookup();
+
     foreach ($f as $key => &$field) {
         $approved = $approvedQuestions[$key] ?? null;
+        $page =
+            $approved !== null
+                ? ($approvedGroupPages[$approved['group']] ?? null)
+                : null;
+
         $field['approved_question_group'] = $approved['group'] ?? null;
         $field['approved_question_group_label'] = $approved['group_label'] ?? null;
         $field['approved_question_position'] = $approved['position'] ?? null;
         $field['approved_question'] = $approved !== null;
+        $field['approved_report_page'] = $page['page'] ?? null;
+        $field['approved_report_page_label'] = $page['page_label'] ?? null;
+        $field['approved_accent_role'] = $page['accent_role'] ?? null;
     }
     unset($field);
 

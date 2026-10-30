@@ -357,11 +357,13 @@ The recommended first Milestone 1 implementation is a bounded canonical-definiti
 
 ## M1-001: Extract Approved Question Registry
 
-**Status:** Ready for review
+**Status:** Completed
 
 **Date:** 2026-10-29
 
 **Base branch:** `v3-development`
+
+**Merged into `v3-development`:** `8a194c45c2d5f9f0daf6f83a387d8e649f2f6740`
 
 ### Objective
 
@@ -406,3 +408,64 @@ No question keys, ordering, persistence paths, scope ownership, applicability, o
 ### Next
 
 After review and merge, the next bounded Milestone 1 task should begin correcting the approved-definition mismatches one category at a time, starting with identity-only issues that do not require destructive storage changes.
+
+
+## M1-002: Canonical Two-Page Report Surfaces
+
+**Status:** Ready for review
+
+**Date:** 2026-10-29
+
+**Base branch:** `v3-development`
+
+### Objective
+
+Lock the approved two-page Scout Report design into canonical metadata before deeper definition reconciliation.
+
+### Design rule
+
+The full Scout Report remains split into two comprehensible surfaces:
+
+- Place details
+- Site details
+
+The report must not be flattened into one long Place-plus-Site page.
+
+Place uses the established green Place accent role.
+
+Site uses the established orange Site accent role.
+
+The registry stores semantic accent roles only. CSS owns actual color values.
+
+### Changes
+
+- Added `llama_place_report_approved_pages()` to define the canonical Place and Site report surfaces.
+- Added `llama_place_report_approved_group_page_lookup()` for shared group-to-page lookup.
+- Assigned the nine approved Place groups to the Place page.
+- Assigned the fifteen approved Site groups to the Site page.
+- Added integrity checks for missing, duplicate, or unknown page/group assignments.
+- Added final field metadata:
+  - `approved_report_page`
+  - `approved_report_page_label`
+  - `approved_accent_role`
+- Added the two-page presentation rule to `docs/SCOUT_REPORT_SPEC.md`.
+
+### Behavior preservation
+
+This task does not change persistence, question ownership, answer values, applicability, database schema, or current rendered page behavior.
+
+It establishes metadata that later interfaces can consume while preserving one canonical data foundation.
+
+### Verification
+
+- Confirmed exactly two approved report pages.
+- Confirmed all 24 approved groups are assigned exactly once.
+- Confirmed Place has 9 groups.
+- Confirmed Site has 15 groups.
+- Confirmed the existing approved question inventory remains 263 current slots.
+- Confirmed every approved field can inherit its page and accent role from its approved group.
+- No production data or deployment configuration changed.
+
+### Next
+
+After review and merge, proceed to the first definition-reconciliation change that corrects an approved mismatch while preserving historical storage.
