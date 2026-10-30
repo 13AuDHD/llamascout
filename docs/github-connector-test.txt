@@ -1,5 +1,0 @@
-GitHub connector write test
-
-Created from ChatGPT through the connected GitHub integration.
-Target branch: v3-development
-Purpose: verify direct repository write access without Codex.
