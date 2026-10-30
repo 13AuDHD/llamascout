@@ -401,7 +401,7 @@ function llama_place_report_approved_reconciliation(): array
                 'drone_use_legal',
                 'target_shooting_allowed',
             ],
-            'status' => 'answer_options_mismatch',
+            'status' => 'resolved_field_specific_vocabularies',
             'compatibility' => 'preserve_legacy_conditional_values',
         ],
     ];
