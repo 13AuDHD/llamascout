@@ -802,7 +802,7 @@ function llama_place_update_submit(
         && !$submittedPhotos
     ) {
         throw new InvalidArgumentException(
-            'Nothing changed. Edit at least one Place value or add a current photo before submitting.'
+            'Nothing was reported. Answer at least one Place question or add a current photo before submitting.'
         );
     }
 
@@ -1172,7 +1172,7 @@ function llama_place_update_resubmit(
         && !$submittedPhotos
     ) {
         throw new InvalidArgumentException(
-            'Nothing changed. Edit at least one Place value or include a current photo before resubmitting.'
+            'Nothing was reported. Answer at least one Place question or include a current photo before resubmitting.'
         );
     }
 
