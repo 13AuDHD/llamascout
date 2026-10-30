@@ -119,48 +119,10 @@
 })();
 
 
-/* Place shared facilities: admin save bridge for extended amenity columns. */
-(() => {
-  'use strict';
-  const boot = () => {
-    if (!document.querySelector(
-      '[name="amenity_campground_host"], [name="amenity_camp_store"], [name="shared_accessible_facilities"]'
-    )) return;
-
-    if (!document.querySelector('script[data-place-shared-amenities-script]')) {
-      const script = document.createElement('script');
-      script.src = '/js/place-report-shared-amenities.js';
-      script.defer = true;
-      script.dataset.placeSharedAmenitiesScript = '1';
-      document.head.appendChild(script);
-    }
-  };
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', boot, { once: true });
-  } else boot();
-})();
-
-
-/* Place operating hours and closure observations: admin persistence bridge. */
-(() => {
-  'use strict';
-
-  const boot = () => {
-    if (!document.querySelector(
-      '[name="place_open_year_round"], [name="place_reported_operating_status"]'
-    )) return;
-
-    if (!document.querySelector('script[data-place-operating-script]')) {
-      const script = document.createElement('script');
-      script.src = '/js/place-report-operating.js';
-      script.defer = true;
-      script.dataset.placeOperatingScript = '1';
-      document.head.appendChild(script);
-    }
-  };
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', boot, { once: true });
-  } else boot();
-})();
+/*
+ * Shared amenities, operating hours and closures are submitted by the
+ * canonical Admin Place Report transaction (admin_place_save_shared_report).
+ * Do not reload their retired supplemental writers after that save: those
+ * endpoints treated Unknown and Unanswered alike and could overwrite the
+ * published answer state outside the transaction.
+ */
