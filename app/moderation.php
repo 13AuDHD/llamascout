@@ -1272,6 +1272,36 @@ $name = trim(
         }
     }
 
+    // Check Place-wide answers against the canonical published projection.
+    // The check runs inside the approval transaction, before committing.
+    $publishedPlaceAnswers = llama_place_report_current_place_answers($db, $placeId);
+    foreach ($submissionAnswers['place_answers'] as $key => $submittedValue) {
+        $field = llama_place_report_fields()[$key] ?? null;
+        $publishedAnswer = $publishedPlaceAnswers[$key] ?? null;
+        if (!is_array($field) || !is_array($publishedAnswer) || empty($publishedAnswer['recorded'])) {
+            throw new RuntimeException(
+                'An approved Place answer was not published. Approval was cancelled.'
+            );
+        }
+
+        $expected = llama_place_report_submission_answer($field, $submittedValue);
+        if (
+            ($publishedAnswer['state'] ?? '') !== $expected['state']
+            || (
+                $expected['state'] === 'answered'
+                && !llama_place_report_values_equal(
+                    $publishedAnswer['value'] ?? null,
+                    $expected['value'],
+                    $field
+                )
+            )
+        ) {
+            throw new RuntimeException(
+                'An approved Place answer did not match the published value. Approval was cancelled.'
+            );
+        }
+    }
+
     $provenance = $db->prepare(
         'INSERT INTO place_provenance
             (place_id, origin_type, original_contributor_id, original_submission_id, established_at)
