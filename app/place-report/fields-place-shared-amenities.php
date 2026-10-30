@@ -166,9 +166,11 @@ function llama_place_report_add_shared_amenity_fields(
             'options' => [
                 '1' => 'Yes',
                 '0' => 'No',
+            ],
+            'legacy_values' => [
                 'seasonal' => 'Seasonal',
             ],
-            'help' => 'Whether an on-site campground host is normally available. Choose Seasonal when a host is present only during the operating season.',
+            'help' => 'Whether an on-site campground host is normally available. Use Yes when a host is available during the Place\'s normal operating season.',
         ]
     );
 
