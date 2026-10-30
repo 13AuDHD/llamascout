@@ -195,6 +195,7 @@ try {
                     'kind' => 'source',
                     'visitDate' => null,
                     'submittedAt' => null,
+                    'sourceUpdatedAt' => $origin['source_updated_at'] ?? null,
                 ];
             }
         }
