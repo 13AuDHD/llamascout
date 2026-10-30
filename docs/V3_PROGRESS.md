@@ -517,11 +517,13 @@ Continue definition reconciliation with another confirmed mismatch that still re
 
 ## M1-004: Canonical Official Basic Information
 
-**Status:** Ready for review
+**Status:** Completed
 
 **Date:** 2026-10-29
 
 **Base branch:** `v3-development`
+
+**Merged into `v3-development`:** `9485829ff92a50492ade609fedcf0512209131ac`
 
 ### Objective
 
@@ -571,3 +573,87 @@ The four V3-007 items are no longer classified as unexplained fields outside the
 ### Next
 
 Continue definition reconciliation with a mismatch that affects approved question identity or answer semantics while preserving historical compatibility.
+
+
+## M1-005: Seasonal Access Compound Date Cards
+
+**Status:** Ready for review
+
+**Date:** 2026-10-29
+
+**Base branch:** `v3-development`
+
+### Objective
+
+Keep the existing four month/day storage keys while presenting Seasonal Access as two comprehensible questions and cards.
+
+### Canonical compound questions
+
+**Season Begins**
+
+- Presentation key: `season_begins`
+- Month: `approach_closure_month`
+- Day: `approach_closure_day`
+
+**Season Ends**
+
+- Presentation key: `season_ends`
+- Month: `approach_reopening_month`
+- Day: `approach_reopening_day`
+
+### Editable form behavior
+
+Each compound question renders as one card containing two controls:
+
+- Month
+- Day
+
+The actual submitted control names remain the existing four component keys.
+
+### Published Scout Report behavior
+
+The two components render as one answer card.
+
+Examples:
+
+- Season Begins: `April 30`
+- Season Ends: `September 15`
+
+Partial historical values remain readable instead of being discarded.
+
+### Existing data preserved
+
+No database migration was performed.
+
+The existing four component keys remain authoritative for:
+
+- persistence
+- validation
+- update handling
+- historical compatibility
+- completion calculations
+
+### Definition layer
+
+Added reusable compound-question metadata and a component lookup so future compound questions can use the same pattern without duplicating presentation logic.
+
+Added integrity checks for:
+
+- unknown compound groups/pages
+- duplicate component assignment
+- missing component roles
+- component/group drift
+
+### Verification
+
+- Confirmed two canonical compound questions.
+- Confirmed each contains exactly the expected Month and Day component keys.
+- Confirmed existing month/day select options and Seasonal Road Closure applicability remain unchanged.
+- Confirmed editable controls still submit the four existing keys.
+- Confirmed published values use existing select labels, producing values such as `April 30`.
+- Confirmed the current 263 stored/current approved component projection remains unchanged.
+- No database schema or production data changed.
+
+### Next
+
+Continue canonical definition reconciliation with the next confirmed mismatch.
