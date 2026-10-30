@@ -665,9 +665,9 @@ function llama_ridb_canonical_sync_place(
     }
 
     /*
-     * Accessibility facts answer the existing Accessibility cards.
-     * An accessible toilet also guarantees that the normal Toilets amenity
-     * is present, and an accessible picnic table guarantees Picnic table.
+     * Preserve the richer canonical toilet type when RIDB is specific enough.
+     * The legacy toilets presence column is still populated above for backward
+     * compatibility with older consumers.
      */
     $toiletEvidence = array_merge(
         $evidence['toilet'] ?? [],
@@ -675,6 +675,63 @@ function llama_ridb_canonical_sync_place(
         $evidence['accessibility'] ?? []
     );
 
+    if (
+        llama_ridb_canonical_any_positive(
+            $evidence['flush_toilet']
+            ?? []
+        )
+        || llama_ridb_canonical_name_contains(
+            $toiletEvidence,
+            [
+                'flush toilet',
+                'flush toilets',
+                'accessible flush toilet',
+                'accessible flush toilets',
+            ]
+        )
+    ) {
+        $amenities['toilet_type'] =
+            'flush';
+    } elseif (
+        llama_ridb_canonical_name_contains(
+            $toiletEvidence,
+            [
+                'pit toilet',
+                'pit toilets',
+                'vault toilet',
+                'vault toilets',
+                'accessible pit toilet',
+                'accessible pit toilets',
+            ]
+        )
+    ) {
+        $amenities['toilet_type'] =
+            'pit';
+    } elseif (
+        llama_ridb_canonical_name_contains(
+            $toiletEvidence,
+            [
+                'portable toilet',
+                'portable toilets',
+                'porta potty',
+                'porta potties',
+            ]
+        )
+    ) {
+        $amenities['toilet_type'] =
+            'portable';
+    } elseif (
+        !empty($amenities['toilets'])
+    ) {
+        $amenities['toilet_type'] =
+            'present_unknown_type';
+    }
+
+    /*
+     * Accessibility facts answer the existing Accessibility cards.
+     * An accessible toilet also guarantees that the normal Toilets amenity
+     * is present, and an accessible picnic table guarantees Picnic table.
+     */
     if (
         llama_ridb_canonical_name_contains(
             $toiletEvidence,
@@ -689,6 +746,12 @@ function llama_ridb_canonical_sync_place(
         )
     ) {
         $amenities['toilets'] = 1;
+
+        if (empty($amenities['toilet_type'])) {
+            $amenities['toilet_type'] =
+                'present_unknown_type';
+        }
+
         $details['accessible_toilet'] = 1;
     }
 
