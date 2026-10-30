@@ -1006,11 +1006,11 @@
                                 undefined, { year: 'numeric', month: 'short', day: 'numeric' }
                             )
                             : '';
-                        const contributorId = Number(source.contributorId) || 0;
+                        const sourceLabel = clean(source.label);
                         if (sourceLine) {
                             sourceLine.textContent = [
                                 dateLabel,
-                                contributorId > 0 ? 'Member #' + contributorId : ''
+                                sourceLabel
                             ].filter(Boolean).join(' · ');
                             sourceLine.hidden = !sourceLine.textContent;
                         }
