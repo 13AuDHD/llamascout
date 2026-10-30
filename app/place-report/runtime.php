@@ -1134,7 +1134,7 @@ function llama_place_report_display_value(
     }
 
     if ($type === 'checkbox') {
-        return $value ? 'Yes' : null;
+        return $value ? 'Yes' : 'No';
     }
 
     if ($type === 'multiselect') {
