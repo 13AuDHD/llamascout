@@ -125,6 +125,8 @@ if ($compareMode === 'places') {
 
 $reportSiteId = max(0, (int) ($_GET['site'] ?? 0));
 $siteHistoryReports = [];
+$siteHistoryAvailable = [];
+$siteHistorySelectedIds = [];
 $siteHistoryError = '';
 $reportPlaceSlug = '';
 $reportPlace = null;
@@ -258,13 +260,44 @@ if ($compareMode === 'reports' && $reportSiteId > 0 && $reportPlaceSlug !== '') 
             $verifiedSite = llama_report_verified_target(
                 $db, $placeId, 'site', 'campsite_record', $reportSiteId
             );
-            $siteHistoryReports = llama_scout_report_target_history(
+            $siteHistoryAvailable = llama_scout_report_target_history(
                 $db, $placeId,
                 (string) $verifiedSite['scope'],
                 (string) $verifiedSite['source'],
                 (int) $verifiedSite['id'],
-                LLAMA_COMPARE_MAX_REPORTS
+                100
             );
+
+            // Only allow selecting real reports belonging to this Site.
+            $availableById = [];
+            foreach ($siteHistoryAvailable as $report) {
+                $availableById[(int) $report['reportId']] = $report;
+            }
+            $requestedIds = (array) ($_GET['siteReports'] ?? []);
+            foreach ($requestedIds as $requestedId) {
+                if (!is_scalar($requestedId) || !ctype_digit((string) $requestedId)) {
+                    continue;
+                }
+                $reportId = (int) $requestedId;
+                if (isset($availableById[$reportId])
+                    && !in_array($reportId, $siteHistorySelectedIds, true)) {
+                    $siteHistorySelectedIds[] = $reportId;
+                }
+                if (count($siteHistorySelectedIds) >= LLAMA_COMPARE_MAX_REPORTS) {
+                    break;
+                }
+            }
+            if (!$siteHistorySelectedIds) {
+                $siteHistorySelectedIds = array_slice(array_keys($availableById), 0, LLAMA_COMPARE_MAX_REPORTS);
+            }
+            foreach ($siteHistorySelectedIds as $reportId) {
+                $siteHistoryReports[] = $availableById[$reportId];
+            }
+            $compareUrl = 'https://llamascout.com/compare.php?mode=reports&place='
+                . rawurlencode($reportPlaceSlug) . '&site=' . $reportSiteId;
+            foreach ($siteHistorySelectedIds as $reportId) {
+                $compareUrl .= '&siteReports%5B%5D=' . $reportId;
+            }
         } catch (Throwable $exception) {
             $siteHistoryError = 'Site report history could not be loaded.';
             if (function_exists('llama_log_caught_exception')) {
@@ -346,7 +379,9 @@ require __DIR__ . '/partials/header.php';
                         )
                         || (
                             $compareMode === 'reports'
-                            && count($compareReports) >= LLAMA_COMPARE_MIN_REPORTS
+                            && ($reportSiteId > 0
+                                ? count($siteHistoryReports) >= LLAMA_COMPARE_MIN_REPORTS
+                                : count($compareReports) >= LLAMA_COMPARE_MIN_REPORTS)
                         )
                     )
                 ): ?>
@@ -427,6 +462,7 @@ require __DIR__ . '/partials/header.php';
             <?php if ($siteHistoryError !== ''): ?>
                 <section class="compare-empty"><p><?= htmlspecialchars($siteHistoryError, ENT_QUOTES, 'UTF-8') ?></p></section>
             <?php else: ?>
+                <?php require __DIR__ . '/partials/compare/site-report-picker.php'; ?>
                 <?php require __DIR__ . '/partials/compare/site-report-history.php'; ?>
             <?php endif; ?>
 
