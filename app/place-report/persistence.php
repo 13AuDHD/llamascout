@@ -84,42 +84,100 @@ function llama_place_report_publish_data(PDO $db, int $placeId, array $data, arr
     llama_place_report_apply_published_answer_state($db, $placeId, $paths, llama_place_report_unknown_fields($data));
 }
 
-/**
- * A new Place report may describe one individual Site. Keep the submitted JSON
- * intact for history; publish Site-only facts to that new canonical Site.
- * Never copy a campground's Site answers onto every Site or invent geometry.
- */
-function llama_place_report_publish_submission(PDO $db, int $placeId, array $data): void
+/** Split one Add Place payload using the same ownership rules as publication. */
+function llama_place_report_submission_answers(array $data): array
 {
-    if (!$db->inTransaction()) { throw new RuntimeException('Report publication requires an active transaction.'); }
-    $siteAnswers = [];
+    $placeAnswers = [];
     $placeKeys = [];
+    $siteAnswers = [];
+
     foreach (llama_place_report_fields() as $key => $field) {
         $path = (string) $field['storage'];
-        if (!llama_place_report_has_path($data, $path)) { continue; }
+        if (!llama_place_report_has_path($data, $path) || !empty($field['derived'])) { continue; }
+
+        $state = llama_place_report_answer_state($data, $key);
+        if ($state === 'unanswered') { continue; }
+
+        $value = $state === 'unknown'
+            ? llama_place_report_unknown_token()
+            : llama_place_report_get_path($data, $path);
+
         if (in_array('place', (array) $field['report_scopes'], true)) {
             $placeKeys[] = $key;
+            $placeAnswers[$key] = $value;
         } elseif (in_array('site', (array) $field['report_scopes'], true)
-            && empty($field['derived']) && llama_place_report_answer_state($data, $key) !== 'unanswered') {
-            $siteAnswers[$key] = llama_place_report_answer_state($data, $key) === 'unknown'
-                ? llama_place_report_unknown_token() : llama_place_report_get_path($data, $path);
+        ) {
+            $siteAnswers[$key] = $value;
         }
     }
-    llama_place_report_publish_data($db, $placeId, $data, $placeKeys);
-    if (!$siteAnswers) { return; }
-    require_once __DIR__ . '/scoped-answers.php';
+
+    return [
+        'place_answers' => $placeAnswers,
+        'place_keys' => $placeKeys,
+        'site_answers' => $siteAnswers,
+    ];
+}
+
+/** Create the required first Site identity without publishing its answers yet. */
+function llama_place_report_create_submission_site(
+    PDO $db,
+    int $placeId,
+    array $siteAnswers
+): array {
+    if (!$db->inTransaction()) { throw new RuntimeException('Report publication requires an active transaction.'); }
+
     $number = trim((string) ($siteAnswers['site_number'] ?? ''));
     if ($number === llama_place_report_unknown_token()) { $number = ''; }
+
+    $label = $number !== '' ? 'Site ' . $number : 'Reported Site';
+
     $statement = $db->prepare('INSERT INTO place_campsites
         (place_id, site_code, site_name, raw_site_type, source_provider, source_external_id, is_active)
         VALUES (?, ?, ?, ?, ?, ?, 1)');
     $statement->execute([$placeId, $number !== '' ? $number : null,
-        $number !== '' ? 'Site ' . $number : 'Reported Site', 'Llama Scout Site',
+        $label, 'Llama Scout Site',
         'Llama Scout', 'place-submission:' . $placeId]);
+
     $siteId = (int) $db->lastInsertId();
+    if ($siteId < 1) { throw new RuntimeException('The first Site could not be created.'); }
+
+    return [
+        'id' => $siteId,
+        'label' => $label,
+        'source' => 'campsite_record',
+    ];
+}
+
+/**
+ * Publish one Add Place payload after its immutable Place + first Site bundle
+ * has been recorded. Never copy Site answers onto every Site or invent geometry.
+ */
+function llama_place_report_publish_submission(
+    PDO $db,
+    int $placeId,
+    array $data,
+    ?int $siteId = null
+): int {
+    if (!$db->inTransaction()) { throw new RuntimeException('Report publication requires an active transaction.'); }
+
+    $answers = llama_place_report_submission_answers($data);
+    $siteAnswers = $answers['site_answers'];
+
+    if ($siteId === null) {
+        $site = llama_place_report_create_submission_site($db, $placeId, $siteAnswers);
+        $siteId = (int) $site['id'];
+    }
+
+    if ($siteId < 1) { throw new InvalidArgumentException('A valid first Site is required.'); }
+
+    llama_place_report_publish_data($db, $placeId, $data, $answers['place_keys']);
+
+    require_once __DIR__ . '/scoped-answers.php';
     foreach ($siteAnswers as $key => $value) {
         llama_scoped_report_save($db, $placeId, 'site', $siteId, 'campsite_record', $key, $value);
     }
+
+    return $siteId;
 }
 
 function llama_place_report_has_path(array $data, string $path): bool

@@ -8,8 +8,6 @@ require_once dirname(__DIR__) . '/app/place-campsite-media.php';
 require_once dirname(__DIR__) . '/app/place-map-features.php';
 require_once dirname(__DIR__) . '/app/campsite-closure-display.php';
 require_once dirname(__DIR__) . '/app/place-report.php';
-require_once dirname(__DIR__) . '/app/place-report/target-model.php';
-require_once dirname(__DIR__) . '/app/place-report/report-targets.php';
 require_once dirname(__DIR__) . '/app/place-report/scoped-warnings.php';
 
 header('Content-Type: application/json; charset=utf-8');
@@ -108,41 +106,70 @@ try {
     $enriched = llama_campsite_closure_enrich($db, $placeId, [$site]);
     $site = $enriched[0] ?? $site;
 
-    $unknown = llama_place_report_published_answer_state($db, $placeId);
-    $reportData = llama_place_report_data_from_published_place($place, $unknown);
-    $placeValues = llama_scoped_report_values_from_data($reportData);
+    $currentModel =
+        llama_place_report_current_answer_model(
+            $db,
+            $placeId,
+            [
+                'scope' =>
+                    'site',
 
-    $target = null;
-    foreach (llama_report_targets($db, $placeId) as $candidate) {
-        if (
-            (string) ($candidate['scope'] ?? '') === 'site'
-            && (string) ($candidate['source'] ?? '') === 'campsite_record'
-            && (int) ($candidate['id'] ?? 0) === $campsiteId
-        ) {
-            $target = $candidate;
-            break;
-        }
-    }
+                'source' =>
+                    'campsite_record',
 
-    $resolved = null;
-    if (is_array($target)) {
-        $reports = llama_scoped_report_effective_answers_for_targets(
-            $db, $placeId, $placeValues, [$target]
+                'id' =>
+                    $campsiteId,
+            ]
         );
-        $resolved = $reports['site:campsite_record:' . $campsiteId] ?? null;
-    }
 
-    if (is_array($resolved)) {
-        $resolved = llama_place_report_with_campsite_baseline($resolved, $site);
-    }
-    $site['report_inherited_values'] = is_array($resolved)
-        ? llama_scoped_report_display_values((array) ($resolved['inherited'] ?? [])) : [];
-    $site['report_override_values'] = is_array($resolved)
-        ? llama_scoped_report_display_values((array) ($resolved['direct'] ?? [])) : [];
-    $site['report_override_keys'] = is_array($resolved)
-        ? array_keys((array) ($resolved['direct'] ?? [])) : [];
-    $site['report_warnings'] = is_array($resolved)
-        ? llama_scoped_report_quick_warnings((array) ($resolved['values'] ?? [])) : [];
+    $currentAnswers =
+        (array) (
+            $currentModel['answers']
+            ?? []
+        );
+
+    $inheritedValues =
+        llama_place_report_current_answer_values(
+            $currentAnswers,
+            'inherited'
+        );
+
+    /*
+     * Existing JavaScript expects report_override_values to contain every
+     * Site-local value, including campsite baseline values. Preserve that
+     * response contract while sourcing it from the canonical answer model.
+     */
+    $localValues =
+        llama_place_report_current_answer_values(
+            $currentAnswers,
+            'local'
+        );
+
+    $effectiveValues =
+        llama_place_report_current_answer_values(
+            $currentAnswers,
+            'effective'
+        );
+
+    $site['report_inherited_values'] =
+        llama_scoped_report_display_values(
+            $inheritedValues
+        );
+
+    $site['report_override_values'] =
+        llama_scoped_report_display_values(
+            $localValues
+        );
+
+    $site['report_override_keys'] =
+        array_keys(
+            $localValues
+        );
+
+    $site['report_warnings'] =
+        llama_scoped_report_quick_warnings(
+            $effectiveValues
+        );
 
     $mapFeatureId = (int) ($site['map_feature_id'] ?? 0);
     $rates = [];

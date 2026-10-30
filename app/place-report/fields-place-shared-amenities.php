@@ -112,6 +112,38 @@ function llama_place_report_add_shared_amenity_fields(
         $fields[$key]['layout_group'] = 'shared_amenities';
     }
 
+    if (isset($fields['amenity_toilets'])) {
+        /*
+         * M1-008: keep the canonical question key, but move the richer answer
+         * into a dedicated SQL column. The legacy boolean toilets column stays
+         * synchronized through a compatibility mirror for older consumers.
+         */
+        $fields['amenity_toilets']['type'] =
+            'select';
+
+        $fields['amenity_toilets']['storage'] =
+            'amenities.toilet_type';
+
+        $fields['amenity_toilets']['options'] = [
+            'pit' => 'Pit toilet',
+            'flush' => 'Flush toilet',
+            'portable' => 'Portable toilet',
+            'no' => 'No toilets',
+        ];
+
+        $fields['amenity_toilets']['legacy_values'] = [
+            'present_unknown_type' => 'Present, type not recorded',
+        ];
+
+        $fields['amenity_toilets']['compatibility_mirror'] = [
+            'storage' => 'amenities.toilets',
+            'transform' => 'toilet_presence',
+        ];
+
+        $fields['amenity_toilets']['help'] =
+            'Choose the shared toilet type normally available at this Place. Use Unknown when the toilet type cannot be determined.';
+    }
+
     /*
      * These legacy amenity keys describe the campsite itself. Move them into
      * Site -> Camping & Equipment without renaming their storage paths.
@@ -166,9 +198,11 @@ function llama_place_report_add_shared_amenity_fields(
             'options' => [
                 '1' => 'Yes',
                 '0' => 'No',
+            ],
+            'legacy_values' => [
                 'seasonal' => 'Seasonal',
             ],
-            'help' => 'Whether an on-site campground host is normally available. Choose Seasonal when a host is present only during the operating season.',
+            'help' => 'Whether an on-site campground host is normally available. Use Yes when a host is available during the Place\'s normal operating season.',
         ]
     );
 

@@ -275,7 +275,13 @@ function llama_place_report_apply_common_applicability(
         ['accessible_toilet'],
         [[
             'field' => 'amenity_toilets',
-            'operator' => 'truthy',
+            'operator' => 'in',
+            'value' => [
+                'pit',
+                'flush',
+                'portable',
+                'present_unknown_type',
+            ],
         ]]
     );
 

@@ -1,0 +1,42 @@
+name: M2-008L Legacy Mapping Audit
+
+on:
+  push:
+    branches:
+      - v3-development
+    paths:
+      - '.github/workflows/m2-008l-legacy-mapping.yml'
+      - 'tools/m2-008l-legacy-mapping-audit.php'
+      - 'app/place-report/**'
+      - 'app/place-report.php'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  legacy-mapping-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out V3
+        uses: actions/checkout@v4
+
+      - name: Check PHP
+        run: php -v
+
+      - name: Validate script syntax
+        run: php -l tools/m2-008l-legacy-mapping-audit.php
+
+      - name: Generate read-only mapping CSV
+        run: |
+          mkdir -p audit-output
+          php tools/m2-008l-legacy-mapping-audit.php > audit-output/m2-008l-results.csv
+          test -s audit-output/m2-008l-results.csv
+          head -n 1 audit-output/m2-008l-results.csv
+
+      - name: Upload mapping audit results
+        uses: actions/upload-artifact@v4
+        with:
+          name: m2-008l-mapping-results
+          path: audit-output/m2-008l-results.csv
+          retention-days: 30

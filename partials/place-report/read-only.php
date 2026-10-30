@@ -19,11 +19,15 @@ $placeReportSections =
     llama_place_report_sections();
 
 /*
- * Public Scout Report groups follow the approved questionnaire.
+ * Published Scout Report groups follow the canonical two-page definition.
  * The shared field registry remains authoritative for labels, answer values,
  * storage and site switching. Unlisted legacy fields are not displayed.
  */
-$publicReportGroups = llama_place_report_approved_question_groups();
+$publicReportGroups =
+    llama_place_report_approved_groups_in_page_order();
+
+$approvedGroupPages =
+    llama_place_report_approved_group_page_lookup();
 /* Official contact data is sourced from the existing RIDB facility resolver. */
 $publicFacility = [];
 if ($placeReportReadMode === 'scout-report' && !empty($place['id'])) {
@@ -48,10 +52,6 @@ $renderSafeDescription = static function (string $raw): string {
 };
 
 /* Place/area groups and site/space groups use the same visual identity as map features. */
-$publicPlaceGroups = [
-    'basic', 'location', 'amenities', 'operating', 'road_conditions',
-    'vehicle_access', 'seasonal_access', 'gate_access', 'nearest_services',
-];
 $publicPlaceType = strtolower(trim((string) ($place['type'] ?? $placeReportData['type'] ?? '')));
 $publicPlaceIsArea = preg_match('/campground|camping area|recreation area|dispersed area|area/', $publicPlaceType) === 1;
 $publicSiteType = strtolower(trim((string) ($placeReportData['site_type'] ?? $placeReportData['space_type'] ?? '')));
@@ -437,6 +437,197 @@ $renderValue =
         <?php
     };
 
+$renderCompoundValue =
+    static function (
+        string $compoundKey,
+        array $componentFields
+    ) use (
+        $placeReportData,
+        $e,
+        $localIcon
+    ): void {
+        $definitions =
+            llama_place_report_approved_compound_questions();
+
+        $definition =
+            $definitions[$compoundKey]
+            ?? null;
+
+        if (!is_array($definition)) {
+            return;
+        }
+
+        $parts = [];
+        $overallState = 'answered';
+        $firstField = null;
+
+        foreach ((array) ($definition['components'] ?? []) as $componentKey => $component) {
+            if (!isset($componentFields[$componentKey])) {
+                continue;
+            }
+
+            $field =
+                $componentFields[$componentKey];
+
+            $firstField ??= $field;
+
+            $state =
+                llama_place_report_answer_state(
+                    $placeReportData,
+                    (string) $componentKey
+                );
+
+            $value =
+                llama_place_report_display_value(
+                    $placeReportData,
+                    (string) $componentKey
+                );
+
+            $role =
+                (string) (
+                    $component['role']
+                    ?? ''
+                );
+
+            if ($state === 'answered' && $value !== null && trim((string) $value) !== '') {
+                $parts[$role] =
+                    (string) $value;
+                continue;
+            }
+
+            if ($state === 'unknown') {
+                $parts[$role] =
+                    $role === 'month'
+                        ? 'Unknown month'
+                        : 'Unknown day';
+                $overallState = 'unknown';
+                continue;
+            }
+
+            $parts[$role] =
+                $role === 'month'
+                    ? 'Month not provided'
+                    : 'Day not provided';
+
+            if ($overallState !== 'unknown') {
+                $overallState = 'unanswered';
+            }
+        }
+
+        $month =
+            trim(
+                (string) (
+                    $parts['month']
+                    ?? ''
+                )
+            );
+
+        $day =
+            trim(
+                (string) (
+                    $parts['day']
+                    ?? ''
+                )
+            );
+
+        if (
+            $month === 'Month not provided'
+            && $day === 'Day not provided'
+        ) {
+            $displayValue =
+                'Not provided';
+        } elseif (
+            $month !== ''
+            && !str_contains(
+                strtolower($month),
+                'unknown'
+            )
+            && !str_contains(
+                strtolower($month),
+                'not provided'
+            )
+            && $day !== ''
+            && !str_contains(
+                strtolower($day),
+                'unknown'
+            )
+            && !str_contains(
+                strtolower($day),
+                'not provided'
+            )
+        ) {
+            $displayValue =
+                $month
+                . ' '
+                . $day;
+            $overallState =
+                'answered';
+        } else {
+            $displayValue =
+                implode(
+                    ' · ',
+                    array_values(
+                        array_filter(
+                            [$month, $day],
+                            static fn (string $part): bool =>
+                                $part !== ''
+                        )
+                    )
+                );
+        }
+
+        $class =
+            'scout-report-item scout-report-value-item'
+            . (
+                $overallState === 'unknown'
+                    ? ' is-explicit-unknown'
+                    : ''
+            )
+            . (
+                $overallState === 'unanswered'
+                    ? ' is-unanswered'
+                    : ''
+            );
+
+        $icon =
+            $firstField !== null
+                ? $localIcon(
+                    llama_place_report_field_icon(
+                        (string) ($firstField['key'] ?? ''),
+                        $firstField
+                    ),
+                    (string) ($firstField['key'] ?? '')
+                )
+                : 'calendar';
+        ?>
+        <div
+            class="<?= $e($class) ?>"
+            data-report-compound-question="<?= $e($compoundKey) ?>"
+        >
+            <div class="scout-report-value-content">
+                <span>
+                    <?= $e(
+                        (string) (
+                            $definition['label']
+                            ?? $compoundKey
+                        )
+                    ) ?>
+                </span>
+
+                <strong><?= $e($displayValue) ?></strong>
+            </div>
+
+            <?= llama_icon(
+                $icon,
+                [
+                    'class' => 'scout-report-value-icon',
+                ]
+            ) ?>
+        </div>
+        <?php
+    };
+
+
 $renderContributionPrompt =
     static function (
         string $sectionLabel,
@@ -709,12 +900,33 @@ foreach (
     ?>
 
     <?php
-    $reportScopeClass = in_array((string) $sectionKey, $publicPlaceGroups, true)
-        ? ($publicPlaceIsArea ? 'scout-report-scope-place' : 'scout-report-scope-other-place')
-        : ($publicSiteIsParking ? 'scout-report-scope-space' : 'scout-report-scope-site');
+    $reportPageKey =
+        (string) (
+            $approvedGroupPages[(string) $sectionKey]['page']
+            ?? ''
+        );
+
+    $reportScopeClass =
+        $reportPageKey === 'place'
+            ? (
+                $publicPlaceIsArea
+                    ? 'scout-report-scope-place'
+                    : 'scout-report-scope-other-place'
+            )
+            : (
+                $publicSiteIsParking
+                    ? 'scout-report-scope-space'
+                    : 'scout-report-scope-site'
+            );
     ?>
     <section
         class="scout-report-section<?= $placeReportReadMode === 'scout-report' ? ' ' . $reportScopeClass : '' ?>"
+        <?php if (
+            $placeReportReadMode === 'scout-report'
+            && $reportPageKey !== ''
+        ): ?>
+            data-report-page="<?= $e($reportPageKey) ?>"
+        <?php endif; ?>
         <?php if (
             $placeReportReadMode === 'scout-report'
             && $switchableApplicableCount > 0
@@ -918,10 +1130,59 @@ foreach (
 
         <?php elseif ($placeReportReadMode === 'scout-report'): ?>
             <div class="scout-report-grid">
+                <?php
+                $renderedCompoundQuestions = [];
+                ?>
                 <?php foreach ($publicReportGroups[$sectionKey][1] as $key): ?>
-                    <?php if (isset($reportedFields[$key])): ?>
-                        <?php $renderValue($key, $reportedFields[$key]); ?>
+                    <?php if (!isset($reportedFields[$key])): ?>
+                        <?php continue; ?>
                     <?php endif; ?>
+
+                    <?php
+                    $field =
+                        $reportedFields[$key];
+
+                    $compoundKey =
+                        trim(
+                            (string) (
+                                $field['approved_compound_question']
+                                ?? ''
+                            )
+                        );
+
+                    if ($compoundKey !== '') {
+                        if (isset($renderedCompoundQuestions[$compoundKey])) {
+                            continue;
+                        }
+
+                        $renderedCompoundQuestions[$compoundKey] = true;
+                        $componentFields = [];
+
+                        foreach ($reportedFields as $candidateKey => $candidateField) {
+                            if (
+                                (string) (
+                                    $candidateField['approved_compound_question']
+                                    ?? ''
+                                ) === $compoundKey
+                            ) {
+                                $componentFields[(string) $candidateKey] =
+                                    $candidateField;
+                            }
+                        }
+
+                        $renderCompoundValue(
+                            $compoundKey,
+                            $componentFields
+                        );
+
+                        continue;
+                    }
+
+                    $renderValue(
+                        (string) $key,
+                        $field
+                    );
+                    ?>
                 <?php endforeach; ?>
             </div>
 

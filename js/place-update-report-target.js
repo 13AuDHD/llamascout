@@ -109,13 +109,6 @@
         return [...card.querySelectorAll('input:not([type="hidden"]), select, textarea')];
     }
 
-    function equalValue(a, b) {
-        if (Array.isArray(a) && Array.isArray(b)) {
-            return JSON.stringify(a.map(String).sort()) === JSON.stringify(b.map(String).sort());
-        }
-        return String(a ?? '') === String(b ?? '');
-    }
-
     function scopedValue(card, f) {
         const controls = scopedControls(card);
         if (f.type === 'multiselect') {
@@ -218,13 +211,21 @@
                 // a coverage defect to fix, not a reason to invent another UI.
                 absentTemplates.add(f.key);
                 const warning = make('p', 'place-report-answer-context',
-                    `${f.label}: shared field markup missing. This question cannot be edited until the shared form is corrected.`);
+                    `${f.label}: shared field markup missing. This question cannot be reported until the shared form is corrected.`);
                 grid.append(warning);
                 continue;
             }
 
             const card = template.cloneNode(true);
             card.dataset.scopedQuestion = f.key;
+
+            // The Place form can show its own current-answer references.
+            // A cloned Area/Site control must show only the selected target's
+            // reference context, never the parent Place's reference note.
+            for (const reference of card.querySelectorAll('[data-place-report-reference]')) {
+                reference.remove();
+            }
+
             // Scoped submissions use scoped_answers_json exclusively.
             // Never send cloned Place fields as extra POST parameters.
             for (const el of card.querySelectorAll('[name]')) el.removeAttribute('name');
@@ -290,8 +291,8 @@
                 else control.value = '';
             }
 
-            // A changed field is sent as a proposal, not an edit to the
-            // inherited Place/Area value or the published record.
+            // An intentionally answered question is sent as this report's
+            // observation, even when it confirms the current reference value.
             const controlTargetKey = activeTarget;
             const changed = event => {
                 if (controlTargetKey !== activeTarget) return;
@@ -309,8 +310,7 @@
                     }
                 }
                 const value = scopedValue(card, f);
-                const original = recordedValue(f);
-                if (value !== '' && !equalValue(value, original)) values.set(f.key, value);
+                if (value !== '') values.set(f.key, value);
                 else values.delete(f.key);
                 draftsByTarget.set(activeTarget, new Map(values));
                 sync();
@@ -340,7 +340,7 @@
         showExisting();
         applyDependencies();
         if (absentTemplates.size) {
-            status.textContent = `Shared form is missing ${absentTemplates.size} field template(s). Updates for those fields are unavailable.`;
+            status.textContent = `Shared form is missing ${absentTemplates.size} field template(s). Reporting for those fields is unavailable.`;
         }
     }
 
@@ -378,14 +378,54 @@
         return match ? match[0] : raw;
     }
 
-    function recordedValue(f) {
+    function displayReferenceValue(f, value) {
+        const normalized = normalizedControlValue(f, value);
+
+        if (normalized === unknown) return 'Unknown';
+
+        const options =
+            f.options && typeof f.options === 'object'
+                ? f.options
+                : (optionValues(f) || {});
+
+        if (Array.isArray(normalized)) {
+            return normalized
+                .map(item => String(options[String(item)] ?? item))
+                .join(', ');
+        }
+
+        const key = String(normalized ?? '');
+
+        if (key === '') return '';
+
+        if (Object.prototype.hasOwnProperty.call(options, key)) {
+            return String(options[key]);
+        }
+
+        if (f.type === 'checkbox') {
+            if (key === '1') return 'Yes';
+            if (key === '0') return 'No';
+        }
+
+        return key;
+    }
+
+    function currentReference(f) {
         if (Object.prototype.hasOwnProperty.call(context.direct, f.key)) {
-            return normalizedControlValue(f, context.direct[f.key]);
+            return {
+                value: context.direct[f.key],
+                from: `Recorded for this ${scope.value}`
+            };
         }
+
         if (Object.prototype.hasOwnProperty.call(context.inherited, f.key)) {
-            return normalizedControlValue(f, context.inherited[f.key]?.value);
+            return {
+                value: context.inherited[f.key]?.value,
+                from: `From ${context.inherited[f.key]?.from || 'parent'}`
+            };
         }
-        return '';
+
+        return null;
     }
 
     function showExisting() {
@@ -396,22 +436,25 @@
             const note = card.querySelector('[data-scoped-existing]');
             if (!note) continue;
 
-            const visible = values.has(f.key)
+            /*
+             * Current answers are reference context only. The input contains
+             * only this report's draft answer, if the Scout has supplied one.
+             */
+            const draft = values.has(f.key)
                 ? normalizedControlValue(f, values.get(f.key))
-                : recordedValue(f);
-            setScopedValue(card, f, visible);
+                : '';
 
-            if (Object.prototype.hasOwnProperty.call(context.direct, f.key)) {
-                note.textContent = `Recorded for this ${scope.value}`;
-            } else if (Object.prototype.hasOwnProperty.call(context.inherited, f.key)) {
-                note.textContent = `From ${context.inherited[f.key]?.from || 'parent'}`;
+            setScopedValue(card, f, draft);
+
+            const reference = currentReference(f);
+
+            if (reference) {
+                const displayed = displayReferenceValue(f, reference.value);
+                note.textContent = displayed !== ''
+                    ? `Current answer: ${displayed} · ${reference.from}`
+                    : `Current answer: ${reference.from}`;
             } else {
-                note.textContent = 'No recorded answer';
-            }
-            if (visible && scopedControls(card).some(el => el.type === 'radio')
-                && !scopedControls(card).some(el => el.type === 'radio' && el.checked)) {
-                // Preserve legacy data visibly without inventing a radio choice.
-                note.textContent += ` · Recorded: ${visible}`;
+                note.textContent = 'Current answer: Not reported';
             }
         }
     }
@@ -561,8 +604,8 @@
             queueInput.value = '[]';
 
             if (scoped) {
-                // Clear previous target's existing answers BEFORE rendering.
-                // The asynchronous response may not have arrived yet.
+                // Clear the previous target's reference context before
+                // rendering. The asynchronous response may not have arrived yet.
                 context = {direct: {}, inherited: {}};
                 render();
                 loadContext(t);
@@ -577,9 +620,9 @@
             ? (
                 initial.locked === true
                     ? 'Revise the requested Area or Site answers below. The reporting target cannot be changed for this revision.'
-                    : `Updating: ${t.label}`
+                    : `Reporting: ${t.label}`
             )
-            : 'Updating: Entire Place';
+            : 'Reporting: Entire Place';
         if (scoped && absentTemplates.size) {
             status.textContent = `${absentTemplates.size} shared question control(s) could not be loaded. Submit is disabled until they are corrected.`;
         }

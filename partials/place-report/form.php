@@ -16,6 +16,11 @@ $placeReportValues =
         ? $placeReportValues
         : [];
 
+$placeReportReferenceValues =
+    is_array($placeReportReferenceValues ?? null)
+        ? $placeReportReferenceValues
+        : [];
+
 $placeReportExistingPhotos =
     is_array($placeReportExistingPhotos ?? null)
         ? $placeReportExistingPhotos
@@ -271,6 +276,8 @@ foreach ($placeReportFields as $fieldKey => $field) {
 $placeReportBrowserConfig = [
     'unknown_token' => llama_place_report_unknown_token(),
     'unanswered_token' => llama_place_report_unanswered_token(),
+    'mode' => $placeReportMode,
+    'initial_answer_keys' => array_values(array_keys($placeReportValues)),
     'fields' => $placeReportBrowserFields,
 ];
 
@@ -289,12 +296,46 @@ $e =
  * =========================================================
  */
 
+$referenceFor =
+    static function (
+        string $key
+    ) use (
+        $placeReportReferenceValues
+    ): string {
+        if (
+            !array_key_exists(
+                $key,
+                $placeReportReferenceValues
+            )
+        ) {
+            return '';
+        }
+
+        $value =
+            $placeReportReferenceValues[$key];
+
+        if (is_array($value)) {
+            return implode(
+                ', ',
+                array_map(
+                    'strval',
+                    $value
+                )
+            );
+        }
+
+        return trim(
+            (string) $value
+        );
+    };
+
 $valueFor =
     static function (
         string $key,
         array $field
     ) use (
-        $placeReportValues
+        $placeReportValues,
+        $placeReportMode
     ): mixed {
         if (
             array_key_exists(
@@ -312,6 +353,10 @@ $valueFor =
             return is_scalar($value)
                 ? (string) $value
                 : '';
+        }
+
+        if ($placeReportMode === 'update-report') {
+            return '';
         }
 
         return isset(
@@ -368,6 +413,12 @@ $renderSelect =
         $options =
             (array) (
                 $field['options']
+                ?? []
+            );
+
+        $legacyValues =
+            (array) (
+                $field['legacy_values']
                 ?? []
             );
         ?>
@@ -429,6 +480,15 @@ $renderSelect =
 
 
             <?php if (!$knownCurrent): ?>
+                <?php
+                $legacyCurrentLabel =
+                    array_key_exists(
+                        $current,
+                        $legacyValues
+                    )
+                        ? (string) $legacyValues[$current]
+                        : '';
+                ?>
 
                 <option
                     value="<?= $e(
@@ -437,9 +497,10 @@ $renderSelect =
                     selected
                 >
                     <?= $e(
-                        $current
+                        $legacyCurrentLabel !== ''
+                            ? $legacyCurrentLabel
+                            : $current . ' (previous entry)'
                     ) ?>
-                    (previous entry)
                 </option>
 
             <?php endif; ?>
@@ -483,6 +544,7 @@ $renderField =
     ) use (
         $e,
         $valueFor,
+        $referenceFor,
         $renderSelect,
         $placeReportMode,
         $placeReportShowNameSuggestion,
@@ -498,6 +560,11 @@ $renderField =
             $valueFor(
                 $key,
                 $field
+            );
+
+        $reference =
+            $referenceFor(
+                $key
             );
 
         $wide =
@@ -564,6 +631,12 @@ $renderField =
                 </span>
 
             </label>
+
+            <?php if ($reference !== ''): ?>
+                <small class="place-report-answer-context" data-place-report-reference>
+                    Current answer: <?= $e($reference) ?>
+                </small>
+            <?php endif; ?>
 
             <?php
             return;
@@ -1129,6 +1202,12 @@ $renderField =
 
             <?php endif; ?>
 
+            <?php if ($reference !== ''): ?>
+                <small class="place-report-answer-context" data-place-report-reference>
+                        Current answer: <?= $e($reference) ?>
+                </small>
+            <?php endif; ?>
+
 
         </<?= $fieldContainerTag ?>>
 
@@ -1136,7 +1215,97 @@ $renderField =
     };
 
 
+$renderCompoundField =
+    static function (
+        string $compoundKey,
+        array $componentFields
+    ) use (
+        $e,
+        $valueFor,
+        $referenceFor,
+        $renderSelect
+    ): void {
+        $definitions =
+            llama_place_report_approved_compound_questions();
+
+        $definition =
+            $definitions[$compoundKey]
+            ?? null;
+
+        if (!is_array($definition)) {
+            return;
+        }
+
+        $label =
+            (string) (
+                $definition['label']
+                ?? $compoundKey
+            );
+        ?>
+        <div
+            class="contribution-field contribution-field-compound"
+            data-report-compound-question="<?= $e($compoundKey) ?>"
+        >
+            <span class="place-report-field-label">
+                <span><?= $e($label) ?></span>
+            </span>
+
+            <div class="place-report-compound-controls">
+                <?php foreach ((array) ($definition['components'] ?? []) as $componentKey => $component): ?>
+                    <?php
+                    if (!isset($componentFields[$componentKey])) {
+                        continue;
+                    }
+
+                    $field =
+                        $componentFields[$componentKey];
+
+                    $current =
+                        (string) $valueFor(
+                            (string) $componentKey,
+                            $field
+                        );
+
+                    $componentLabel =
+                        (string) (
+                            $component['label']
+                            ?? $field['label']
+                            ?? $componentKey
+                        );
+                    ?>
+                    <label
+                        class="place-report-compound-control"
+                        data-report-field="<?= $e((string) $componentKey) ?>"
+                    >
+                        <span><?= $e($componentLabel) ?></span>
+                        <?php $renderSelect($field, $current); ?>
+                        <?php $componentReference = $referenceFor((string) $componentKey); ?>
+                        <?php if ($componentReference !== ''): ?>
+                            <small class="place-report-answer-context" data-place-report-reference>
+                        Current answer: <?= $e($componentReference) ?>
+                            </small>
+                        <?php endif; ?>
+                    </label>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php
+    };
+
+
 ?>
+
+<?php if ($placeReportMode === 'update-report'): ?>
+    <input type="hidden" name="_report_partial" value="1">
+    <?php foreach (array_keys($placeReportValues) as $initialAnswerKey): ?>
+        <input
+            type="hidden"
+            name="_report_touched[<?= $e((string) $initialAnswerKey) ?>]"
+            value="1"
+            data-report-touched-marker="<?= $e((string) $initialAnswerKey) ?>"
+        >
+    <?php endforeach; ?>
+<?php endif; ?>
 
 <script
     type="application/json"
@@ -1302,6 +1471,26 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
                         standardizes both values to 7 decimal places.
                     </small>
 
+                    <?php
+                    $latitudeReference =
+                        $referenceFor('latitude');
+
+                    $longitudeReference =
+                        $referenceFor('longitude');
+
+                    $coordinateReference =
+                        $latitudeReference !== ''
+                        && $longitudeReference !== ''
+                            ? $latitudeReference . ', ' . $longitudeReference
+                            : '';
+                    ?>
+
+                    <?php if ($coordinateReference !== ''): ?>
+                        <small class="place-report-answer-context" data-place-report-reference>
+                        Current answer: <?= $e($coordinateReference) ?>
+                        </small>
+                    <?php endif; ?>
+
                     <input
                         type="hidden"
                         name="latitude"
@@ -1360,8 +1549,49 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
                     <?php endif; ?>
                     <?php if ($approvedSection['fields']): ?>
                         <div class="contribution-grid">
-                            <?php foreach ($approvedSection['fields'] as $field): ?>
-                                <?php $renderField($field); ?>
+                            <?php
+                            $renderedCompoundQuestions = [];
+                            ?>
+                            <?php foreach ($approvedSection['fields'] as $fieldKey => $field): ?>
+                                <?php
+                                $compoundKey =
+                                    trim(
+                                        (string) (
+                                            $field['approved_compound_question']
+                                            ?? ''
+                                        )
+                                    );
+
+                                if ($compoundKey !== '') {
+                                    if (isset($renderedCompoundQuestions[$compoundKey])) {
+                                        continue;
+                                    }
+
+                                    $renderedCompoundQuestions[$compoundKey] = true;
+                                    $componentFields = [];
+
+                                    foreach ($approvedSection['fields'] as $candidateKey => $candidateField) {
+                                        if (
+                                            (string) (
+                                                $candidateField['approved_compound_question']
+                                                ?? ''
+                                            ) === $compoundKey
+                                        ) {
+                                            $componentFields[(string) $candidateKey] =
+                                                $candidateField;
+                                        }
+                                    }
+
+                                    $renderCompoundField(
+                                        $compoundKey,
+                                        $componentFields
+                                    );
+
+                                    continue;
+                                }
+
+                                $renderField($field);
+                                ?>
                             <?php endforeach; ?>
                         </div>
                     <?php endif; ?>

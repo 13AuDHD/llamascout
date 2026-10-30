@@ -1,0 +1,24 @@
+name: V3 Reporting Smoke Tests
+
+on:
+  push:
+    branches: [v3-development]
+    paths:
+      - '.github/workflows/v3-reporting-smoke.yml'
+      - 'tools/v3-launch-smoke.php'
+      - 'app/place-report.php'
+      - 'app/place-report/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reporting-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP syntax check
+        run: php -l tools/v3-launch-smoke.php
+      - name: Run V3 reporting smoke tests
+        run: php tools/v3-launch-smoke.php

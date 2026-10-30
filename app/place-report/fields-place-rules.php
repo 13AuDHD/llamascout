@@ -18,9 +18,13 @@ function llama_place_report_add_place_rules_fields(callable $add): void
         'points_categories' => ['seasons_rules_services'],
     ];
 
-    $conditional = [
+    $permitRuleOptions = [
         '0' => 'No',
         '1' => 'Yes',
+        '2' => 'Permit required',
+    ];
+
+    $legacyConditional = [
         '3' => 'Conditional',
     ];
 
@@ -31,7 +35,8 @@ function llama_place_report_add_place_rules_fields(callable $add): void
         'select',
         'rules.place_charcoal_grills_allowed',
         $common + [
-            'options' => $conditional,
+            'options' => $permitRuleOptions,
+            'legacy_values' => $legacyConditional,
             'help' =>
                 'Record the normal documented or posted rule for charcoal grills or charcoal fires. Current temporary fire restrictions may override this normal rule.',
         ]
@@ -44,7 +49,8 @@ function llama_place_report_add_place_rules_fields(callable $add): void
         'select',
         'rules.place_propane_fire_pits_allowed',
         $common + [
-            'options' => $conditional,
+            'options' => $permitRuleOptions,
+            'legacy_values' => $legacyConditional,
             'help' =>
                 'Record the normal documented or posted rule for portable propane fire pits or similar contained propane fires. Current temporary fire restrictions may override this normal rule.',
         ]
@@ -109,8 +115,10 @@ function llama_place_report_add_place_rules_fields(callable $add): void
             'options' => [
                 '0' => 'No',
                 '1' => 'Yes',
-                '3' => 'Conditional (legacy)',
                 'no-glass' => 'No Glass',
+            ],
+            'legacy_values' => [
+                '3' => 'Conditional',
             ],
             'help' =>
                 'Record the posted alcohol policy. No Glass means alcohol is allowed but glass containers are prohibited.',

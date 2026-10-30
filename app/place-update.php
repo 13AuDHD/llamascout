@@ -143,6 +143,11 @@ function llama_place_update_build_changes(
     array $current,
     array $currentUnknownFields = []
 ): array {
+    $partialReport =
+        !empty(
+            $input['_report_partial']
+        );
+
     $input = llama_place_report_expand_presence($input);
     $proposed = [];
     $original = [];
@@ -175,15 +180,49 @@ function llama_place_update_build_changes(
             (string) $field['type'];
 
 
+        if (
+            $partialReport
+            && empty(
+                $input['_report_touched'][$key]
+            )
+        ) {
+            continue;
+        }
+
         if (!array_key_exists($key, $input) || !empty($field['derived'])
             || !in_array('place', (array) $field['report_scopes'], true)) {
             continue;
         }
         $raw = $input[$key];
+
+        $submissionAnswer =
+            null;
+
+        if ($partialReport) {
+            $submissionAnswer =
+                llama_place_report_submission_answer(
+                    $field,
+                    $raw
+                );
+
+            /*
+             * Unanswered means this report has no observation for the
+             * question. It must never erase or clear an existing current
+             * answer. Explicit No, Unknown and an intentional empty list are
+             * still recorded answers and continue below.
+             */
+            if (
+                !$submissionAnswer['recorded']
+            ) {
+                continue;
+            }
+        }
+
         if ($type === 'multiselect' && $raw === [] && ($current[$path] ?? null) === null
             && !isset($currentUnknownLookup[$key]) && empty($input['_report_touched'][$key])) { continue; }
         // Preserve unchanged historical options without accepting new invalid values.
-        if ($raw !== llama_place_report_unknown_token() && $raw !== llama_place_report_unanswered_token()
+        if (!$partialReport
+            && $raw !== llama_place_report_unknown_token() && $raw !== llama_place_report_unanswered_token()
             && !isset($currentUnknownLookup[$key])
             && llama_place_report_values_equal($raw, $current[$path] ?? null, $field)) {
             continue;
@@ -192,12 +231,25 @@ function llama_place_update_build_changes(
         $fieldUnknown = [];
 
 
-        $newValue =
-            llama_place_report_parse_field(
-                $field,
-                $raw,
-                $fieldUnknown
-            );
+        if ($submissionAnswer !== null) {
+            $newValue =
+                $submissionAnswer['value'];
+
+            if (
+                $submissionAnswer['state']
+                === 'unknown'
+            ) {
+                $fieldUnknown[$key] =
+                    true;
+            }
+        } else {
+            $newValue =
+                llama_place_report_parse_field(
+                    $field,
+                    $raw,
+                    $fieldUnknown
+                );
+        }
 
 
         $oldValue =
@@ -243,7 +295,8 @@ function llama_place_update_build_changes(
 
 
         if (
-            !$valueChanged
+            !$partialReport
+            && !$valueChanged
             && !$answerStateChanged
         ) {
             continue;
@@ -766,7 +819,7 @@ function llama_place_update_submit(
         && !$submittedPhotos
     ) {
         throw new InvalidArgumentException(
-            'Nothing changed. Edit at least one Place value or add a current photo before submitting.'
+            'Nothing was reported. Answer at least one Place question or add a current photo before submitting.'
         );
     }
 
@@ -1136,7 +1189,7 @@ function llama_place_update_resubmit(
         && !$submittedPhotos
     ) {
         throw new InvalidArgumentException(
-            'Nothing changed. Edit at least one Place value or include a current photo before resubmitting.'
+            'Nothing was reported. Answer at least one Place question or include a current photo before resubmitting.'
         );
     }
 
@@ -1619,7 +1672,14 @@ function llama_place_update_approve(
 
     if (array_key_exists('__scoped_report__', $proposed)) {
         require_once __DIR__ . '/place-report/scoped-update-review.php';
-        return llama_scoped_update_approve($db, $update, $updateId, $reviewedBy, $reviewNotes);
+        return llama_scoped_update_approve(
+            $db,
+            $update,
+            $updateId,
+            $reviewedBy,
+            $reviewNotes,
+            $copiedPhotoPaths
+        );
     }
 
     $historyRow =
@@ -1827,6 +1887,76 @@ function llama_place_update_approve(
     }
 
 
+    $copyJournalStart =
+        count(
+            $copiedPhotoPaths
+        );
+
+
+    moderation_attach_place_photos_transactional(
+        $db,
+        $placeId,
+        (int) $update['user_id'],
+        $photos,
+        '/uploads/place-updates/'
+        . $updateId
+        . '/',
+        $copiedPhotoPaths
+    );
+
+
+    $reportPhotoPaths =
+        array_slice(
+            $copiedPhotoPaths,
+            $copyJournalStart
+        );
+
+
+    $reportAnswers = [];
+
+
+    foreach ($proposed as $path => $value) {
+        $field =
+            $definitions[$path]['shared'];
+
+        $key =
+            (string) $field['key'];
+
+        $reportAnswers[$key] =
+            isset($newUnknownLookup[$key])
+                ? llama_place_report_unknown_token()
+                : $value;
+    }
+
+
+    llama_scout_report_record_approved_update(
+        $db,
+        $updateId,
+        $update,
+        [
+            'scope' =>
+                'place',
+
+            'source' =>
+                'place',
+
+            'id' =>
+                $placeId,
+
+            'label' =>
+                (string) (
+                    $update['place_name']
+                    ?? ''
+                ),
+        ],
+        $reportAnswers,
+        $reviewedBy,
+        $reviewNotes,
+        $photos,
+        $reportPhotoPaths
+    );
+
+
     foreach (
         $proposed
         as $path => $value
@@ -1847,18 +1977,6 @@ function llama_place_update_approve(
         array_keys(
             $newUnknownLookup
         )
-    );
-
-
-    moderation_attach_place_photos_transactional(
-        $db,
-        $placeId,
-        (int) $update['user_id'],
-        $photos,
-        '/uploads/place-updates/'
-        . $updateId
-        . '/',
-        $copiedPhotoPaths
     );
 
 

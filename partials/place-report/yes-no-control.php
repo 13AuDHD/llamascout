@@ -14,6 +14,26 @@ $yesNoCurrent = is_bool($yesNoValue)
 $yesNoEscape = static fn (mixed $value): string =>
     htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 $yesNoOptions = $yesNoField['options'] ?? ['1' => 'Yes', '0' => 'No'];
+$yesNoLegacyValues =
+    (array) (
+        $yesNoField['legacy_values']
+        ?? []
+    );
+
+if (
+    $yesNoCurrent !== ''
+    && !array_key_exists(
+        $yesNoCurrent,
+        $yesNoOptions
+    )
+    && array_key_exists(
+        $yesNoCurrent,
+        $yesNoLegacyValues
+    )
+) {
+    $yesNoOptions[$yesNoCurrent] =
+        (string) $yesNoLegacyValues[$yesNoCurrent];
+}
 ?>
 <input type="hidden" name="<?= $yesNoEscape($yesNoKey) ?>"
     value="<?= $yesNoEscape(llama_place_report_unanswered_token()) ?>"

@@ -1,0 +1,32 @@
+name: V3 Pre-merge PHP Check
+
+on:
+  push:
+    branches: [v3-development]
+    paths:
+      - '.github/workflows/v3-premerge-php.yml'
+      - '**/*.php'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  php-syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: PHP syntax check for files changed from main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          mapfile -d '' files < <(git diff --name-only --diff-filter=ACMR -z origin/main...HEAD -- '*.php')
+          printf 'Checking %s PHP files\n' "${#files[@]}"
+          for file in "${files[@]}"; do
+            php -l "$file"
+          done
+      - name: Verify reporting contract
+        run: php tools/v3-launch-smoke.php

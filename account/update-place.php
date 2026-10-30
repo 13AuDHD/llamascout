@@ -125,11 +125,11 @@ $placeId =
  * COMPLETE ACCESS REQUIRED
  * =========================================================
  *
- * The update form is pre-filled with the complete published
- * Place report, including information that is normally hidden
- * behind Complete Access.
+ * The report form shows complete current Place answers as reference
+ * context, including information that is normally hidden behind Complete
+ * Access. Those current answers are not preloaded as the Scout's report.
  *
- * Never render that form unless this user is entitled to see
+ * Never render that reference context unless this user is entitled to see
  * the complete data for this specific Place.
  *
  * Free contributors retain access to Places they originally
@@ -164,7 +164,7 @@ if (
 
             <p>
                 You do not have access to the complete information
-                for this Place, so its update form cannot be opened.
+                for this Place, so its report form cannot be opened.
             </p>
 
             <p>
@@ -202,22 +202,78 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['scoped_report_context']
     header('Content-Type: application/json; charset=utf-8');
     header('Cache-Control: no-store, private');
     try {
-        require_once dirname(__DIR__) . '/app/place-report/report-targets.php';
-        require_once dirname(__DIR__) . '/app/place-report/scoped-answers.php';
         $scope = (string) ($_GET['scope'] ?? '');
         $source = (string) ($_GET['source'] ?? '');
         $targetId = (int) ($_GET['target_id'] ?? 0);
-        $target = llama_report_verified_target($db, $placeId, $scope, $source, $targetId);
+
         if ($scope === 'place') {
             throw new InvalidArgumentException('Select an Area or Site.');
         }
-        require_once dirname(__DIR__) . '/app/place-report/target-model.php';
-        $resolved = llama_place_report_target_model($db, $placeId, $target);
-        $direct = $resolved['direct'];
+
+        $currentModel =
+            llama_place_report_current_answer_model(
+                $db,
+                $placeId,
+                [
+                    'scope' =>
+                        $scope,
+
+                    'source' =>
+                        $source,
+
+                    'id' =>
+                        $targetId,
+                ]
+            );
+
+        $currentAnswers =
+            (array) (
+                $currentModel['answers']
+                ?? []
+            );
+
+        /*
+         * This response is context only. It must never become the Scout's
+         * draft answers unless the Scout explicitly answers a question.
+         *
+         * Keep the historical "direct" response key for JavaScript
+         * compatibility. It means current target-local values, including a
+         * canonical campsite baseline where one exists.
+         */
+        $direct =
+            llama_place_report_current_answer_values(
+                $currentAnswers,
+                'local'
+            );
+
         $inherited = [];
-        foreach ($resolved['inherited'] as $key => $value) {
-            $inherited[$key] = ['value' => $value, 'from' =>
-                ($resolved['provenance'][$key]['scope'] ?? 'place') === 'area' ? 'Area' : 'Place'];
+
+        foreach ($currentAnswers as $key => $answer) {
+            if (
+                !is_array($answer)
+                || empty($answer['recorded'])
+                || empty($answer['inherited'])
+            ) {
+                continue;
+            }
+
+            $origin =
+                (array) (
+                    $answer['origin']
+                    ?? []
+                );
+
+            $inherited[(string) $key] = [
+                'value' =>
+                    llama_place_report_current_answer_legacy_value(
+                        $answer
+                    ),
+
+                'from' =>
+                    (string) ($origin['scope'] ?? '') === 'area'
+                        ? 'Area'
+                        : 'Place',
+            ];
         }
 
         echo json_encode(
@@ -584,21 +640,61 @@ $publishedUnknownFields =
 
 /*
  * =========================================================
- * SHARED FORM VALUES
+ * CURRENT ANSWERS AS REFERENCE
  * =========================================================
  *
- * Normal update:
- *     Published Place values and answer state.
+ * Update This Place creates a new report. Current published answers are
+ * reference context only and must not preload the Scout's new report.
+ */
+
+$placeCurrentAnswerModel =
+    llama_place_report_current_answer_model(
+        $db,
+        $placeId,
+        [
+            'scope' =>
+                'place',
+
+            'source' =>
+                'place',
+
+            'id' =>
+                $placeId,
+        ]
+    );
+
+$placeCurrentAnswers =
+    (array) (
+        $placeCurrentAnswerModel['answers']
+        ?? []
+    );
+
+$placeReportReferenceValues =
+    llama_scoped_report_display_values(
+        llama_place_report_current_answer_values(
+            $placeCurrentAnswers,
+            'effective'
+        )
+    );
+
+
+/*
+ * =========================================================
+ * REPORT DRAFT VALUES
+ * =========================================================
+ *
+ * A new report starts blank.
  *
  * Needs Changes:
- *     Published Place values, overlaid with the contributor's
- *     latest proposed values and proposed Unknown state.
+ *     preload only the contributor's own proposed report answers so the
+ *     requested revision can be corrected without turning current published
+ *     Place state into editable form data.
  */
 
 $placeReportValues =
     llama_place_update_shared_form_values(
-        $currentValues,
-        $publishedUnknownFields,
+        [],
+        [],
         $isNeedsChanges
             ? $editProposed
             : [],
@@ -613,8 +709,8 @@ $placeReportValues =
  * PRESERVE FAILED POST
  * =========================================================
  *
- * The posted form must win over database values after an
- * unsuccessful submission.
+ * The Scout's posted draft must be restored after an unsuccessful
+ * submission. Current published answers remain reference-only.
  *
  * Checkbox inputs require special handling because unchecked
  * boxes do not appear in $_POST.
@@ -657,31 +753,60 @@ if (
                 ?? ''
             );
 
+        $fieldTouched =
+            !empty(
+                $_POST['_report_touched'][$fieldKey]
+            );
 
-        if ($fieldType === 'checkbox') {
-
-            if (
-                !empty(
-                    $_POST[$fieldKey]
-                )
-            ) {
-                $placeReportValues[$fieldKey] =
-                    '1';
-
-            } else {
-                /*
-                 * No array value means the user intentionally
-                 * submitted this checkbox unchecked.
-                 */
-                unset(
-                    $placeReportValues[$fieldKey]
-                );
-            }
-
+        if (!$fieldTouched) {
+            unset(
+                $placeReportValues[$fieldKey]
+            );
 
             continue;
         }
 
+        if (
+            !empty(
+                $_POST['_report_unknown'][$fieldKey]
+            )
+        ) {
+            $placeReportValues[$fieldKey] =
+                llama_place_report_unknown_token();
+
+            continue;
+        }
+
+        if ($fieldType === 'checkbox') {
+            $placeReportValues[$fieldKey] =
+                !empty(
+                    $_POST[$fieldKey]
+                )
+                    ? '1'
+                    : '0';
+
+            continue;
+        }
+
+        if (
+            $fieldType === 'multiselect'
+        ) {
+            $postedValues =
+                $_POST[$fieldKey]
+                ?? [];
+
+            $placeReportValues[$fieldKey] =
+                is_array($postedValues)
+                    ? array_values(
+                        array_map(
+                            'strval',
+                            $postedValues
+                        )
+                    )
+                    : [];
+
+            continue;
+        }
 
         if (
             array_key_exists(
@@ -691,7 +816,6 @@ if (
         ) {
             $postedValue =
                 $_POST[$fieldKey];
-
 
             if (
                 is_scalar(
@@ -735,7 +859,7 @@ $placeReportExternalFieldKeys =
 
 
 $placeReportMode =
-    'contributor';
+    'update-report';
 
 
 $placeReportShowLocate =
@@ -861,11 +985,11 @@ $e =
 
         <p class="place-update-intro">
 
-            Update anything that has changed.
-            The current Place information is already filled in.
-            Edit only what needs correcting or updating.
-            Llama Scout will automatically detect what changed
-            and send those changes for review.
+            Submit a new Scout report for what you observed.
+            Current answers are shown as reference only.
+            Answer only the questions you can confirm or update.
+            Questions you leave blank are not submitted and do not change
+            existing information.
 
         </p>
 
@@ -879,8 +1003,9 @@ $e =
             <span>
                 If approved, this field work is recorded as
                 <strong><?= $e($currentContributionLabel) ?></strong>.
-                Your edits do not change the live Place immediately. A moderator
-                reviews the differences first, and only approved changes are published.
+                Your report does not change the live Place immediately. A moderator
+                reviews the submitted answers first, and only approved answers can
+                update the current Place summary. The report remains part of its history.
             </span>
 
         </div>
@@ -1048,7 +1173,7 @@ $e =
              * This is the same field definition and rendering
              * system used by the rest of the Place workflow.
              */
-            /* Reporting target is displayed inside the established update form. */
+            /* Reporting target is displayed inside the established report form. */
             require_once dirname(__DIR__) . '/app/place-report/report-targets.php';
             $availableReportTargets = llama_report_targets(db(), $placeId);
 
@@ -1162,7 +1287,7 @@ $e =
                     <input type="hidden" name="report_target_source" value="<?= $e($reportTargetSource) ?>" data-report-target-source>
                     <input type="hidden" name="report_target_id" value="<?= (int) $reportTargetId ?>" data-report-target-id>
                     <p class="place-update-report-target-status" data-report-target-status role="status">
-                        Entire Place updates use the existing review process.
+                        Entire Place reports use the same review process.
                     </p>
                 </div>
             </section>
@@ -1186,7 +1311,7 @@ $e =
                 <p data-scoped-field-notice role="status"></p>
             </section>
             <?php
-            /* Use the same final layout definitions as the shared editable form. */
+            /* Use the same final layout definitions as the shared report form. */
             $scopedReportLayoutGroups = llama_place_report_layout_groups();
             $scopedReportLayoutGroups['legacy_review'] = [
                 'review' => 'Questions for Review',
