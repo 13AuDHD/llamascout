@@ -4,8 +4,45 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__, 2)
     . '/app/ridb-facility-details.php';
+require_once dirname(__DIR__, 2)
+    . '/app/place-report/approved-questions.php';
 
 $facilityPublic = [];
+$facilitySourceFields =
+    llama_place_report_approved_source_fields();
+
+$facilitySourceValue =
+    static function (
+        string $canonicalKey,
+        array $source
+    ) use (
+        $facilitySourceFields
+    ): mixed {
+        $sourceKey =
+            trim(
+                (string) (
+                    $facilitySourceFields[$canonicalKey]['source_key']
+                    ?? ''
+                )
+            );
+
+        return $sourceKey !== ''
+            ? ($source[$sourceKey] ?? null)
+            : null;
+    };
+
+$facilitySourceLabel =
+    static function (
+        string $canonicalKey
+    ) use (
+        $facilitySourceFields
+    ): string {
+        return (string) (
+            $facilitySourceFields[$canonicalKey]['label']
+            ?? $canonicalKey
+        );
+    };
+
 
 try {
     $facilityPublic =
@@ -26,7 +63,10 @@ try {
 $facilityAddress =
     trim(
         (string) (
-            $facilityPublic['address']
+            $facilitySourceValue(
+                'official_address',
+                $facilityPublic
+            )
             ?? ''
         )
     );
@@ -34,7 +74,10 @@ $facilityAddress =
 $facilityPhone =
     trim(
         (string) (
-            $facilityPublic['phone']
+            $facilitySourceValue(
+                'official_phone',
+                $facilityPublic
+            )
             ?? ''
         )
     );
@@ -42,14 +85,20 @@ $facilityPhone =
 $facilityEmail =
     trim(
         (string) (
-            $facilityPublic['email']
+            $facilitySourceValue(
+                'official_email',
+                $facilityPublic
+            )
             ?? ''
         )
     );
 
 $facilityLinks =
     (array) (
-        $facilityPublic['links']
+        $facilitySourceValue(
+            'official_links',
+            $facilityPublic
+        )
         ?? []
     );
 
@@ -115,7 +164,7 @@ if (!$hasFacilitySourceInfo) {
         <div class="place-facility-info-grid">
             <?php if ($facilityAddress !== ''): ?>
                 <div class="place-facility-info-card">
-                    <span>Official address</span>
+                    <span><?= place_h($facilitySourceLabel('official_address')) ?></span>
                     <strong>
                         <?= place_h($facilityAddress) ?>
                     </strong>
@@ -124,7 +173,7 @@ if (!$hasFacilitySourceInfo) {
 
             <?php if ($facilityPhone !== ''): ?>
                 <div class="place-facility-info-card">
-                    <span>Phone</span>
+                    <span><?= place_h($facilitySourceLabel('official_phone')) ?></span>
                     <strong>
                         <a
                             href="tel:<?= place_h(
@@ -143,7 +192,7 @@ if (!$hasFacilitySourceInfo) {
 
             <?php if ($facilityEmail !== ''): ?>
                 <div class="place-facility-info-card">
-                    <span>Email</span>
+                    <span><?= place_h($facilitySourceLabel('official_email')) ?></span>
                     <strong>
                         <a
                             href="mailto:<?= place_h(
@@ -160,7 +209,7 @@ if (!$hasFacilitySourceInfo) {
 
     <?php if ($facilityLinks): ?>
         <section class="place-facility-list-section">
-            <h3>Official links</h3>
+            <h3><?= place_h($facilitySourceLabel('official_links')) ?></h3>
 
             <div class="place-facility-link-grid">
                 <?php foreach ($facilityLinks as $link): ?>
