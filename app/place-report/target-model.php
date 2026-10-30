@@ -57,6 +57,14 @@ function llama_place_report_with_campsite_baseline(array $resolved, array $site)
                 $resolved['overrides']
             );
 
+        $baselineImported =
+            !$isOverride
+            && $provider !== ''
+            && !str_contains(
+                strtolower($provider),
+                'llama scout'
+            );
+
         $resolved['provenance'][$key] = [
             'scope' =>
                 'site',
@@ -70,7 +78,10 @@ function llama_place_report_with_campsite_baseline(array $resolved, array $site)
             'origin_type' =>
                 $isOverride
                     ? 'scoped_override'
-                    : 'imported_baseline',
+                    : 'campsite_baseline',
+
+            'imported' =>
+                $baselineImported,
 
             'provider' =>
                 !$isOverride && $provider !== ''
