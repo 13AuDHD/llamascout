@@ -999,7 +999,12 @@
                             );
                             valueContent?.append(sourceLine);
                         }
-                        const date = clean(source.visitDate || source.submittedAt);
+                        const isImportedSource = source.kind === 'source';
+                        const date = clean(
+                            isImportedSource
+                                ? source.sourceUpdatedAt
+                                : (source.visitDate || source.submittedAt)
+                        );
                         const isoDate = date.substring(0, 10);
                         const dateLabel = /^\\d{4}-\\d{2}-\\d{2}$/.test(isoDate)
                             ? new Date(isoDate + 'T12:00:00').toLocaleDateString(
@@ -1009,7 +1014,7 @@
                         const sourceLabel = clean(source.label);
                         if (sourceLine) {
                             sourceLine.textContent = [
-                                dateLabel,
+                                dateLabel ? (isImportedSource ? 'Source updated ' + dateLabel : dateLabel) : '',
                                 sourceLabel
                             ].filter(Boolean).join(' · ');
                             sourceLine.hidden = !sourceLine.textContent;
