@@ -65,6 +65,25 @@ function llama_place_report_with_campsite_baseline(array $resolved, array $site)
                 'llama scout'
             );
 
+        $featureSource = null;
+        if (!$isOverride) {
+            // Only fields read directly from an imported feature can inherit
+            // that feature's own source date. Site-level timestamps are not
+            // evidence of when a specific fact was observed.
+            foreach ((array) ($site['features'] ?? []) as $feature) {
+                if ((string) ($feature['feature_key'] ?? '') !== (string) $key
+                    || (string) ($feature['feature_value'] ?? '') !== (string) $_value) {
+                    continue;
+                }
+                $featureProvider = trim((string) ($feature['source_provider'] ?? ''));
+                if ($featureProvider === '' || str_contains(strtolower($featureProvider), 'llama scout')) {
+                    continue;
+                }
+                $featureSource = $feature;
+                break;
+            }
+        }
+
         $resolved['provenance'][$key] = [
             'scope' =>
                 'site',
@@ -92,6 +111,9 @@ function llama_place_report_with_campsite_baseline(array $resolved, array $site)
                 !$isOverride && $externalId !== ''
                     ? $externalId
                     : null,
+
+            'source_updated_at' =>
+                $featureSource['source_updated_at'] ?? null,
         ];
     }
 
