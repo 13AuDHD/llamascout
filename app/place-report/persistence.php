@@ -73,15 +73,32 @@ function llama_place_report_publish_data(PDO $db, int $placeId, array $data, arr
     if (!$db->inTransaction()) { throw new RuntimeException('Report publication requires an active transaction.'); }
     $fields = llama_place_report_fields();
     $paths = [];
+    $unknown = llama_place_report_unknown_fields($data);
+    $writeUnified = llama_report_current_store_available($db);
     foreach (array_unique($keys) as $key) {
         $field = $fields[$key] ?? null;
-        if (!$field || !in_array('place', (array) $field['report_scopes'], true)
-            || !llama_place_report_storage_definition($field)) { continue; }
+        if (!$field || !in_array('place', (array) ($field['report_scopes'] ?? []), true)
+            || !empty($field['derived'])) { continue; }
+
         $path = (string) $field['storage'];
-        $paths[$path] = llama_place_report_get_path($data, $path);
-        llama_place_report_apply_published_field($db, $placeId, $path, $paths[$path]);
+        $rawValue = in_array($key, $unknown, true)
+            ? llama_place_report_unknown_token()
+            : llama_place_report_get_path($data, $path);
+
+        // Legacy columns remain a compatibility projection. New questions
+        // can publish without inventing another SQL column.
+        if (llama_place_report_storage_definition($field)) {
+            $paths[$path] = llama_place_report_get_path($data, $path);
+            llama_place_report_apply_published_field($db, $placeId, $path, $paths[$path]);
+        }
+
+        if ($writeUnified) {
+            llama_report_current_store_save(
+                $db, $placeId, 'place', 'place', $placeId, $key, $rawValue
+            );
+        }
     }
-    llama_place_report_apply_published_answer_state($db, $placeId, $paths, llama_place_report_unknown_fields($data));
+    llama_place_report_apply_published_answer_state($db, $placeId, $paths, $unknown);
 }
 
 /** Split one Add Place payload using the same ownership rules as publication. */
