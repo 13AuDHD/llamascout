@@ -294,6 +294,8 @@ Question-by-question reconciliation identifies no unexplained discrepancies.
 
 6. Milestone 2: Canonical Answers and History
 
+Status: In progress after M2-001 is merged.
+
 Goal: Ensure that partial reports, imported facts, and historical observations work consistently.
 
 Planned work includes:
