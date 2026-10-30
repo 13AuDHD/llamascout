@@ -52,6 +52,55 @@ function llama_place_report_approved_question_groups(): array
 }
 
 /**
+ * Canonical question-level visibility.
+ *
+ * Visibility is independent from Place/Site discoverability and operational
+ * permissions. Restricted dispersed Sites remain restricted even when a field
+ * is classified Public.
+ *
+ * Legacy group keys ending in "_public" do not determine V3 access.
+ */
+function llama_place_report_approved_question_visibility(): array
+{
+    $visibility = [];
+
+    foreach (llama_place_report_approved_question_groups() as $definition) {
+        foreach ((array) ($definition[1] ?? []) as $key) {
+            $visibility[(string) $key] = 'community';
+        }
+    }
+
+    $publicKeys = [
+        'name',
+        'type',
+        'elevation_feet',
+        'city',
+        'county',
+        'state',
+        'land_type',
+        'land_manager',
+        'region',
+    ];
+
+    $groups =
+        llama_place_report_approved_question_groups();
+
+    foreach ((array) ($groups['amenities'][1] ?? []) as $amenityKey) {
+        $publicKeys[] =
+            (string) $amenityKey;
+    }
+
+    foreach (array_values(array_unique($publicKeys)) as $key) {
+        if (array_key_exists($key, $visibility)) {
+            $visibility[$key] =
+                'public';
+        }
+    }
+
+    return $visibility;
+}
+
+/**
  * Approved two-page Scout Report presentation.
  *
  * The data foundation remains shared, but the full Scout Report must not be
@@ -605,6 +654,37 @@ function llama_place_report_approved_registry_issues(): array
         }
     }
 
+    $questionVisibility =
+        llama_place_report_approved_question_visibility();
+
+    foreach ($groups as $groupKey => $definition) {
+        foreach ((array) ($definition[1] ?? []) as $key) {
+            $key =
+                (string) $key;
+
+            if (!array_key_exists($key, $questionVisibility)) {
+                $issues[] =
+                    'Approved question '
+                    . $key
+                    . ' is missing canonical visibility.';
+                continue;
+            }
+
+            if (
+                !in_array(
+                    $questionVisibility[$key],
+                    ['public', 'community'],
+                    true
+                )
+            ) {
+                $issues[] =
+                    'Approved question '
+                    . $key
+                    . ' has invalid canonical visibility.';
+            }
+        }
+    }
+
     foreach (llama_place_report_approved_source_fields() as $key => $field) {
         $groupKey = (string) ($field['group'] ?? '');
         $pageKey = (string) ($field['page'] ?? '');
@@ -669,6 +749,7 @@ function llama_place_report_approved_registry_summary(): array
         'current_projection_questions' => $questions,
         'approved_source_fields' => count(llama_place_report_approved_source_fields()),
         'approved_compound_questions' => count(llama_place_report_approved_compound_questions()),
+        'approved_visibility_questions' => count(llama_place_report_approved_question_visibility()),
         'approved_pages' => count(llama_place_report_approved_pages()),
         'approved_page_groups' => count(llama_place_report_approved_group_page_lookup()),
         'known_reconciliation_items' =>
