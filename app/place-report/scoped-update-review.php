@@ -106,10 +106,9 @@ function llama_scoped_update_build_payload(
 
     if (
         !$submitted
-        || count($submitted) > 200
     ) {
         throw new InvalidArgumentException(
-            'Add between 1 and 200 answers to this report.'
+            'Answer at least one question in this report.'
         );
     }
 
@@ -1095,7 +1094,6 @@ function llama_scoped_update_approve(
 
     if (
         !$answers
-        || count($answers) > 200
     ) {
         throw new RuntimeException(
             'Invalid scoped update answers.'
