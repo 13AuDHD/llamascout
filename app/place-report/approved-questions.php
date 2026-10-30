@@ -199,13 +199,13 @@ function llama_place_report_approved_reconciliation(): array
             'compatibility' => 'preserve_existing_overhead_clearance',
         ],
         'flat_walking_surface' => [
-            'approved_label' => null,
-            'approved_group' => null,
+            'approved_label' => 'Flat Walking Surface',
+            'approved_group' => 'site_accessibility',
             'current_keys' => [
                 'flat_walking_surface',
             ],
-            'status' => 'extra_current_approved',
-            'compatibility' => 'preserve_historical_answers',
+            'status' => 'approved_v3_override',
+            'compatibility' => 'retain_as_active_v3_question',
         ],
         'moderator_notes' => [
             'approved_label' => 'Notes for Moderator',
