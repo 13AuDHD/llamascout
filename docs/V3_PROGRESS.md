@@ -941,11 +941,13 @@ After review, merge the application changes and run the one-time SQL migration b
 
 ## M1-009: Keep Parking-to-Site Distance Buckets
 
-**Status:** Ready for review
+**Status:** Completed
 
 **Date:** 2026-10-30
 
 **Base branch:** `v3-development`
+
+**Merged into `v3-development`:** `15736ffa55cba3f67936e383534c956f8111d0a1`
 
 ### Decision
 
@@ -989,3 +991,92 @@ The reconciliation item is reclassified as an explicit V3 override rather than a
 ### Next
 
 Continue with the next unresolved canonical answer-vocabulary mismatch.
+
+
+## M1-010: Field-Specific Rule Permission Vocabularies
+
+**Status:** Ready for review
+
+**Date:** 2026-10-30
+
+**Base branch:** `v3-development`
+
+### Objective
+
+Resolve the remaining Rules and Restrictions answer-vocabulary mismatch without discarding historical Conditional values.
+
+### Yes / No only
+
+The following approved V3 questions now offer only:
+
+- Yes
+- No
+- Unknown
+- Unanswered
+
+Fields:
+
+- `overnight_camping_allowed`
+- `dispersed_camping_allowed`
+
+Historical Permit Required value `2` and Conditional value `3` remain registered as compatibility-only values when already stored.
+
+### Yes / Permit required / No
+
+The following approved V3 questions now offer:
+
+- Yes
+- Permit required
+- No
+- Unknown
+- Unanswered
+
+Fields:
+
+- `campfire_allowed`
+- `collecting_firewood`
+- `place_charcoal_grills_allowed`
+- `place_propane_fire_pits_allowed`
+- `drone_use_legal`
+- `target_shooting_allowed`
+
+Historical Conditional value `3` remains readable when already stored but is no longer offered as a new answer.
+
+### Alcohol
+
+`place_alcohol_permitted` now offers:
+
+- Yes
+- No Glass
+- No
+- Unknown
+- Unanswered
+
+Historical Conditional value `3` remains compatibility-only.
+
+### Permit and condition details
+
+Charcoal grills and propane fire pits now participate in the same Fire and Activity permit-details and permit-URL applicability as the other permit-capable fire/activity rules.
+
+Legacy Conditional answers continue to expose their detail fields so historical context is not hidden.
+
+### Compatibility
+
+The generic `legacy_values` support added in earlier Milestone 1 work is reused here.
+
+No historical value is rewritten.
+
+No database schema or SQL migration is required.
+
+### Verification
+
+- Confirmed Overnight Stay and Dispersed Camping no longer offer Permit or Conditional as new answers.
+- Confirmed Campfires, Collecting Firewood, Charcoal Grills, Propane Fire Pits, Drone Use, and Target Shooting offer Permit required.
+- Confirmed Conditional remains available only as a legacy value for approved fields.
+- Confirmed Alcohol keeps No Glass as an active answer and Conditional as legacy only.
+- Confirmed permit/condition detail applicability includes charcoal and propane rules.
+- Confirmed approved stored-question projection remains 264.
+
+### Next
+
+Continue canonical definition reconciliation and review whether any unresolved reconciliation items remain before closing Milestone 1 definition cleanup.
