@@ -28,6 +28,11 @@ function llama_scout_report_latest_approved_answers(
         throw new InvalidArgumentException('Invalid Scout Report target.');
     }
 
+    // Verify the exact reporting target before reading current approved
+    // observations. The caller still controls membership and field visibility.
+    require_once __DIR__ . '/report-targets.php';
+    llama_report_verified_target($db, $placeId, $scope, $source, $targetId);
+
     $stmt = $db->prepare(
         'SELECT ranked.question_key,
                 ranked.answer_state,
