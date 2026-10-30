@@ -119,3 +119,31 @@ function llama_scout_report_attach_matching_history(
     }
     return $answers;
 }
+
+/**
+ * Compose the current published projection with immutable report attribution.
+ * Existing current-answer precedence is unchanged; no historical data is
+ * backfilled and no database writes are performed.
+ *
+ * Caller is responsible for access checks before exposing model data.
+ */
+function llama_place_report_current_answer_model_with_history(
+    PDO $db,
+    int $placeId,
+    array $target
+): array {
+    $model = llama_place_report_current_answer_model($db, $placeId, $target);
+    $verified = $model['target'];
+    $observations = llama_scout_report_latest_approved_answers(
+        $db,
+        $placeId,
+        (string) $verified['scope'],
+        (string) $verified['source'],
+        (int) $verified['id']
+    );
+    $model['answers'] = llama_scout_report_attach_matching_history(
+        $model['answers'],
+        $observations
+    );
+    return $model;
+}
