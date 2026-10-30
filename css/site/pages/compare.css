@@ -1223,3 +1223,9 @@
 .compare-site-history-scroll table { width: 100%; min-width: 640px; border-collapse: collapse; }
 .compare-site-history-scroll th, .compare-site-history-scroll td { padding: 12px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--border-color, #333); }
 .compare-site-history-scroll thead small { display: block; font-weight: 400; margin-top: 6px; }
+
+.compare-site-history-group th {
+    background: var(--surface-muted, rgba(128, 128, 128, .12));
+    font-weight: 700;
+    text-align: left;
+}
