@@ -287,6 +287,11 @@ function llama_place_report_current_place_answers(
         );
     }
 
+    $data =
+        llama_place_report_derive_compatibility(
+            $data
+        );
+
     $data['_answer_state'] =
         llama_place_report_published_answer_state(
             $db,
