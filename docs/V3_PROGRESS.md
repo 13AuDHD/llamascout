@@ -44,4 +44,4 @@ This task establishes system boundaries and representative files, not detailed c
 
 ### Next planned task
 
-**V3-002: Database Schema Audit.** It has not been started.
+**V3-002: Reporting Definition Audit.** It has not been started.

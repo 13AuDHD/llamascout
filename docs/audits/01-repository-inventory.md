@@ -55,7 +55,7 @@ The primary MariaDB/MySQL-compatible application database is accessed through `d
 
 **Functionality to preserve:** separate source/reference databases, UTC and Unicode connection behavior, prepared queries, and private configuration outside the web repository.
 
-**Needs investigation:** V3-002 must establish the actual production schema, keys, constraints, migrations, and ownership of runtime schema-ensure routines. The number and topology of live database servers were not verified.
+**Needs investigation:** V3-004 should document the available schema definitions, keys, constraints, migrations, persistence code, and ownership of runtime schema-ensure routines. The number and topology of live database servers were not verified.
 
 ## 3. Authentication, accounts, and memberships
 
@@ -143,7 +143,7 @@ Published mappings in the reporting layer reference existing tables such as `pla
 
 **Functionality to preserve:** Leaflet public browsing, marker and polygon data, spatial geometry, Area/Site parentage, campsite identity, overlays, and moderated geometry proposals.
 
-**Needs investigation:** V3-006 should confirm coordinate/storage constraints, geometry repair behavior, marker visibility rules, overlay providers, map permissions, and performance with live-scale data.
+**Needs investigation:** A later dedicated audit or implementation task should confirm coordinate/storage constraints, geometry repair behavior, marker visibility rules, overlay providers, map permissions, and performance with live-scale data.
 
 ## 8. CSS, fonts, icons, and branding assets
 
