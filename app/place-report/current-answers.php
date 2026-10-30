@@ -828,5 +828,93 @@ function llama_place_report_current_answer_contract_issues(): array
             'Current-answer imported baseline contract mismatch.';
     }
 
+    $projectionAnswers = [
+        'unknown_field' =>
+            $unknown,
+
+        'inherited_field' =>
+            $inherited,
+
+        'baseline_field' =>
+            $imported,
+
+        'unanswered_field' =>
+            $unanswered,
+    ];
+
+    $effectiveProjection =
+        llama_place_report_current_answer_values(
+            $projectionAnswers,
+            'effective'
+        );
+
+    if (
+        !array_key_exists(
+            'unknown_field',
+            $effectiveProjection
+        )
+        || $effectiveProjection['unknown_field']
+            !== llama_place_report_unknown_token()
+        || array_key_exists(
+            'unanswered_field',
+            $effectiveProjection
+        )
+    ) {
+        $issues[] =
+            'Current-answer effective projection contract mismatch.';
+    }
+
+    $inheritedProjection =
+        llama_place_report_current_answer_values(
+            $projectionAnswers,
+            'inherited'
+        );
+
+    if (
+        array_keys($inheritedProjection)
+        !== ['inherited_field']
+    ) {
+        $issues[] =
+            'Current-answer inherited projection contract mismatch.';
+    }
+
+    $localProjection =
+        llama_place_report_current_answer_values(
+            $projectionAnswers,
+            'local'
+        );
+
+    if (
+        !array_key_exists(
+            'unknown_field',
+            $localProjection
+        )
+        || !array_key_exists(
+            'baseline_field',
+            $localProjection
+        )
+        || array_key_exists(
+            'inherited_field',
+            $localProjection
+        )
+    ) {
+        $issues[] =
+            'Current-answer local projection contract mismatch.';
+    }
+
+    $baselineProjection =
+        llama_place_report_current_answer_values(
+            $projectionAnswers,
+            'baseline'
+        );
+
+    if (
+        array_keys($baselineProjection)
+        !== ['baseline_field']
+    ) {
+        $issues[] =
+            'Current-answer baseline projection contract mismatch.';
+    }
+
     return $issues;
 }
