@@ -1288,6 +1288,125 @@ syncSummary();
 });
 };
 
+const setupUpdateReportTouchedFields = (
+form,
+config
+) => {
+if (
+!config
+|| config.mode !== 'update-report'
+) {
+return;
+}
+
+const touched =
+new Set(
+Array.isArray(config.initial_answer_keys)
+? config.initial_answer_keys.map(
+(key) => String(key)
+)
+: []
+);
+
+const ensureMarker = (key) => {
+const normalized =
+String(key || '').trim();
+
+if (!normalized) {
+return;
+}
+
+touched.add(normalized);
+
+let marker =
+form.querySelector(
+`[data-report-touched-marker="${CSS.escape(normalized)}"]`
+);
+
+if (!marker) {
+marker =
+document.createElement(
+'input'
+);
+
+marker.type =
+'hidden';
+
+marker.name =
+`_report_touched[${normalized}]`;
+
+marker.value =
+'1';
+
+marker.dataset.reportTouchedMarker =
+normalized;
+
+form.append(marker);
+}
+};
+
+const fieldKeysForTarget = (target) => {
+if (!(target instanceof Element)) {
+return [];
+}
+
+const field =
+target.closest(
+'[data-report-field]'
+);
+
+if (
+field
+&& field.dataset.reportField
+) {
+return [
+String(
+field.dataset.reportField
+),
+];
+}
+
+if (
+target.matches(
+'[data-coordinate-input], [data-location-field="latitude"], [data-location-field="longitude"]'
+)
+) {
+return [
+'latitude',
+'longitude',
+];
+}
+
+return [];
+};
+
+const markTouched = (event) => {
+fieldKeysForTarget(
+event.target
+).forEach(
+ensureMarker
+);
+};
+
+form.addEventListener(
+'input',
+markTouched,
+true
+);
+
+form.addEventListener(
+'change',
+markTouched,
+true
+);
+
+for (const key of touched) {
+ensureMarker(
+key
+);
+}
+};
+
 const setupSharedPlaceReportBehavior = (
 form
 ) => {
@@ -1900,6 +2019,10 @@ forms.forEach((form) => {
 setupTaxonomy(form);
 const placeReportConfig =
 setupSharedPlaceReportBehavior(form);
+setupUpdateReportTouchedFields(
+form,
+placeReportConfig
+);
 setupLiveCompletion(
 form,
 placeReportConfig
