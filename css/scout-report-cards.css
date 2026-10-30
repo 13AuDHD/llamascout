@@ -224,7 +224,9 @@
 
 /* Member/source attribution lives in its own grid row beneath the answer. */
 .scout-report-value-item > .scout-report-value-content > .scout-report-answer-source,
-.scout-report-rating-item > .scout-rating-content > .scout-report-answer-source {
+.scout-report-value-item > .scout-report-answer-source,
+.scout-report-rating-item > .scout-rating-content > .scout-report-answer-source,
+.scout-report-rating-item > .scout-report-answer-source {
     grid-area: source;
     display: block;
     min-width: 0;
