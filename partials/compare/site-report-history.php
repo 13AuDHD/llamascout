@@ -17,7 +17,7 @@ foreach ($siteHistoryReports as $report) {
 // The shared approved registry owns section and question order.
 // Exclude questions with no historical observation in these reports.
 $siteHistoryGroups = [];
-foreach (llama_place_report_approved_groups_in_page_order() as $group) {
+foreach (llama_place_report_effective_report_groups($siteHistoryFields) as $group) {
     [$groupLabel, $questionKeys] = $group;
     $included = [];
     foreach ($questionKeys as $key) {
