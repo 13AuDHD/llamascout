@@ -1086,11 +1086,13 @@ Continue canonical definition reconciliation and review whether any unresolved r
 
 ## M1-011: Restore With Permit for Overnight and Dispersed Camping
 
-**Status:** Ready for review
+**Status:** Completed
 
 **Date:** 2026-10-30
 
 **Base branch:** `v3-development`
+
+**Merged into `v3-development`:** `c328be1a9f277c0ce402a34f23e2044c8c0f01ad`
 
 ### Correction
 
@@ -1137,3 +1139,95 @@ Historical Conditional value `3` remains readable and can continue exposing its 
 ### Next
 
 Continue Milestone 1 reconciliation from the corrected rule vocabulary.
+
+
+## M1-012: Canonical Question Visibility
+
+**Status:** Ready for review
+
+**Date:** 2026-10-30
+
+**Base branch:** `v3-development`
+
+### Objective
+
+Establish one canonical Public / Community visibility classification for every approved Scout Report question.
+
+### Public baseline
+
+The initial V3 Public classification follows the existing public Place experience.
+
+Public Place identity and orientation questions:
+
+- `name`
+- `type`
+- `elevation_feet`
+- `city`
+- `county`
+- `state`
+- `land_type`
+- `land_manager`
+- `region`
+
+All approved shared Place Amenities questions are Public.
+
+Canonical official source fields remain Public:
+
+- `official_address`
+- `official_phone`
+- `official_email`
+- `official_links`
+
+### Community baseline
+
+Every other approved Scout Report question is Community unless a later approved V3 decision explicitly changes it.
+
+This includes exact coordinates, road / route, description, detailed Place access information, all Site questions, connectivity, sensory information, hazards, rules, recommendations, Scout Notes, and visit-history report metadata.
+
+### Legacy group names
+
+Old group keys containing `_public` do not control V3 visibility.
+
+Canonical visibility metadata is authoritative.
+
+### Registry metadata
+
+Added:
+
+`llama_place_report_approved_question_visibility()`
+
+Finalized approved fields now expose:
+
+`approved_visibility`
+
+Allowed values:
+
+- `public`
+- `community`
+
+### Integrity checks
+
+Registry diagnostics now verify that every approved question has a valid canonical visibility classification.
+
+### Behavior preservation
+
+This task adds canonical metadata only.
+
+It does not yet change public/member authorization or rendered Place behavior.
+
+Interface enforcement will be migrated separately so access behavior changes only when the shared authorization path is ready.
+
+### Verification
+
+- Confirmed every approved question receives Public or Community visibility.
+- Confirmed shared Place Amenities are Public.
+- Confirmed exact Latitude and Longitude remain Community.
+- Confirmed Site questions remain Community.
+- Confirmed official source fields remain Public.
+- Confirmed legacy `_public` group names do not determine visibility.
+- Approved stored-question projection remains 264.
+- No database schema or production data changed.
+
+### Next
+
+Migrate one reporting interface or shared authorization path to consume canonical visibility without changing dispersed-Site discoverability rules.
