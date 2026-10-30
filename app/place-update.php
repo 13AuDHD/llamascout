@@ -194,6 +194,28 @@ function llama_place_update_build_changes(
             continue;
         }
         $raw = $input[$key];
+
+        if ($partialReport) {
+            $partialAnswer =
+                llama_place_report_parse_answer(
+                    $field,
+                    $raw
+                );
+
+            /*
+             * Unanswered means this report has no observation for the
+             * question. It must never erase or clear an existing current
+             * answer. Explicit No, Unknown and an intentional empty list are
+             * still recorded answers and continue below.
+             */
+            if (
+                $partialAnswer['state']
+                === 'unanswered'
+            ) {
+                continue;
+            }
+        }
+
         if ($type === 'multiselect' && $raw === [] && ($current[$path] ?? null) === null
             && !isset($currentUnknownLookup[$key]) && empty($input['_report_touched'][$key])) { continue; }
         // Preserve unchanged historical options without accepting new invalid values.
