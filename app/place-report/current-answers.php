@@ -56,6 +56,7 @@ function llama_place_report_current_answer_value(
  *     recorded:bool,
  *     inherited:bool,
  *     direct:bool,
+ *     baseline:bool,
  *     imported:bool,
  *     target:array{scope:string,source:string,id:int},
  *     origin:?array<string,mixed>
@@ -156,14 +157,22 @@ function llama_place_report_current_answer_envelope(
         && $originScope !== ''
         && $originScope !== $targetScope;
 
-    $imported =
+    $baseline =
         $recorded
-        && $originType === 'imported_baseline';
+        && $originType === 'campsite_baseline';
+
+    $imported =
+        $baseline
+        && (bool) (
+            is_array($origin)
+                ? ($origin['imported'] ?? false)
+                : false
+        );
 
     $direct =
         $recorded
         && !$inherited
-        && !$imported;
+        && !$baseline;
 
     return [
         'field_key' =>
@@ -187,6 +196,9 @@ function llama_place_report_current_answer_envelope(
 
         'direct' =>
             $direct,
+
+        'baseline' =>
+            $baseline,
 
         'imported' =>
             $imported,
@@ -651,6 +663,7 @@ function llama_place_report_current_answer_contract_issues(): array
         $inherited['state'] !== 'answered'
         || $inherited['inherited'] !== true
         || $inherited['direct'] !== false
+        || $inherited['baseline'] !== false
         || $inherited['imported'] !== false
     ) {
         $issues[] =
@@ -674,7 +687,10 @@ function llama_place_report_current_answer_contract_issues(): array
                     2,
 
                 'origin_type' =>
-                    'imported_baseline',
+                    'campsite_baseline',
+
+                'imported' =>
+                    true,
 
                 'provider' =>
                     'RIDB',
@@ -688,6 +704,7 @@ function llama_place_report_current_answer_contract_issues(): array
         $imported['state'] !== 'answered'
         || $imported['inherited'] !== false
         || $imported['direct'] !== false
+        || $imported['baseline'] !== true
         || $imported['imported'] !== true
         || (
             (string) (
