@@ -2154,3 +2154,131 @@ Apply and verify the reviewed migration in staging, then exercise one Entire
 Place approval and one Site approval before merging or deploying the application
 changes. After that, the next code task is immutable history for Add Place and
 its first Site bundle.
+
+
+## M2-007: Approved Add Place Report Bundle
+
+**Status:** Ready for review
+
+**Date:** 2026-10-30
+
+**Base branch:** `v3-development`
+
+### Objective
+
+Persist every approved community Add Place submission as an immutable Place and
+first-Site report bundle before publishing its answers into the existing current
+projection.
+
+### Submission answer ownership
+
+Added `llama_place_report_submission_answers()` as the shared Add Place split.
+
+It walks the canonical registry once and:
+
+- omits derived and Unanswered questions
+- preserves Answered, explicit No, numeric zero, Unknown, and empty lists
+- assigns a question to Place when Place is an allowed scope
+- otherwise assigns an eligible Site question to the first Site
+- supplies the same Place keys to current publication and the same answer maps to
+  immutable history
+
+This keeps immutable report ownership aligned with the existing Add Place
+publication rule instead of reconstructing it separately.
+
+### Required first Site
+
+Add Place approval now creates one canonical first Site for every approved
+community Place, even when all optional Site questions are Unanswered.
+
+The Site identity is created separately from answer publication. Its label is
+`Site {identifier}` when `site_number` is answered and `Reported Site` otherwise.
+No Area, map geometry, or additional Site is inferred.
+
+### Immutable report bundle
+
+Added `llama_scout_report_record_approved_new_place_bundle()`.
+
+One approved Add Place submission now creates:
+
+1. a Place report with Place answers and ordered permanent photo evidence
+2. a first-Site report with Site answers
+
+The reports share `place-submission:{submission_id}` as their bundle key. They
+retain separate logical keys, client submission keys, content hashes, target
+scope/source/id/label, answers, and approval events.
+
+Both reports preserve:
+
+- contributor and role at submission
+- visit date and original submission time
+- exact canonical schema version
+- approving moderator and review notes
+- original Add Place submission ID
+
+An empty first-Site answer set is allowed only for this required Add Place bundle.
+Its immutable Site report still records that the approved submission created the
+canonical first Site.
+
+### Approval ordering
+
+Inside the existing Admin or Master Scout transaction, approval now:
+
+1. validates and locks the pending Add Place submission
+2. creates the Place identity and required first-Site identity
+3. copies submitted photos into permanent Place storage
+4. records the immutable Place and Site reports
+5. publishes submitted Place and Site answers to current tables
+6. records provenance, status history, contribution credit, points, badges,
+   moderation status, and the existing audit event
+7. commits through the existing caller
+
+If any database step fails, the transaction rolls back. The existing copied-photo
+journal removes permanent files created during the failed approval. Source files
+remain until the caller commits successfully.
+
+### Photo ownership
+
+Add Place photos remain ordered Place evidence. The Place report references the
+permanent files and records their content hashes. The Site report does not create
+duplicate photo rows or duplicate physical files.
+
+### Database compatibility
+
+M2-007 uses the append-only tables and guards introduced by the reviewed M2-006
+migration. It adds no database migration.
+
+The M2-006 migration must therefore be applied before either M2-006 or M2-007 PHP
+is deployed.
+
+### Scope boundaries
+
+This task does not:
+
+- backfill previously approved Add Place submissions
+- guess or create missing legacy first Sites
+- migrate current-answer reads to the immutable ledger
+- add the later Add Site to Existing Place member workflow
+- change minimum submission requirements, permissions, points, moderation, or
+  public presentation
+
+### Verification
+
+- `git diff --check` passes.
+- Confirmed Admin and Master Scout approval still call the same transaction-owned
+  `moderation_approve_new_place()` service.
+- Confirmed the immutable bundle is written before current Place or Site answers.
+- Confirmed permanent photo paths are sliced from the existing rollback journal
+  and the source submission folder is still removed only after commit.
+- Confirmed Update This Place retains its public immutable writer wrapper.
+- PHP CLI and MariaDB clients are not installed in the Codex environment, so PHP
+  lint, database execution, schema diagnostics, and live approval tests could not
+  be run here.
+
+### Next
+
+After review and merge, exercise one Admin approval and one Master Scout approval
+in staging with the M2-006 migration installed. Include one submission with Site
+answers and one with all Site questions Unanswered. Then begin M2-008 as a
+non-destructive legacy-history backfill design and dry-run audit before any
+historical rows are inserted.

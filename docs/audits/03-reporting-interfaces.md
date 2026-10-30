@@ -45,16 +45,16 @@ The form exposes the complete canonical inventory in reconciliation mode. Server
 
 ### Place and first Site creation
 
-**Confirmed:** approval creates the Place and calls `llama_place_report_publish_submission()` through `app/moderation.php`. Place-writable keys are published by canonical storage path. If the submission contains any answered Site-only fields, `app/place-report/persistence.php` creates one active `place_campsites` record. Its label comes from `site_number` when supplied, otherwise `Reported Site`; the Site answers are written to `place_report_scoped_answers` using source `campsite_record`.
+**Confirmed:** approval creates the Place and one active first-Site identity through `app/moderation.php`, records their immutable report bundle, and then calls `llama_place_report_publish_submission()`. Place-writable keys are published by canonical storage path. The first Site label comes from `site_number` when supplied, otherwise `Reported Site`; answered Site fields are written to `place_report_scoped_answers` using source `campsite_record`.
 
-Add Place therefore creates a Place and at most one first Site from one report. It does not create Area geometry, Site geometry, or multiple Site records.
+Add Place therefore creates a Place and exactly one first Site from one submission bundle. It does not create Area geometry, Site geometry, or multiple Site records.
 
 ### Interface-specific behavior and risks
 
 - **Intentional adapter:** draft and needs-changes data are translated back to form values by the shared answer adapters.
 - **Confirmed:** canonical applicability affects completion, but reconciliation mode exposes the full question inventory for review.
 - **Confirmed:** new Place publication separates Place keys from Site-only keys. Area-scoped creation is not part of this workflow.
-- **Suspected risk:** because one submitted Site answer is enough to create a Site record, incomplete Site identity can produce the generic `Reported Site` record. This audit does not assess production frequency.
+- **Known identity limitation:** when `site_number` is Unanswered or Unknown, the required first Site uses the generic `Reported Site` label until later identity reconciliation.
 
 ## 3. Add Site and Site reporting
 
@@ -145,7 +145,7 @@ Both endpoints write the same published tables represented by canonical storage.
 
 `admin/moderate-submission.php` loads submission JSON, canonical completion/point calculations, and `partials/place-report/read-only.php` in `moderation` mode. The read-only renderer uses the current canonical definitions, canonical answer-state/display helpers, and canonical layout grouping. It leaves unanswered questions visible for reconciliation.
 
-Approval runs inside a transaction through `moderation_approve_new_place()` in `app/moderation.php`. It revalidates the minimum report, creates the Place, publishes canonical Place fields, creates the optional first Site, moves photos, records the contribution, awards points, and updates moderation status. Request-changes and rejection preserve review history without publishing data.
+Approval runs inside a transaction through `moderation_approve_new_place()` in `app/moderation.php`. It revalidates the minimum report, creates the Place and required first Site, copies photos, records the immutable report bundle, publishes canonical Place and Site answers, records the contribution, awards points, and updates moderation status. Request-changes and rejection preserve review history without publishing data.
 
 ### Update moderation
 

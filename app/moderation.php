@@ -1026,9 +1026,14 @@ function moderation_insert_place_child_row(
     );
 }
 
-function moderation_insert_submission_report_data(PDO $db, int $placeId, array $data): void
+function moderation_insert_submission_report_data(
+    PDO $db,
+    int $placeId,
+    array $data,
+    ?int $siteId = null
+): void
 {
-    llama_place_report_publish_submission($db, $placeId, $data);
+    llama_place_report_publish_submission($db, $placeId, $data, $siteId);
 }
 
 function moderation_approve_new_place(
@@ -1176,10 +1181,66 @@ $name = trim(
 
     $placeId = (int) $db->lastInsertId();
 
+    $submissionAnswers =
+        llama_place_report_submission_answers(
+            $data
+        );
+
+    $firstSite =
+        llama_place_report_create_submission_site(
+            $db,
+            $placeId,
+            $submissionAnswers['site_answers']
+        );
+
+    $photos =
+        is_array(
+            $data['photos']
+            ?? null
+        )
+            ? $data['photos']
+            : [];
+
+    $copyJournalStart =
+        count(
+            $copiedPhotoPaths
+        );
+
+    moderation_attach_place_photos_transactional(
+        $db,
+        $placeId,
+        (int) $submission['user_id'],
+        $photos,
+        '/uploads/place-submissions/'
+        . $submissionId
+        . '/',
+        $copiedPhotoPaths
+    );
+
+    $reportPhotoPaths =
+        array_slice(
+            $copiedPhotoPaths,
+            $copyJournalStart
+        );
+
+    llama_scout_report_record_approved_new_place_bundle(
+        $db,
+        $submissionId,
+        $submission,
+        $placeId,
+        $firstSite,
+        $submissionAnswers,
+        $reviewedBy,
+        $reviewNotes,
+        $photos,
+        $reportPhotoPaths
+    );
+
     moderation_insert_submission_report_data(
         $db,
         $placeId,
-        $data
+        $data,
+        (int) $firstSite['id']
     );
 
 
@@ -1206,25 +1267,6 @@ $name = trim(
         'Created from approved Place submission #' . $submissionId . '.',
         $reviewedBy,
     ]);
-
-    $photos =
-        is_array(
-            $data['photos']
-            ?? null
-        )
-            ? $data['photos']
-            : [];
-
-    moderation_attach_place_photos_transactional(
-        $db,
-        $placeId,
-        (int) $submission['user_id'],
-        $photos,
-        '/uploads/place-submissions/'
-        . $submissionId
-        . '/',
-        $copiedPhotoPaths
-    );
 
     $visitedAt = trim((string) ($data['visited_at'] ?? ''));
     if ($visitedAt !== '' && strlen($visitedAt) === 10) {
