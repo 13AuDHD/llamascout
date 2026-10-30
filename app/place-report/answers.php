@@ -73,7 +73,8 @@ function llama_place_report_parse_answer(array $field, mixed $raw): array
             $text = 'other';
         }
         if ($type === 'select' && empty($field['allow_custom'])
-            && !array_key_exists($text, (array) ($field['options'] ?? []))) {
+            && !array_key_exists($text, (array) ($field['options'] ?? []))
+            && !array_key_exists($text, (array) ($field['legacy_values'] ?? []))) {
             // Imported physical measurements can fall between dropdown increments.
             if (!str_ends_with($key, '_feet') || !is_numeric($text)
                 || !is_finite((float) $text) || (float) $text < 0 || (float) $text > 10000) {
