@@ -11,12 +11,79 @@ require_once dirname(__DIR__) . '/place-campsites.php';
 /** Compose a resolved Site with its imported baseline without writing either. */
 function llama_place_report_with_campsite_baseline(array $resolved, array $site): array
 {
-    $resolved['overrides'] = (array) ($resolved['direct'] ?? []);
-    $resolved['direct'] = llama_place_report_campsite_answers($site, $resolved['overrides']);
-    $resolved['values'] = array_replace((array) ($resolved['inherited'] ?? []), $resolved['direct']);
+    $resolved['overrides'] =
+        (array) ($resolved['direct'] ?? []);
+
+    $resolved['baseline'] =
+        llama_place_report_campsite_answers(
+            $site
+        );
+
+    $resolved['direct'] =
+        array_replace(
+            $resolved['baseline'],
+            $resolved['overrides']
+        );
+
+    $resolved['values'] =
+        array_replace(
+            (array) ($resolved['inherited'] ?? []),
+            $resolved['direct']
+        );
+
+    $siteId =
+        (int) ($site['id'] ?? 0);
+
+    $provider =
+        trim(
+            (string) (
+                $site['source_provider']
+                ?? ''
+            )
+        );
+
+    $externalId =
+        trim(
+            (string) (
+                $site['source_external_id']
+                ?? ''
+            )
+        );
+
     foreach ($resolved['direct'] as $key => $_value) {
-        $resolved['provenance'][$key] = ['scope' => 'site', 'source' => 'campsite_record', 'id' => (int) $site['id']];
+        $isOverride =
+            array_key_exists(
+                $key,
+                $resolved['overrides']
+            );
+
+        $resolved['provenance'][$key] = [
+            'scope' =>
+                'site',
+
+            'source' =>
+                'campsite_record',
+
+            'id' =>
+                $siteId,
+
+            'origin_type' =>
+                $isOverride
+                    ? 'scoped_override'
+                    : 'imported_baseline',
+
+            'provider' =>
+                !$isOverride && $provider !== ''
+                    ? $provider
+                    : null,
+
+            'external_id' =>
+                !$isOverride && $externalId !== ''
+                    ? $externalId
+                    : null,
+        ];
     }
+
     return $resolved;
 }
 
