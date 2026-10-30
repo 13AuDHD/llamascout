@@ -87,6 +87,7 @@ function llama_scoped_report_save(
     );
 
     $field = llama_scoped_report_field($fieldKey, $scope);
+    $rawValue = $value;
     $value = llama_place_report_scoped_value($field, $value);
     llama_scoped_report_assert_owner($db, $placeId, $scope, $scopeId, $source);
 
@@ -122,6 +123,14 @@ function llama_scoped_report_save(
         $fieldKey,
         $json,
     ]);
+
+    // Mirror approved/current Area and Site answers using the same canonical
+    // parser. This stays in the caller's transaction with the legacy write.
+    if (llama_report_current_store_available($db)) {
+        llama_report_current_store_save(
+            $db, $placeId, $scope, $source, $scopeId, $fieldKey, $rawValue
+        );
+    }
 }
 
 /** @return array<string, mixed> Canonical field keys mapped to explicit values. */
