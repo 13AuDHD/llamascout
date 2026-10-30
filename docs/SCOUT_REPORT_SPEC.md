@@ -573,6 +573,98 @@ Historical value `3` (Conditional) remains readable but is not offered as a new 
 
 The active answer vocabulary must describe the rule itself. Additional conditions, permit links, and exceptions belong in the dedicated rule-detail fields rather than in a generic Conditional answer.
 
+4.14 Canonical Public and Community Visibility
+
+Every approved Scout Report question has one canonical visibility classification:
+
+* Public
+* Community
+
+Visibility describes whether an authorized public Place response may expose the answer itself.
+
+Visibility does not override location-level restrictions.
+
+A restricted dispersed Site remains undiscoverable to unauthorized users even when one of its questions is Public.
+
+### Public questions
+
+The initial V3 Public baseline follows the existing public Place experience.
+
+Public Place identity and orientation questions are:
+
+* Place Name
+* Place Type
+* Elevation
+* Nearest City
+* County / Parish / Municipality
+* State
+* Land Type
+* Land Manager / Owner
+* Region / Ranger District / Local Unit
+
+All approved shared **Place Amenities** questions are Public.
+
+The canonical official source fields are also Public:
+
+* Official Address
+* Phone Number
+* Email Address
+* Official Links
+
+### Community questions
+
+All other approved Scout Report questions are Community unless a later approved specification explicitly changes their classification.
+
+This includes, among other things:
+
+* Description
+* Exact Latitude
+* Exact Longitude
+* Road / Route
+* Place activities not already exposed through the public Place experience
+* Operating Hours
+* Road Conditions
+* Vehicle Access
+* Seasonal Access
+* Gate Access
+* Nearest Services
+* All Site details
+* Fees and Reservations
+* Setting and Environment
+* Parking and Maneuvering
+* Accessibility
+* Site Amenities
+* Connectivity
+* Sensory information
+* Safety and Hazards
+* Rules and Restrictions
+* Experience and Recommendations
+* Scout Notes
+* Visit / Place History report metadata
+
+The fact that an old implementation group key contains the suffix `_public` does not make the group's answers Public in V3.
+
+Examples include legacy identifiers such as:
+
+* `connectivity_public`
+* `safety_public`
+* `rules_public`
+* `experience_public`
+* `notes_public`
+* `history_public`
+
+Canonical visibility metadata is authoritative.
+
+### Existing behavior and enforcement
+
+This milestone establishes canonical metadata only.
+
+It does not, by itself, change the current public/member Place page behavior.
+
+Later interface migration must consume this metadata through shared authorization checks rather than maintaining independent visibility lists.
+
+Fetching a Community field internally for SEO, moderation, completion, or other server-side processing does not authorize exposing the answer publicly.
+
 ⸻
 
 5. Place and Site Ownership
