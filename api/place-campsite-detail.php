@@ -151,19 +151,53 @@ try {
             'effective'
         );
 
-    // Report attribution accompanies only verified, current Site answers.
-    // The existing access gate above protects this endpoint.
+    // Resolve public contributor usernames and imported source labels.
+    // Only data already permitted by the Site access gate is returned.
+    $contributorIds = [];
+    foreach ($currentAnswers as $answer) {
+        $id = (int) ($answer['approved_report']['contributor_id'] ?? 0);
+        if ($id > 0) {
+            $contributorIds[$id] = $id;
+        }
+    }
+    $usernames = [];
+    if ($contributorIds) {
+        $placeholders = implode(',', array_fill(0, count($contributorIds), '?'));
+        $userStmt = $db->prepare(
+            'SELECT id, username FROM users WHERE id IN (' . $placeholders . ')'
+        );
+        $userStmt->execute(array_values($contributorIds));
+        while ($userRow = $userStmt->fetch(PDO::FETCH_ASSOC)) {
+            $usernames[(int) $userRow['id']] = (string) $userRow['username'];
+        }
+    }
+
     $site['report_answer_sources'] = [];
     foreach ($currentAnswers as $fieldKey => $answer) {
         $report = $answer['approved_report'] ?? null;
-        if (!is_array($report)) {
+        if (is_array($report)) {
+            $memberId = (int) ($report['contributor_id'] ?? 0);
+            $username = trim((string) ($usernames[$memberId] ?? ''));
+            $site['report_answer_sources'][(string) $fieldKey] = [
+                'visitDate' => $report['visit_date'] ?? null,
+                'submittedAt' => $report['submitted_at'] ?? null,
+                'label' => $username !== '' ? $username : 'Former member',
+                'kind' => 'member',
+            ];
             continue;
         }
-        $site['report_answer_sources'][(string) $fieldKey] = [
-            'visitDate' => $report['visit_date'] ?? null,
-            'submittedAt' => $report['submitted_at'] ?? null,
-            'contributorId' => (int) ($report['contributor_id'] ?? 0),
-        ];
+        if (!empty($answer['imported'])) {
+            $origin = (array) ($answer['origin'] ?? []);
+            $provider = trim((string) ($origin['provider'] ?? ''));
+            if ($provider !== '') {
+                $site['report_answer_sources'][(string) $fieldKey] = [
+                    'label' => $provider,
+                    'kind' => 'source',
+                    'visitDate' => null,
+                    'submittedAt' => null,
+                ];
+            }
+        }
     }
 
     $site['report_inherited_values'] =
