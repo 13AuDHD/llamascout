@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/admin-places.php';
 require_once dirname(__DIR__) . '/app/place-campsites.php';
+require_once dirname(__DIR__) . '/app/site-visibility.php';
 require_once dirname(__DIR__) . '/app/place-report/campsite-baseline.php';
 require_once __DIR__ . '/_dashboard.php';
 
@@ -231,6 +232,71 @@ function admin_campsite_feature_override(
 
 $notice = '';
 $error = '';
+
+// Site publication is an independent admin action, never an implicit
+// side effect of editing campsite facts.
+if (
+    ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST'
+    && (string) ($_POST['campsite_admin_action'] ?? '') === 'save_visibility'
+) {
+    if (!moderation_verify_csrf((string) ($_POST['csrf_token'] ?? ''))) {
+        $error = 'Your session token expired. Reload and try again.';
+    } elseif (!$selectedSite) {
+        $error = 'Choose a campsite first.';
+    } else {
+        $kind = (string) ($_POST['site_kind'] ?? '');
+        $visibility = (string) ($_POST['site_visibility'] ?? '');
+        $isDevelopedPlace = in_array(
+            strtolower((string) ($place['type'] ?? '')),
+            ['developed-campground', 'rv-park-resort'],
+            true
+        );
+        $rawType = strtolower(
+            (string) ($selectedSite['raw_site_type'] ?? '')
+            . ' ' . (string) ($selectedSite['site_type'] ?? '')
+        );
+        if (!in_array($kind, ['unreviewed', 'developed', 'dispersed'], true)
+            || !in_array($visibility, ['members', 'public'], true)) {
+            $error = 'Choose a valid Site classification and visibility.';
+        } elseif (
+            $visibility === 'public'
+            && ($kind !== 'developed'
+                || !$isDevelopedPlace
+                || str_contains($rawType, 'dispersed'))
+        ) {
+            $error = 'Only reviewed developed campground Sites can be public.';
+        } else {
+            try {
+                $stmt = $db->prepare(
+                    'INSERT INTO place_site_visibility
+                        (campsite_id, place_id, site_kind, visibility, reviewed_by, reviewed_at)
+                     VALUES (?, ?, ?, ?, ?, NOW())
+                     ON DUPLICATE KEY UPDATE
+                        place_id = VALUES(place_id),
+                        site_kind = VALUES(site_kind),
+                        visibility = VALUES(visibility),
+                        reviewed_by = VALUES(reviewed_by),
+                        reviewed_at = VALUES(reviewed_at)'
+                );
+                $stmt->execute([
+                    $selectedSiteId,
+                    $placeId,
+                    $kind,
+                    $visibility,
+                    (int) ($adminUser['id'] ?? 0),
+                ]);
+                $notice = 'Site classification and visibility saved.';
+            } catch (Throwable $exception) {
+                llama_log_caught_exception(
+                    $exception,
+                    'admin.place_campsite.visibility',
+                    ['place_id' => $placeId, 'site_id' => $selectedSiteId]
+                );
+                $error = 'Could not save Site visibility. Check that the V3 visibility migration is installed.';
+            }
+        }
+    }
+}
 
 if (
     ($_SERVER['REQUEST_METHOD'] ?? '')
@@ -613,6 +679,24 @@ $feature =
             $key
         );
 
+$siteVisibility = ['site_kind' => 'unreviewed', 'visibility' => 'members'];
+if ($selectedSiteId > 0) {
+    try {
+        $visibilityStmt = $db->prepare(
+            'SELECT site_kind, visibility FROM place_site_visibility
+             WHERE place_id = ? AND campsite_id = ? LIMIT 1'
+        );
+        $visibilityStmt->execute([$placeId, $selectedSiteId]);
+        $siteVisibility = $visibilityStmt->fetch(PDO::FETCH_ASSOC) ?: $siteVisibility;
+    } catch (Throwable $exception) {
+        llama_log_caught_exception(
+            $exception, 'admin.place_campsite.visibility_read',
+            ['place_id' => $placeId, 'site_id' => $selectedSiteId]
+        );
+        $error = $error ?: 'Site visibility could not be loaded. Check the V3 database migration.';
+    }
+}
+
 $selectedName =
     trim(
         (string) (
@@ -713,6 +797,56 @@ $selectedName =
                         </select>
                     </label>
                 </div>
+            </form>
+        </section>
+
+        <section class="admin-place-admin-section">
+            <header>
+                <p>V3 Site access</p>
+                <h2>Classification and visibility</h2>
+            </header>
+            <p>
+                Dispersed and unreviewed Sites are members only. A developed
+                Site can be public only after you review and approve it.
+                Featured status does not change access.
+            </p>
+            <form method="post">
+                <input type="hidden" name="csrf_token"
+                    value="<?= $e(moderation_csrf_token()) ?>">
+                <input type="hidden" name="place_id" value="<?= $placeId ?>">
+                <input type="hidden" name="campsite_id" value="<?= $selectedSiteId ?>">
+                <input type="hidden" name="campsite_admin_action" value="save_visibility">
+                <div class="admin-place-meta-grid">
+                    <label>
+                        <span>Site classification</span>
+                        <select name="site_kind">
+                            <?php foreach ([
+                                'unreviewed' => 'Unreviewed',
+                                'developed' => 'Developed campground Site',
+                                'dispersed' => 'Dispersed campsite',
+                            ] as $value => $label): ?>
+                                <option value="<?= $e($value) ?>"
+                                    <?= ($siteVisibility['site_kind'] ?? '') === $value ? 'selected' : '' ?>>
+                                    <?= $e($label) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+                    <label>
+                        <span>Visibility</span>
+                        <select name="site_visibility">
+                            <option value="members"
+                                <?= ($siteVisibility['visibility'] ?? '') === 'members' ? 'selected' : '' ?>>
+                                Members only
+                            </option>
+                            <option value="public"
+                                <?= ($siteVisibility['visibility'] ?? '') === 'public' ? 'selected' : '' ?>>
+                                Public (reviewed developed Sites only)
+                            </option>
+                        </select>
+                    </label>
+                </div>
+                <button type="submit" class="admin-button">Save Site visibility</button>
             </form>
         </section>
 
