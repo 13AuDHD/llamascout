@@ -968,7 +968,7 @@ function llama_scoped_update_point_estimate(
     $resolved = llama_place_report_target_model($db, $placeId, $target);
     $effectiveInput = [];
     foreach ($resolved['values'] as $key => $value) {
-        $field = llama_place_report_fields()[$key] ?? null;
+        $field = llama_report_question((string) $key);
         if ($field) { $effectiveInput[$key] = llama_place_report_answer_form_value($field, $value); }
     }
 
@@ -985,7 +985,7 @@ function llama_scoped_update_point_estimate(
         );
 
         $effectiveInput[$fieldKey] = llama_place_report_answer_form_value(
-            llama_place_report_fields()[$fieldKey], $value);
+            llama_report_question((string) $fieldKey), $value);
     }
 
     return
@@ -1172,7 +1172,7 @@ function llama_scoped_update_approve(
             || (
                 $recorded
                 && !llama_place_report_values_equal($current[$key], $prior['value'] ?? null,
-                    llama_place_report_fields()[$key] ?? null)
+                    llama_report_question((string) $key))
             )
         ) {
             throw new RuntimeException(
