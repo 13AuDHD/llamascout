@@ -91,8 +91,10 @@ try {
         llama_place_campsite_detail_json(['ok' => false, 'error' => 'Site not found.'], 404);
     }
 
-    // The immutable member history remains private even for public Sites.
-    if (($_GET['mode'] ?? '') === 'history' && !$canRead) {
+    // This endpoint includes full Scout answers, media and immutable history.
+    // A Site's public catalog listing is not permission to disclose that
+    // richer member-only payload. Public detail needs its own field whitelist.
+    if (!$canRead) {
         llama_place_campsite_detail_json(
             ['ok' => false, 'error' => 'Complete Place access is required.'], 403
         );
