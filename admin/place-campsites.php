@@ -234,8 +234,8 @@ function admin_campsite_feature_override(
 $notice = '';
 $error = '';
 
-// Site publication is an independent admin action, never an implicit
-// side effect of editing campsite facts.
+// Site-specific restrictions are exceptional. The Place type determines
+// the default. Never let an override publish a dispersed campsite.
 if (
     ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST'
     && (string) ($_POST['campsite_admin_action'] ?? '') === 'save_visibility'
@@ -245,55 +245,42 @@ if (
     } elseif (!$selectedSite) {
         $error = 'Choose a campsite first.';
     } else {
-        $kind = (string) ($_POST['site_kind'] ?? '');
-        $visibility = (string) ($_POST['site_visibility'] ?? '');
-        $isDevelopedPlace = in_array(
-            strtolower((string) ($place['type'] ?? '')),
-            ['developed-campground', 'rv-park-resort'],
-            true
-        );
-        $rawType = strtolower(
-            (string) ($selectedSite['raw_site_type'] ?? '')
-            . ' ' . (string) ($selectedSite['site_type'] ?? '')
-        );
-        if (!in_array($kind, ['unreviewed', 'developed', 'dispersed'], true)
-            || !in_array($visibility, ['members', 'public'], true)) {
-            $error = 'Choose a valid Site classification and visibility.';
-        } elseif (
-            $visibility === 'public'
-            && ($kind !== 'developed'
-                || !$isDevelopedPlace
-                || str_contains($rawType, 'dispersed'))
-        ) {
-            $error = 'Only reviewed developed campground Sites can be public.';
+        $override = (string) ($_POST['site_visibility_override'] ?? '');
+        if (!in_array($override, ['inherit', 'members'], true)) {
+            $error = 'Choose a valid Site privacy setting.';
         } else {
             try {
-                $stmt = $db->prepare(
-                    'INSERT INTO place_site_visibility
-                        (campsite_id, place_id, site_kind, visibility, reviewed_by, reviewed_at)
-                     VALUES (?, ?, ?, ?, ?, NOW())
-                     ON DUPLICATE KEY UPDATE
-                        place_id = VALUES(place_id),
-                        site_kind = VALUES(site_kind),
-                        visibility = VALUES(visibility),
-                        reviewed_by = VALUES(reviewed_by),
-                        reviewed_at = VALUES(reviewed_at)'
-                );
-                $stmt->execute([
-                    $selectedSiteId,
-                    $placeId,
-                    $kind,
-                    $visibility,
-                    (int) ($adminUser['id'] ?? 0),
-                ]);
-                $notice = 'Site classification and visibility saved.';
+                if ($override === 'inherit') {
+                    $stmt = $db->prepare(
+                        'DELETE FROM place_site_visibility
+                         WHERE place_id = ? AND campsite_id = ?'
+                    );
+                    $stmt->execute([$placeId, $selectedSiteId]);
+                } else {
+                    $stmt = $db->prepare(
+                        'INSERT INTO place_site_visibility
+                            (campsite_id, place_id, site_kind, visibility, reviewed_by, reviewed_at)
+                         VALUES (?, ?, "unreviewed", "members", ?, NOW())
+                         ON DUPLICATE KEY UPDATE
+                            site_kind = "unreviewed",
+                            visibility = "members",
+                            reviewed_by = VALUES(reviewed_by),
+                            reviewed_at = VALUES(reviewed_at)'
+                    );
+                    $stmt->execute([
+                        $selectedSiteId,
+                        $placeId,
+                        (int) ($adminUser['id'] ?? 0),
+                    ]);
+                }
+                $notice = 'Site privacy override saved. The Place type controls the default.';
             } catch (Throwable $exception) {
                 llama_log_caught_exception(
                     $exception,
                     'admin.place_campsite.visibility',
                     ['place_id' => $placeId, 'site_id' => $selectedSiteId]
                 );
-                $error = 'Could not save Site visibility. Check that the V3 visibility migration is installed.';
+                $error = 'Could not save Site privacy settings.';
             }
         }
     }
@@ -680,7 +667,7 @@ $feature =
             $key
         );
 
-$siteVisibility = ['site_kind' => 'unreviewed', 'visibility' => 'members'];
+$siteVisibilityOverride = 'inherit';
 if ($selectedSiteId > 0) {
     try {
         $visibilityStmt = $db->prepare(
@@ -688,13 +675,23 @@ if ($selectedSiteId > 0) {
              WHERE place_id = ? AND campsite_id = ? LIMIT 1'
         );
         $visibilityStmt->execute([$placeId, $selectedSiteId]);
-        $siteVisibility = $visibilityStmt->fetch(PDO::FETCH_ASSOC) ?: $siteVisibility;
+        $savedVisibility = $visibilityStmt->fetch(PDO::FETCH_ASSOC);
+        if ($savedVisibility && (
+            ($savedVisibility['visibility'] ?? '') === 'members'
+            || in_array(
+                (string) ($savedVisibility['site_kind'] ?? ''),
+                ['dispersed', 'unreviewed'],
+                true
+            )
+        )) {
+            $siteVisibilityOverride = 'members';
+        }
     } catch (Throwable $exception) {
         llama_log_caught_exception(
             $exception, 'admin.place_campsite.visibility_read',
             ['place_id' => $placeId, 'site_id' => $selectedSiteId]
         );
-        $error = $error ?: 'Site visibility could not be loaded. Check the V3 database migration.';
+        $error = $error ?: 'Site privacy settings could not be loaded.';
     }
 }
 
@@ -803,13 +800,14 @@ $selectedName =
 
         <section class="admin-place-admin-section">
             <header>
-                <p>V3 Site access</p>
-                <h2>Classification and visibility</h2>
+                <p>V3 Site privacy</p>
+                <h2>Optional Site restriction</h2>
             </header>
             <p>
-                Dispersed and unreviewed Sites are members only. A developed
-                Site can be public only after you review and approve it.
-                Featured status does not change access.
+                This Place is <?= $e((string) ($place['type'] ?? 'unclassified')) ?>.
+                Its type automatically controls default Site visibility.
+                Dispersed camping Sites are always members only.
+                Use an override only for an unusual Site in a developed campground.
             </p>
             <form method="post">
                 <input type="hidden" name="csrf_token"
@@ -819,35 +817,20 @@ $selectedName =
                 <input type="hidden" name="campsite_admin_action" value="save_visibility">
                 <div class="admin-place-meta-grid">
                     <label>
-                        <span>Site classification</span>
-                        <select name="site_kind">
-                            <?php foreach ([
-                                'unreviewed' => 'Unreviewed',
-                                'developed' => 'Developed campground Site',
-                                'dispersed' => 'Dispersed campsite',
-                            ] as $value => $label): ?>
-                                <option value="<?= $e($value) ?>"
-                                    <?= ($siteVisibility['site_kind'] ?? '') === $value ? 'selected' : '' ?>>
-                                    <?= $e($label) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </label>
-                    <label>
-                        <span>Visibility</span>
-                        <select name="site_visibility">
-                            <option value="members"
-                                <?= ($siteVisibility['visibility'] ?? '') === 'members' ? 'selected' : '' ?>>
-                                Members only
+                        <span>Privacy override</span>
+                        <select name="site_visibility_override">
+                            <option value="inherit"
+                                <?= $siteVisibilityOverride === 'inherit' ? 'selected' : '' ?>>
+                                Follow Place type (default)
                             </option>
-                            <option value="public"
-                                <?= ($siteVisibility['visibility'] ?? '') === 'public' ? 'selected' : '' ?>>
-                                Public (reviewed developed Sites only)
+                            <option value="members"
+                                <?= $siteVisibilityOverride === 'members' ? 'selected' : '' ?>>
+                                Restrict this Site to members
                             </option>
                         </select>
                     </label>
                 </div>
-                <button type="submit" class="admin-button">Save Site visibility</button>
+                <button type="submit" class="admin-button">Save privacy override</button>
             </form>
         </section>
 
