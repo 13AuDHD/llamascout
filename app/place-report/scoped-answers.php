@@ -248,30 +248,20 @@ function llama_scoped_report_effective_answers_for_targets(PDO $db, int $placeId
         $layers[$row['scope_type']][$row['scope_source']][(int) $row['scope_id']][$row['field_key']]
             = json_decode($row['value_json'], true, 512, JSON_THROW_ON_ERROR);
     }
-    // V3 current rows take precedence over older scoped records, while
-    // targets without migrated answers retain their existing scoped values.
-    // Load once per Place, not once for each Site in a large campground.
-    if (llama_report_current_store_available($db)) {
-        $currentQuery = $db->prepare(
-            'SELECT target_scope, target_source, target_id, question_key,
-                    answer_state, value_json
-             FROM place_report_current_answers
-             WHERE place_id = ? AND target_scope IN (\'area\', \'site\')'
-        );
-        $currentQuery->execute([$placeId]);
-        foreach ($currentQuery->fetchAll(PDO::FETCH_ASSOC) as $row) {
-            $owner = (string) $row['target_scope'];
-            $sourceKey = (string) $row['target_source'];
-            $targetKey = (int) $row['target_id'];
-            $questionKey = (string) $row['question_key'];
-            $state = (string) $row['answer_state'];
-            if (!in_array($state, ['answered', 'unknown'], true)) {
-                throw new UnexpectedValueException('Invalid current-answer state.');
+    // Canonical answer parsing and state interpretation live in one service.
+    // Older scoped records remain a fallback until compatibility is retired.
+    // The bulk reader keeps large campground pages to one V3 query.
+    foreach (llama_report_current_store_scoped_for_place($db, $placeId)
+        as $owner => $sources) {
+        foreach ($sources as $sourceKey => $targetsById) {
+            foreach ($targetsById as $targetId => $answers) {
+                foreach ($answers as $questionKey => $answer) {
+                    $layers[$owner][$sourceKey][$targetId][$questionKey] =
+                        $answer['state'] === 'unknown'
+                            ? llama_place_report_unknown_token()
+                            : $answer['value'];
+                }
             }
-            $layers[$owner][$sourceKey][$targetKey][$questionKey] =
-                $state === 'unknown'
-                    ? llama_place_report_unknown_token()
-                    : json_decode((string) $row['value_json'], true, 512, JSON_THROW_ON_ERROR);
         }
     }
     $fields = llama_place_report_fields();
