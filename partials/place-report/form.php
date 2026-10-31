@@ -159,7 +159,7 @@ $placeReportAllowedStorageLookup =
  */
 
 $placeReportFields =
-    llama_place_report_fields();
+    llama_report_questions();
 
 $placeReportSections =
     llama_place_report_sections();
@@ -1407,7 +1407,7 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
          * Render one collapsible section per approved questionnaire group.
          * Keep the canonical Place/Site ownership and field renderer intact.
          */
-        $approvedSections = llama_place_report_group_eligible_questions(
+        $approvedSections = llama_report_group_selected_questions(
             $reportMainFields
         );
         ?>
