@@ -133,6 +133,53 @@
     overflow-wrap: anywhere;
 }
 
+/* Public campground Site specifications, separate from member Scout Reports. */
+.place-campsite-public-detail {
+    margin-top: 14px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--background);
+}
+
+.place-campsite-public-detail[hidden] {
+    display: none;
+}
+
+.place-campsite-public-detail h3,
+.place-campsite-public-detail h4 {
+    margin: 0 0 10px;
+}
+
+.place-campsite-public-detail h4 {
+    margin-top: 16px;
+}
+
+.place-campsite-public-facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+    gap: 10px;
+    margin: 0;
+}
+
+.place-campsite-public-facts > div {
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+
+.place-campsite-public-facts dt,
+.place-campsite-public-source,
+.place-campsite-public-access-note {
+    color: var(--text-muted);
+    font-size: .85rem;
+}
+
+.place-campsite-public-facts dd {
+    margin: 4px 0 0;
+    font-weight: 700;
+}
+
 .place-campsites-empty {
     flex: 1 0 100%;
     padding: 14px;
