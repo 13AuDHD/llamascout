@@ -174,6 +174,21 @@ try {
             $name = 'Site ' . (int) $row['id'];
         }
 
+        if (!$canRead) {
+            // Reviewed public developed Sites: map location and identity only.
+            // Scout observations, photos and capacity/connectivity remain gated.
+            $points[] = [
+                'id' => (int) $row['id'],
+                'name' => $name,
+                'latitude' => (float) $row['latitude'],
+                'longitude' => (float) $row['longitude'],
+                'site_type_label' => llama_campsite_popup_site_type_label(
+                    (string) ($row['site_type'] ?? '')
+                ),
+            ];
+            continue;
+        }
+
         $points[] = [
             'id' => (int) $row['id'],
             'name' => $name,
