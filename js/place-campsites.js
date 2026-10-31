@@ -1280,7 +1280,12 @@
             const card = event.target.closest('[data-public-site-id]');
             if (!card) return;
             selectedSiteId = Number(card.dataset.publicSiteId);
-            render();
+            list.querySelectorAll('[data-public-site-id]').forEach((button) => {
+                const selected = Number(button.dataset.publicSiteId) === selectedSiteId;
+                button.classList.toggle('is-selected', selected);
+                button.setAttribute('aria-pressed', selected ? 'true' : 'false');
+            });
+            renderDetail(sites.find((site) => Number(site.id) === selectedSiteId));
         });
 
         search.addEventListener('input', render);
