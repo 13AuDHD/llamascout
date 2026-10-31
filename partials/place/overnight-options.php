@@ -15,6 +15,15 @@ $placeId =
         ?? 0
     );
 
+$stayViewerHasCompleteAccess =
+    (bool) (
+        $hasCompleteAccess
+        ?? $hasMemberAccess
+        ?? false
+    );
+
+if ($stayViewerHasCompleteAccess) {
+
 $baseCampingFee =
     $rules['fee']
     ?? $place['rules']['fee']
@@ -443,6 +452,16 @@ foreach ($stayFeatures as $feature) {
     ];
 }
 
+
+} else {
+    /*
+     * Guests and free Members use the same section and Site browser, but
+     * supplemental map-only Sites and Areas remain undisclosed without
+     * Complete Access.
+     */
+    $stayMappedSites = [];
+    $stayAreas = [];
+}
 
 $hasSupplementalStayOptions =
     $stayAreas
