@@ -169,11 +169,17 @@ $v3Only = $db->query(
 // A new V3-only question is fine; an unknown key or wrong owner is not.
 $registryIssues = [];
 $allFields = llama_place_report_fields();
+$retiredKeys = array_fill_keys(llama_place_report_retired_question_keys(), true);
+$retiredCount = 0;
 $canonicalRows = $db->query(
     'SELECT place_id, target_scope, target_source, target_id, question_key, answer_state, value_json
      FROM place_report_current_answers'
 );
 while ($row = $canonicalRows->fetch(PDO::FETCH_ASSOC)) {
+    if (isset($retiredKeys[(string) $row['question_key']])) {
+        $retiredCount++;
+        continue;
+    }
     $field = $allFields[(string) $row['question_key']] ?? null;
     $scope = (string) $row['target_scope'];
     if (!is_array($field)) {
@@ -228,7 +234,8 @@ unsupported Site sources: <?= (int) ($targets['unsupported_site_source'] ?? 0) ?
 These can be legitimate new observations and are not automatically errors.</p>
 <p>V3-only records are allowed. Inactive but existing targets are retained.</p>
 <h2>Canonical registry validation</h2>
-<p>Invalid canonical question assignments: <strong><?= count($registryIssues) ?></strong>.</p>
+<p>Invalid canonical question assignments: <strong><?= count($registryIssues) ?></strong>;
+retired historical answer records: <?= $retiredCount ?>.</p>
 <?php if ($registryIssues): ?>
 <table><thead><tr><th>Place</th><th>Scope</th><th>Target</th><th>Question</th><th>Issue</th><th>Stored value</th></tr></thead>
 <tbody><?php foreach ($registryIssues as $item): ?><tr>
