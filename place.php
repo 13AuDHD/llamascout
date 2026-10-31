@@ -226,8 +226,15 @@ if (!$place) {
 $isLoggedIn =
     $userId > 0;
 
+$hasGlobalCompleteAccess =
+    $hasGlobalMemberAccess;
+
+$hasEarnedPlaceAccess =
+    $hasContributorPlaceAccess;
+
 $hasCompleteAccess =
-    $hasMemberAccess;
+    $hasGlobalCompleteAccess
+    || $hasEarnedPlaceAccess;
 
 $placeReportCanViewCommunity =
     $hasCompleteAccess;
