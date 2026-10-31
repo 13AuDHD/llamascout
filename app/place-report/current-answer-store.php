@@ -123,7 +123,7 @@ function llama_report_current_store_load(
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $key = (string) $row['question_key'];
         $field = $fields[$key] ?? null;
-        if (!is_array($field)
+        if (!is_array($field) || !empty($field['derived'])
             || !in_array($scope, (array) ($field['report_scopes'] ?? []), true)) {
             continue;
         }
