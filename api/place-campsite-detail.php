@@ -175,6 +175,13 @@ try {
     // to the currently published observation are eligible for display.
     $site['report_answer_sources'] = llama_report_answer_sources($db, $currentAnswers);
 
+    // Final published projection is authoritative over legacy campsite
+    // columns. The browser uses the same winners as answer attribution.
+    $site['report_effective_values'] =
+        llama_scoped_report_display_values(
+            $effectiveValues
+        );
+
     $site['report_inherited_values'] =
         llama_scoped_report_display_values(
             $inheritedValues
