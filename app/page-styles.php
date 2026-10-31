@@ -47,7 +47,6 @@ function llama_page_styles(string $scriptName = ''): array
         && in_array(
             $basename,
             [
-                'index.php',
                 'field-guides.php',
                 'field-guide.php',
                 'membership.php',
