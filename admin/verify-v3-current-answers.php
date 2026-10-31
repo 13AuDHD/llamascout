@@ -165,6 +165,37 @@ $v3Only = $db->query(
      WHERE v.target_scope IN ('area', 'site') AND s.field_key IS NULL"
 )->fetchColumn();
 
+// Validate the canonical registry relationship independently of legacy data.
+// A new V3-only question is fine; an unknown key or wrong owner is not.
+$registryIssues = [];
+$allFields = llama_place_report_fields();
+$canonicalRows = $db->query(
+    'SELECT place_id, target_scope, target_source, target_id, question_key, answer_state
+     FROM place_report_current_answers'
+);
+while ($row = $canonicalRows->fetch(PDO::FETCH_ASSOC)) {
+    $field = $allFields[(string) $row['question_key']] ?? null;
+    $scope = (string) $row['target_scope'];
+    if (!is_array($field)) {
+        $problem = 'Unregistered question';
+    } elseif (!in_array($scope, (array) ($field['report_scopes'] ?? []), true)) {
+        $problem = 'Wrong question scope';
+    } elseif (!empty($field['derived'])) {
+        $problem = 'Derived question stored as an answer';
+    } elseif (!in_array((string) $row['answer_state'], ['answered', 'unknown'], true)) {
+        $problem = 'Invalid answer state';
+    } else {
+        continue;
+    }
+    $registryIssues[] = [
+        'place' => (int) $row['place_id'],
+        'scope' => $scope,
+        'target' => (string) $row['target_source'] . ':' . (int) $row['target_id'],
+        'question' => (string) $row['question_key'],
+        'reason' => $problem,
+    ];
+}
+
 header('Content-Type: text/html; charset=utf-8');
 ?>
 <!doctype html>
@@ -195,6 +226,15 @@ unsupported Site sources: <?= (int) ($targets['unsupported_site_source'] ?? 0) ?
 <p>Site/Area answers held only in V3: <?= (int) $v3Only ?>.
 These can be legitimate new observations and are not automatically errors.</p>
 <p>V3-only records are allowed. Inactive but existing targets are retained.</p>
+<h2>Canonical registry validation</h2>
+<p>Invalid canonical question assignments: <strong><?= count($registryIssues) ?></strong>.</p>
+<?php if ($registryIssues): ?>
+<table><thead><tr><th>Place</th><th>Scope</th><th>Target</th><th>Question</th><th>Issue</th></tr></thead>
+<tbody><?php foreach ($registryIssues as $item): ?><tr>
+<td><?= $item['place'] ?></td><td><?= $h($item['scope']) ?></td>
+<td><?= $h($item['target']) ?></td><td><?= $h($item['question']) ?></td>
+<td><?= $h($item['reason']) ?></td></tr><?php endforeach; ?></tbody></table>
+<?php endif; ?>
 <h2>Place records</h2>
 <p><strong><?= $placeCount ?> Places checked</strong>;
 answers checked <?= $checked ?>; matching <?= $matching ?>;
