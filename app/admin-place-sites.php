@@ -27,7 +27,7 @@ function admin_place_campsite_field_keys(): array
 {
     $keys = [];
 
-    foreach (llama_place_report_fields() as $key => $field) {
+    foreach (llama_report_questions_for_scope('site', true) as $key => $field) {
         /*
          * Admin Place edits Place-level and selected-Site facts in one shared
          * form. The visible Site section changes target when a campsite is
