@@ -697,26 +697,29 @@ function llama_place_report_reorder_layout_fields(
              * Preserve active fallback fields that legitimately belong to this
              * group but are not yet part of its explicit ordered inventory.
              */
+            $remaining = [];
             foreach ($fields as $key => $field) {
-                if (
-                    isset($used[$key])
-                    || (string) (
-                        $field['layout_section']
-                        ?? ''
-                    ) !== $section
-                    || (string) (
-                        $field['layout_group']
-                        ?? ''
-                    ) !== $group
-                ) {
+                if (isset($used[$key])
+                    || (string) ($field['layout_section'] ?? '') !== $section
+                    || (string) ($field['layout_group'] ?? '') !== $group) {
                     continue;
                 }
-
-                $ordered[$key] =
-                    $field;
-
-                $used[$key] =
-                    true;
+                $remaining[$key] = $field;
+            }
+            // New questions can set layout_order at registration. Without
+            // it, insertion order is preserved. Legacy approved order above
+            // always wins over these additional questions.
+            $index = array_flip(array_keys($remaining));
+            uksort($remaining, static function ($a, $b) use ($remaining, $index): int {
+                $aOrder = isset($remaining[$a]['layout_order'])
+                    ? (int) $remaining[$a]['layout_order'] : PHP_INT_MAX;
+                $bOrder = isset($remaining[$b]['layout_order'])
+                    ? (int) $remaining[$b]['layout_order'] : PHP_INT_MAX;
+                return ($aOrder <=> $bOrder) ?: ($index[$a] <=> $index[$b]);
+            });
+            foreach ($remaining as $key => $field) {
+                $ordered[$key] = $field;
+                $used[$key] = true;
             }
         }
     }
