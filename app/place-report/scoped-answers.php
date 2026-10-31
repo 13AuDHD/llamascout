@@ -632,6 +632,32 @@ function llama_scoped_report_merge_site_identity(
             return $rows;
         };
 
+    if (!$db->inTransaction()) {
+        throw new RuntimeException('Site identity merge requires a transaction.');
+    }
+
+    $oldLoader = $loadRows;
+    $loadRows = static function (PDO $db, int $placeId, string $source, int $scopeId) use ($oldLoader): array {
+        $rows = $oldLoader($db, $placeId, $source, $scopeId);
+        if (!llama_report_current_store_available($db)) { return $rows; }
+        $stmt = $db->prepare(
+            "SELECT question_key, answer_state, value_json FROM place_report_current_answers
+             WHERE place_id = ? AND target_scope = 'site' AND target_source = ?
+               AND target_id = ? FOR UPDATE"
+        );
+        $stmt->execute([$placeId, $source, $scopeId]);
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $item) {
+            $value = $item['answer_state'] === 'unknown'
+                ? llama_place_report_unknown_token()
+                : json_decode((string) $item['value_json'], true, 512, JSON_THROW_ON_ERROR);
+            $rows[(string) $item['question_key']] = [
+                'value' => $value,
+                'json' => json_encode($value, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE)
+            ];
+        }
+        return $rows;
+    };
+
     $mapAnswers =
         $loadRows(
             $db,
