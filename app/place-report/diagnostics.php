@@ -11,7 +11,8 @@ function llama_place_report_contract_issues(): array
         array_merge(
             llama_place_report_approved_registry_issues(),
             llama_place_report_submission_answer_contract_issues(),
-            llama_place_report_current_answer_contract_issues()
+            llama_place_report_current_answer_contract_issues(),
+            llama_report_question_catalog_issues()
         );
 
     $fields =
