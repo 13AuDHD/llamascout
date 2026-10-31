@@ -95,7 +95,8 @@ function llama_scout_report_latest_approved_answers(
  */
 function llama_scout_report_attach_matching_history(
     array $answers,
-    array $observations
+    array $observations,
+    bool $allowInherited = false
 ): array {
     foreach ($observations as $key => $observation) {
         if (!isset($answers[$key]) || !is_array($answers[$key])) {
@@ -104,7 +105,7 @@ function llama_scout_report_attach_matching_history(
         $current = $answers[$key];
         if (empty($current['recorded'])
             || !empty($current['imported'])
-            || !empty($current['inherited'])
+            || (!empty($current['inherited']) && !$allowInherited)
             || !empty($current['baseline'])
             || ($current['state'] ?? '') !== ($observation['state'] ?? '')) {
             continue;
@@ -156,6 +157,49 @@ function llama_place_report_current_answer_model_with_history(
         $model['answers'],
         $observations
     );
+
+    // Site/Area inherited values belong to their original Place/Area
+    // observation. Looking only at this Site's ledger leaves those cards
+    // without attribution, or can misidentify the Site contributor.
+    // Group by origin target to avoid querying once per question.
+    $ancestors = [];
+    foreach ($model['answers'] as $key => $answer) {
+        if (empty($answer['recorded']) || empty($answer['inherited'])
+            || !empty($answer['imported']) || !empty($answer['baseline'])) {
+            continue;
+        }
+        $origin = (array) ($answer['origin'] ?? []);
+        $scope = (string) ($origin['scope'] ?? '');
+        $source = (string) ($origin['source'] ?? '');
+        $id = (int) ($origin['id'] ?? 0);
+        if (!in_array($scope, ['place', 'area'], true)
+            || $id < 1 || $source === '') {
+            continue;
+        }
+        $originKey = $scope . ':' . $source . ':' . $id;
+        $ancestors[$originKey]['target'] = [
+            'scope' => $scope, 'source' => $source, 'id' => $id,
+        ];
+        $ancestors[$originKey]['keys'][] = (string) $key;
+    }
+    foreach ($ancestors as $group) {
+        $origin = $group['target'];
+        $sourceAnswers = llama_scout_report_latest_approved_answers(
+            $db, $placeId, $origin['scope'], $origin['source'], $origin['id']
+        );
+        $inheritedAnswers = [];
+        foreach ($group['keys'] as $key) {
+            $inheritedAnswers[$key] = $model['answers'][$key];
+        }
+        $matched = llama_scout_report_attach_matching_history(
+            $inheritedAnswers, $sourceAnswers, true
+        );
+        foreach ($matched as $key => $answer) {
+            if (isset($answer['approved_report'])) {
+                $model['answers'][$key]['approved_report'] = $answer['approved_report'];
+            }
+        }
+    }
     return $model;
 }
 
