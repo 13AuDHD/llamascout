@@ -108,7 +108,10 @@
 > strong {
     display: inline-flex;
     align-items: center;
+    align-self: end;
     gap: 7px;
+    margin-top: 6px;
+    min-height: 1.35em;
 }
 
 .scout-report-item.is-access-locked
@@ -631,12 +634,16 @@
 .scout-report-section.scout-report-scope-site { --scout-report-scope-color: #d97706; }
 .scout-report-section.scout-report-scope-space { --scout-report-scope-color: #2563eb; }
 
-/* Public Scout Report: section headings stay, outer panels go. */
+/* Shared Scout Report context treatment.
+ * Keep the lightweight panel-free layout, but retain the context-colored
+ * left border shown in the approved V3 Place/Site presentation.
+ */
 .scout-report .scout-report-section[class*="scout-report-scope-"] {
     border: 0;
+    border-left: 3px solid var(--scout-report-scope-color);
     border-radius: 0;
     background: transparent;
-    padding: 0;
+    padding: 0 0 0 16px;
 }
 
 /* Respect the existing Place/Site selection, including on narrow screens. */
