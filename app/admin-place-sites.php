@@ -548,13 +548,6 @@ function admin_place_bulk_save_site_answers(
         $source = (string) ($target['source'] ?? 'campsite_record');
         $targetId = (int) ($target['id'] ?? $siteId);
         $existing = llama_scoped_report_load($db, $placeId, 'site', $targetId, $source);
-        // Canonical records win over the legacy compatibility projection.
-        // A V3-only answer must count as existing when overwrite is off.
-        foreach (llama_report_current_store_load($db, $placeId, 'site', $source, $targetId) as $key => $answer) {
-            $existing[$key] = $answer['state'] === 'unknown'
-                ? llama_place_report_unknown_token()
-                : $answer['value'];
-        }
         $imported = admin_place_campsite_imported_form_values($site);
         $siteSaved = false;
         foreach ($parsed as $key => $value) {
