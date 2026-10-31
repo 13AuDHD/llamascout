@@ -338,11 +338,6 @@ $promotionBannerEndsAt = $activeWebsitePromotion
         >
 
             <a href="<?= htmlspecialchars($siteUrl . '/', ENT_QUOTES, 'UTF-8') ?>">
-                <?= llama_icon('home') ?>
-                <span>Home</span>
-            </a>
-
-            <a href="<?= htmlspecialchars($siteUrl . '/map.php', ENT_QUOTES, 'UTF-8') ?>">
                 <?= llama_icon('map') ?>
                 <span>Map</span>
             </a>
