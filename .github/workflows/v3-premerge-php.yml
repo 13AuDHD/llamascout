@@ -30,3 +30,6 @@ jobs:
           done
       - name: Verify reporting contract
         run: php tools/v3-launch-smoke.php
+      - name: Verify coordinate and Site visibility contract
+        if: always()
+        run: php tools/coordinate-visibility-smoke.php

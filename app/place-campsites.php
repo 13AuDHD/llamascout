@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/site-visibility.php';
 require_once __DIR__ . '/place-report/scoped-answers.php';
 
 function llama_place_experience_mode(array $place): string
@@ -422,6 +423,12 @@ function llama_place_campsites(
                 $siteId
             ]
             ?? [];
+
+        $row['coordinate_status'] =
+            llama_coordinate_status(
+                $row['latitude'] ?? null,
+                $row['longitude'] ?? null
+            );
 
         $row['display_name'] =
             trim(

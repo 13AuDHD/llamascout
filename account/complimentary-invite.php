@@ -509,7 +509,7 @@ $registerUrl =
                 <div>
                     <span>
                         <i aria-hidden="true"><?= llama_icon('map-pin') ?></i>
-                        Exact Place locations
+                        Restricted Place and Site locations
                     </span>
 
                     <span>
@@ -644,12 +644,12 @@ $registerUrl =
                 <div>
                     <span>
                         <i aria-hidden="true"><?= llama_icon('map-pin') ?></i>
-                        Exact coordinates and Place locations
+                        Restricted Place and Site locations
                     </span>
 
                     <span>
                         <i aria-hidden="true"><?= llama_icon('map') ?></i>
-                        Exact pins, street-level zoom, and member map layers
+                        Restricted pins and member map layers
                     </span>
 
                     <span>

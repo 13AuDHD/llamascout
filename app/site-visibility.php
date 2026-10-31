@@ -3,6 +3,110 @@
 declare(strict_types=1);
 
 /**
+ * Sensitive Place types are absent from public discovery unless the viewer
+ * has Complete Access or durable access to that specific Place.
+ */
+function llama_place_is_member_only(array $place): bool
+{
+    return in_array(
+        strtolower(trim((string) ($place['type'] ?? ''))),
+        ['dispersed-camping', 'vehicle-pulloff'],
+        true
+    );
+}
+
+function llama_place_viewer_can_read_member_only(
+    int $placeId,
+    ?int $viewerUserId
+): bool {
+    return $placeId > 0
+        && ($viewerUserId ?? 0) > 0
+        && user_has_place_complete_access($placeId, $viewerUserId);
+}
+
+/**
+ * Build the Place restriction portion of a database query.
+ *
+ * Values interpolated here are fixed application types or integer Place IDs,
+ * never request text.
+ */
+function llama_place_visibility_sql(
+    string $placeAlias = 'p',
+    ?int $viewerUserId = null
+): string {
+    if (!preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $placeAlias)) {
+        throw new InvalidArgumentException('Invalid Place query alias.');
+    }
+
+    if ($viewerUserId === null) {
+        $viewer = current_user();
+        $viewerUserId = is_array($viewer)
+            ? (int) ($viewer['id'] ?? 0)
+            : 0;
+    }
+
+    $viewerUserId = max(0, $viewerUserId);
+
+    if (
+        $viewerUserId > 0
+        && user_has_member_access($viewerUserId)
+    ) {
+        return '1 = 1';
+    }
+
+    $placeAccessSql = '';
+
+    if ($viewerUserId > 0) {
+        $placeIds = array_values(array_filter(
+            array_map(
+                'intval',
+                user_original_contributed_place_ids($viewerUserId)
+            ),
+            static fn(int $placeId): bool => $placeId > 0
+        ));
+
+        if ($placeIds) {
+            $placeAccessSql =
+                ' OR ' . $placeAlias . '.id IN ('
+                . implode(', ', $placeIds)
+                . ')';
+        }
+    }
+
+    return '('
+        . 'COALESCE(' . $placeAlias . ".type, '') NOT IN "
+        . '("dispersed-camping", "vehicle-pulloff")'
+        . $placeAccessSql
+        . ')';
+}
+
+function llama_coordinate_status(
+    mixed $latitude,
+    mixed $longitude,
+    mixed $verifiedAt = null
+): string {
+    if (
+        $latitude === null
+        || $longitude === null
+        || trim((string) $latitude) === ''
+        || trim((string) $longitude) === ''
+        || !is_numeric($latitude)
+        || !is_numeric($longitude)
+        || (float) $latitude < -90
+        || (float) $latitude > 90
+        || (float) $longitude < -180
+        || (float) $longitude > 180
+        || ((float) $latitude === 0.0 && (float) $longitude === 0.0)
+    ) {
+        return 'missing';
+    }
+
+    return trim((string) $verifiedAt) === ''
+        ? 'unverified'
+        : 'verified';
+}
+
+/**
  * V3 Site privacy is derived from the canonical Place type.
  *
  * Ordinary Sites at developed campgrounds and RV parks have public basic

@@ -444,7 +444,7 @@ require __DIR__ . '/partials/header.php';
                     </h2>
 
                     <p>
-                        Exact locations, access details, sensory information,
+                        Restricted locations, access details, sensory information,
                         connectivity, and historical report comparisons remain
                         part of Complete Access.
                     </p>

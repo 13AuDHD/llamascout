@@ -52,7 +52,7 @@ try {
     $contributedPlaceIds = !$hasMemberMapAccess && $viewerUserId > 0
         ? user_original_contributed_place_ids($viewerUserId) : [];
     $hasContributorPlaceAccess = !empty($contributedPlaceIds);
-    $places = places_map($hasMemberMapAccess, $viewerUserId > 0 ? $viewerUserId : null);
+    $places = places_map(true, $viewerUserId > 0 ? $viewerUserId : null);
     $places = llama_camping_fee_enrich_map_places(db(), $places);
     $places = llama_map_partner_branding(db(), $places);
     $places = llama_closure_enrich_map_places(db(), $places);
@@ -61,8 +61,8 @@ try {
         'count' => count($places),
         'member_map_access' => $hasMemberMapAccess,
         'contributor_place_access' => $hasContributorPlaceAccess,
-        'coordinate_precision' => $hasMemberMapAccess ? 'exact' : ($hasContributorPlaceAccess ? 'mixed' : 'approximate'),
-        'max_zoom' => ($hasMemberMapAccess || $hasContributorPlaceAccess) ? 20 : 11,
+        'coordinate_precision' => 'stored',
+        'max_zoom' => 20,
         'member_tiles' => $hasMemberMapAccess ? llama_member_map_tiles() : null,
         'places' => $places,
     ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);

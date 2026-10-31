@@ -5,7 +5,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__, 2) . '/app/place-map.php';
 
 $placeMapHasExactCoordinates =
-    !empty($hasMemberAccess)
+    ($place['coordinate_status'] ?? 'missing') !== 'missing'
     && isset(
         $place['latitude'],
         $place['longitude']
@@ -17,40 +17,33 @@ $placeMapHasExactCoordinates =
         $place['longitude']
     );
 
-$placeMapHasPublicCoordinates =
-    isset(
-        $place['public_latitude'],
-        $place['public_longitude']
-    )
-    && is_numeric(
-        $place['public_latitude']
-    )
-    && is_numeric(
-        $place['public_longitude']
-    );
-
 $placeMapLatitude =
     $placeMapHasExactCoordinates
         ? (float) $place['latitude']
-        : (
-            $placeMapHasPublicCoordinates
-                ? (float) $place['public_latitude']
-                : null
-        );
+        : null;
 
 $placeMapLongitude =
     $placeMapHasExactCoordinates
         ? (float) $place['longitude']
-        : (
-            $placeMapHasPublicCoordinates
-                ? (float) $place['public_longitude']
-                : null
-        );
+        : null;
 
 if (
     $placeMapLatitude === null
     || $placeMapLongitude === null
 ) {
+    ?>
+    <section class="place-map-section" aria-labelledby="place-map-heading">
+        <div class="place-map-heading">
+            <div>
+                <p class="eyebrow">Map</p>
+                <h2 id="place-map-heading">Location unavailable</h2>
+            </div>
+        </div>
+        <p class="place-map-note">
+            This Place does not have usable stored coordinates yet.
+        </p>
+    </section>
+    <?php
     return;
 }
 
@@ -68,10 +61,7 @@ $placeMapCanEditAreas =
         'field_report'
     );
 
-$placeMapMaxZoom =
-    $placeMapHasLayerAccess
-        ? 20
-        : 11;
+$placeMapMaxZoom = 20;
 
 $placeMapIsScopedContributor =
     $placeMapHasLayerAccess
@@ -183,9 +173,9 @@ $placeMapEditorUrl =
 
         <div class="place-map-heading-actions">
             <span class="place-map-precision">
-                <?= $placeMapHasExactCoordinates
-                    ? 'Exact location'
-                    : 'Approximate public location' ?>
+                Stored Place location<?= ($place['coordinate_status'] ?? '') === 'unverified'
+                    ? ' · Verification pending'
+                    : '' ?>
             </span>
 
             <?php if ($placeMapCanEditAreas): ?>
@@ -230,7 +220,7 @@ $placeMapEditorUrl =
         data-place-cell-api="<?= place_h(
             $placeMapCellApi
         ) ?>"
-        data-place-map-features-api="<?= $placeMapHasExactCoordinates
+        data-place-map-features-api="<?= $placeMapHasLayerAccess
             ? place_h($placeMapFeaturesApi)
             : '' ?>"
     >
@@ -500,8 +490,8 @@ $placeMapEditorUrl =
 
     <?php if (!$placeMapHasLayerAccess): ?>
         <p class="place-map-note">
-            This map uses the approximate public location.
-            Complete Place access unlocks the exact pin and detailed map layers.
+            This map uses the Place's stored coordinates.
+            Complete Place access unlocks detailed map layers.
         </p>
     <?php endif; ?>
 </section>

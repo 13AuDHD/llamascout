@@ -54,10 +54,29 @@
             let count = 0;
 
             payload.places.forEach((place) => {
-                const latitude = Number(place.public_latitude);
-                const longitude = Number(place.public_longitude);
+                if (
+                    place.latitude === null ||
+                    place.latitude === undefined ||
+                    place.longitude === null ||
+                    place.longitude === undefined ||
+                    String(place.latitude).trim() === '' ||
+                    String(place.longitude).trim() === ''
+                ) {
+                    return;
+                }
 
-                if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+                const latitude = Number(place.latitude);
+                const longitude = Number(place.longitude);
+
+                if (
+                    !Number.isFinite(latitude) ||
+                    !Number.isFinite(longitude) ||
+                    latitude < -90 ||
+                    latitude > 90 ||
+                    longitude < -180 ||
+                    longitude > 180 ||
+                    (latitude === 0 && longitude === 0)
+                ) {
                     return;
                 }
 
