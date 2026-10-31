@@ -106,7 +106,7 @@ $footerUser = current_user();
 
                 <h2>Explore Llama Scout</h2>
 
-                <a href="<?= htmlspecialchars($footerSiteBase . '/map.php', ENT_QUOTES, 'UTF-8') ?>">
+                <a href="<?= htmlspecialchars($footerSiteBase . '/', ENT_QUOTES, 'UTF-8') ?>">
                     Map
                 </a>
 
