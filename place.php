@@ -860,9 +860,7 @@ require
 
     <?php require __DIR__ . '/partials/place/public-facility.php'; ?>
 
-    <?php if (!$hasMemberAccess): ?>
-        <?php require __DIR__ . '/partials/place/gallery.php'; ?>
-    <?php endif; ?>
+    <?php require __DIR__ . '/partials/place/gallery.php'; ?>
 
     <div
         data-place-campsites-mount
