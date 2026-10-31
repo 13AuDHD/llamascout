@@ -98,6 +98,36 @@ function user_has_paid_membership(?int $userId = null): bool
 }
 
 
+/**
+ * Place photo access is intentionally separate from Complete Access.
+ *
+ * The caller must pass the Place record returned by an authorized Place lookup.
+ * A missing record means the viewer cannot discover the Place, so no photo data
+ * may be rendered. Guests may see previews for an authorized Place, while any
+ * signed-in member may open its gallery.
+ *
+ * @return array{can_preview: bool, can_open: bool}
+ */
+function llama_place_photo_permissions(
+    ?array $authorizedPlace,
+    ?int $userId = null
+): array {
+    $canPreview =
+        (int) (
+            $authorizedPlace['id']
+            ?? 0
+        ) > 0;
+
+    return [
+        'can_preview' =>
+            $canPreview,
+        'can_open' =>
+            $canPreview
+            && ($userId ?? 0) > 0,
+    ];
+}
+
+
 function user_has_member_access(?int $userId = null): bool
 {
     if ($userId === null) {

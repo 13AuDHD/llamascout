@@ -205,6 +205,10 @@
     padding-bottom: 7px;
 }
 
+.place-photo-gallery.is-preview {
+    grid-auto-columns: minmax(160px, 22%);
+}
+
 .place-photo-thumb {
     position: relative;
     overflow: hidden;
@@ -226,6 +230,14 @@
 }
 
 .place-photo-thumb:hover img { transform: scale(1.025); }
+
+.place-photo-thumb.is-preview {
+    cursor: default;
+}
+
+.place-photo-thumb.is-preview:hover img {
+    transform: none;
+}
 
 .place-photo-featured-label {
     position: absolute;

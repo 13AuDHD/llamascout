@@ -725,7 +725,7 @@ function place_member_by_slug(
         (int) $place['id'];
 
     $place['images'] =
-        place_member_images(
+        place_gallery_images(
             $placeId
         );
 
@@ -773,7 +773,7 @@ function place_member_by_slug(
 }
 
 
-function place_member_images(
+function place_gallery_images(
     int $placeId
 ): array {
     $stmt = db()->prepare(
@@ -803,6 +803,18 @@ function place_member_images(
         $stmt->fetchAll(
             PDO::FETCH_ASSOC
         );
+}
+
+
+/*
+ * Backward-compatible name for older internal callers. Gallery visibility is
+ * now decided separately from Complete Access, so new code should use
+ * place_gallery_images() after an authorized Place lookup succeeds.
+ */
+function place_member_images(
+    int $placeId
+): array {
+    return place_gallery_images($placeId);
 }
 
 

@@ -647,16 +647,36 @@ $galleryImages =
 $heroImage =
     null;
 
-if (
+$placePhotoPermissions =
+    llama_place_photo_permissions(
+        $place,
+        $userId
+    );
+
+$canPreviewPlacePhotos =
+    $placePhotoPermissions['can_preview'];
+
+$canOpenPlaceGallery =
+    $placePhotoPermissions['can_open'];
+
+$gallerySourceImages =
     $hasMemberAccess
-    && !empty(
-        $place['images']
-    )
+        ? (
+            $place['images']
+            ?? []
+        )
+        : place_gallery_images(
+            (int) $place['id']
+        );
+
+if (
+    $canPreviewPlacePhotos
+    && !empty($gallerySourceImages)
 ) {
     $galleryImages =
         array_values(
             array_filter(
-                $place['images'],
+                $gallerySourceImages,
                 static fn (
                     array $image
                 ): bool =>
@@ -670,30 +690,32 @@ if (
             )
         );
 
-    foreach (
-        $galleryImages
-        as $image
-    ) {
-        if (
-            !empty(
-                $image['is_featured']
-            )
+    if ($hasMemberAccess) {
+        foreach (
+            $galleryImages
+            as $image
         ) {
-            $heroImage =
-                $image;
+            if (
+                !empty(
+                    $image['is_featured']
+                )
+            ) {
+                $heroImage =
+                    $image;
 
-            break;
+                break;
+            }
         }
+
+        $heroImage ??=
+            $galleryImages[0]
+            ?? null;
     }
+}
 
-    $heroImage ??=
-        $galleryImages[0]
-        ?? null;
-
-} elseif (
-    !empty(
-        $place['featured_image']
-    )
+if (
+    !$heroImage
+    && !empty($place['featured_image'])
 ) {
     $heroImage =
         $place['featured_image'];
@@ -788,6 +810,10 @@ require
 
     <?php require __DIR__ . '/partials/place/public-facility.php'; ?>
     <?php require __DIR__ . '/partials/place/public-scout-facts.php'; ?>
+
+    <?php if (!$hasMemberAccess): ?>
+        <?php require __DIR__ . '/partials/place/gallery.php'; ?>
+    <?php endif; ?>
 
     <div
         data-place-campsites-mount
