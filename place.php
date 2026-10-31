@@ -865,8 +865,6 @@ require
         . '/partials/place/facts-weather-amenities.php';
     ?>
 
-    <?php require __DIR__ . '/partials/place/public-facility.php'; ?>
-
     <?php require __DIR__ . '/partials/place/gallery.php'; ?>
 
     <div
