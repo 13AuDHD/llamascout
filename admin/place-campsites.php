@@ -69,6 +69,7 @@ foreach ($sites as $site) {
 if (
     !$selectedSite
     && $sites
+    && ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST'
 ) {
     $selectedSite =
         $sites[0];
