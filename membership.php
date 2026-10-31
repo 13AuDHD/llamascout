@@ -62,7 +62,7 @@ require __DIR__ . '/partials/header.php';
 
                     <ul>
                         <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Browse published Places</li>
-                        <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Approximate public map location</li>
+                        <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Stored coordinates for public Places</li>
                         <li><i aria-hidden="true"><?= llama_icon('check') ?></i> City, county, and state</li>
                         <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Elevation</li>
                         <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Land manager and land type</li>
@@ -246,7 +246,7 @@ require __DIR__ . '/partials/header.php';
                     <tbody>
                         <tr><td>Browse Places</td><td>Yes</td><td>Yes</td></tr>
                         <tr><td>Featured photo</td><td>Yes</td><td>Yes</td></tr>
-                        <tr><td>Approximate map location</td><td>Yes</td><td>Yes</td></tr>
+                        <tr><td>Stored coordinates for public Places</td><td>Yes</td><td>Yes</td></tr>
                         <tr><td>City / county / state</td><td>Yes</td><td>Yes</td></tr>
                         <tr><td>Land manager / land type</td><td>Yes</td><td>Yes</td></tr>
                         <tr><td>Amenities</td><td>Yes</td><td>Yes</td></tr>

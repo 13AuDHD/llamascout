@@ -2,7 +2,9 @@ name: V3 Pre-merge PHP Check
 
 on:
   push:
-    branches: [v3-development]
+    branches:
+      - v3-development
+      - main-coordinate-visibility-restricted-locations
     paths:
       - '.github/workflows/v3-premerge-php.yml'
       - '**/*.php'
@@ -30,3 +32,5 @@ jobs:
           done
       - name: Verify reporting contract
         run: php tools/v3-launch-smoke.php
+      - name: Verify coordinate and Site visibility contract
+        run: php tools/coordinate-visibility-smoke.php

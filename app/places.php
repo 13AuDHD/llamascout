@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/site-visibility.php';
 require_once __DIR__ . '/geography.php';
 
 
@@ -281,29 +282,6 @@ function llama_partner_demo_visibility_sql(
 }
 
 
-/**
- * Sensitive dispersed camping and vehicle pulloff Place records are member-only, not public listings
- * with rounded coordinates. Keep this at the shared read boundary so
- * search, maps and direct Place links enforce the same rule.
- */
-function llama_place_is_member_only(array $place): bool
-{
-    return in_array(
-        strtolower(trim((string) ($place['type'] ?? ''))),
-        ['dispersed-camping', 'vehicle-pulloff'],
-        true
-    );
-}
-
-function llama_place_viewer_can_read_member_only(
-    int $placeId,
-    ?int $viewerUserId
-): bool {
-    return $placeId > 0
-        && ($viewerUserId ?? 0) > 0
-        && user_has_place_complete_access($placeId, $viewerUserId);
-}
-
 function places_public(
     ?int $viewerUserId = null
 ): array {
@@ -316,6 +294,12 @@ function places_public(
         llama_partner_demo_visibility_sql(
             $canViewDemo,
             'p'
+        );
+
+    $locationVisibilitySql =
+        llama_place_visibility_sql(
+            'p',
+            $viewerUserId
         );
 
     $demoExistsSql =
@@ -332,8 +316,8 @@ function places_public(
             p.type,
             p.status,
             p.source_type,
-            p.public_latitude,
-            p.public_longitude,
+            p.latitude,
+            p.longitude,
             p.city,
             p.county,
             p.state,
@@ -376,6 +360,7 @@ function places_public(
             ON pa.place_id = p.id
 
         WHERE $visibilitySql
+          AND $locationVisibilitySql
 
         ORDER BY
             CASE
@@ -391,21 +376,6 @@ function places_public(
             PDO::FETCH_ASSOC
         );
 
-    // Never send sensitive Place identity, location or metadata to
-    // unauthorized public consumers, including the homepage and map API.
-    $viewerId = $viewerUserId ?? (int) (current_user()['id'] ?? 0);
-    if (!user_has_member_access($viewerId > 0 ? $viewerId : null)) {
-        $allowedPlaceIds = $viewerId > 0
-            ? array_fill_keys(user_original_contributed_place_ids($viewerId), true)
-            : [];
-        $rows = array_values(array_filter(
-            $rows,
-            static fn(array $row): bool =>
-                !llama_place_is_member_only($row)
-                || isset($allowedPlaceIds[(int) ($row['id'] ?? 0)])
-        ));
-    }
-
     $rows =
         places_normalize_county_rows(
             $rows
@@ -416,6 +386,13 @@ function places_public(
             (int) (
                 $row['is_demo']
                 ?? 0
+            );
+
+        $row['coordinate_status'] =
+            llama_coordinate_status(
+                $row['latitude'] ?? null,
+                $row['longitude'] ?? null,
+                $row['last_verified_at'] ?? null
             );
 
         $row['amenities'] = [
@@ -452,151 +429,11 @@ function places_public(
 }
 
 
-/*
- * Map-safe Places response.
- *
- * Free/logged-out visitors receive only the same approximate public
- * coordinates returned by places_public().
- *
- * Member coordinates are merged only after server-side access has already
- * been confirmed by api/places.php. This keeps exact coordinates completely
- * out of free-user responses instead of merely hiding them in JavaScript.
- *
- * Owners/Admins also receive exact coordinates for Demo Places so they can
- * review the demo exactly where it will appear when a future partner-preview
- * grant is active.
- */
 function places_map(
     bool $includeExactCoordinates = false,
     ?int $viewerUserId = null
 ): array {
-    $canViewDemo =
-        llama_partner_demo_viewer_can_access(
-            $viewerUserId
-        );
-
-    $places =
-        places_public(
-            $viewerUserId
-        );
-
-    if (!$places) {
-        return $places;
-    }
-
-    $contributedPlaceLookup = [];
-
-    if (
-        !$includeExactCoordinates
-        && ($viewerUserId ?? 0) > 0
-    ) {
-        $contributedPlaceLookup =
-            array_fill_keys(
-                user_original_contributed_place_ids(
-                    (int) $viewerUserId
-                ),
-                true
-            );
-    }
-
-    if (
-        !$includeExactCoordinates
-        && !$contributedPlaceLookup
-        && !$canViewDemo
-    ) {
-        return $places;
-    }
-
-    $stmt = db()->query(
-        "
-        SELECT
-            id,
-            latitude,
-            longitude
-
-        FROM places
-
-        WHERE status NOT IN (
-            'removed',
-            'archived'
-        )
-        "
-    );
-
-    $exactById = [];
-
-    foreach (
-        $stmt->fetchAll(
-            PDO::FETCH_ASSOC
-        )
-        as $row
-    ) {
-        $exactById[(int) $row['id']] = [
-            'latitude' => $row['latitude'],
-            'longitude' => $row['longitude'],
-        ];
-    }
-
-    foreach ($places as &$place) {
-        $placeId =
-            (int) (
-                $place['id']
-                ?? 0
-            );
-
-        $isDemo =
-            (int) (
-                $place['is_demo']
-                ?? 0
-            ) === 1;
-
-        if (
-            !$includeExactCoordinates
-            && !isset(
-                $contributedPlaceLookup[
-                    $placeId
-                ]
-            )
-            && !(
-                $canViewDemo
-                && $isDemo
-            )
-        ) {
-            continue;
-        }
-
-        $exact =
-            $exactById[
-                $placeId
-            ]
-            ?? null;
-
-        if (!$exact) {
-            continue;
-        }
-
-        $latitude =
-            $exact['latitude'];
-
-        $longitude =
-            $exact['longitude'];
-
-        if (
-            $latitude !== null
-            && $longitude !== null
-            && is_numeric($latitude)
-            && is_numeric($longitude)
-        ) {
-            $place['latitude'] =
-                (float) $latitude;
-
-            $place['longitude'] =
-                (float) $longitude;
-        }
-    }
-    unset($place);
-
-    return $places;
+    return places_public($viewerUserId);
 }
 
 
@@ -611,6 +448,9 @@ function place_public_by_slug(
             $canViewDemo,
             'p'
         );
+
+    $locationVisibilitySql =
+        llama_place_visibility_sql('p');
 
     $demoExistsSql =
         llama_partner_demo_exists_sql(
@@ -627,8 +467,8 @@ function place_public_by_slug(
             p.status,
             p.source_type,
             p.description,
-            p.public_latitude,
-            p.public_longitude,
+            p.latitude,
+            p.longitude,
             p.elevation_feet,
             p.city,
             p.county,
@@ -650,6 +490,7 @@ function place_public_by_slug(
 
         WHERE p.slug = ?
           AND $visibilitySql
+          AND $locationVisibilitySql
 
         LIMIT 1
         "
@@ -668,18 +509,6 @@ function place_public_by_slug(
         return null;
     }
 
-    // A direct slug must not bypass the same privacy boundary as listings.
-    if (llama_place_is_member_only($place)) {
-        $viewer = current_user();
-        $viewerId = (int) ($viewer['id'] ?? 0);
-        if (!llama_place_viewer_can_read_member_only(
-            (int) ($place['id'] ?? 0),
-            $viewerId
-        )) {
-            return null;
-        }
-    }
-
     $place =
         places_normalize_single_county(
             $place
@@ -689,6 +518,13 @@ function place_public_by_slug(
         (int) (
             $place['is_demo']
             ?? 0
+        );
+
+    $place['coordinate_status'] =
+        llama_coordinate_status(
+            $place['latitude'] ?? null,
+            $place['longitude'] ?? null,
+            $place['last_verified_at'] ?? null
         );
 
     $place['featured_image'] =
@@ -800,6 +636,9 @@ function place_member_by_slug(
             'p'
         );
 
+    $locationVisibilitySql =
+        llama_place_visibility_sql('p');
+
     $demoExistsSql =
         llama_partner_demo_exists_sql(
             'p'
@@ -845,6 +684,7 @@ function place_member_by_slug(
 
         WHERE p.slug = ?
           AND $visibilitySql
+          AND $locationVisibilitySql
 
         LIMIT 1
         "
@@ -872,6 +712,13 @@ function place_member_by_slug(
         (int) (
             $place['is_demo']
             ?? 0
+        );
+
+    $place['coordinate_status'] =
+        llama_coordinate_status(
+            $place['latitude'] ?? null,
+            $place['longitude'] ?? null,
+            $place['last_verified_at'] ?? null
         );
 
     $placeId =

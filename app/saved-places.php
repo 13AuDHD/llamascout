@@ -92,6 +92,7 @@ function saved_places_for_user(int $userId): array
             COALESCE(p.slug, usp.place_slug_snapshot) AS slug,
             COALESCE(p.name, usp.place_name_snapshot, usp.place_slug_snapshot, 'Saved place') AS name,
             p.status,
+            p.type,
             p.city,
             p.county,
             p.state,
@@ -112,5 +113,17 @@ function saved_places_for_user(int $userId): array
 
     $stmt->execute([$userId]);
 
-    return $stmt->fetchAll() ?: [];
+    $places = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+    return array_values(array_filter(
+        $places,
+        static fn(array $place): bool =>
+            !isset($place['place_id'])
+            || $place['place_id'] === null
+            || !llama_place_is_member_only($place)
+            || llama_place_viewer_can_read_member_only(
+                (int) $place['place_id'],
+                $userId
+            )
+    ));
 }

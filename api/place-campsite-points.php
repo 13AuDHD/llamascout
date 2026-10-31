@@ -182,6 +182,10 @@ try {
                 'name' => $name,
                 'latitude' => (float) $row['latitude'],
                 'longitude' => (float) $row['longitude'],
+                'coordinate_status' => llama_coordinate_status(
+                    $row['latitude'] ?? null,
+                    $row['longitude'] ?? null
+                ),
                 'site_type_label' => llama_campsite_popup_site_type_label(
                     (string) ($row['site_type'] ?? '')
                 ),
@@ -195,6 +199,10 @@ try {
             'hero_image' => $heroImages[(int) $row['id']] ?? null,
             'latitude' => (float) $row['latitude'],
             'longitude' => (float) $row['longitude'],
+            'coordinate_status' => llama_coordinate_status(
+                $row['latitude'] ?? null,
+                $row['longitude'] ?? null
+            ),
             'site_type_label' => llama_campsite_popup_site_type_label((string) ($row['site_type'] ?? '')),
             'parking_label' => llama_campsite_popup_parking_label((string) ($row['parking_style'] ?? '')),
             'max_vehicle_length_ft' => isset($row['max_vehicle_length_ft']) && $row['max_vehicle_length_ft'] !== ''

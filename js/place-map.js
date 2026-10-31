@@ -45,7 +45,7 @@
                 Number(
                     mapElement.dataset
                         .placeMaxZoom
-                    || 11
+                    || 20
                 )
             )
         );
@@ -141,7 +141,7 @@
 
             options: {
                 maxNativeZoom: 19,
-                maxZoom: 11,
+                maxZoom: 20,
 
                 attribution:
                     '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -527,10 +527,7 @@
             'span'
         );
 
-    detail.textContent =
-        hasExactCoordinates
-            ? 'Exact Place location'
-            : 'Approximate public location';
+    detail.textContent = 'Stored Place location';
 
     popup.append(
         strong,

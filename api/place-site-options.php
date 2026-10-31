@@ -59,19 +59,16 @@ try {
     $db = db();
 
     if ($placeId < 1 && $slug !== '') {
-        $placeStmt = $db->prepare(
-            'SELECT id
-             FROM places
-             WHERE slug = ?
-             LIMIT 1'
-        );
+        $visiblePlace = place_public_by_slug($slug);
 
-        $placeStmt->execute([
-            $slug,
-        ]);
+        if (!$visiblePlace) {
+            llama_place_site_options_json(
+                ['ok' => false, 'error' => 'Place not found.'],
+                404
+            );
+        }
 
-        $placeId =
-            (int) $placeStmt->fetchColumn();
+        $placeId = (int) ($visiblePlace['id'] ?? 0);
     }
 
     if ($placeId < 1) {
@@ -113,8 +110,8 @@ try {
     // Do not reveal even the Place identity to unauthorized accounts
     // through this alternate Site selector endpoint.
     if (
-        strtolower((string) ($place['type'] ?? '')) === 'dispersed-camping'
-        && !user_has_place_complete_access($placeId, $userId)
+        llama_place_is_member_only($place)
+        && !llama_place_viewer_can_read_member_only($placeId, $userId)
     ) {
         llama_place_site_options_json(
             ['ok' => false, 'error' => 'Place not found.'],
