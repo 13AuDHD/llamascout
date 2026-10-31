@@ -68,6 +68,29 @@ function llama_report_question_groups(
 }
 
 /**
+ * Group an already-authorized question selection for any renderer.
+ * Accepts only keys from the canonical catalog, preserving the caller's
+ * eligibility and permission filtering without duplicating definitions.
+ */
+function llama_report_group_selected_questions(array $selected): array
+{
+    $catalog = llama_report_questions();
+    $eligible = [];
+    foreach ($selected as $key => $_field) {
+        if (isset($catalog[$key])) {
+            $eligible[$key] = $catalog[$key];
+        }
+    }
+    return llama_place_report_group_eligible_questions($eligible);
+}
+
+/** Approved public-report group inventory from the same central catalog. */
+function llama_report_public_question_groups(): array
+{
+    return llama_place_report_effective_report_groups(llama_report_questions());
+}
+
+/**
  * View-neutral question metadata. Answer values live in the canonical answer
  * service, never in a copy of this catalog.
  */
