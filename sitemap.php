@@ -94,6 +94,7 @@ try {
             updated_at
          FROM places
          WHERE status IN ("active", "featured")
+           AND type <> "dispersed-camping"
            AND slug IS NOT NULL
            AND slug <> ""
          ORDER BY id ASC'
