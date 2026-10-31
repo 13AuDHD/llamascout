@@ -216,7 +216,7 @@ function llama_report_answer_sources(PDO $db, array $answers): array
         foreach ($candidates as $candidate) {
             $raw = trim((string) ($candidate ?? ''));
             $day = substr($raw, 0, 10);
-            if (!preg_match('/^\\d{4}-\\d{2}-\\d{2}$/', $day)) {
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $day)) {
                 continue;
             }
             $date = DateTimeImmutable::createFromFormat('!Y-m-d', $day);
