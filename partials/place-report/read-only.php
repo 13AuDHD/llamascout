@@ -30,35 +30,14 @@ if (
         $visibility = llama_place_report_approved_question_visibility();
         $published = llama_place_report_current_place_answers(db(), $placeId);
         $matched = llama_scout_report_attach_matching_history($published, $observations);
-        $memberIds = [];
-        foreach ($matched as $answer) {
-            $id = (int) ($answer['approved_report']['contributor_id'] ?? 0);
-            if ($id > 0) {
-                $memberIds[$id] = $id;
+        $sources = llama_report_answer_sources(db(), $matched);
+        foreach ($sources as $key => $source) {
+            $field = $placeReportFields[$key] ?? llama_report_question((string) $key);
+            if (($visibility[$key] ?? 'community') !== 'public'
+                || !in_array('place', (array) ($field['report_scopes'] ?? []), true)) {
+                continue;
             }
-        }
-        $memberNames = [];
-        if ($memberIds) {
-            $markers = implode(',', array_fill(0, count($memberIds), '?'));
-            $usersQuery = db()->prepare(
-                'SELECT id, username FROM users WHERE id IN (' . $markers . ')'
-            );
-            $usersQuery->execute(array_values($memberIds));
-            while ($userRow = $usersQuery->fetch(PDO::FETCH_ASSOC)) {
-                $memberNames[(int) $userRow['id']] = (string) $userRow['username'];
-            }
-        }
-        foreach ($matched as $key => $answer) {
-            if (
-                ($visibility[$key] ?? 'community') === 'public'
-                && !empty($answer['approved_report'])
-                && in_array(($answer['state'] ?? ''), ['answered', 'unknown'], true)
-            ) {
-                $publicPlaceReportAttribution[$key] = $answer['approved_report'];
-                $memberId = (int) ($answer['approved_report']['contributor_id'] ?? 0);
-                $publicPlaceReportAttribution[$key]['username'] =
-                    trim((string) ($memberNames[$memberId] ?? '')) ?: 'Former member';
-            }
+            $publicPlaceReportAttribution[$key] = $source;
         }
     } catch (Throwable $exception) {
         // Attribution is optional: never break the existing public cards.
@@ -497,16 +476,18 @@ $renderValue =
                     ? ($publicPlaceReportAttribution[$key] ?? null)
                     : null;
                 if (is_array($publicAttribution)):
-                    $observedOn = (string) (
-                        $publicAttribution['visit_date']
-                        ?: $publicAttribution['submitted_at']
-                    );
+                    $isSource = ($publicAttribution['kind'] ?? '') === 'source';
+                    $observedOn = (string) ($isSource
+                        ? ($publicAttribution['sourceUpdatedAt'] ?? '')
+                        : ($publicAttribution['visitDate'] ?? $publicAttribution['submittedAt'] ?? ''));
                     $dateOnly = substr($observedOn, 0, 10);
-                    $displayDate = strtotime($dateOnly);
+                    $displayDate = $dateOnly !== '' ? strtotime($dateOnly) : false;
                 ?>
                     <small class="scout-report-answer-source">
-                        <?= $e($displayDate !== false ? date('M j, Y', $displayDate) : $dateOnly) ?>
-                        · <?= $e((string) $publicAttribution['username']) ?>
+                        <?php if ($dateOnly !== ''): ?>
+                            <?= $e($displayDate !== false ? date('M j, Y', $displayDate) : $dateOnly) ?> ·
+                        <?php endif; ?>
+                        <?= $e((string) $publicAttribution['label']) ?>
                     </small>
                 <?php endif; ?>
 
