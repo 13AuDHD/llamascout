@@ -118,11 +118,11 @@ try {
     );
     $query->execute([$placeId]);
     $rows = $query->fetchAll(PDO::FETCH_ASSOC) ?: [];
-    $publicSiteIds = $canRead ? [] : llama_site_public_visibility_ids($db, $placeId);
+    $restrictedSiteIds = $canRead ? [] : llama_site_restricted_visibility_ids($db, $placeId);
     $rows = array_values(array_filter(
         $rows,
         static fn(array $site): bool =>
-            llama_site_can_read($place, $site, $canRead, $publicSiteIds)
+            llama_site_can_read($place, $site, $canRead, $restrictedSiteIds)
     ));
 
     if (count($rows) > 1000) {
