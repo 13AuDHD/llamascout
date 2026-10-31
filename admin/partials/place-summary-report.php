@@ -26,6 +26,12 @@ declare(strict_types=1);
         </div>
     </div>
     <div class="admin-place-summary-actions">
+        <?php if (!empty($adminPlaceCampsites)): ?>
+            <a class="admin-button is-muted"
+               href="/admin/place-campsites.php?place_id=<?= (int) $placeId ?>">
+                Review Site visibility
+            </a>
+        <?php endif; ?>
         <?php if (in_array((string) $place['status'], ['active', 'featured'], true)): ?>
             <a class="admin-button is-muted"
                href="https://llamascout.com/place.php?slug=<?= rawurlencode((string) $place['slug']) ?>"
