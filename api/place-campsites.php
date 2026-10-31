@@ -155,7 +155,14 @@ try {
                             : null,
                     'is_closed' => (bool) ($site['is_closed'] ?? false),
                     'operating_status' => $site['operating_status'] ?? null,
-                    'official_details' => $officialDetails,
+                    'official_details' =>
+                        array_map(
+                            static fn (array $detail): array => [
+                                'label' => (string) ($detail['label'] ?? ''),
+                                'value' => (string) ($detail['value'] ?? ''),
+                            ],
+                            $officialDetails
+                        ),
                 ];
                 continue;
             }
