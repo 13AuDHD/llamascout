@@ -3,12 +3,15 @@
 declare(strict_types=1);
 
 /**
- * V3 Site visibility policy. The database opt-in is deliberately fail-closed.
+ * V3 Site privacy is derived from the canonical Place type.
  *
- * A Place's public listing does not make its Sites public. Dispersed Sites
- * remain member-only, including imported and featured/curated records.
- * Developed campground Sites become public only after an explicit review
- * of both Site classification and visibility.
+ * Ordinary Sites at developed campgrounds and RV parks have public basic
+ * catalog/map identity. Sites at dispersed and other Places are member-only.
+ * Site-specific records in place_site_visibility are RESTRICTIONS only.
+ * They can never make a dispersed Place or Site public.
+ *
+ * The existing table is retained for mixed-use exceptions and old reviews.
+ * Missing table/schema is an error, not permission to publish.
  */
 function llama_site_public_visibility_ids(PDO $db, int $placeId): array
 {
@@ -16,37 +19,30 @@ function llama_site_public_visibility_ids(PDO $db, int $placeId): array
         return [];
     }
 
-    try {
-        $stmt = $db->prepare(
-            'SELECT campsite_id FROM place_site_visibility
-             WHERE place_id = ? AND site_kind = "developed" AND visibility = "public"'
-        );
-        $stmt->execute([$placeId]);
-        return array_fill_keys(array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN)), true);
-    } catch (PDOException $exception) {
-        // Deploying PHP before its SQL migration must not expose Sites.
-        // Other database errors should still be logged by the caller.
-        $code = (string) $exception->getCode();
-        if ($code === '42S02' || $code === '1146') {
-            return [];
-        }
-        throw $exception;
-    }
+    $stmt = $db->prepare(
+        'SELECT campsite_id FROM place_site_visibility
+         WHERE place_id = ?
+           AND (visibility = "members"
+                OR site_kind IN ("dispersed", "unreviewed"))'
+    );
+    $stmt->execute([$placeId]);
+    return array_fill_keys(
+        array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN)),
+        true
+    );
 }
 
 /**
- * True only for a specifically reviewed, ordinary developed-campground Site.
- * Do not infer public access from a missing row or a "primitive" label.
+ * The third argument contains restricted Site IDs (historical name retained
+ * to avoid changing all callers). Absence of an override follows Place type.
  */
-function llama_site_is_public(array $place, array $site, array $publicSiteIds): bool
+function llama_site_is_public(array $place, array $site, array $restrictedSiteIds): bool
 {
     $placeType = strtolower(trim((string) ($place['type'] ?? '')));
     if (!in_array($placeType, ['developed-campground', 'rv-park-resort'], true)) {
         return false;
     }
 
-    // Site type is not a privacy classification. These explicit markers
-    // only act as additional restrictions, never as permission to publish.
     foreach (['raw_site_type', 'site_type'] as $field) {
         if (str_contains(strtolower((string) ($site[$field] ?? '')), 'dispersed')) {
             return false;
@@ -54,21 +50,17 @@ function llama_site_is_public(array $place, array $site, array $publicSiteIds): 
     }
 
     $siteId = (int) ($site['id'] ?? 0);
-    return $siteId > 0 && isset($publicSiteIds[$siteId]);
+    return $siteId > 0 && !isset($restrictedSiteIds[$siteId]);
 }
 
-/**
- * All authorized members and Place-specific contributors can see every
- * Site. Everyone else sees only explicitly public developed Sites.
- */
 function llama_site_can_read(
     array $place,
     array $site,
     bool $hasCompletePlaceAccess,
-    array $publicSiteIds
+    array $restrictedSiteIds
 ): bool {
     if ($hasCompletePlaceAccess) {
         return true;
     }
-    return llama_site_is_public($place, $site, $publicSiteIds);
+    return llama_site_is_public($place, $site, $restrictedSiteIds);
 }
