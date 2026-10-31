@@ -79,7 +79,7 @@ function admin_place_site_section_place_field_keys(): array
 {
     $keys = [];
 
-    foreach (llama_place_report_fields() as $key => $field) {
+    foreach (llama_report_questions_for_scope('place', true) as $key => $field) {
         if (
             (string) (
                 $field['layout_section']
