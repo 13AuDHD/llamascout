@@ -11,8 +11,10 @@ declare(strict_types=1);
  *          'scope_group' => 'site', // place, place_area, site, all
  *          'layout_section' => 'site',
  *          'layout_group' => 'selection_type',
+ *          'layout_order' => 50, // position within the layout group
  *          'report_group' => '<an existing approved report group key>',
  *          'report_visibility' => 'community', // public or community
+ *          'report_order' => 50, // position among new questions in report group
  *          'allow_unknown' => true,
  *      ]);
  *
