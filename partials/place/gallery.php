@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-// The Place gallery is rendered by overnight-options.php, immediately after
-// the location selectors for Complete Access. Public Place pages render this
-// same partial above the locked Scout Report. Site gallery rules are unchanged.
+// Issue #41: every authorized viewer receives this same Place-gallery
+// position. Access changes interaction and visibility, not page structure.
+// Site gallery rules remain separate.
 if ($canPreviewPlacePhotos && $galleryImages):
 ?>
     <section
