@@ -88,6 +88,7 @@ try {
                     'electric_hookup' => $site['electric_hookup'] ?? null,
                     'is_closed' => (bool) ($site['is_closed'] ?? false),
                     'operating_status' => $site['operating_status'] ?? null,
+                    'official_details' => llama_site_public_catalog_details($site),
                 ];
                 continue;
             }
