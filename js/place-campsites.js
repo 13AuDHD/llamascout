@@ -1158,7 +1158,7 @@
                     <div>
                         <p class="eyebrow">Sites</p>
                         <h2 id="place-campsites-heading">Campground Sites</h2>
-                        <p>Basic public campsite information. Full Scout Reports
+                        <p>Browse public Site information. Detailed Scout Reports
                             require Place access.</p>
                     </div>
                     <strong class="place-campsites-count">
@@ -1175,11 +1175,71 @@
                 </div>
                 <div class="place-campsites-list" data-campsite-public-list
                     aria-label="Public campground Sites"></div>
+                <div class="place-campsite-detail place-campsite-public-detail"
+                    data-campsite-public-detail hidden></div>
             </section>
         `;
 
         const search = mount.querySelector('[data-campsite-public-search]');
         const list = mount.querySelector('[data-campsite-public-list]');
+        const detail = mount.querySelector('[data-campsite-public-detail]');
+        let selectedSiteId = null;
+
+        const basicsFor = (site) => [
+            siteTypeLabel(site.site_type),
+            parkingLabel(site.parking_style),
+            hookupLabel(site.hookup_status),
+            clean(site.accessible_status).toLowerCase() === 'yes'
+                ? 'Accessible' : '',
+            clean(site.electric_hookup) === '1'
+                ? 'Electric hookup' : '',
+        ].map(clean).filter((value) =>
+            value && value.toLowerCase() !== 'unknown'
+        );
+
+        const isClosed = (site) => site.is_closed === true
+            || ['closed', 'temporarily_closed', 'permanently_closed']
+                .includes(clean(site.operating_status).toLowerCase());
+
+        const renderDetail = (site) => {
+            if (!site) {
+                detail.hidden = true;
+                detail.innerHTML = '';
+                return;
+            }
+
+            const name = smartCase(site.display_name || site.site_name || site.site_code);
+            const official = Array.isArray(site.official_details)
+                ? site.official_details : [];
+            detail.hidden = false;
+            detail.innerHTML = `
+                <h3>${escapeHtml(name)}</h3>
+                ${isClosed(site)
+                    ? '<p class="place-campsite-closed-badge">Closed</p>'
+                    : ''}
+                <p>${basicsFor(site).map(escapeHtml).join(' · ')}</p>
+                <h4>Published Site details</h4>
+                ${official.length ? `
+                    <dl class="place-campsite-public-facts">
+                        ${official.map((item) => `
+                            <div>
+                                <dt>${escapeHtml(clean(item.label))}</dt>
+                                <dd>${escapeHtml(clean(item.value))}</dd>
+                            </div>
+                        `).join('')}
+                    </dl>
+                    <p class="place-campsite-public-source">
+                        Source: Recreation.gov / RIDB
+                    </p>
+                ` : `
+                    <p>No additional official Site specifications are available yet.</p>
+                `}
+                <p class="place-campsite-public-access-note">
+                    Detailed Scout Reports and Site history require Place access.
+                </p>
+            `;
+        };
+
         const render = () => {
             const query = clean(search.value).toLowerCase();
             const visible = sites.filter((site) => {
@@ -1187,38 +1247,42 @@
                 const type = clean(siteTypeLabel(site.site_type));
                 return !query || (name + ' ' + type).toLowerCase().includes(query);
             });
+
             if (!visible.length) {
                 list.innerHTML = '<div class="place-campsites-empty">No matching Sites.</div>';
+                renderDetail(null);
                 return;
             }
+
             list.innerHTML = visible.map((site) => {
-                const facts = [
-                    siteTypeLabel(site.site_type),
-                    parkingLabel(site.parking_style),
-                    hookupLabel(site.hookup_status),
-                    clean(site.accessible_status).toLowerCase() === 'yes'
-                        ? 'Accessible' : '',
-                    clean(site.electric_hookup) === '1'
-                        ? 'Electric hookup' : '',
-                ].map(clean).filter((value) =>
-                    value && value.toLowerCase() !== 'unknown'
-                );
-                const closed = site.is_closed === true
-                    || ['closed', 'temporarily_closed', 'permanently_closed']
-                        .includes(clean(site.operating_status).toLowerCase());
+                const selected = Number(site.id) === selectedSiteId;
+                const closed = isClosed(site);
                 return `
-                    <div class="place-campsite-row${closed ? ' is-closed' : ''}">
+                    <button type="button"
+                        class="place-campsite-row${closed ? ' is-closed' : ''}${selected ? ' is-selected' : ''}"
+                        data-public-site-id="${Number(site.id)}"
+                        aria-pressed="${selected ? 'true' : 'false'}">
                         <span class="place-campsite-row-name">
                             ${escapeHtml(smartCase(site.display_name || site.site_name || site.site_code))}
                         </span>
                         ${closed ? '<span class="place-campsite-closed-badge">Closed</span>' : ''}
                         <span class="place-campsite-row-summary">
-                            ${facts.map((fact) => `<span>${escapeHtml(fact)}</span>`).join(' · ')}
+                            ${basicsFor(site).map(escapeHtml).join(' · ')}
                         </span>
-                    </div>
+                    </button>
                 `;
             }).join('');
+
+            renderDetail(visible.find((site) => Number(site.id) === selectedSiteId));
         };
+
+        list.addEventListener('click', (event) => {
+            const card = event.target.closest('[data-public-site-id]');
+            if (!card) return;
+            selectedSiteId = Number(card.dataset.publicSiteId);
+            render();
+        });
+
         search.addEventListener('input', render);
         render();
     };
