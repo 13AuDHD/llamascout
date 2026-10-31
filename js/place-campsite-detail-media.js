@@ -284,7 +284,8 @@
     };
 
     const galleryMarkup = (
-        images
+        images,
+        canOpenPhotos = false
     ) => {
         if (
             !Array.isArray(images)
@@ -327,19 +328,36 @@
                         )
                         || src;
 
-                    return `
-                        <figure class="place-campsite-gallery-item">
-                            <a
-                                href="${escapeHtml(sourceUrl)}"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                            >
-                                <img
-                                    src="${escapeHtml(src)}"
-                                    alt="${escapeHtml(alt)}"
-                                    loading="lazy"
+                    const imageMarkup =
+                        canOpenPhotos
+                            ? `
+                                <a
+                                    href="${escapeHtml(sourceUrl)}"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    data-photo-caption="${escapeHtml(caption)}"
+                                    data-photo-credit="${escapeHtml(credit)}"
                                 >
-                            </a>
+                                    <img
+                                        src="${escapeHtml(src)}"
+                                        alt="${escapeHtml(alt)}"
+                                        loading="lazy"
+                                    >
+                                </a>
+                            `
+                            : `
+                                <div class="place-campsite-gallery-preview">
+                                    <img
+                                        src="${escapeHtml(src)}"
+                                        alt="${escapeHtml(alt)}"
+                                        loading="lazy"
+                                    >
+                                </div>
+                            `;
+
+                    return `
+                        <figure class="place-campsite-gallery-item${canOpenPhotos ? '' : ' is-preview'}">
+                            ${imageMarkup}
 
                             ${
                                 caption || credit
@@ -385,9 +403,15 @@
                     </span>
                 </div>
 
-                <div class="place-campsite-gallery">
+                <div class="place-campsite-gallery${canOpenPhotos ? '' : ' is-preview'}">
                     ${items}
                 </div>
+
+                ${
+                    canOpenPhotos
+                        ? ''
+                        : '<p class="place-campsite-photo-access-note">Sign in with a free account to enlarge and browse these Site photos.</p>'
+                }
             </section>
         `;
     };
@@ -527,7 +551,8 @@
 
         const gallery =
             galleryMarkup(
-                payload.images
+                payload.images,
+                payload.photo_access?.can_open === true
             );
 
         const equipment =
