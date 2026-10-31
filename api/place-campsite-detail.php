@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/place-campsites.php';
+require_once dirname(__DIR__) . '/app/site-visibility.php';
 require_once dirname(__DIR__) . '/app/place-campsite-media.php';
 require_once dirname(__DIR__) . '/app/place-map-features.php';
 require_once dirname(__DIR__) . '/app/campsite-closure-display.php';
@@ -76,15 +77,25 @@ $placeId = (int) ($publicPlace['id'] ?? 0);
 $user = current_user();
 $userId = (int) ($user['id'] ?? 0);
 $canRead = $userId > 0 && user_has_place_complete_access($placeId, $userId);
-if (!$canRead) {
-    llama_place_campsite_detail_json(['ok' => false, 'error' => 'Complete Place access is required.'], 403);
-}
 
 try {
     $db = db();
     $site = llama_place_campsite($db, $placeId, $campsiteId);
     if (!$site) {
         llama_place_campsite_detail_json(['ok' => false, 'error' => 'Site not found.'], 404);
+    }
+
+    $publicSiteIds = $canRead ? [] : llama_site_public_visibility_ids($db, $placeId);
+    if (!llama_site_can_read($publicPlace, $site, $canRead, $publicSiteIds)) {
+        // Do not confirm that a restricted dispersed Site ID exists.
+        llama_place_campsite_detail_json(['ok' => false, 'error' => 'Site not found.'], 404);
+    }
+
+    // The immutable member history remains private even for public Sites.
+    if (($_GET['mode'] ?? '') === 'history' && !$canRead) {
+        llama_place_campsite_detail_json(
+            ['ok' => false, 'error' => 'Complete Place access is required.'], 403
+        );
     }
 
     // Authorized Site history is read directly from immutable approved reports.
