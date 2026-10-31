@@ -98,6 +98,12 @@ function llama_place_report_add_site_fields(
             'grass' => 'Grassy',
             'mixed' => 'Mixed',
         ],
+        // Preserve the original observation rather than guessing whether
+        // "Rocky dirt" means Rocky, Mixed, or something else.
+        // Legacy values remain readable but are not new answer choices.
+        'legacy_values' => [
+            'Rocky dirt' => 'Rocky dirt (legacy)',
+        ],
         'allow_unknown' => true,
         'points_categories' => ['site_vehicle'],
     ]);
