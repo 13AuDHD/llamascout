@@ -109,7 +109,20 @@ function llama_place_report_fields(): array
     // Register custom questions last so they cannot be silently replaced
     // by a legacy module that happens to use the same key.
     require_once __DIR__ . '/question-custom.php';
-    llama_report_register_custom_questions($add);
+    $registerCustom = static function (
+        string $key,
+        string $label,
+        string $section,
+        string $type,
+        string $storage,
+        array $extra = []
+    ) use (&$f, $add): void {
+        if (isset($f[$key])) {
+            throw new LogicException('Duplicate Scout Report question key: ' . $key);
+        }
+        $add($key, $label, $section, $type, $storage, $extra);
+    };
+    llama_report_register_custom_questions($registerCustom);
     /*
      * ---------------------------------------------------------
      * 2. Apply behavior only after the registry is complete.
