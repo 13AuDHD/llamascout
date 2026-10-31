@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/place-campsites.php';
+require_once dirname(__DIR__) . '/app/site-visibility.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -114,6 +115,16 @@ try {
             $db,
             $placeId
         );
+
+    $hasCompleteAccess = user_has_place_complete_access($placeId, $userId);
+    $publicSiteIds = $hasCompleteAccess
+        ? []
+        : llama_site_public_visibility_ids($db, $placeId);
+    $sites = array_values(array_filter(
+        $sites,
+        static fn(array $site): bool =>
+            llama_site_can_read($place, $site, $hasCompleteAccess, $publicSiteIds)
+    ));
 
     $options = [];
 
