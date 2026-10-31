@@ -16,11 +16,7 @@ $placeId =
     );
 
 $stayViewerHasCompleteAccess =
-    (bool) (
-        $hasCompleteAccess
-        ?? $hasMemberAccess
-        ?? false
-    );
+    (bool) ($hasCompleteAccess ?? false);
 
 if ($stayViewerHasCompleteAccess) {
 
