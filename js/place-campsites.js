@@ -941,29 +941,38 @@
                 site
             );
 
+        const publicReportKeys =
+            new Set(
+                Array.isArray(
+                    site.public_report_keys
+                )
+                    ? site.public_report_keys
+                        .map(clean)
+                        .filter(Boolean)
+                    : []
+            );
+
         document
             .querySelectorAll(
                 '[data-campsite-report-field]'
             )
             .forEach(
                 (card) => {
-                    /*
-                     * Locked canonical cards keep their server-rendered access
-                     * state. Public catalog selection must never overwrite a
-                     * lock with a value derived from Site data.
-                     */
-                    if (
-                        card.classList.contains(
-                            'is-access-locked'
-                        )
-                    ) {
-                        return;
-                    }
-
                     const key =
                         clean(
                             card.dataset
                                 .campsiteReportField
+                        );
+
+                    const isStructurallyLocked =
+                        card.dataset
+                            .reportAccessLocked
+                        === '1';
+
+                    const hasPublicOverride =
+                        !hasCompleteAccess
+                        && publicReportKeys.has(
+                            key
                         );
 
                     const value =
@@ -997,6 +1006,47 @@
 
                     if (!strong) {
                         return;
+                    }
+
+                    if (
+                        isStructurallyLocked
+                        && !hasPublicOverride
+                    ) {
+                        strong.textContent =
+                            'Full Member';
+
+                        card.classList.add(
+                            'is-access-locked'
+                        );
+
+                        card.classList.remove(
+                            'is-unanswered',
+                            'is-explicit-unknown'
+                        );
+
+                        const existingSource =
+                            card.querySelector(
+                                '.scout-report-answer-source'
+                            );
+
+                        if (existingSource) {
+                            existingSource.textContent =
+                                '';
+
+                            existingSource.hidden =
+                                true;
+                        }
+
+                        return;
+                    }
+
+                    if (
+                        isStructurallyLocked
+                        && hasPublicOverride
+                    ) {
+                        card.classList.remove(
+                            'is-access-locked'
+                        );
                     }
 
                     const isUnknown =
@@ -1053,7 +1103,9 @@
                     let sourceLine = card.querySelector(
                         '.scout-report-answer-source'
                     );
-                    const source = site.report_answer_sources?.[key];
+                    const source =
+                        site.report_answer_sources?.[key]
+                        || site.public_report_sources?.[key];
                     if (source && !isUnanswered) {
                         if (!sourceLine) {
                             sourceLine = document.createElement('small');
