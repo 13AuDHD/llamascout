@@ -48,11 +48,11 @@ if (!$place) {
 try {
     $db = db();
     $sites = llama_place_campsites($db, $placeId);
-    $publicSiteIds = $canRead ? [] : llama_site_public_visibility_ids($db, $placeId);
+    $restrictedSiteIds = $canRead ? [] : llama_site_restricted_visibility_ids($db, $placeId);
     $sites = array_values(array_filter(
         $sites,
         static fn(array $site): bool =>
-            llama_site_can_read($place, $site, $canRead, $publicSiteIds)
+            llama_site_can_read($place, $site, $canRead, $restrictedSiteIds)
     ));
     $sites = llama_campsite_closure_enrich($db, $placeId, $sites);
 
