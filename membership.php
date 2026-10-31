@@ -175,7 +175,7 @@ require __DIR__ . '/partials/header.php';
                         <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Everything in Free Member</li>
                         <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Exact coordinates</li>
                         <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Exact road and location details</li>
-                        <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Complete Place photo gallery</li>
+                        <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Restricted Place photo galleries</li>
                         <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Full description</li>
                         <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Road and vehicle access</li>
                         <li><i aria-hidden="true"><?= llama_icon('check') ?></i> Sensory conditions</li>
@@ -259,7 +259,8 @@ require __DIR__ . '/partials/header.php';
                         <tr><td>Compare Places</td><td>No</td><td>Yes</td></tr>
                         <tr><td>Member profile / badges</td><td>Yes</td><td>Yes</td></tr>
                         <tr><td>Exact coordinates</td><td>No</td><td>Yes</td></tr>
-                        <tr><td>Full photo gallery</td><td>No</td><td>Yes</td></tr>
+                        <tr><td>Public Place photo gallery</td><td>Yes</td><td>Yes</td></tr>
+                        <tr><td>Restricted Place photo gallery</td><td>No</td><td>Yes</td></tr>
                         <tr><td>Road and access details</td><td>No</td><td>Yes</td></tr>
                         <tr><td>Sensory conditions</td><td>No</td><td>Yes</td></tr>
                         <tr><td>Environment and accessibility</td><td>No</td><td>Yes</td></tr>

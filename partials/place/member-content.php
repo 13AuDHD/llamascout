@@ -195,8 +195,7 @@ if ($hasMemberAccess):
 
         <p class="locked-scout-intro">
             This Place has more planning information available. Join Llama Scout
-            to unlock the answers, complete photo gallery, and
-            detailed Scout Report.
+            to unlock the answers and detailed Scout Report.
         </p>
 
         <?php foreach ($lockedScoutSections as $lockedSection): ?>
@@ -235,7 +234,7 @@ if ($hasMemberAccess):
                 </h3>
 
                 <p>
-                    Unlock restricted locations, Scout Reports, full photo galleries,
+                    Unlock restricted locations, Scout Reports,
                     sensory details, connectivity, road access, accessibility,
                     hazards, quick warnings, and more.
                 </p>

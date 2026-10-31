@@ -33,3 +33,6 @@ jobs:
       - name: Verify coordinate and Site visibility contract
         if: always()
         run: php tools/coordinate-visibility-smoke.php
+      - name: Verify public Place photo access contract
+        if: always()
+        run: php tools/place-photo-access-smoke.php
