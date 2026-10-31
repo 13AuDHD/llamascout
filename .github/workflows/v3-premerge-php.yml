@@ -2,7 +2,7 @@ name: V3 Pre-merge PHP Check
 
 on:
   push:
-    branches: [v3-development]
+    branches: [v3-development, main-public-place-photo-access]
     paths:
       - '.github/workflows/v3-premerge-php.yml'
       - '**/*.php'
