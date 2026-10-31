@@ -902,6 +902,13 @@
             site.report_override_values
         );
 
+        // The canonical published projection is the final authority.
+        // Legacy campsite columns remain a fallback for older records,
+        // but cannot replace a canonical winner with a different value.
+        mergeReportValues(
+            site.report_effective_values
+        );
+
         // The selected Site identifier is the first Scout Report answer.
         // Use the catalog's displayed name, not an optional report field.
         if (!values.site_number) set('site_number', smartCase(site.display_name));
@@ -1033,7 +1040,7 @@
                                 : (source.visitDate || source.submittedAt)
                         );
                         const isoDate = date.substring(0, 10);
-                        const dateLabel = /^\\d{4}-\\d{2}-\\d{2}$/.test(isoDate)
+                        const dateLabel = /^\d{4}-\d{2}-\d{2}$/.test(isoDate)
                             ? new Date(isoDate + 'T12:00:00').toLocaleDateString(
                                 undefined, { year: 'numeric', month: 'short', day: 'numeric' }
                             )
