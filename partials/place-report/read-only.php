@@ -389,6 +389,9 @@ $renderValue =
                 data-campsite-report-field="<?= $e($key) ?>"
                 data-campsite-report-type="<?= $e($type) ?>"
             <?php endif; ?>
+            <?php if ($isAccessLocked): ?>
+                data-report-access-locked="1"
+            <?php endif; ?>
             <?= $hideUntilCampsite ? 'hidden' : '' ?>
         >
 
@@ -409,8 +412,19 @@ $renderValue =
                     </strong>
                 </div>
 
+                <?php
+                $lockedFieldIcon =
+                    $localIcon(
+                        llama_place_report_field_icon(
+                            $key,
+                            $field
+                        ),
+                        $key
+                    );
+                ?>
+
                 <?= llama_icon(
-                    'lock',
+                    $lockedFieldIcon,
                     [
                         'class' => 'scout-report-value-icon',
                     ]
