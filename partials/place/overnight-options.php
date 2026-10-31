@@ -25,8 +25,7 @@ $stayViewerHasCompleteAccess =
 if ($stayViewerHasCompleteAccess) {
 
 $baseCampingFee =
-    $rules['fee']
-    ?? $place['rules']['fee']
+    $place['rules']['fee']
     ?? null;
 
 $stayFeatures = [];
