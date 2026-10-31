@@ -215,6 +215,56 @@ if (!$place) {
     exit;
 }
 
+/*
+ * Issue #41 access vocabulary.
+ *
+ * $hasMemberAccess is retained temporarily for older partials. In this page it
+ * means Complete Access, not merely "has an account". New work should use the
+ * explicit flags below so account state and paid/earned access do not drift
+ * back together.
+ */
+$isLoggedIn =
+    $userId > 0;
+
+$hasCompleteAccess =
+    $hasMemberAccess;
+
+$placeReportCanViewCommunity =
+    $hasCompleteAccess;
+
+/*
+ * The page itself was already authorized above. Load the complete published
+ * Place record only as the server-side source for the canonical Scout Report.
+ * The report renderer performs value-level access checks before emitting HTML.
+ * Restricted Places still fail the authorized lookup above and never reach
+ * this code for an unauthorized viewer.
+ */
+$placeReportSource =
+    $place;
+
+if (!$hasCompleteAccess) {
+    try {
+        $completePublishedPlace =
+            place_member_by_slug(
+                $slug
+            );
+
+        if (
+            $completePublishedPlace
+            && (int) ($completePublishedPlace['id'] ?? 0)
+                === (int) ($place['id'] ?? 0)
+        ) {
+            $placeReportSource =
+                $completePublishedPlace;
+        }
+    } catch (Throwable $exception) {
+        llama_log_caught_exception(
+            $exception,
+            'place.canonical_report_source'
+        );
+    }
+}
+
 $isSaved =
     $userId > 0
         ? user_has_saved_place(
@@ -809,7 +859,6 @@ require
     ?>
 
     <?php require __DIR__ . '/partials/place/public-facility.php'; ?>
-    <?php require __DIR__ . '/partials/place/public-scout-facts.php'; ?>
 
     <?php if (!$hasMemberAccess): ?>
         <?php require __DIR__ . '/partials/place/gallery.php'; ?>
