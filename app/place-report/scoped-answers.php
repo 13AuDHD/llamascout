@@ -774,6 +774,32 @@ function llama_scoped_report_merge_site_identity(
         $migrated++;
     }
 
+    // Mirror migrated V3 observations to the new identity before removing
+    // the old one. The caller holds the same database transaction.
+    if (llama_report_current_store_available($db)) {
+        $upsert = $db->prepare(
+            "INSERT INTO place_report_current_answers
+               (place_id, target_scope, target_source, target_id, question_key, answer_state, value_json)
+             VALUES (?, 'site', 'campsite_record', ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE answer_state = VALUES(answer_state),
+               value_json = VALUES(value_json), updated_at = CURRENT_TIMESTAMP"
+        );
+        foreach ($mapAnswers as $fieldKey => $mapAnswer) {
+            if (isset($canonicalAnswers[$fieldKey])) { continue; }
+            $unknown = $mapAnswer['value'] === llama_place_report_unknown_token();
+            $upsert->execute([
+                $placeId, $campsiteId, $fieldKey, $unknown ? 'unknown' : 'answered',
+                $unknown ? 'null' : $mapAnswer['json']
+            ]);
+        }
+        $remove = $db->prepare(
+            "DELETE FROM place_report_current_answers
+             WHERE place_id = ? AND target_scope = 'site' AND target_source = 'map_feature'
+               AND target_id = ?"
+        );
+        $remove->execute([$placeId, $mapFeatureId]);
+    }
+
     $delete =
         $db->prepare(
             'DELETE FROM place_report_scoped_answers
