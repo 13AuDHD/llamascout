@@ -73,6 +73,20 @@ try {
 
         foreach ($sites as $site) {
             if (!$canRead) {
+                $officialDetails =
+                    llama_site_public_catalog_details(
+                        $site
+                    );
+
+                /*
+                 * Keep the public payload narrow, but include the raw values
+                 * behind the already-approved official detail whitelist. The
+                 * shared Site browser can then populate the canonical Scout
+                 * Report cards without maintaining a second public-only UI.
+                 */
+                $hasOfficialDetails =
+                    $officialDetails !== [];
+
                 $catalog[] = [
                     'id' => (int) ($site['id'] ?? 0),
                     'feature_id' => (int) ($site['id'] ?? 0),
@@ -80,15 +94,55 @@ try {
                     'site_code' => (string) ($site['site_code'] ?? ''),
                     'site_name' => (string) ($site['site_name'] ?? ''),
                     'site_type' => (string) ($site['site_type'] ?? ''),
-                    // Public-facing campground basics only. No GPS, photos,
+                    // Public-facing campground basics only. No GPS,
                     // community observations or detailed Scout Report data.
                     'parking_style' => (string) ($site['parking_style'] ?? ''),
                     'hookup_status' => (string) ($site['hookup_status'] ?? ''),
                     'accessible_status' => (string) ($site['accessible_status'] ?? ''),
                     'electric_hookup' => $site['electric_hookup'] ?? null,
+                    'max_vehicle_length_ft' =>
+                        $hasOfficialDetails
+                            ? ($site['max_vehicle_length_ft'] ?? null)
+                            : null,
+                    'max_people' =>
+                        $hasOfficialDetails
+                            ? ($site['max_people'] ?? null)
+                            : null,
+                    'max_vehicles' =>
+                        $hasOfficialDetails
+                            ? ($site['max_vehicles'] ?? null)
+                            : null,
+                    'site_length_ft' =>
+                        $hasOfficialDetails
+                            ? ($site['site_length_ft'] ?? null)
+                            : null,
+                    'site_width_ft' =>
+                        $hasOfficialDetails
+                            ? ($site['site_width_ft'] ?? null)
+                            : null,
+                    'tent_pad' =>
+                        $hasOfficialDetails
+                            ? ($site['tent_pad'] ?? null)
+                            : null,
+                    'tent_pad_length_ft' =>
+                        $hasOfficialDetails
+                            ? ($site['tent_pad_length_ft'] ?? null)
+                            : null,
+                    'tent_pad_width_ft' =>
+                        $hasOfficialDetails
+                            ? ($site['tent_pad_width_ft'] ?? null)
+                            : null,
+                    'water_hookup' =>
+                        $hasOfficialDetails
+                            ? ($site['water_hookup'] ?? null)
+                            : null,
+                    'sewer_hookup' =>
+                        $hasOfficialDetails
+                            ? ($site['sewer_hookup'] ?? null)
+                            : null,
                     'is_closed' => (bool) ($site['is_closed'] ?? false),
                     'operating_status' => $site['operating_status'] ?? null,
-                    'official_details' => llama_site_public_catalog_details($site),
+                    'official_details' => $officialDetails,
                 ];
                 continue;
             }
