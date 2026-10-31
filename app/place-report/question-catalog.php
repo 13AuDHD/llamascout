@@ -50,6 +50,9 @@ function llama_report_questions_for_scope(
         }
         $result[$key] = $field;
     }
+    // Reconciliation bypasses conditional display rules, never question
+    // identity or declared ownership. Presentation pages can apply their
+    // normal visibility and membership restrictions afterward.
     return $result;
 }
 
