@@ -159,6 +159,63 @@ function llama_place_report_current_answer_model_with_history(
     return $model;
 }
 
+
+/**
+ * One attribution format for Place, Area and Site answer cards.
+ * Never infer a contributor or observation date from the current value.
+ *
+ * @return array<string,array<string,mixed>>
+ */
+function llama_report_answer_sources(PDO $db, array $answers): array
+{
+    $ids = [];
+    foreach ($answers as $answer) {
+        $id = (int) ($answer['approved_report']['contributor_id'] ?? 0);
+        if ($id > 0) { $ids[$id] = $id; }
+    }
+    $names = [];
+    if ($ids) {
+        $stmt = $db->prepare(
+            'SELECT id, username FROM users WHERE id IN (' .
+            implode(',', array_fill(0, count($ids), '?')) . ')'
+        );
+        $stmt->execute(array_values($ids));
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $names[(int) $row['id']] = (string) $row['username'];
+        }
+    }
+    $sources = [];
+    foreach ($answers as $key => $answer) {
+        if (empty($answer['recorded']) ||
+            !in_array((string) ($answer['state'] ?? ''), ['answered', 'unknown'], true)) {
+            continue;
+        }
+        $report = $answer['approved_report'] ?? null;
+        if (is_array($report)) {
+            $id = (int) ($report['contributor_id'] ?? 0);
+            $sources[$key] = [
+                'kind' => 'member',
+                'label' => trim((string) ($names[$id] ?? '')) ?: 'Former member',
+                'visitDate' => $report['visit_date'] ?? null,
+                'submittedAt' => $report['submitted_at'] ?? null,
+            ];
+            continue;
+        }
+        if (!empty($answer['imported'])) {
+            $origin = (array) ($answer['origin'] ?? []);
+            $provider = trim((string) ($origin['provider'] ?? ''));
+            if ($provider !== '') {
+                $sources[$key] = [
+                    'kind' => 'source',
+                    'label' => $provider,
+                    'sourceUpdatedAt' => $origin['source_updated_at'] ?? null,
+                ];
+            }
+        }
+    }
+    return $sources;
+}
+
 /**
  * Read approved Site report history without changing current published values.
  * The caller must verify the target and authorize Site-level access first.
