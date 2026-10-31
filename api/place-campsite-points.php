@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
+require_once dirname(__DIR__) . '/app/site-visibility.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: private, no-store');
@@ -82,12 +83,7 @@ $placeId = (int) ($place['id'] ?? 0);
 $user = current_user();
 $userId = (int) ($user['id'] ?? 0);
 
-if ($userId < 1 || !user_has_place_complete_access($placeId, $userId)) {
-    llama_campsite_points_response([
-        'ok' => false,
-        'error' => 'Complete Place access is required.',
-    ], 403);
-}
+$canRead = $userId > 0 && user_has_place_complete_access($placeId, $userId);
 
 try {
     $db = db();
@@ -97,6 +93,7 @@ try {
             cs.site_code,
             cs.site_name,
             cs.site_type,
+            cs.raw_site_type,
             cs.parking_style,
             cs.accessible_status,
             cs.latitude,
@@ -121,6 +118,12 @@ try {
     );
     $query->execute([$placeId]);
     $rows = $query->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    $publicSiteIds = $canRead ? [] : llama_site_public_visibility_ids($db, $placeId);
+    $rows = array_values(array_filter(
+        $rows,
+        static fn(array $site): bool =>
+            llama_site_can_read($place, $site, $canRead, $publicSiteIds)
+    ));
 
     if (count($rows) > 1000) {
         llama_campsite_points_response([
