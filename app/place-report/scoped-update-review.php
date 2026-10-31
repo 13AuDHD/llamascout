@@ -1135,7 +1135,11 @@ function llama_scoped_update_approve(
      */
     foreach ($answers as $key => $value) {
         $field = llama_scoped_report_field((string) $key, $scope);
-        $answers[$key] = llama_place_report_scoped_value($field, $value);
+        $parsedAnswer = llama_place_report_submission_answer($field, $value);
+        if (!$parsedAnswer['recorded']) {
+            throw new RuntimeException('An approval cannot publish an Unanswered observation.');
+        }
+        $answers[$key] = $parsedAnswer['scoped_value'];
 
         $prior =
             $oldAnswers[$key]
@@ -1271,22 +1275,35 @@ function llama_scoped_update_approve(
      * the moderator's transaction. Confirm that every approved answer is
      * actually present before recording the approved contribution.
      */
-    $publishedAnswers = llama_scoped_report_load(
-        $db,
-        $placeId,
-        $scope,
-        $targetId,
-        $source
-    );
-    foreach ($answers as $key => $value) {
-        if (
-            !array_key_exists($key, $publishedAnswers)
-            || llama_scout_report_json($publishedAnswers[$key])
-                !== llama_scout_report_json($value)
-        ) {
-            throw new RuntimeException(
-                'An approved Scout Report answer was not published. Approval was cancelled.'
-            );
+    // Read back the authoritative current answers, not only the legacy
+    // compatibility table. Both writes must already share this transaction.
+    $publishedAnswers = llama_report_current_store_available($db)
+        ? llama_report_current_store_load($db, $placeId, $scope, $source, $targetId)
+        : null;
+    if ($publishedAnswers !== null) {
+        foreach ($answers as $key => $value) {
+            $field = llama_scoped_report_field((string) $key, $scope);
+            $expected = llama_place_report_submission_answer($field, $value);
+            $actual = $publishedAnswers[$key] ?? null;
+            if (!is_array($actual)
+                || $actual['state'] !== $expected['state']
+                || ($expected['state'] === 'answered'
+                    && !llama_place_report_values_equal(
+                        $actual['value'], $expected['value'], $field
+                    ))) {
+                throw new RuntimeException(
+                    'An approved Scout Report answer did not reach canonical storage. Approval was cancelled.'
+                );
+            }
+        }
+    } else {
+        // Compatibility for installations without the V3 table.
+        $legacyPublished = llama_scoped_report_load($db, $placeId, $scope, $targetId, $source);
+        foreach ($answers as $key => $value) {
+            if (!array_key_exists($key, $legacyPublished)
+                || llama_scout_report_json($legacyPublished[$key]) !== llama_scout_report_json($value)) {
+                throw new RuntimeException('An approved Scout Report answer was not published. Approval was cancelled.');
+            }
         }
     }
 
