@@ -1191,16 +1191,33 @@
                 list.innerHTML = '<div class="place-campsites-empty">No matching Sites.</div>';
                 return;
             }
-            list.innerHTML = visible.map((site) => `
-                <div class="place-campsite-row">
-                    <span class="place-campsite-row-name">
-                        ${escapeHtml(smartCase(site.display_name || site.site_name || site.site_code))}
-                    </span>
-                    <span class="place-campsite-row-summary">
-                        ${escapeHtml(siteTypeLabel(site.site_type))}
-                    </span>
-                </div>
-            `).join('');
+            list.innerHTML = visible.map((site) => {
+                const facts = [
+                    siteTypeLabel(site.site_type),
+                    parkingLabel(site.parking_style),
+                    hookupLabel(site.hookup_status),
+                    clean(site.accessible_status).toLowerCase() === 'yes'
+                        ? 'Accessible' : '',
+                    clean(site.electric_hookup) === '1'
+                        ? 'Electric hookup' : '',
+                ].map(clean).filter((value) =>
+                    value && value.toLowerCase() !== 'unknown'
+                );
+                const closed = site.is_closed === true
+                    || ['closed', 'temporarily_closed', 'permanently_closed']
+                        .includes(clean(site.operating_status).toLowerCase());
+                return `
+                    <div class="place-campsite-row${closed ? ' is-closed' : ''}">
+                        <span class="place-campsite-row-name">
+                            ${escapeHtml(smartCase(site.display_name || site.site_name || site.site_code))}
+                        </span>
+                        ${closed ? '<span class="place-campsite-closed-badge">Closed</span>' : ''}
+                        <span class="place-campsite-row-summary">
+                            ${facts.map((fact) => `<span>${escapeHtml(fact)}</span>`).join(' · ')}
+                        </span>
+                    </div>
+                `;
+            }).join('');
         };
         search.addEventListener('input', render);
         render();
