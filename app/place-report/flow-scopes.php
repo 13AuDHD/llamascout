@@ -524,8 +524,11 @@ function llama_place_report_apply_flow_scopes(array &$fields): void
     $overrides = llama_place_report_scope_overrides();
 
     foreach ($fields as $key => &$field) {
+        // New questions declare ownership beside their definition.
+        // The historical override inventory remains for existing questions.
         $group =
-            $overrides[$key]
+            $field['scope_group']
+            ?? $overrides[$key]
             ?? llama_place_report_scope_default_for_section(
                 (string) (
                     $field['section']
@@ -552,7 +555,7 @@ function llama_place_report_apply_flow_scopes(array &$fields): void
                 : 'nearest_recorded';
 
         $field['scope_definition_explicit'] =
-            array_key_exists(
+            isset($field['scope_group']) || array_key_exists(
                 $key,
                 $overrides
             );
