@@ -99,6 +99,29 @@
     min-height: 0;
 }
 
+.scout-report-item.is-access-locked {
+    opacity: .82;
+}
+
+.scout-report-item.is-access-locked
+> .scout-report-value-content
+> strong {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.scout-report-item.is-access-locked
+> .scout-report-value-content
+> strong img,
+.scout-report-item.is-access-locked
+> .scout-report-value-content
+> strong svg {
+    width: 14px;
+    height: 14px;
+    flex: 0 0 auto;
+}
+
 
 /* =========================================================
    RATING CARD
