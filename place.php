@@ -787,6 +787,7 @@ require
     ?>
 
     <?php require __DIR__ . '/partials/place/public-facility.php'; ?>
+    <?php require __DIR__ . '/partials/place/public-scout-facts.php'; ?>
 
     <div
         data-place-campsites-mount
