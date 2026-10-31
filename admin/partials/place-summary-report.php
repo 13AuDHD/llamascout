@@ -29,7 +29,7 @@ declare(strict_types=1);
         <?php if (!empty($adminPlaceCampsites)): ?>
             <a class="admin-button is-muted"
                href="/place-campsites.php?place_id=<?= (int) $placeId ?>">
-                Review Site visibility
+                Site privacy exceptions
             </a>
         <?php endif; ?>
         <?php if (in_array((string) $place['status'], ['active', 'featured'], true)): ?>
