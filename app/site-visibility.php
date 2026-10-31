@@ -43,9 +43,15 @@ function llama_site_is_public(array $place, array $site, array $restrictedSiteId
         return false;
     }
 
+    // Legacy imports do not always use the word "dispersed".
+    // Treat primitive/backcountry labels as restricted until explicitly
+    // reconciled; a public developed Place cannot silently publish them.
     foreach (['raw_site_type', 'site_type'] as $field) {
-        if (str_contains(strtolower((string) ($site[$field] ?? '')), 'dispersed')) {
-            return false;
+        $siteType = strtolower((string) ($site[$field] ?? ''));
+        foreach (['dispersed', 'primitive', 'backcountry', 'boondock'] as $marker) {
+            if (str_contains($siteType, $marker)) {
+                return false;
+            }
         }
     }
 
