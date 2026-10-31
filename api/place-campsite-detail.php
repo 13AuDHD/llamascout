@@ -85,8 +85,8 @@ try {
         llama_place_campsite_detail_json(['ok' => false, 'error' => 'Site not found.'], 404);
     }
 
-    $publicSiteIds = $canRead ? [] : llama_site_public_visibility_ids($db, $placeId);
-    if (!llama_site_can_read($publicPlace, $site, $canRead, $publicSiteIds)) {
+    $restrictedSiteIds = $canRead ? [] : llama_site_restricted_visibility_ids($db, $placeId);
+    if (!llama_site_can_read($publicPlace, $site, $canRead, $restrictedSiteIds)) {
         // Do not confirm that a restricted dispersed Site ID exists.
         llama_place_campsite_detail_json(['ok' => false, 'error' => 'Site not found.'], 404);
     }
