@@ -185,6 +185,31 @@ try {
                         )
                     );
 
+                $publicReportSources = [];
+                $officialSourceLabel =
+                    trim(
+                        (string) ($site['source_provider'] ?? '')
+                    );
+                $officialSourceDate =
+                    trim(
+                        (string) ($site['source_updated_at'] ?? '')
+                    );
+
+                foreach ($officialReportKeyMap as $sourceKey => $reportKey) {
+                    if (!isset($officialDetailKeys[$sourceKey])) {
+                        continue;
+                    }
+
+                    $publicReportSources[$reportKey] = [
+                        'label' =>
+                            $officialSourceLabel !== ''
+                                ? $officialSourceLabel
+                                : 'Official source',
+                        'dateLabel' =>
+                            $officialSourceDate,
+                    ];
+                }
+
                 $catalog[] = [
                     'id' => (int) ($site['id'] ?? 0),
                     'feature_id' => (int) ($site['id'] ?? 0),
@@ -250,6 +275,8 @@ try {
                         ),
                     'public_report_keys' =>
                         $publicReportKeys,
+                    'public_report_sources' =>
+                        $publicReportSources,
                 ];
                 continue;
             }
