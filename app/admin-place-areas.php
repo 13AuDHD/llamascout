@@ -19,21 +19,10 @@ require_once __DIR__ . '/place-report/scoped-answers.php';
 /** @return array<string, array<string, mixed>> */
 function admin_place_area_fields(): array
 {
-    $fields = [];
-
-    foreach (llama_place_report_fields() as $key => $field) {
-        if (
-            !in_array('area', (array) ($field['report_scopes'] ?? []), true)
-            || !empty($field['derived'])
-            || !empty($field['location_field'])
-        ) {
-            continue;
-        }
-
-        $fields[(string) $key] = $field;
-    }
-
-    return $fields;
+    return array_filter(
+        llama_report_questions_for_scope('area', true),
+        static fn (array $field): bool => empty($field['location_field'])
+    );
 }
 
 /**
