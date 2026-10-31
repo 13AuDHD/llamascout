@@ -463,8 +463,8 @@ function admin_place_save_selected_campsite_answers(PDO $db, int $actorUserId, i
         }
         if (array_key_exists($key, $existing)
             && llama_place_report_values_equal($raw, $existing[$key], $fields[$key])) { continue; }
-        $value = llama_place_report_scoped_value($fields[$key], $raw);
-        llama_scoped_report_save($db, $placeId, 'site', $siteId, $source, $key, $value);
+        // Normalize exactly once in the shared scoped answer writer.
+        llama_scoped_report_save($db, $placeId, 'site', $siteId, $source, $key, $raw);
         ++$saved;
     }
     admin_users_audit($db, $actorUserId, null, 'place.site_report_updated',
