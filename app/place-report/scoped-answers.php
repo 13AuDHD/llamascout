@@ -87,8 +87,19 @@ function llama_scoped_report_save(
     );
 
     $field = llama_scoped_report_field($fieldKey, $scope);
+    // Unanswered means no current override. Reuse the single clear path
+    // so legacy fallback cannot bring back a supposedly removed answer.
+    // Explicit Unknown, false, zero and [] must still be stored as answers.
+    $answer = llama_place_report_submission_answer($field, $value);
+    if ($answer['state'] === 'unanswered') {
+        llama_scoped_report_clear_override(
+            $db, $placeId, $scope, $scopeId, $source, $fieldKey
+        );
+        return;
+    }
+
     $rawValue = $value;
-    $value = llama_place_report_scoped_value($field, $value);
+    $value = $answer['scoped_value'];
     llama_scoped_report_assert_owner($db, $placeId, $scope, $scopeId, $source);
 
     $json =
