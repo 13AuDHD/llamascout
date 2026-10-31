@@ -117,13 +117,13 @@ try {
         );
 
     $hasCompleteAccess = user_has_place_complete_access($placeId, $userId);
-    $publicSiteIds = $hasCompleteAccess
+    $restrictedSiteIds = $hasCompleteAccess
         ? []
-        : llama_site_public_visibility_ids($db, $placeId);
+        : llama_site_restricted_visibility_ids($db, $placeId);
     $sites = array_values(array_filter(
         $sites,
         static fn(array $site): bool =>
-            llama_site_can_read($place, $site, $hasCompleteAccess, $publicSiteIds)
+            llama_site_can_read($place, $site, $hasCompleteAccess, $restrictedSiteIds)
     ));
 
     $options = [];
