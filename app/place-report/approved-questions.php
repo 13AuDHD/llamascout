@@ -90,6 +90,42 @@ function llama_place_report_approved_question_visibility(): array
             (string) $amenityKey;
     }
 
+    // Published campground operating facts, basic fees, and ordinary
+    // published rules are free. Detailed observations, sensory ratings,
+    // connectivity and Site-specific reports remain community-only.
+    foreach (['operating'] as $groupKey) {
+        foreach ((array) ($groups[$groupKey][1] ?? []) as $key) {
+            $publicKeys[] = (string) $key;
+        }
+    }
+
+    array_push(
+        $publicKeys,
+        'stay_limit_days',
+        'fee',
+        'reservation_required',
+        'reservation_url',
+        'check_in_required',
+        'check_in_begins',
+        'check_out_required',
+        'checkout_ends',
+        'overnight_camping_allowed',
+        'designated_sites_only',
+        'pets_allowed',
+        'dogs_required_to_be_leashed',
+        'generator_restrictions',
+        'generator_prohibited',
+        'generator_quiet_hours',
+        'generator_quiet_hours_begin',
+        'generator_quiet_hours_end',
+        'place_quiet_hours',
+        'place_quiet_hours_begin',
+        'place_quiet_hours_end',
+        'campfire_allowed',
+        'food_storage_required',
+        'pack_it_in_pack_it_out'
+    );
+
     foreach (array_values(array_unique($publicKeys)) as $key) {
         if (array_key_exists($key, $visibility)) {
             $visibility[$key] =
