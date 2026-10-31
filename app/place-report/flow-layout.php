@@ -55,7 +55,7 @@ function llama_place_report_group_eligible_questions(array $eligibleFields): arr
             $positioned[] = [
                 'key' => $key,
                 'field' => $field,
-                'position' => (int) ($field['approved_question_position'] ?? PHP_INT_MAX),
+                'position' => (int) ($field['report_order'] ?? $field['approved_question_position'] ?? PHP_INT_MAX),
             ];
         }
         usort($positioned, static fn (array $a, array $b): int =>
