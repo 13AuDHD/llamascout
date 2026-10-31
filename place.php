@@ -515,54 +515,6 @@ $locationParts =
         ]
     );
 
-$details =
-    $hasMemberAccess
-        ? (
-            $place['details']
-            ?? []
-        )
-        : [];
-
-$connectivity =
-    $hasMemberAccess
-        ? (
-            $place['connectivity']
-            ?? []
-        )
-        : [];
-
-$sensory =
-    $hasMemberAccess
-        ? (
-            $place['sensory']
-            ?? []
-        )
-        : [];
-
-$sensoryDetails =
-    $hasMemberAccess
-        ? (
-            $place['sensory_details']
-            ?? []
-        )
-        : [];
-
-$rules =
-    $hasMemberAccess
-        ? (
-            $place['rules']
-            ?? []
-        )
-        : [];
-
-$experience =
-    $hasMemberAccess
-        ? (
-            $place['experience']
-            ?? []
-        )
-        : [];
-
 $db =
     db();
 
