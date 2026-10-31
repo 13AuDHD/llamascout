@@ -4,6 +4,16 @@ declare(strict_types=1);
 
 /* Canonical field registry assembled from smaller section files. */
 
+/**
+ * Retired question keys remain readable in historical records but do not
+ * appear in active forms, completion, or moderation question inventories.
+ * Retire a question here without deleting its historical answer data.
+ */
+function llama_place_report_retired_question_keys(): array
+{
+    return ['max_trailer_length_feet'];
+}
+
 function llama_place_report_fields(): array
 {
     static $registry = null;
