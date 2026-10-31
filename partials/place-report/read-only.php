@@ -17,6 +17,9 @@ $placeReportReadMode =
  * Site content is switched client-side and must receive its own provenance
  * alongside its Site-scoped answer, not a Place-level attribution.
  */
+$placeReportFields =
+    llama_report_questions();
+
 $publicPlaceReportAttribution = [];
 if (
     $placeReportReadMode === 'scout-report'
@@ -46,9 +49,6 @@ if (
         }
     }
 }
-
-$placeReportFields =
-    llama_report_questions();
 
 $placeReportSections =
     llama_place_report_sections();
