@@ -340,30 +340,6 @@ function llama_place_report_add_site_fields(
         'points_categories' => ['site_vehicle'],
     ]);
 
-    // Distinct historical trailer limit. Do not silently reinterpret this
-    // as maximum RV or vehicle length.
-    $add('max_trailer_length_feet', 'Maximum trailer length', 'site_vehicle',
-        'select', 'details.max_trailer_length_feet', [
-            'options' => [
-                '15' => '15 ft', '20' => '20 ft', '25' => '25 ft',
-                '30' => '30 ft', '35' => '35 ft', '40' => '40 ft',
-                '45' => '45 ft', '50' => '50 ft', '60' => '60 ft',
-            ],
-            'allow_unknown' => true,
-            'counts_toward_completion' => false,
-            'points_categories' => [],
-        ]);
-
-    $add('max_rv_length_feet', 'Maximum RV length', 'site_vehicle', 'select', 'details.max_rv_length_feet', [
-        'options' => [
-            '15' => 'About 15 ft', '20' => 'About 20 ft', '25' => 'About 25 ft',
-            '30' => 'About 30 ft', '35' => 'About 35 ft', '40' => 'About 40 ft',
-            '45' => 'About 45 ft', '50' => 'About 50 ft', '60' => '50+ ft',
-        ],
-        'allow_unknown' => true,
-        'points_categories' => ['site_vehicle'],
-    ]);
-
     foreach ([
         'tent_camping_suitable' => 'Tent camping suitable?',
         'turnaround_space' => 'Turnaround space?',
