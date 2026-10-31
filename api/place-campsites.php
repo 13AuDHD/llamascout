@@ -56,6 +56,15 @@ try {
     ));
     $sites = llama_campsite_closure_enrich($db, $placeId, $sites);
 
+    // The default/full response includes member-only Site facts and reports.
+    // Public developed Site access is limited to the reviewed catalog.
+    if (!$canRead && ($_GET['mode'] ?? '') !== 'catalog') {
+        llama_place_campsites_api_json([
+            'ok' => false,
+            'error' => 'Complete Place access is required.',
+        ], 403);
+    }
+
     // The Site picker never needs every Site's full Scout Report.
     // Preserve the existing full-response contract for older consumers.
     if (($_GET['mode'] ?? '') === 'catalog') {
