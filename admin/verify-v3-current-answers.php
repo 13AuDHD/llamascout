@@ -126,6 +126,33 @@ $reverse = $db->query(
      LEFT JOIN places p ON p.id = v.place_id"
 )->fetch(PDO::FETCH_ASSOC);
 
+// Ownership check by reporting target type. Inactive targets remain valid
+// historical references; only missing or cross-Place identities are flagged.
+$targets = $db->query(
+    "SELECT
+       SUM(CASE WHEN v.target_scope = 'area'
+                 AND (v.target_source <> 'map_feature' OR a.id IS NULL)
+                 THEN 1 ELSE 0 END) AS invalid_area,
+       SUM(CASE WHEN v.target_scope = 'site'
+                 AND v.target_source = 'map_feature' AND m.id IS NULL
+                 THEN 1 ELSE 0 END) AS missing_mapped_site,
+       SUM(CASE WHEN v.target_scope = 'site'
+                 AND v.target_source = 'campsite_record' AND c.id IS NULL
+                 THEN 1 ELSE 0 END) AS missing_campsite,
+       SUM(CASE WHEN v.target_scope = 'site'
+                 AND v.target_source NOT IN ('map_feature', 'campsite_record')
+                 THEN 1 ELSE 0 END) AS unsupported_site_source
+     FROM place_report_current_answers v
+     LEFT JOIN place_map_features a
+       ON a.id = v.target_id AND a.place_id = v.place_id
+       AND a.feature_type IN ('camping_area', 'parking_area')
+     LEFT JOIN place_map_features m
+       ON m.id = v.target_id AND m.place_id = v.place_id
+       AND m.feature_type = 'camping_site'
+     LEFT JOIN place_campsites c
+       ON c.id = v.target_id AND c.place_id = v.place_id"
+)->fetch(PDO::FETCH_ASSOC);
+
 header('Content-Type: text/html; charset=utf-8');
 ?>
 <!doctype html>
@@ -149,8 +176,11 @@ different values/states: <?= (int) ($scoped['different'] ?? 0) ?>.</p>
 missing parent Place: <?= (int) ($reverse['missing_place'] ?? 0) ?>;
 invalid Place target: <?= (int) ($reverse['invalid_place_target'] ?? 0) ?>;
 invalid scope: <?= (int) ($reverse['invalid_scope'] ?? 0) ?>.</p>
-<p>V3-only records are allowed. This integrity check does not imply that every
-Site or Area target exists; that requires a target ownership check.</p>
+<p>Missing Area targets: <?= (int) ($targets['invalid_area'] ?? 0) ?>;
+missing mapped Site targets: <?= (int) ($targets['missing_mapped_site'] ?? 0) ?>;
+missing campsite records: <?= (int) ($targets['missing_campsite'] ?? 0) ?>;
+unsupported Site sources: <?= (int) ($targets['unsupported_site_source'] ?? 0) ?>.</p>
+<p>V3-only records are allowed. Inactive but existing targets are retained.</p>
 <h2>Place records</h2>
 <p><strong><?= $placeCount ?> Places checked</strong>;
 answers checked <?= $checked ?>; matching <?= $matching ?>;
