@@ -476,16 +476,11 @@ $renderValue =
                     ? ($publicPlaceReportAttribution[$key] ?? null)
                     : null;
                 if (is_array($publicAttribution)):
-                    $isSource = ($publicAttribution['kind'] ?? '') === 'source';
-                    $observedOn = (string) ($isSource
-                        ? ($publicAttribution['sourceUpdatedAt'] ?? '')
-                        : ($publicAttribution['visitDate'] ?? $publicAttribution['submittedAt'] ?? ''));
-                    $dateOnly = substr($observedOn, 0, 10);
-                    $displayDate = $dateOnly !== '' ? strtotime($dateOnly) : false;
+                    $dateLabel = (string) ($publicAttribution['dateLabel'] ?? '');
                 ?>
                     <small class="scout-report-answer-source">
-                        <?php if ($dateOnly !== ''): ?>
-                            <?= $e($displayDate !== false ? date('M j, Y', $displayDate) : $dateOnly) ?> ·
+                        <?php if ($dateLabel !== ''): ?>
+                            <?= $e($dateLabel) ?> ·
                         <?php endif; ?>
                         <?= $e((string) $publicAttribution['label']) ?>
                     </small>
