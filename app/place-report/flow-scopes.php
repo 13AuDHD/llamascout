@@ -262,6 +262,7 @@ function llama_place_report_scope_overrides(): array
             'hookup_sewer',
             'trailer_suitable',
             'rv_suitable',
+            'max_trailer_length_feet',
             'max_rv_length_feet',
             'tent_camping_suitable',
             'pull_through',
