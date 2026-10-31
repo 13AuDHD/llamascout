@@ -1085,18 +1085,16 @@ foreach (
             ?? ''
         );
 
+    /*
+     * V3 context identity is based on the active record level, not the Place
+     * or Site type label. Parent Place content is green; Site content is
+     * orange. Area/space accents are applied when those child contexts are
+     * selected in the remaining Issue #41 Area work.
+     */
     $reportScopeClass =
         $reportPageKey === 'place'
-            ? (
-                $publicPlaceIsArea
-                    ? 'scout-report-scope-place'
-                    : 'scout-report-scope-other-place'
-            )
-            : (
-                $publicSiteIsParking
-                    ? 'scout-report-scope-space'
-                    : 'scout-report-scope-site'
-            );
+            ? 'scout-report-scope-place'
+            : 'scout-report-scope-site';
     ?>
     <section
         class="scout-report-section<?= $placeReportReadMode === 'scout-report' ? ' ' . $reportScopeClass : '' ?>"
