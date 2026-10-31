@@ -28,7 +28,7 @@ declare(strict_types=1);
     <div class="admin-place-summary-actions">
         <?php if (!empty($adminPlaceCampsites)): ?>
             <a class="admin-button is-muted"
-               href="/admin/place-campsites.php?place_id=<?= (int) $placeId ?>">
+               href="/place-campsites.php?place_id=<?= (int) $placeId ?>">
                 Review Site visibility
             </a>
         <?php endif; ?>
