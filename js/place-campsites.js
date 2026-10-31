@@ -1010,10 +1010,19 @@
 
                     if (
                         isStructurallyLocked
+                        && !card._llamaLockedValueMarkup
+                    ) {
+                        card._llamaLockedValueMarkup =
+                            strong.innerHTML;
+                    }
+
+                    if (
+                        isStructurallyLocked
                         && !hasPublicOverride
                     ) {
-                        strong.textContent =
-                            'Full Member';
+                        strong.innerHTML =
+                            card._llamaLockedValueMarkup
+                            || 'Full Member';
 
                         card.classList.add(
                             'is-access-locked'
