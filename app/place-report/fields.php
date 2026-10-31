@@ -31,6 +31,12 @@ function llama_place_report_fields(): array
         string $storage,
         array $extra = []
     ) use (&$f): void {
+        // Retire a question once, by key. No interface gets to revive it
+        // independently, and its historical answers stay untouched.
+        if (in_array($key, llama_place_report_retired_question_keys(), true)
+            || !empty($extra['retired'])) {
+            return;
+        }
         $f[$key] = array_merge(
             [
                 'key' => $key,
