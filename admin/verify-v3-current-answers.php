@@ -18,7 +18,9 @@ if (!llama_report_current_store_available($db)) {
 }
 $h = static fn (mixed $v): string =>
     htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
-$placeId = max(0, (int) ($_GET['place_id'] ?? 0));
+$placeId = 0; // Full verification always scans every Place.
+$placeCount = 0;
+$invalid = 0;
 $items = [];
 $checked = 0;
 $missing = 0;
@@ -26,17 +28,22 @@ $different = 0;
 $matching = 0;
 $fields = llama_place_report_fields();
 
-if ($placeId > 0) {
+$placeIds = $placeId > 0
+    ? [$placeId]
+    : array_map('intval', $db->query('SELECT id FROM places ORDER BY id')->fetchAll(PDO::FETCH_COLUMN));
+
+foreach ($placeIds as $currentPlaceId) {
+    $placeCount++;
     // Compare one Place at a time, without rewriting or reinterpreting its
     // canonical records. Legacy-compatible values come from the same reader
     // used during M3-003.
     $data = [];
-    foreach (llama_place_report_current_values($db, $placeId) as $path => $value) {
+    foreach (llama_place_report_current_values($db, $currentPlaceId) as $path => $value) {
         llama_place_report_set_path($data, $path, $value);
     }
     $data = llama_place_report_derive_compatibility($data);
-    $data['_answer_state'] = llama_place_report_published_answer_state($db, $placeId);
-    $canonical = llama_report_current_store_load($db, $placeId, 'place', 'place', $placeId);
+    $data['_answer_state'] = llama_place_report_published_answer_state($db, $currentPlaceId);
+    $canonical = llama_report_current_store_load($db, $currentPlaceId, 'place', 'place', $currentPlaceId);
 
     foreach ($fields as $key => $field) {
         if (!in_array('place', (array) ($field['report_scopes'] ?? []), true)
@@ -53,7 +60,8 @@ if ($placeId > 0) {
         try {
             $parsed = llama_place_report_submission_answer($field, $raw);
         } catch (InvalidArgumentException $exception) {
-            $items[] = ['key' => $key, 'status' => 'invalid legacy value',
+            $invalid++;
+            $items[] = ['place' => $currentPlaceId, 'key' => $key, 'status' => 'invalid legacy value',
                 'legacy' => $raw, 'canonical' => $canonical[$key]['value'] ?? null];
             continue;
         }
@@ -63,7 +71,7 @@ if ($placeId > 0) {
         $checked++;
         if (!isset($canonical[$key])) {
             $missing++;
-            $items[] = ['key' => $key, 'status' => 'missing canonical',
+            $items[] = ['place' => $currentPlaceId, 'key' => $key, 'status' => 'missing canonical',
                 'legacy' => $parsed['value'], 'canonical' => null];
             continue;
         }
@@ -74,7 +82,7 @@ if ($placeId > 0) {
                     $parsed['value'], $new['value'], $field
                 ))) {
             $different++;
-            $items[] = ['key' => $key, 'status' => 'different',
+            $items[] = ['place' => $currentPlaceId, 'key' => $key, 'status' => 'different',
                 'legacy' => $parsed['value'], 'canonical' => $new['value']];
         } else {
             $matching++;
@@ -123,20 +131,17 @@ review, not automatically reconciled.</p>
 missing canonical: <?= (int) ($scoped['missing'] ?? 0) ?>;
 different values/states: <?= (int) ($scoped['different'] ?? 0) ?>.</p>
 <h2>Place records</h2>
-<form method="get">
-<label>Place ID <input type="number" min="1" name="place_id" value="<?= $placeId ?: '' ?>" required></label>
-<button>Verify Place</button>
-</form>
-<?php if ($placeId > 0): ?>
-<p>Place #<?= $placeId ?>: checked <?= $checked ?>;
-matching <?= $matching ?>; missing <?= $missing ?>; different <?= $different ?>;
-invalid legacy <?= count(array_filter($items, static fn ($x) => $x['status'] === 'invalid legacy value')) ?>.</p>
+<p><strong><?= $placeCount ?> Places checked</strong>;
+answers checked <?= $checked ?>; matching <?= $matching ?>;
+missing <?= $missing ?>; different <?= $different ?>; invalid legacy <?= $invalid ?>.</p>
+<p>The report checks every Place automatically. Only mismatches are listed.</p>
 <?php if ($items): ?>
-<table><thead><tr><th>Question</th><th>Status</th><th>Legacy value</th><th>Canonical value</th></tr></thead>
+<table><thead><tr><th>Place</th><th>Question</th><th>Status</th><th>Legacy value</th><th>Canonical value</th></tr></thead>
 <tbody><?php foreach ($items as $item): ?><tr>
+<td><?= (int) $item['place'] ?></td>
 <td><?= $h($item['key']) ?></td><td><?= $h($item['status']) ?></td>
 <td><?= $h(json_encode($item['legacy'], JSON_UNESCAPED_UNICODE)) ?></td>
 <td><?= $h(json_encode($item['canonical'], JSON_UNESCAPED_UNICODE)) ?></td>
 </tr><?php endforeach; ?></tbody></table>
-<?php endif; endif; ?>
+<?php endif; ?>
 </body></html>
