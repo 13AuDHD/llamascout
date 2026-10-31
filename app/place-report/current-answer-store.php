@@ -101,6 +101,22 @@ function llama_report_current_store_save(
     ]);
 }
 
+/** Decode one V3 row consistently for single-target and bulk readers. */
+function llama_report_current_store_decode(array $row, string $scope): ?array
+{
+    $field = llama_place_report_fields()[(string) $row['question_key']] ?? null;
+    if (!is_array($field) || !empty($field['derived'])
+        || !in_array($scope, (array) ($field['report_scopes'] ?? []), true)) {
+        return null;
+    }
+    $state = (string) $row['answer_state'];
+    if (!in_array($state, ['answered', 'unknown'], true)) {
+        throw new UnexpectedValueException('Invalid persisted current-answer state.');
+    }
+    return ['state' => $state, 'value' => $state === 'unknown' ? null
+        : json_decode((string) $row['value_json'], true, 512, JSON_THROW_ON_ERROR)];
+}
+
 /**
  * @return array<string,array{state:string,value:mixed}>
  */
@@ -119,24 +135,12 @@ function llama_report_current_store_load(
            AND target_source = ? AND target_id = ?'
     );
     $stmt->execute([$placeId, $scope, $source, $targetId]);
-    $fields = llama_place_report_fields();
     $answers = [];
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        $key = (string) $row['question_key'];
-        $field = $fields[$key] ?? null;
-        if (!is_array($field) || !empty($field['derived'])
-            || !in_array($scope, (array) ($field['report_scopes'] ?? []), true)) {
-            continue;
+        $answer = llama_report_current_store_decode($row, $scope);
+        if ($answer !== null) {
+            $answers[(string) $row['question_key']] = $answer;
         }
-        $state = (string) $row['answer_state'];
-        if (!in_array($state, ['answered', 'unknown'], true)) {
-            throw new UnexpectedValueException('Invalid persisted current-answer state.');
-        }
-        $answers[$key] = [
-            'state' => $state,
-            'value' => $state === 'unknown' ? null
-                : json_decode((string) $row['value_json'], true, 512, JSON_THROW_ON_ERROR),
-        ];
     }
     return $answers;
 }
@@ -163,25 +167,13 @@ function llama_report_current_store_scoped_for_place(PDO $db, int $placeId): arr
          WHERE place_id = ? AND target_scope IN ('area', 'site')"
     );
     $query->execute([$placeId]);
-    $fields = llama_place_report_fields();
     $result = [];
     while ($row = $query->fetch(PDO::FETCH_ASSOC)) {
         $scope = (string) $row['target_scope'];
-        $key = (string) $row['question_key'];
-        $field = $fields[$key] ?? null;
-        if (!is_array($field) || !empty($field['derived'])
-            || !in_array($scope, (array) ($field['report_scopes'] ?? []), true)) {
-            continue;
-        }
-        $state = (string) $row['answer_state'];
-        if (!in_array($state, ['answered', 'unknown'], true)) {
-            throw new UnexpectedValueException('Invalid current-answer state.');
-        }
-        $result[$scope][(string) $row['target_source']][(int) $row['target_id']][$key] = [
-            'state' => $state,
-            'value' => $state === 'unknown' ? null
-                : json_decode((string) $row['value_json'], true, 512, JSON_THROW_ON_ERROR),
-        ];
+        $answer = llama_report_current_store_decode($row, $scope);
+        if ($answer === null) { continue; }
+        $result[$scope][(string) $row['target_source']][(int) $row['target_id']]
+            [(string) $row['question_key']] = $answer;
     }
     return $result;
 }
