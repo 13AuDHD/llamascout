@@ -100,6 +100,91 @@ try {
                         true
                     );
 
+                $publicReportKeys = ['site_number'];
+
+                $siteType =
+                    strtolower(
+                        trim(
+                            (string) ($site['site_type'] ?? '')
+                        )
+                    );
+
+                if (in_array($siteType, ['tent_site', 'mixed_site'], true)) {
+                    $publicReportKeys[] = 'tent_camping_suitable';
+                }
+
+                if (in_array(
+                    $siteType,
+                    ['rv_site', 'mixed_site', 'vehicle_site'],
+                    true
+                )) {
+                    $publicReportKeys[] = 'rv_suitable';
+                }
+
+                $accessibleStatus =
+                    strtolower(
+                        trim(
+                            (string) ($site['accessible_status'] ?? '')
+                        )
+                    );
+
+                if ($accessibleStatus !== '' && $accessibleStatus !== 'unknown') {
+                    $publicReportKeys[] = 'site_accessible';
+                }
+
+                $parkingStyle =
+                    strtolower(
+                        trim(
+                            (string) ($site['parking_style'] ?? '')
+                        )
+                    );
+
+                if ($parkingStyle !== '' && $parkingStyle !== 'unknown') {
+                    $publicReportKeys[] = 'pull_through';
+                    $publicReportKeys[] = 'back_in';
+                }
+
+                $hookupStatus =
+                    strtolower(
+                        trim(
+                            (string) ($site['hookup_status'] ?? '')
+                        )
+                    );
+
+                if ($hookupStatus !== '' && $hookupStatus !== 'unknown') {
+                    $publicReportKeys[] = 'site_hookups_available';
+                }
+
+                if (($site['electric_hookup'] ?? null) !== null) {
+                    $publicReportKeys[] = 'hookup_electric';
+                }
+
+                $officialReportKeyMap = [
+                    'max_vehicle_length_ft' => 'max_vehicle_length_feet',
+                    'max_people' => 'max_people',
+                    'max_vehicles' => 'vehicle_capacity',
+                    'site_length_ft' => 'site_length_feet',
+                    'site_width_ft' => 'site_width_feet',
+                    'tent_pad' => 'tent_pad',
+                    'tent_pad_length_ft' => 'tent_pad_length_feet',
+                    'tent_pad_width_ft' => 'tent_pad_width_feet',
+                    'water_hookup' => 'hookup_water',
+                    'sewer_hookup' => 'hookup_sewer',
+                ];
+
+                foreach ($officialReportKeyMap as $sourceKey => $reportKey) {
+                    if (isset($officialDetailKeys[$sourceKey])) {
+                        $publicReportKeys[] = $reportKey;
+                    }
+                }
+
+                $publicReportKeys =
+                    array_values(
+                        array_unique(
+                            $publicReportKeys
+                        )
+                    );
+
                 $catalog[] = [
                     'id' => (int) ($site['id'] ?? 0),
                     'feature_id' => (int) ($site['id'] ?? 0),
@@ -163,6 +248,8 @@ try {
                             ],
                             $officialDetails
                         ),
+                    'public_report_keys' =>
+                        $publicReportKeys,
                 ];
                 continue;
             }
