@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/place-campsites.php';
+require_once dirname(__DIR__) . '/app/site-visibility.php';
 require_once dirname(__DIR__) . '/app/place-map-features.php';
 require_once dirname(__DIR__) . '/app/campsite-closure-display.php';
 require_once dirname(__DIR__) . '/app/place-report.php';
@@ -38,12 +39,6 @@ $placeId = (int) ($publicPlace['id'] ?? 0);
 $user = current_user();
 $userId = (int) ($user['id'] ?? 0);
 $canRead = $userId > 0 && user_has_place_complete_access($placeId, $userId);
-if (!$canRead) {
-    llama_place_campsites_api_json([
-        'ok' => false,
-        'error' => 'Complete Place access is required.',
-    ], 403);
-}
 
 $place = place_member_by_slug($slug);
 if (!$place) {
@@ -53,6 +48,12 @@ if (!$place) {
 try {
     $db = db();
     $sites = llama_place_campsites($db, $placeId);
+    $publicSiteIds = $canRead ? [] : llama_site_public_visibility_ids($db, $placeId);
+    $sites = array_values(array_filter(
+        $sites,
+        static fn(array $site): bool =>
+            llama_site_can_read($place, $site, $canRead, $publicSiteIds)
+    ));
     $sites = llama_campsite_closure_enrich($db, $placeId, $sites);
 
     // The Site picker never needs every Site's full Scout Report.
