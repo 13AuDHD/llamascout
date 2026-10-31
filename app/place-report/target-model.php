@@ -144,8 +144,20 @@ function llama_place_report_target_model(PDO $db, int $placeId, array $target): 
     $scope = (string) $target['scope'];
     $source = (string) $target['source'];
     $id = (int) $target['id'];
+    $placeValues = llama_scoped_report_values_from_data($data);
+    // Use the same current Place answers as the standalone Place reader.
+    // Missing unified rows continue to inherit the existing published facts.
+    if (llama_report_current_store_available($db)) {
+        foreach (llama_report_current_store_load(
+            $db, $placeId, 'place', 'place', $placeId
+        ) as $key => $answer) {
+            $placeValues[$key] = $answer['state'] === 'unknown'
+                ? llama_place_report_unknown_token()
+                : $answer['value'];
+        }
+    }
     $resolved = llama_scoped_report_effective_answers($db, $placeId,
-        llama_scoped_report_values_from_data($data), $scope, $id, $source,
+        $placeValues, $scope, $id, $source,
         !empty($target['parent_area_id']) ? (int) $target['parent_area_id'] : null);
     $resolved['overrides'] = $resolved['direct'];
     if ($scope === 'site' && $source === 'campsite_record') {
