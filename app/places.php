@@ -282,7 +282,7 @@ function llama_partner_demo_visibility_sql(
 
 
 /**
- * Dispersed camping Place records are member-only, not public listings
+ * Sensitive dispersed camping and vehicle pulloff Place records are member-only, not public listings
  * with rounded coordinates. Keep this at the shared read boundary so
  * search, maps and direct Place links enforce the same rule.
  */
@@ -290,7 +290,7 @@ function llama_place_is_member_only(array $place): bool
 {
     return in_array(
         strtolower(trim((string) ($place['type'] ?? ''))),
-        ['dispersed-camping'],
+        ['dispersed-camping', 'vehicle-pulloff'],
         true
     );
 }
@@ -391,7 +391,7 @@ function places_public(
             PDO::FETCH_ASSOC
         );
 
-    // Never send dispersed Place identity, location or metadata to
+    // Never send sensitive Place identity, location or metadata to
     // unauthorized public consumers, including the homepage and map API.
     $viewerId = $viewerUserId ?? (int) (current_user()['id'] ?? 0);
     if (!user_has_member_access($viewerId > 0 ? $viewerId : null)) {
