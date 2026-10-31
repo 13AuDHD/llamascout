@@ -12,6 +12,9 @@ $placeReportData =
 $placeReportReadMode =
     (string) ($placeReportReadMode ?? 'scout-report');
 
+$placeReportCanViewCommunity =
+    (bool) ($placeReportCanViewCommunity ?? true);
+
 /*
  * Only public Place questions receive first-render report attribution here.
  * Site content is switched client-side and must receive its own provenance
@@ -275,22 +278,43 @@ $renderValue =
         $localIcon,
         $campsiteSwitchableFields,
         $renderSafeDescription,
-        $publicPlaceReportAttribution
+        $publicPlaceReportAttribution,
+        $placeReportCanViewCommunity
     ): void {
-        $state =
-            llama_place_report_answer_state(
-                $placeReportData,
-                $key
+        $visibility =
+            (string) (
+                $field['approved_visibility']
+                ?? $field['report_visibility']
+                ?? 'community'
             );
 
-        $value =
-            llama_place_report_display_value(
-                $placeReportData,
-                $key
-            );
+        $isAccessLocked =
+            $placeReportReadMode === 'scout-report'
+            && !$placeReportCanViewCommunity
+            && $visibility !== 'public';
 
-        if ($placeReportReadMode === 'scout-report'
-            && !in_array('place', (array) ($field['report_scopes'] ?? []), true)) {
+        if ($isAccessLocked) {
+            $state = 'locked';
+            $value = 'Full Member';
+        } else {
+            $state =
+                llama_place_report_answer_state(
+                    $placeReportData,
+                    $key
+                );
+
+            $value =
+                llama_place_report_display_value(
+                    $placeReportData,
+                    $key
+                );
+        }
+
+        if (
+            !$isAccessLocked
+            && $placeReportReadMode === 'scout-report'
+            && !in_array('place', (array) ($field['report_scopes'] ?? []), true)
+        ) {
             $state = 'unanswered';
             $value = null;
         }
@@ -334,6 +358,11 @@ $renderValue =
                 $state === 'unanswered'
                     ? ' is-unanswered'
                     : ''
+            )
+            . (
+                $isAccessLocked
+                    ? ' is-access-locked'
+                    : ''
             );
         ?>
 
@@ -363,7 +392,31 @@ $renderValue =
             <?= $hideUntilCampsite ? 'hidden' : '' ?>
         >
 
-            <?php if ($isRating): ?>
+            <?php if ($isAccessLocked): ?>
+                <div class="scout-report-value-content">
+                    <span>
+                        <?= $e(
+                            rtrim(
+                                (string) $field['label'],
+                                '*'
+                            )
+                        ) ?>
+                    </span>
+
+                    <strong>
+                        <?= llama_icon('lock') ?>
+                        Full Member
+                    </strong>
+                </div>
+
+                <?= llama_icon(
+                    'lock',
+                    [
+                        'class' => 'scout-report-value-icon',
+                    ]
+                ) ?>
+
+            <?php elseif ($isRating): ?>
                 <div class="scout-rating-content">
                     <span>
                         <?= $e(
@@ -496,6 +549,8 @@ $renderCompoundValue =
         array $componentFields
     ) use (
         $placeReportData,
+        $placeReportReadMode,
+        $placeReportCanViewCommunity,
         $e,
         $localIcon
     ): void {
@@ -507,6 +562,61 @@ $renderCompoundValue =
             ?? null;
 
         if (!is_array($definition)) {
+            return;
+        }
+
+        $isAccessLocked =
+            $placeReportReadMode === 'scout-report'
+            && !$placeReportCanViewCommunity
+            && array_reduce(
+                $componentFields,
+                static function (bool $locked, array $field): bool {
+                    if ($locked) {
+                        return true;
+                    }
+
+                    $visibility =
+                        (string) (
+                            $field['approved_visibility']
+                            ?? $field['report_visibility']
+                            ?? 'community'
+                        );
+
+                    return $visibility !== 'public';
+                },
+                false
+            );
+
+        if ($isAccessLocked) {
+            ?>
+            <div
+                class="scout-report-item scout-report-value-item is-access-locked"
+                data-report-compound-question="<?= $e($compoundKey) ?>"
+            >
+                <div class="scout-report-value-content">
+                    <span>
+                        <?= $e(
+                            (string) (
+                                $definition['label']
+                                ?? $compoundKey
+                            )
+                        ) ?>
+                    </span>
+
+                    <strong>
+                        <?= llama_icon('lock') ?>
+                        Full Member
+                    </strong>
+                </div>
+
+                <?= llama_icon(
+                    'lock',
+                    [
+                        'class' => 'scout-report-value-icon',
+                    ]
+                ) ?>
+            </div>
+            <?php
             return;
         }
 
@@ -738,9 +848,11 @@ $renderContributionPrompt =
  * or Site selection can reveal its own warning set without rebuilding layout.
  */
 $warnings =
-    llama_place_report_quick_warnings(
-        $placeReportData
-    );
+    $placeReportCanViewCommunity
+        ? llama_place_report_quick_warnings(
+            $placeReportData
+        )
+        : [];
 ?>
     <section
         class="scout-report-section scout-report-warning-section"
