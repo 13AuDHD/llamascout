@@ -212,6 +212,20 @@ function llama_place_report_current_answer_model_with_history(
  */
 function llama_report_answer_sources(PDO $db, array $answers): array
 {
+    $formatDate = static function (mixed ...$candidates): string {
+        foreach ($candidates as $candidate) {
+            $raw = trim((string) ($candidate ?? ''));
+            $day = substr($raw, 0, 10);
+            if (!preg_match('/^\\d{4}-\\d{2}-\\d{2}$/', $day)) {
+                continue;
+            }
+            $date = DateTimeImmutable::createFromFormat('!Y-m-d', $day);
+            if ($date instanceof DateTimeImmutable && $date->format('Y-m-d') === $day) {
+                return $date->format('M j, Y');
+            }
+        }
+        return '';
+    };
     $ids = [];
     foreach ($answers as $answer) {
         $id = (int) ($answer['approved_report']['contributor_id'] ?? 0);
@@ -242,6 +256,10 @@ function llama_report_answer_sources(PDO $db, array $answers): array
                 'label' => trim((string) ($names[$id] ?? '')) ?: 'Former member',
                 'visitDate' => $report['visit_date'] ?? null,
                 'submittedAt' => $report['submitted_at'] ?? null,
+                'dateLabel' => $formatDate(
+                    $report['visit_date'] ?? null,
+                    $report['submitted_at'] ?? null
+                ),
             ];
             continue;
         }
@@ -253,6 +271,7 @@ function llama_report_answer_sources(PDO $db, array $answers): array
                     'kind' => 'source',
                     'label' => $provider,
                     'sourceUpdatedAt' => $origin['source_updated_at'] ?? null,
+                    'dateLabel' => $formatDate($origin['source_updated_at'] ?? null),
                 ];
             }
         }
