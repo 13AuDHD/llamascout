@@ -72,6 +72,17 @@ try {
         $catalog = [];
 
         foreach ($sites as $site) {
+            if (!$canRead) {
+                $catalog[] = [
+                    'id' => (int) ($site['id'] ?? 0),
+                    'feature_id' => (int) ($site['id'] ?? 0),
+                    'display_name' => (string) ($site['display_name'] ?? ''),
+                    'site_code' => (string) ($site['site_code'] ?? ''),
+                    'site_name' => (string) ($site['site_name'] ?? ''),
+                    'site_type' => (string) ($site['site_type'] ?? ''),
+                ];
+                continue;
+            }
             $catalog[] = [
                 'id' => (int) ($site['id'] ?? 0),
                 'feature_id' => (int) ($site['id'] ?? 0),
