@@ -12,14 +12,10 @@ require_once dirname(__DIR__, 2)
  * overnight/Site experience, not which Scout Report exists.
  */
 $viewerHasCompleteAccess =
-    (bool) (
-        $hasCompleteAccess
-        ?? $hasMemberAccess
-        ?? false
-    );
+    (bool) ($hasCompleteAccess ?? false);
 ?>
 
-<?php if (!empty($hasContributorPlaceAccess) && empty($hasGlobalMemberAccess)): ?>
+<?php if (!empty($hasEarnedPlaceAccess) && empty($hasGlobalCompleteAccess)): ?>
     <section class="place-section place-contributor-access-note">
         <i aria-hidden="true"><?= llama_icon('key') ?></i>
         <div>
