@@ -790,7 +790,7 @@ $automaticSaleTerms = $automaticSale
 <?php endif; ?>
 
 <ul>
-    <li>Exact Place locations and coordinates</li>
+    <li>Restricted Place and Site locations</li>
     <li>Complete sensory details</li>
     <li>Road and vehicle-access information</li>
     <li>Connectivity and Starlink information</li>

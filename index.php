@@ -9,6 +9,7 @@ $pageDescription = 'Explore outdoor places with practical information about acce
 $canonicalUrl = 'https://llamascout.com/';
 
 $db = db();
+$locationVisibilitySql = llama_place_visibility_sql('p');
 
 $featuredStmt = $db->query(
     "SELECT
@@ -38,6 +39,7 @@ $featuredStmt = $db->query(
         ) AS featured_image_alt
      FROM places p
      WHERE p.status IN ('active','featured')
+       AND $locationVisibilitySql
      ORDER BY
         CASE WHEN p.status = 'featured' THEN 0 ELSE 1 END,
         COALESCE(p.published_at, p.created_at) DESC,
@@ -219,8 +221,8 @@ require __DIR__ . '/partials/header.php';
                     <p class="public-home-eyebrow">Explore</p>
                     <h2>Start with the map.</h2>
                     <p>
-                        Public markers show the general area. Paid members can
-                        unlock exact locations and the complete field report.
+                        Public Places show their stored location. Complete
+                        Access unlocks restricted locations and field reports.
                     </p>
                 </div>
 
@@ -235,7 +237,7 @@ require __DIR__ . '/partials/header.php';
 
                 <div class="public-home-map-overlay">
                     <strong id="public-home-map-status">Loading places…</strong>
-                    <span>Approximate public locations</span>
+                    <span>Stored Place locations</span>
                 </div>
             </div>
 

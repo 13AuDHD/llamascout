@@ -358,7 +358,7 @@ require __DIR__ . '/partials/header.php';
                     <strong>Member</strong>
                     <span>
                         A member with Complete Access to Llama Scout's full Place
-                        information, detailed reports, exact locations, comparison
+                        information, detailed reports, restricted locations, comparison
                         tools, and Member-level contributions.
                     </span>
                 </div>

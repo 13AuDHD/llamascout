@@ -88,12 +88,16 @@ foreach ($staticPages as [$loc, $lastmod, $changefreq, $priority]) {
    ========================================================= */
 
 try {
+    $locationVisibilitySql =
+        llama_place_visibility_sql('places', 0);
+
     $stmt = $db->query(
         'SELECT
             slug,
             updated_at
          FROM places
          WHERE status IN ("active", "featured")
+           AND ' . $locationVisibilitySql . '
            AND slug IS NOT NULL
            AND slug <> ""
          ORDER BY id ASC'

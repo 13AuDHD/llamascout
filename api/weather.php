@@ -122,47 +122,7 @@ if (
 
 try {
 
-    $db =
-        db();
-
-
-    $stmt =
-        $db->prepare(
-            '
-            SELECT
-                id,
-                slug,
-                name,
-                status,
-                latitude,
-                longitude,
-                elevation_feet,
-                city,
-                state
-
-            FROM places
-
-            WHERE slug = ?
-              AND status IN
-              (
-                  \'active\',
-                  \'featured\'
-              )
-
-            LIMIT 1
-            '
-        );
-
-
-    $stmt->execute([
-        $requestedPlace
-    ]);
-
-
-    $place =
-        $stmt->fetch(
-            PDO::FETCH_ASSOC
-        );
+    $place = place_public_by_slug($requestedPlace);
 
 
     if (

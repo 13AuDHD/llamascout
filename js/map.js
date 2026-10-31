@@ -71,11 +71,10 @@
     let searchRenderTimer = null;
     let userLocationMarker = null;
 
-    const PUBLIC_MAX_ZOOM = 11;
-    const MEMBER_MAX_ZOOM = 20;
+    const MAP_MAX_ZOOM = 20;
 
     const map = L.map(mapElement, {
-        maxZoom: initialMemberAccess ? MEMBER_MAX_ZOOM : PUBLIC_MAX_ZOOM,
+        maxZoom: MAP_MAX_ZOOM,
         zoomControl: false
     }).setView([37.3, -107.4], 7);
 
@@ -180,12 +179,9 @@
                         ).addTo(map);
                     }
 
-                    const exactZoomAllowed =
-                        memberMapAccess || contributorPlaceAccess;
-
                     const targetZoom = Math.min(
                         map.getMaxZoom(),
-                        exactZoomAllowed ? 15 : PUBLIC_MAX_ZOOM
+                        15
                     );
 
                     const reduceMotion =
@@ -233,7 +229,7 @@
             url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
             options: {
                 maxNativeZoom: 19,
-                maxZoom: PUBLIC_MAX_ZOOM,
+                maxZoom: MAP_MAX_ZOOM,
                 attribution:
                     '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             }
@@ -243,7 +239,7 @@
             url: '',
             options: {
                 maxNativeZoom: 20,
-                maxZoom: MEMBER_MAX_ZOOM,
+                maxZoom: MAP_MAX_ZOOM,
                 attribution:
                     '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://www.geoapify.com/">Geoapify</a>'
             }
@@ -253,7 +249,7 @@
             url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
             options: {
                 maxNativeZoom: 19,
-                maxZoom: MEMBER_MAX_ZOOM,
+                maxZoom: MAP_MAX_ZOOM,
                 attribution:
                     '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             }
@@ -263,7 +259,7 @@
             url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
             options: {
                 maxNativeZoom: 19,
-                maxZoom: MEMBER_MAX_ZOOM,
+                maxZoom: MAP_MAX_ZOOM,
                 attribution:
                     'Tiles &copy; Esri and contributors'
             }
@@ -273,7 +269,7 @@
             url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
             options: {
                 maxNativeZoom: 17,
-                maxZoom: MEMBER_MAX_ZOOM,
+                maxZoom: MAP_MAX_ZOOM,
                 attribution:
                     'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, SRTM | Map style &copy; <a href="https://opentopomap.org">OpenTopoMap</a>'
             }
@@ -283,7 +279,7 @@
             url: '',
             options: {
                 maxNativeZoom: 20,
-                maxZoom: MEMBER_MAX_ZOOM,
+                maxZoom: MAP_MAX_ZOOM,
                 attribution:
                     '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://www.geoapify.com/">Geoapify</a>'
             }
@@ -293,7 +289,7 @@
             url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
             options: {
                 maxNativeZoom: 19,
-                maxZoom: MEMBER_MAX_ZOOM,
+                maxZoom: MAP_MAX_ZOOM,
                 attribution:
                     'Tiles &copy; Esri and imagery contributors'
             }
@@ -395,25 +391,10 @@
         memberMapAccess = hasAccess === true;
         contributorPlaceAccess = hasContributorAccess === true;
 
-        const canUseExactZoom =
-            memberMapAccess || contributorPlaceAccess;
-
-        map.setMaxZoom(
-            canUseExactZoom ? MEMBER_MAX_ZOOM : PUBLIC_MAX_ZOOM
-        );
-
-        if (!canUseExactZoom && map.getZoom() > PUBLIC_MAX_ZOOM) {
-            map.setZoom(PUBLIC_MAX_ZOOM);
-        }
+        map.setMaxZoom(MAP_MAX_ZOOM);
 
         if (controls.precision) {
-            controls.precision.textContent = memberMapAccess
-                ? 'Exact Place locations'
-                : (
-                    contributorPlaceAccess
-                        ? 'Exact for your contributed Places, approximate elsewhere'
-                        : 'Approximate public locations'
-                );
+            controls.precision.textContent = 'Stored Place locations';
         }
 
         if (controls.layerControl) {
@@ -624,7 +605,7 @@ popupAnchor: [0, -42]
 
 
     // Null/blank coordinates must not become 0,0 through Number().
-    // Prefer authorized exact coordinates, then the public location.
+    // The server returns stored coordinates only for visible Places.
     const placeCoordinates = (place) => {
         const pair = (latitude, longitude) => {
             if (latitude === null || latitude === undefined ||
@@ -646,8 +627,7 @@ popupAnchor: [0, -42]
             return [lat, lng];
         };
 
-        return pair(place.latitude, place.longitude) ||
-            pair(place.public_latitude, place.public_longitude);
+        return pair(place.latitude, place.longitude);
     };
 
     const activeFilterCount = () => {
@@ -805,7 +785,7 @@ popupAnchor: [0, -42]
         const bounds = filteredPlaces
             .map(placeCoordinates)            .filter(Boolean);
 
-        const fitMaxZoom = memberMapAccess ? 16 : 9;
+        const fitMaxZoom = 16;
 
         if (bounds.length > 1) {
             map.fitBounds(bounds, {
@@ -815,7 +795,7 @@ popupAnchor: [0, -42]
         } else if (bounds.length === 1) {
             map.setView(
                 bounds[0],
-                memberMapAccess ? 16 : 9
+                16
             );
         }
     };
@@ -847,11 +827,7 @@ popupAnchor: [0, -42]
                             : ''
                     }
 
-                    ${
-                        memberMapAccess
-                            ? '<span class="map-popup-exact"><i class="llama-icon-mask" style="--llama-icon-mask:url(\'/assets/icons/current-location.svg\')" aria-hidden="true"></i> Exact location</span>'
-                            : ''
-                    }
+                    <span class="map-popup-exact"><i class="llama-icon-mask" style="--llama-icon-mask:url('/assets/icons/current-location.svg')" aria-hidden="true"></i> Stored location</span>
 
                     <a href="${placeUrl(place)}">View Place</a>
                 </div>

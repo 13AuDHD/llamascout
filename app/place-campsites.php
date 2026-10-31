@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/site-visibility.php';
 require_once __DIR__ . '/place-report/scoped-answers.php';
 
 function llama_place_experience_mode(array $place): string
@@ -264,6 +265,7 @@ function llama_place_campsites(
                 cs.accessible_status,
                 cs.latitude,
                 cs.longitude,
+                parent_area_details.area_use AS parent_area_use,
 
                 cf.site_length_ft,
                 cf.site_width_ft,
@@ -313,6 +315,10 @@ function llama_place_campsites(
              FROM place_campsites cs
              LEFT JOIN place_campsite_facts cf
                 ON cf.campsite_id = cs.id
+             LEFT JOIN place_map_camping_sites mapped_site
+                ON mapped_site.feature_id = cs.map_feature_id
+             LEFT JOIN place_map_area_details parent_area_details
+                ON parent_area_details.feature_id = mapped_site.camping_area_feature_id
              WHERE cs.place_id = ?
                AND cs.is_active = 1'
              . ($onlyCampsiteId === null ? '' : ' AND cs.id = ?')
@@ -422,6 +428,12 @@ function llama_place_campsites(
                 $siteId
             ]
             ?? [];
+
+        $row['coordinate_status'] =
+            llama_coordinate_status(
+                $row['latitude'] ?? null,
+                $row['longitude'] ?? null
+            );
 
         $row['display_name'] =
             trim(

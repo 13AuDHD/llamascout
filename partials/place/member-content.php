@@ -15,7 +15,7 @@ if ($hasMemberAccess):
                 <strong>Complete Access to this Place</strong>
                 <p>
                     You originally contributed this Place, so its complete report,
-                    exact location, gallery, and historical reports remain available
+                    restricted location access, gallery, and historical reports remain available
                     to your account even without a paid membership.
                 </p>
             </div>
@@ -195,7 +195,7 @@ if ($hasMemberAccess):
 
         <p class="locked-scout-intro">
             This Place has more planning information available. Join Llama Scout
-            to unlock the answers, exact location, complete photo gallery, and
+            to unlock the answers, complete photo gallery, and
             detailed Scout Report.
         </p>
 
@@ -235,7 +235,7 @@ if ($hasMemberAccess):
                 </h3>
 
                 <p>
-                    Unlock exact locations, Scout Reports, full photo galleries,
+                    Unlock restricted locations, Scout Reports, full photo galleries,
                     sensory details, connectivity, road access, accessibility,
                     hazards, quick warnings, and more.
                 </p>

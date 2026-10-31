@@ -17,15 +17,6 @@ $hasMapMemberAccess =
             : null
     );
 
-$hasContributorMapAccess =
-    !$hasMapMemberAccess
-    && $mapUserId > 0
-    && !empty(
-        user_original_contributed_place_ids(
-            $mapUserId
-        )
-    );
-
 $pageTitle = 'Explore the Map | Llama Scout';
 $pageDescription = 'Browse Llama Scout Places by location, type, land manager, elevation, and public amenities.';
 $canonicalUrl = 'https://llamascout.com/map.php';
@@ -57,34 +48,12 @@ require __DIR__ . '/partials/cell-coverage-update-banner.php';
                 <h1>Find a Place that works for you.</h1>
 
                 <p class="map-hero-lede">
-                    Search published Places by general area, land management,
-                    type, elevation, and public amenities.<?= $hasMapMemberAccess
-                        ? ' Your membership unlocks exact Place locations and detailed map layers.'
-                        : (
-                            $hasContributorMapAccess
-                                ? ' Places you originally contributed use their exact pin for your account. Other map pins remain approximate.'
-                                : ' Map pins use approximate public coordinates unless your account has access to the complete Place report.'
-                        ) ?>
+                    Search visible Places by location, land management, type,
+                    elevation, and public amenities. Public Places use their
+                    stored coordinates. Complete Access also reveals restricted
+                    locations and detailed map layers.
                 </p>
             </div>
-
-            <?php if (!$hasMapMemberAccess): ?>
-                <div class="map-privacy-note">
-                    <i aria-hidden="true"><?= llama_icon('current-location') ?></i>
-                    <div>
-                        <strong>
-                            <?= $hasContributorMapAccess
-                                ? 'Most public pins are approximate.'
-                                : 'Public pins are approximate.' ?>
-                        </strong>
-                        <span>
-                            <?= $hasContributorMapAccess
-                                ? 'Places you originally contributed remain exact for your account. Other exact coordinates are part of Complete Access.'
-                                : 'Exact coordinates remain part of the complete Place report.' ?>
-                        </span>
-                    </div>
-                </div>
-            <?php endif; ?>
 
         </div>
     </header>
@@ -417,9 +386,7 @@ require __DIR__ . '/partials/cell-coverage-update-banner.php';
                         <div class="map-count-badge">
                             <strong id="map-status">Loading Places...</strong>
                             <span id="map-location-precision">
-                                <?= $hasMapMemberAccess
-                                    ? 'Exact Place locations'
-                                    : 'Approximate public locations' ?>
+                                Stored Place locations
                             </span>
                         </div>
                     </div>

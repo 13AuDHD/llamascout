@@ -174,7 +174,7 @@ Your free Llama Scout account is ready. You can save Places, contribute new Plac
 Want the complete Place report?
 
 Paid membership unlocks:
-* Exact coordinates and exact Place locations
+* Restricted Place and Site locations
 * Exact road and location details
 * Complete Place photo galleries
 * Full descriptions and Scout Notes
@@ -227,7 +227,7 @@ TEXT,
 </h2>
 
 <ul style="margin:0 0 24px;padding-left:22px;color:#263b33;line-height:1.8;">
-  <li>Exact coordinates and exact Place locations</li>
+  <li>Restricted Place and Site locations</li>
   <li>Exact road and location details</li>
   <li>Complete Place photo galleries</li>
   <li>Full descriptions, access details, sensory conditions, and Scout Notes</li>
@@ -239,7 +239,7 @@ TEXT,
     A much better map.
   </strong>
   <span style="display:block;line-height:1.65;color:#e8eee9;">
-    Paid members get exact pins, street-level zoom, and Street, Terrain,
+    Paid members get restricted pins and Street, Terrain,
     Topo, Dark, and Satellite map layers.
   </span>
 
@@ -778,7 +778,7 @@ Hi {{display_name}},
 
 Your Llama Scout {{membership_plan}} membership is active.
 
-Complete Access is now unlocked, including exact Place locations, complete photo galleries, sensory and access details, exact-location weather, the 5-day forecast, and the full member map.
+Complete Access is now unlocked, including restricted Place and Site locations, complete photo galleries, sensory and access details, coordinate-based weather, the 5-day forecast, and the full member map.
 
 Your current membership period runs through {{membership_renews_at}}.
 
@@ -814,7 +814,7 @@ TEXT,
 </p>
 
 <div style="margin:0 0 22px;padding:16px;border-radius:12px;background:#f7f8f4;line-height:1.7;">
-  Exact Place locations, complete photo galleries, sensory and access details,
+  Restricted Place and Site locations, complete photo galleries, sensory and access details,
   exact-location weather, the 5-day forecast, and the full member map are now available.
 </div>
 

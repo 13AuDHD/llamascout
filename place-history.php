@@ -456,7 +456,7 @@ require __DIR__ . '/partials/header.php';
                 <h2>The historical Scout Report is available with Complete Access.</h2>
                 <p>
                     You can see that this report version exists and who contributed it,
-                    while exact locations and detailed historical Place information stay
+                    while restricted locations and detailed historical Place information stay
                     behind the same access rules as the live report.
                 </p>
 
