@@ -2,9 +2,7 @@ name: V3 Pre-merge PHP Check
 
 on:
   push:
-    branches:
-      - v3-development
-      - main-coordinate-visibility-restricted-locations
+    branches: [v3-development]
     paths:
       - '.github/workflows/v3-premerge-php.yml'
       - '**/*.php'
