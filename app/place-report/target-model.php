@@ -126,36 +126,20 @@ function llama_place_report_with_campsite_baseline(array $resolved, array $site)
 /** Caller verifies authentication, access and target; this service owns answer composition. */
 function llama_place_report_target_model(PDO $db, int $placeId, array $target): array
 {
-    $data = [];
-    foreach (llama_place_report_current_values($db, $placeId) as $path => $value) {
-        llama_place_report_set_path($data, $path, $value);
+    // The canonical Place reader owns legacy fallback, V3 precedence,
+    // Unknown state, and normalization. Area and Site inheritance must not
+    // build a second, independently interpreted Place answer map.
+    $placeValues = [];
+    foreach (llama_place_report_current_place_answers($db, $placeId) as $key => $answer) {
+        if (empty($answer['recorded'])) {
+            continue;
+        }
+        $placeValues[$key] = llama_place_report_current_answer_legacy_value($answer);
     }
 
-    $data =
-        llama_place_report_derive_compatibility(
-            $data
-        );
-
-    $data['_answer_state'] =
-        llama_place_report_published_answer_state(
-            $db,
-            $placeId
-        );
     $scope = (string) $target['scope'];
     $source = (string) $target['source'];
     $id = (int) $target['id'];
-    $placeValues = llama_scoped_report_values_from_data($data);
-    // Use the same current Place answers as the standalone Place reader.
-    // Missing unified rows continue to inherit the existing published facts.
-    if (llama_report_current_store_available($db)) {
-        foreach (llama_report_current_store_load(
-            $db, $placeId, 'place', 'place', $placeId
-        ) as $key => $answer) {
-            $placeValues[$key] = $answer['state'] === 'unknown'
-                ? llama_place_report_unknown_token()
-                : $answer['value'];
-        }
-    }
     $resolved = llama_scoped_report_effective_answers($db, $placeId,
         $placeValues, $scope, $id, $source,
         !empty($target['parent_area_id']) ? (int) $target['parent_area_id'] : null);
