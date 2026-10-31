@@ -153,6 +153,18 @@ $targets = $db->query(
        ON c.id = v.target_id AND c.place_id = v.place_id"
 )->fetch(PDO::FETCH_ASSOC);
 
+// Extra V3 scoped answers can be intentional new questions, so count them
+// separately rather than mislabeling them as migration failures.
+$v3Only = $db->query(
+    "SELECT COUNT(*)
+     FROM place_report_current_answers v
+     LEFT JOIN place_report_scoped_answers s
+       ON s.place_id = v.place_id AND s.scope_type = v.target_scope
+       AND s.scope_source = v.target_source AND s.scope_id = v.target_id
+       AND s.field_key = v.question_key
+     WHERE v.target_scope IN ('area', 'site') AND s.field_key IS NULL"
+)->fetchColumn();
+
 header('Content-Type: text/html; charset=utf-8');
 ?>
 <!doctype html>
@@ -180,6 +192,8 @@ invalid scope: <?= (int) ($reverse['invalid_scope'] ?? 0) ?>.</p>
 missing mapped Site targets: <?= (int) ($targets['missing_mapped_site'] ?? 0) ?>;
 missing campsite records: <?= (int) ($targets['missing_campsite'] ?? 0) ?>;
 unsupported Site sources: <?= (int) ($targets['unsupported_site_source'] ?? 0) ?>.</p>
+<p>Site/Area answers held only in V3: <?= (int) $v3Only ?>.
+These can be legitimate new observations and are not automatically errors.</p>
 <p>V3-only records are allowed. Inactive but existing targets are retained.</p>
 <h2>Place records</h2>
 <p><strong><?= $placeCount ?> Places checked</strong>;
