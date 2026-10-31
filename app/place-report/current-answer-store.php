@@ -139,3 +139,48 @@ function llama_report_current_store_load(
     }
     return $answers;
 }
+
+/**
+ * Bulk current Area/Site observations for one Place. Read once for all Sites.
+ * Target ownership is enforced when the caller resolves verified targets;
+ * this storage-only helper must never be exposed as a public endpoint.
+ *
+ * @return array<string,array<string,array<int,array<string,array{state:string,value:mixed}>>>>
+ */
+function llama_report_current_store_scoped_for_place(PDO $db, int $placeId): array
+{
+    if ($placeId < 1) {
+        throw new InvalidArgumentException('Invalid Place ID.');
+    }
+    if (!llama_report_current_store_available($db)) {
+        return [];
+    }
+    $query = $db->prepare(
+        "SELECT target_scope, target_source, target_id, question_key,
+                answer_state, value_json
+         FROM place_report_current_answers
+         WHERE place_id = ? AND target_scope IN ('area', 'site')"
+    );
+    $query->execute([$placeId]);
+    $fields = llama_place_report_fields();
+    $result = [];
+    while ($row = $query->fetch(PDO::FETCH_ASSOC)) {
+        $scope = (string) $row['target_scope'];
+        $key = (string) $row['question_key'];
+        $field = $fields[$key] ?? null;
+        if (!is_array($field) || !empty($field['derived'])
+            || !in_array($scope, (array) ($field['report_scopes'] ?? []), true)) {
+            continue;
+        }
+        $state = (string) $row['answer_state'];
+        if (!in_array($state, ['answered', 'unknown'], true)) {
+            throw new UnexpectedValueException('Invalid current-answer state.');
+        }
+        $result[$scope][(string) $row['target_source']][(int) $row['target_id']][$key] = [
+            'state' => $state,
+            'value' => $state === 'unknown' ? null
+                : json_decode((string) $row['value_json'], true, 512, JSON_THROW_ON_ERROR),
+        ];
+    }
+    return $result;
+}
