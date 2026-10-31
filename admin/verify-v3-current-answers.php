@@ -112,6 +112,20 @@ $scoped = $db->query(
       AND v.question_key = s.field_key
      WHERE s.scope_type IN ('area', 'site')"
 )->fetch(PDO::FETCH_ASSOC);
+// Reverse direction: newer V3-only records are legitimate, but rows attached
+// to missing Places or invalid reporting targets require investigation.
+$reverse = $db->query(
+    "SELECT COUNT(*) AS total,
+      SUM(CASE WHEN p.id IS NULL THEN 1 ELSE 0 END) AS missing_place,
+      SUM(CASE WHEN v.target_scope = 'place'
+                 AND (v.target_source <> 'place' OR v.target_id <> v.place_id)
+               THEN 1 ELSE 0 END) AS invalid_place_target,
+      SUM(CASE WHEN v.target_scope NOT IN ('place', 'area', 'site')
+               THEN 1 ELSE 0 END) AS invalid_scope
+     FROM place_report_current_answers v
+     LEFT JOIN places p ON p.id = v.place_id"
+)->fetch(PDO::FETCH_ASSOC);
+
 header('Content-Type: text/html; charset=utf-8');
 ?>
 <!doctype html>
@@ -130,6 +144,13 @@ review, not automatically reconciled.</p>
 <p>Legacy: <?= (int) ($scoped['total'] ?? 0) ?>;
 missing canonical: <?= (int) ($scoped['missing'] ?? 0) ?>;
 different values/states: <?= (int) ($scoped['different'] ?? 0) ?>.</p>
+<h2>Canonical storage integrity</h2>
+<p>All V3 current-answer rows: <?= (int) ($reverse['total'] ?? 0) ?>;
+missing parent Place: <?= (int) ($reverse['missing_place'] ?? 0) ?>;
+invalid Place target: <?= (int) ($reverse['invalid_place_target'] ?? 0) ?>;
+invalid scope: <?= (int) ($reverse['invalid_scope'] ?? 0) ?>.</p>
+<p>V3-only records are allowed. This integrity check does not imply that every
+Site or Area target exists; that requires a target ownership check.</p>
 <h2>Place records</h2>
 <p><strong><?= $placeCount ?> Places checked</strong>;
 answers checked <?= $checked ?>; matching <?= $matching ?>;
