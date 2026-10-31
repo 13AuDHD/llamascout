@@ -24,6 +24,7 @@ $batchSize = 10;
 $processed = 0;
 $inserted = 0;
 $skipped = 0;
+$unmigrated = [];
 $nextCursor = $cursor;
 $hasMore = false;
 $error = '';
@@ -53,26 +54,52 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         foreach ($placeIds as $placeId) {
             $db->beginTransaction();
             try {
-                $answers = llama_place_report_current_place_answers($db, $placeId);
-                foreach ($answers as $key => $answer) {
-                    $field = $registry[$key] ?? null;
+                // Read the underlying published facts before validating each
+                // question. One obsolete legacy option must not abort the
+                // migration of an entire Place or the remaining Places.
+                $data = [];
+                foreach (llama_place_report_current_values($db, $placeId) as $path => $value) {
+                    llama_place_report_set_path($data, $path, $value);
+                }
+                $data = llama_place_report_derive_compatibility($data);
+                $data['_answer_state'] = llama_place_report_published_answer_state($db, $placeId);
+                foreach ($registry as $key => $field) {
                     if (!is_array($field)
                         || !empty($field['derived'])
                         || !in_array('place', (array) ($field['report_scopes'] ?? []), true)
-                        || !llama_place_report_storage_definition($field)
-                        || empty($answer['recorded'])) {
+                        || !llama_place_report_storage_definition($field)) {
                         continue;
                     }
-
-                    $state = (string) ($answer['state'] ?? 'unanswered');
-                    if (!in_array($state, ['answered', 'unknown'], true)) {
+                    $path = (string) $field['storage'];
+                    $state = llama_place_report_answer_state($data, $key);
+                    if ($state === 'unanswered') {
                         continue;
                     }
-
-                    $value = $state === 'unknown' ? null : ($answer['value'] ?? null);
+                    if ($state !== 'unknown' && !llama_place_report_has_path($data, $path)) {
+                        continue;
+                    }
+                    $raw = $state === 'unknown'
+                        ? llama_place_report_unknown_token()
+                        : llama_place_report_get_path($data, $path);
+                    try {
+                        $answer = llama_place_report_submission_answer($field, $raw);
+                        if (!$answer['recorded']) {
+                            continue;
+                        }
+                    } catch (InvalidArgumentException $exception) {
+                        // Do not invent a replacement option or silently turn
+                        // the old value into Unknown. Leave it in legacy storage.
+                        $unmigrated[] = [
+                            'place' => $placeId,
+                            'key' => $key,
+                            'value' => $raw,
+                            'reason' => $exception->getMessage(),
+                        ];
+                        continue;
+                    }
                     $insert->execute([
-                        $placeId, $placeId, $key, $state,
-                        json_encode($value, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
+                        $placeId, $placeId, $key, $answer['state'],
+                        json_encode($answer['value'], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
                     ]);
                     if ($insert->rowCount() === 1) {
                         $inserted++;
@@ -130,15 +157,28 @@ existing answers skipped: <?= $skipped ?>.</p>
 <?php endif; ?>
 <?php if ($error !== ''): ?>
 <p role="alert"><?= $h($error) ?></p>
-<p>Stop and inspect this error before running another batch.</p>
-<?php elseif ($hasMore): ?>
+<p>Resolve the database error before retrying. No partial Place was committed.</p>
+<?php endif; ?>
+<?php if ($unmigrated): ?>
+<h2>Legacy values requiring reconciliation (<?= count($unmigrated) ?>)</h2>
+<p>These specific values were <strong>not migrated</strong>. They remain in their original tables. Other valid answers were copied.</p>
+<ul>
+<?php foreach ($unmigrated as $issue): ?>
+<li>Place #<?= (int) $issue['place'] ?>, <code><?= $h($issue['key']) ?></code>;
+legacy value: <code><?= $h(json_encode($issue['value'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?></code>;
+<?= $h($issue['reason']) ?></li>
+<?php endforeach; ?>
+</ul>
+<p>Save this list for reconciliation. It is shown for this batch only.</p>
+<?php endif; ?>
+<?php if ($hasMore): ?>
 <form method="post">
 <input type="hidden" name="after_id" value="<?= $nextCursor ?>">
 <input type="hidden" name="csrf_token" value="<?= $h(moderation_csrf_token()) ?>">
 <button type="submit">Process next <?= $batchSize ?> Places</button>
 </form>
-<?php else: ?>
-<p><strong>No more Places remaining. Backfill complete.</strong></p>
+<?php elseif ($error === ''): ?>
+<p><strong>No more Places remaining. Backfill scan complete.</strong> Review any reported unmigrated values before considering reconciliation finished.</p>
 <?php endif; ?>
 </body>
 </html>
