@@ -34,7 +34,8 @@ function llama_report_question(string $key): ?array
 function llama_report_questions_for_scope(
     string $scope,
     bool $reconciliation = false,
-    ?callable $eligible = null
+    ?callable $eligible = null,
+    ?array $answers = null
 ): array {
     if (!in_array($scope, ['place', 'area', 'site'], true)) {
         throw new InvalidArgumentException('Invalid reporting scope.');
@@ -43,6 +44,12 @@ function llama_report_questions_for_scope(
     foreach (llama_report_questions() as $key => $field) {
         if (!in_array($scope, (array) ($field['report_scopes'] ?? []), true)
             || !empty($field['derived'])) {
+            continue;
+        }
+        // Applicability uses the single report rules engine. Pages may
+        // restrict further, but cannot invent a separate dependency test.
+        if (!$reconciliation && $answers !== null
+            && !llama_place_report_question_applicable($answers, (string) $key)) {
             continue;
         }
         if (!$reconciliation && $eligible !== null && !$eligible($field)) {
@@ -60,10 +67,11 @@ function llama_report_questions_for_scope(
 function llama_report_question_groups(
     string $scope,
     bool $reconciliation = false,
-    ?callable $eligible = null
+    ?callable $eligible = null,
+    ?array $answers = null
 ): array {
     return llama_place_report_group_eligible_questions(
-        llama_report_questions_for_scope($scope, $reconciliation, $eligible)
+        llama_report_questions_for_scope($scope, $reconciliation, $eligible, $answers)
     );
 }
 
