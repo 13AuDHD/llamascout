@@ -281,6 +281,29 @@ function llama_partner_demo_visibility_sql(
 }
 
 
+/**
+ * Dispersed camping Place records are member-only, not public listings
+ * with rounded coordinates. Keep this at the shared read boundary so
+ * search, maps and direct Place links enforce the same rule.
+ */
+function llama_place_is_member_only(array $place): bool
+{
+    return in_array(
+        strtolower(trim((string) ($place['type'] ?? ''))),
+        ['dispersed-camping'],
+        true
+    );
+}
+
+function llama_place_viewer_can_read_member_only(
+    int $placeId,
+    ?int $viewerUserId
+): bool {
+    return $placeId > 0
+        && ($viewerUserId ?? 0) > 0
+        && user_has_place_complete_access($placeId, $viewerUserId);
+}
+
 function places_public(
     ?int $viewerUserId = null
 ): array {
@@ -367,6 +390,21 @@ function places_public(
         $stmt->fetchAll(
             PDO::FETCH_ASSOC
         );
+
+    // Never send dispersed Place identity, location or metadata to
+    // unauthorized public consumers, including the homepage and map API.
+    $viewerId = $viewerUserId ?? (int) (current_user()['id'] ?? 0);
+    if (!user_has_member_access($viewerId > 0 ? $viewerId : null)) {
+        $allowedPlaceIds = $viewerId > 0
+            ? array_fill_keys(user_original_contributed_place_ids($viewerId), true)
+            : [];
+        $rows = array_values(array_filter(
+            $rows,
+            static fn(array $row): bool =>
+                !llama_place_is_member_only($row)
+                || isset($allowedPlaceIds[(int) ($row['id'] ?? 0)])
+        ));
+    }
 
     $rows =
         places_normalize_county_rows(
@@ -628,6 +666,18 @@ function place_public_by_slug(
 
     if (!$place) {
         return null;
+    }
+
+    // A direct slug must not bypass the same privacy boundary as listings.
+    if (llama_place_is_member_only($place)) {
+        $viewer = current_user();
+        $viewerId = (int) ($viewer['id'] ?? 0);
+        if (!llama_place_viewer_can_read_member_only(
+            (int) ($place['id'] ?? 0),
+            $viewerId
+        )) {
+            return null;
+        }
     }
 
     $place =
