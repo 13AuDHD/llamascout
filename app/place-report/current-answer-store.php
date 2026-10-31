@@ -66,7 +66,7 @@ function llama_report_current_store_save(
         throw new RuntimeException('Current-answer publication requires a transaction.');
     }
     llama_report_current_store_target($db, $placeId, $scope, $source, $targetId);
-    $field = llama_place_report_fields()[$key] ?? null;
+    $field = llama_report_question((string) $key);
     if (!is_array($field) || !empty($field['derived'])
         || ($scope !== 'place' && !empty($field['location_field']))
         || !in_array($scope, (array) ($field['report_scopes'] ?? []), true)) {
