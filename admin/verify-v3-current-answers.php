@@ -170,7 +170,7 @@ $v3Only = $db->query(
 $registryIssues = [];
 $allFields = llama_place_report_fields();
 $canonicalRows = $db->query(
-    'SELECT place_id, target_scope, target_source, target_id, question_key, answer_state
+    'SELECT place_id, target_scope, target_source, target_id, question_key, answer_state, value_json
      FROM place_report_current_answers'
 );
 while ($row = $canonicalRows->fetch(PDO::FETCH_ASSOC)) {
@@ -193,6 +193,7 @@ while ($row = $canonicalRows->fetch(PDO::FETCH_ASSOC)) {
         'target' => (string) $row['target_source'] . ':' . (int) $row['target_id'],
         'question' => (string) $row['question_key'],
         'reason' => $problem,
+        'value' => (string) ($row['value_json'] ?? 'null'),
     ];
 }
 
@@ -229,11 +230,11 @@ These can be legitimate new observations and are not automatically errors.</p>
 <h2>Canonical registry validation</h2>
 <p>Invalid canonical question assignments: <strong><?= count($registryIssues) ?></strong>.</p>
 <?php if ($registryIssues): ?>
-<table><thead><tr><th>Place</th><th>Scope</th><th>Target</th><th>Question</th><th>Issue</th></tr></thead>
+<table><thead><tr><th>Place</th><th>Scope</th><th>Target</th><th>Question</th><th>Issue</th><th>Stored value</th></tr></thead>
 <tbody><?php foreach ($registryIssues as $item): ?><tr>
 <td><?= $item['place'] ?></td><td><?= $h($item['scope']) ?></td>
 <td><?= $h($item['target']) ?></td><td><?= $h($item['question']) ?></td>
-<td><?= $h($item['reason']) ?></td></tr><?php endforeach; ?></tbody></table>
+<td><?= $h($item['reason']) ?></td><td><?= $h($item['value']) ?></td></tr><?php endforeach; ?></tbody></table>
 <?php endif; ?>
 <h2>Place records</h2>
 <p><strong><?= $placeCount ?> Places checked</strong>;
