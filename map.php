@@ -26,9 +26,9 @@ $hasContributorMapAccess =
         )
     );
 
-$pageTitle = 'Explore the Map | Llama Scout';
-$pageDescription = 'Browse Llama Scout Places by location, type, land manager, elevation, and public amenities.';
-$canonicalUrl = 'https://llamascout.com/map.php';
+$pageTitle = 'Llama Scout | Know the Place Before You Go';
+$pageDescription = 'Explore Llama Scout Places on the interactive map by location, type, land manager, elevation, and public amenities.';
+$canonicalUrl = 'https://llamascout.com/';
 
 require __DIR__ . '/partials/header.php';
 require __DIR__ . '/partials/cell-coverage-update-banner.php';
