@@ -212,6 +212,7 @@ function llama_site_public_catalog_details(array $site): array
 
         $value = rtrim(rtrim(number_format($number, 2, '.', ''), '0'), '.');
         $details[] = [
+            'source_key' => $key,
             'label' => $label,
             'value' => $value . (str_contains($key, '_ft') ? ' ft' : ''),
         ];
@@ -224,7 +225,11 @@ function llama_site_public_catalog_details(array $site): array
     ] as $key => $label) {
         if (in_array(strtolower(trim((string) ($site[$key] ?? ''))),
             ['1', 'yes', 'true', 'y'], true)) {
-            $details[] = ['label' => $label, 'value' => 'Available'];
+            $details[] = [
+                'source_key' => $key,
+                'label' => $label,
+                'value' => 'Available',
+            ];
         }
     }
 
