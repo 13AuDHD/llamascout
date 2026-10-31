@@ -14,6 +14,16 @@ function llama_place_report_contract_issues(): array
             llama_place_report_current_answer_contract_issues()
         );
 
+    // Regression guard for previously orphaned Site observations.
+    // A question that has live stored answers must not disappear from the
+    // registry again simply because another RV length question is similar.
+    $trailer = llama_place_report_fields()['max_trailer_length_feet'] ?? null;
+    if (!is_array($trailer)
+        || !in_array('site', (array) ($trailer['report_scopes'] ?? []), true)
+        || !isset($trailer['options']['35'], $trailer['options']['40'])) {
+        $issues[] = 'Historical maximum trailer length answers are not registered as Site answers.';
+    }
+
     $fields =
         llama_place_report_fields();
 
