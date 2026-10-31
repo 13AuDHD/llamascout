@@ -76,9 +76,11 @@ function llama_report_group_selected_questions(array $selected): array
 {
     $catalog = llama_report_questions();
     $eligible = [];
-    foreach ($selected as $key => $_field) {
-        if (isset($catalog[$key])) {
-            $eligible[$key] = $catalog[$key];
+    foreach ($selected as $key => $field) {
+        if (isset($catalog[$key]) && is_array($field)) {
+            // Preserve presentation metadata already applied by the caller.
+            // Only identity and eligibility are validated against the catalog.
+            $eligible[$key] = $field;
         }
     }
     return llama_place_report_group_eligible_questions($eligible);
