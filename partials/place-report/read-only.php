@@ -12,6 +12,9 @@ $placeReportData =
 $placeReportReadMode =
     (string) ($placeReportReadMode ?? 'scout-report');
 
+$placeReportCanViewCommunity =
+    (bool) ($placeReportCanViewCommunity ?? true);
+
 /*
  * Only public Place questions receive first-render report attribution here.
  * Site content is switched client-side and must receive its own provenance
@@ -275,22 +278,43 @@ $renderValue =
         $localIcon,
         $campsiteSwitchableFields,
         $renderSafeDescription,
-        $publicPlaceReportAttribution
+        $publicPlaceReportAttribution,
+        $placeReportCanViewCommunity
     ): void {
-        $state =
-            llama_place_report_answer_state(
-                $placeReportData,
-                $key
+        $visibility =
+            (string) (
+                $field['approved_visibility']
+                ?? $field['report_visibility']
+                ?? 'community'
             );
 
-        $value =
-            llama_place_report_display_value(
-                $placeReportData,
-                $key
-            );
+        $isAccessLocked =
+            $placeReportReadMode === 'scout-report'
+            && !$placeReportCanViewCommunity
+            && $visibility !== 'public';
 
-        if ($placeReportReadMode === 'scout-report'
-            && !in_array('place', (array) ($field['report_scopes'] ?? []), true)) {
+        if ($isAccessLocked) {
+            $state = 'locked';
+            $value = 'Full Member';
+        } else {
+            $state =
+                llama_place_report_answer_state(
+                    $placeReportData,
+                    $key
+                );
+
+            $value =
+                llama_place_report_display_value(
+                    $placeReportData,
+                    $key
+                );
+        }
+
+        if (
+            !$isAccessLocked
+            && $placeReportReadMode === 'scout-report'
+            && !in_array('place', (array) ($field['report_scopes'] ?? []), true)
+        ) {
             $state = 'unanswered';
             $value = null;
         }
@@ -334,6 +358,11 @@ $renderValue =
                 $state === 'unanswered'
                     ? ' is-unanswered'
                     : ''
+            )
+            . (
+                $isAccessLocked
+                    ? ' is-access-locked'
+                    : ''
             );
         ?>
 
@@ -360,10 +389,48 @@ $renderValue =
                 data-campsite-report-field="<?= $e($key) ?>"
                 data-campsite-report-type="<?= $e($type) ?>"
             <?php endif; ?>
+            <?php if ($isAccessLocked): ?>
+                data-report-access-locked="1"
+            <?php endif; ?>
             <?= $hideUntilCampsite ? 'hidden' : '' ?>
         >
 
-            <?php if ($isRating): ?>
+            <?php if ($isAccessLocked): ?>
+                <div class="scout-report-value-content">
+                    <span>
+                        <?= $e(
+                            rtrim(
+                                (string) $field['label'],
+                                '*'
+                            )
+                        ) ?>
+                    </span>
+
+                    <strong>
+                        <?= llama_icon('lock') ?>
+                        Full Member
+                    </strong>
+                </div>
+
+                <?php
+                $lockedFieldIcon =
+                    $localIcon(
+                        llama_place_report_field_icon(
+                            $key,
+                            $field
+                        ),
+                        $key
+                    );
+                ?>
+
+                <?= llama_icon(
+                    $lockedFieldIcon,
+                    [
+                        'class' => 'scout-report-value-icon',
+                    ]
+                ) ?>
+
+            <?php elseif ($isRating): ?>
                 <div class="scout-rating-content">
                     <span>
                         <?= $e(
@@ -496,6 +563,8 @@ $renderCompoundValue =
         array $componentFields
     ) use (
         $placeReportData,
+        $placeReportReadMode,
+        $placeReportCanViewCommunity,
         $e,
         $localIcon
     ): void {
@@ -507,6 +576,61 @@ $renderCompoundValue =
             ?? null;
 
         if (!is_array($definition)) {
+            return;
+        }
+
+        $isAccessLocked =
+            $placeReportReadMode === 'scout-report'
+            && !$placeReportCanViewCommunity
+            && array_reduce(
+                $componentFields,
+                static function (bool $locked, array $field): bool {
+                    if ($locked) {
+                        return true;
+                    }
+
+                    $visibility =
+                        (string) (
+                            $field['approved_visibility']
+                            ?? $field['report_visibility']
+                            ?? 'community'
+                        );
+
+                    return $visibility !== 'public';
+                },
+                false
+            );
+
+        if ($isAccessLocked) {
+            ?>
+            <div
+                class="scout-report-item scout-report-value-item is-access-locked"
+                data-report-compound-question="<?= $e($compoundKey) ?>"
+            >
+                <div class="scout-report-value-content">
+                    <span>
+                        <?= $e(
+                            (string) (
+                                $definition['label']
+                                ?? $compoundKey
+                            )
+                        ) ?>
+                    </span>
+
+                    <strong>
+                        <?= llama_icon('lock') ?>
+                        Full Member
+                    </strong>
+                </div>
+
+                <?= llama_icon(
+                    'lock',
+                    [
+                        'class' => 'scout-report-value-icon',
+                    ]
+                ) ?>
+            </div>
+            <?php
             return;
         }
 
@@ -738,9 +862,11 @@ $renderContributionPrompt =
  * or Site selection can reveal its own warning set without rebuilding layout.
  */
 $warnings =
-    llama_place_report_quick_warnings(
-        $placeReportData
-    );
+    $placeReportCanViewCommunity
+        ? llama_place_report_quick_warnings(
+            $placeReportData
+        )
+        : [];
 ?>
     <section
         class="scout-report-section scout-report-warning-section"
@@ -1005,9 +1131,31 @@ foreach (
         <?php if ($placeReportReadMode === 'scout-report' && $sectionKey === 'basic'): ?>
             <?php
             $officialContact = [
-                'Official Address' => ['value' => trim((string) ($publicFacility['address'] ?? '')), 'icon' => 'map-pin'],
-                'Phone Number' => ['value' => trim((string) ($publicFacility['phone'] ?? '')), 'icon' => 'phone'],
-                'Email Address' => ['value' => trim((string) ($publicFacility['email'] ?? '')), 'icon' => 'mail'],
+                'Official Address' => [
+                    'value' => trim((string) ($publicFacility['address'] ?? '')),
+                    'icon' => 'map-pin',
+                    'kind' => 'text',
+                ],
+                'Phone Number' => [
+                    'value' => trim((string) ($publicFacility['phone'] ?? '')),
+                    'icon' => 'phone',
+                    'kind' => 'phone',
+                ],
+                'Email Address' => [
+                    'value' => trim((string) ($publicFacility['email'] ?? '')),
+                    'icon' => 'mail',
+                    'kind' => 'email',
+                ],
+                'Published Fees' => [
+                    'value' => trim((string) ($publicFacility['fee_description'] ?? '')),
+                    'icon' => 'receipt',
+                    'kind' => 'text',
+                ],
+                'Reservations' => [
+                    'value' => trim((string) ($publicFacility['reservation_url'] ?? '')),
+                    'icon' => 'calendar',
+                    'kind' => 'url',
+                ],
             ];
             ?>
             <div class="scout-report-grid">
@@ -1017,10 +1165,19 @@ foreach (
                         <div class="scout-report-value-content">
                             <span><?= $e($contactLabel) ?></span>
                             <strong>
-                                <?php if ($contactLabel === 'Phone Number'): ?>
+                                <?php if (($contact['kind'] ?? '') === 'phone'): ?>
                                     <a href="tel:<?= $e(preg_replace('/[^0-9+]/', '', $contact['value'])) ?>"><?= $e($contact['value']) ?></a>
-                                <?php elseif ($contactLabel === 'Email Address'): ?>
+                                <?php elseif (($contact['kind'] ?? '') === 'email'): ?>
                                     <a href="mailto:<?= $e($contact['value']) ?>"><?= $e($contact['value']) ?></a>
+                                <?php elseif (
+                                    ($contact['kind'] ?? '') === 'url'
+                                    && preg_match('~^https?://~i', (string) $contact['value']) === 1
+                                ): ?>
+                                    <a
+                                        href="<?= $e($contact['value']) ?>"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    ><?= $e($contact['value']) ?></a>
                                 <?php else: ?>
                                     <?= $e($contact['value']) ?>
                                 <?php endif; ?>

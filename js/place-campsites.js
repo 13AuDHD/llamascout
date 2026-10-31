@@ -74,6 +74,14 @@
         return;
     }
 
+    /*
+     * Issue #41: everyone uses the same Site browser. This flag controls
+     * whether selecting a Site may request Complete Access report data.
+     * The catalog endpoint remains responsible for field-level disclosure.
+     */
+    const hasCompleteAccess =
+        mount.dataset.completeAccess === '1';
+
     const escapeHtml = (value) => {
         const node =
             document.createElement(
@@ -933,6 +941,17 @@
                 site
             );
 
+        const publicReportKeys =
+            new Set(
+                Array.isArray(
+                    site.public_report_keys
+                )
+                    ? site.public_report_keys
+                        .map(clean)
+                        .filter(Boolean)
+                    : []
+            );
+
         document
             .querySelectorAll(
                 '[data-campsite-report-field]'
@@ -943,6 +962,17 @@
                         clean(
                             card.dataset
                                 .campsiteReportField
+                        );
+
+                    const isStructurallyLocked =
+                        card.dataset
+                            .reportAccessLocked
+                        === '1';
+
+                    const hasPublicOverride =
+                        !hasCompleteAccess
+                        && publicReportKeys.has(
+                            key
                         );
 
                     const value =
@@ -976,6 +1006,56 @@
 
                     if (!strong) {
                         return;
+                    }
+
+                    if (
+                        isStructurallyLocked
+                        && !card._llamaLockedValueMarkup
+                    ) {
+                        card._llamaLockedValueMarkup =
+                            strong.innerHTML;
+                    }
+
+                    if (
+                        isStructurallyLocked
+                        && !hasPublicOverride
+                    ) {
+                        strong.innerHTML =
+                            card._llamaLockedValueMarkup
+                            || 'Full Member';
+
+                        card.classList.add(
+                            'is-access-locked'
+                        );
+
+                        card.classList.remove(
+                            'is-unanswered',
+                            'is-explicit-unknown'
+                        );
+
+                        const existingSource =
+                            card.querySelector(
+                                '.scout-report-answer-source'
+                            );
+
+                        if (existingSource) {
+                            existingSource.textContent =
+                                '';
+
+                            existingSource.hidden =
+                                true;
+                        }
+
+                        return;
+                    }
+
+                    if (
+                        isStructurallyLocked
+                        && hasPublicOverride
+                    ) {
+                        card.classList.remove(
+                            'is-access-locked'
+                        );
                     }
 
                     const isUnknown =
@@ -1032,7 +1112,9 @@
                     let sourceLine = card.querySelector(
                         '.scout-report-answer-source'
                     );
-                    const source = site.report_answer_sources?.[key];
+                    const source =
+                        site.report_answer_sources?.[key]
+                        || site.public_report_sources?.[key];
                     if (source && !isUnanswered) {
                         if (!sourceLine) {
                             sourceLine = document.createElement('small');
@@ -1141,156 +1223,9 @@
         );
     };
 
-    // Guest visitors receive a strict, minimal public catalog. This
-    // deliberately does not use the member Site selector: that selector
-    // fetches full reports, photos, and immutable history on selection.
-    const renderPublicCatalog = (payload) => {
-        const sites = Array.isArray(payload.sites) ? payload.sites : [];
-        if (!sites.length || !payload.browser?.show_site_layer) {
-            mount.remove();
-            return;
-        }
-
-        mount.innerHTML = `
-            <section class="place-section place-campsites"
-                aria-labelledby="place-campsites-heading" data-place-campsites>
-                <div class="place-campsites-heading">
-                    <div>
-                        <p class="eyebrow">Sites</p>
-                        <h2 id="place-campsites-heading">Campground Sites</h2>
-                        <p>Browse public Site information. Detailed Scout Reports
-                            require Place access.</p>
-                    </div>
-                    <strong class="place-campsites-count">
-                        ${sites.length.toLocaleString()}
-                        ${sites.length === 1 ? 'Site' : 'Sites'}
-                    </strong>
-                </div>
-                <div class="place-campsites-tools">
-                    <label class="place-campsites-search">
-                        <span>Find a Site</span>
-                        <input type="search" placeholder="Site number or name"
-                            autocomplete="off" data-campsite-public-search>
-                    </label>
-                </div>
-                <div class="place-campsites-list" data-campsite-public-list
-                    aria-label="Public campground Sites"></div>
-                <div class="place-campsite-detail place-campsite-public-detail"
-                    data-campsite-public-detail hidden></div>
-            </section>
-        `;
-
-        const search = mount.querySelector('[data-campsite-public-search]');
-        const list = mount.querySelector('[data-campsite-public-list]');
-        const detail = mount.querySelector('[data-campsite-public-detail]');
-        let selectedSiteId = null;
-
-        const basicsFor = (site) => [
-            siteTypeLabel(site.site_type),
-            parkingLabel(site.parking_style),
-            hookupLabel(site.hookup_status),
-            clean(site.accessible_status).toLowerCase() === 'yes'
-                ? 'Accessible' : '',
-            clean(site.electric_hookup) === '1'
-                ? 'Electric hookup' : '',
-        ].map(clean).filter((value) =>
-            value && value.toLowerCase() !== 'unknown'
-        );
-
-        const isClosed = (site) => site.is_closed === true
-            || ['closed', 'temporarily_closed', 'permanently_closed']
-                .includes(clean(site.operating_status).toLowerCase());
-
-        const renderDetail = (site) => {
-            if (!site) {
-                detail.hidden = true;
-                detail.innerHTML = '';
-                return;
-            }
-
-            const name = smartCase(site.display_name || site.site_name || site.site_code);
-            const official = Array.isArray(site.official_details)
-                ? site.official_details : [];
-            detail.hidden = false;
-            detail.innerHTML = `
-                <h3>${escapeHtml(name)}</h3>
-                ${isClosed(site)
-                    ? '<p class="place-campsite-closed-badge">Closed</p>'
-                    : ''}
-                <p>${basicsFor(site).map(escapeHtml).join(' · ')}</p>
-                <h4>Published Site details</h4>
-                ${official.length ? `
-                    <dl class="place-campsite-public-facts">
-                        ${official.map((item) => `
-                            <div>
-                                <dt>${escapeHtml(clean(item.label))}</dt>
-                                <dd>${escapeHtml(clean(item.value))}</dd>
-                            </div>
-                        `).join('')}
-                    </dl>
-                    <p class="place-campsite-public-source">
-                        Source: Recreation.gov / RIDB
-                    </p>
-                ` : `
-                    <p>No additional official Site specifications are available yet.</p>
-                `}
-                <p class="place-campsite-public-access-note">
-                    Detailed Scout Reports and Site history require Place access.
-                </p>
-            `;
-        };
-
-        const render = () => {
-            const query = clean(search.value).toLowerCase();
-            const visible = sites.filter((site) => {
-                const name = clean(site.display_name || site.site_name || site.site_code);
-                const type = clean(siteTypeLabel(site.site_type));
-                return !query || (name + ' ' + type).toLowerCase().includes(query);
-            });
-
-            if (!visible.length) {
-                list.innerHTML = '<div class="place-campsites-empty">No matching Sites.</div>';
-                renderDetail(null);
-                return;
-            }
-
-            list.innerHTML = visible.map((site) => {
-                const selected = Number(site.id) === selectedSiteId;
-                const closed = isClosed(site);
-                return `
-                    <button type="button"
-                        class="place-campsite-row${closed ? ' is-closed' : ''}${selected ? ' is-selected' : ''}"
-                        data-public-site-id="${Number(site.id)}"
-                        aria-pressed="${selected ? 'true' : 'false'}">
-                        <span class="place-campsite-row-name">
-                            ${escapeHtml(smartCase(site.display_name || site.site_name || site.site_code))}
-                        </span>
-                        ${closed ? '<span class="place-campsite-closed-badge">Closed</span>' : ''}
-                        <span class="place-campsite-row-summary">
-                            ${basicsFor(site).map(escapeHtml).join(' · ')}
-                        </span>
-                    </button>
-                `;
-            }).join('');
-
-            renderDetail(visible.find((site) => Number(site.id) === selectedSiteId));
-        };
-
-        list.addEventListener('click', (event) => {
-            const card = event.target.closest('[data-public-site-id]');
-            if (!card) return;
-            selectedSiteId = Number(card.dataset.publicSiteId);
-            list.querySelectorAll('[data-public-site-id]').forEach((button) => {
-                const selected = Number(button.dataset.publicSiteId) === selectedSiteId;
-                button.classList.toggle('is-selected', selected);
-                button.setAttribute('aria-pressed', selected ? 'true' : 'false');
-            });
-            renderDetail(sites.find((site) => Number(site.id) === selectedSiteId));
-        });
-
-        search.addEventListener('input', render);
-        render();
-    };
+    // Issue #41: the old public-only Site renderer was removed. The shared
+    // browser below receives either the narrow public catalog or the Complete
+    // Access catalog from the server and renders the same structure for both.
 
     const renderBrowser = (
         payload
@@ -1483,7 +1418,14 @@
 
             // The catalog deliberately contains no full Scout Report.
             // Never overwrite it with incomplete catalog answers.
-            if (resolved) {
+            if (!hasCompleteAccess) {
+                /*
+                 * The public catalog already contains the approved Site facts.
+                 * Feed those into public canonical cards only; locked cards are
+                 * protected by updateScoutReport() and remain untouched.
+                 */
+                updateScoutReport(site);
+            } else if (resolved) {
                 updateScoutReport(resolved);
             } else {
                 // Clear the previous Site while its replacement loads.
@@ -1699,7 +1641,7 @@
                 visible
                     .map(
                         (site) => {
-                            const summary =
+                            let summary =
                                 Array.isArray(
                                     site.summary
                                 )
@@ -1707,6 +1649,25 @@
                                         .map(clean)
                                         .filter(Boolean)
                                     : [];
+
+                            if (!summary.length) {
+                                summary = [
+                                    siteTypeLabel(site.site_type),
+                                    parkingLabel(site.parking_style),
+                                    hookupLabel(site.hookup_status),
+                                    clean(site.accessible_status).toLowerCase() === 'yes'
+                                        ? 'Accessible'
+                                        : '',
+                                    yesNo(site.electric_hookup) === 'Yes'
+                                        ? 'Electric hookup'
+                                        : '',
+                                ]
+                                    .map(clean)
+                                    .filter((value) =>
+                                        value
+                                        && value.toLowerCase() !== 'unknown'
+                                    );
+                            }
 
                             const isSelected =
                                 String(
@@ -1881,11 +1842,7 @@
                 return;
             }
 
-            if (mount.dataset.publicCatalog === '1') {
-                renderPublicCatalog(payload);
-            } else {
-                renderBrowser(payload);
-            }
+            renderBrowser(payload);
 
         } catch (error) {
             console.error(

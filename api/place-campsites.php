@@ -73,6 +73,143 @@ try {
 
         foreach ($sites as $site) {
             if (!$canRead) {
+                $officialDetails =
+                    llama_site_public_catalog_details(
+                        $site
+                    );
+
+                /*
+                 * Keep the public payload narrow, but include the raw values
+                 * behind the already-approved official detail whitelist. The
+                 * shared Site browser can then populate the canonical Scout
+                 * Report cards without maintaining a second public-only UI.
+                 */
+                $officialDetailKeys =
+                    array_fill_keys(
+                        array_values(
+                            array_filter(
+                                array_map(
+                                    static fn (array $detail): string =>
+                                        (string) ($detail['source_key'] ?? ''),
+                                    $officialDetails
+                                ),
+                                static fn (string $key): bool =>
+                                    $key !== ''
+                            )
+                        ),
+                        true
+                    );
+
+                $publicReportKeys = ['site_number'];
+
+                $siteType =
+                    strtolower(
+                        trim(
+                            (string) ($site['site_type'] ?? '')
+                        )
+                    );
+
+                if (in_array($siteType, ['tent_site', 'mixed_site'], true)) {
+                    $publicReportKeys[] = 'tent_camping_suitable';
+                }
+
+                if (in_array(
+                    $siteType,
+                    ['rv_site', 'mixed_site', 'vehicle_site'],
+                    true
+                )) {
+                    $publicReportKeys[] = 'rv_suitable';
+                }
+
+                $accessibleStatus =
+                    strtolower(
+                        trim(
+                            (string) ($site['accessible_status'] ?? '')
+                        )
+                    );
+
+                if ($accessibleStatus !== '' && $accessibleStatus !== 'unknown') {
+                    $publicReportKeys[] = 'site_accessible';
+                }
+
+                $parkingStyle =
+                    strtolower(
+                        trim(
+                            (string) ($site['parking_style'] ?? '')
+                        )
+                    );
+
+                if ($parkingStyle !== '' && $parkingStyle !== 'unknown') {
+                    $publicReportKeys[] = 'pull_through';
+                    $publicReportKeys[] = 'back_in';
+                }
+
+                $hookupStatus =
+                    strtolower(
+                        trim(
+                            (string) ($site['hookup_status'] ?? '')
+                        )
+                    );
+
+                if ($hookupStatus !== '' && $hookupStatus !== 'unknown') {
+                    $publicReportKeys[] = 'site_hookups_available';
+                }
+
+                if (($site['electric_hookup'] ?? null) !== null) {
+                    $publicReportKeys[] = 'hookup_electric';
+                }
+
+                $officialReportKeyMap = [
+                    'max_vehicle_length_ft' => 'max_vehicle_length_feet',
+                    'max_people' => 'max_people',
+                    'max_vehicles' => 'vehicle_capacity',
+                    'site_length_ft' => 'site_length_feet',
+                    'site_width_ft' => 'site_width_feet',
+                    'tent_pad' => 'tent_pad',
+                    'tent_pad_length_ft' => 'tent_pad_length_feet',
+                    'tent_pad_width_ft' => 'tent_pad_width_feet',
+                    'water_hookup' => 'hookup_water',
+                    'sewer_hookup' => 'hookup_sewer',
+                ];
+
+                foreach ($officialReportKeyMap as $sourceKey => $reportKey) {
+                    if (isset($officialDetailKeys[$sourceKey])) {
+                        $publicReportKeys[] = $reportKey;
+                    }
+                }
+
+                $publicReportKeys =
+                    array_values(
+                        array_unique(
+                            $publicReportKeys
+                        )
+                    );
+
+                $publicReportSources = [];
+                $officialSourceLabel =
+                    trim(
+                        (string) ($site['source_provider'] ?? '')
+                    );
+                $officialSourceDate =
+                    trim(
+                        (string) ($site['source_updated_at'] ?? '')
+                    );
+
+                foreach ($officialReportKeyMap as $sourceKey => $reportKey) {
+                    if (!isset($officialDetailKeys[$sourceKey])) {
+                        continue;
+                    }
+
+                    $publicReportSources[$reportKey] = [
+                        'label' =>
+                            $officialSourceLabel !== ''
+                                ? $officialSourceLabel
+                                : 'Official source',
+                        'dateLabel' =>
+                            $officialSourceDate,
+                    ];
+                }
+
                 $catalog[] = [
                     'id' => (int) ($site['id'] ?? 0),
                     'feature_id' => (int) ($site['id'] ?? 0),
@@ -80,15 +217,66 @@ try {
                     'site_code' => (string) ($site['site_code'] ?? ''),
                     'site_name' => (string) ($site['site_name'] ?? ''),
                     'site_type' => (string) ($site['site_type'] ?? ''),
-                    // Public-facing campground basics only. No GPS, photos,
+                    // Public-facing campground basics only. No GPS,
                     // community observations or detailed Scout Report data.
                     'parking_style' => (string) ($site['parking_style'] ?? ''),
                     'hookup_status' => (string) ($site['hookup_status'] ?? ''),
                     'accessible_status' => (string) ($site['accessible_status'] ?? ''),
                     'electric_hookup' => $site['electric_hookup'] ?? null,
+                    'max_vehicle_length_ft' =>
+                        isset($officialDetailKeys['max_vehicle_length_ft'])
+                            ? ($site['max_vehicle_length_ft'] ?? null)
+                            : null,
+                    'max_people' =>
+                        isset($officialDetailKeys['max_people'])
+                            ? ($site['max_people'] ?? null)
+                            : null,
+                    'max_vehicles' =>
+                        isset($officialDetailKeys['max_vehicles'])
+                            ? ($site['max_vehicles'] ?? null)
+                            : null,
+                    'site_length_ft' =>
+                        isset($officialDetailKeys['site_length_ft'])
+                            ? ($site['site_length_ft'] ?? null)
+                            : null,
+                    'site_width_ft' =>
+                        isset($officialDetailKeys['site_width_ft'])
+                            ? ($site['site_width_ft'] ?? null)
+                            : null,
+                    'tent_pad' =>
+                        isset($officialDetailKeys['tent_pad'])
+                            ? ($site['tent_pad'] ?? null)
+                            : null,
+                    'tent_pad_length_ft' =>
+                        isset($officialDetailKeys['tent_pad_length_ft'])
+                            ? ($site['tent_pad_length_ft'] ?? null)
+                            : null,
+                    'tent_pad_width_ft' =>
+                        isset($officialDetailKeys['tent_pad_width_ft'])
+                            ? ($site['tent_pad_width_ft'] ?? null)
+                            : null,
+                    'water_hookup' =>
+                        isset($officialDetailKeys['water_hookup'])
+                            ? ($site['water_hookup'] ?? null)
+                            : null,
+                    'sewer_hookup' =>
+                        isset($officialDetailKeys['sewer_hookup'])
+                            ? ($site['sewer_hookup'] ?? null)
+                            : null,
                     'is_closed' => (bool) ($site['is_closed'] ?? false),
                     'operating_status' => $site['operating_status'] ?? null,
-                    'official_details' => llama_site_public_catalog_details($site),
+                    'official_details' =>
+                        array_map(
+                            static fn (array $detail): array => [
+                                'label' => (string) ($detail['label'] ?? ''),
+                                'value' => (string) ($detail['value'] ?? ''),
+                            ],
+                            $officialDetails
+                        ),
+                    'public_report_keys' =>
+                        $publicReportKeys,
+                    'public_report_sources' =>
+                        $publicReportSources,
                 ];
                 continue;
             }

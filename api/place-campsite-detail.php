@@ -77,6 +77,14 @@ $placeId = (int) ($publicPlace['id'] ?? 0);
 $user = current_user();
 $userId = (int) ($user['id'] ?? 0);
 $canRead = $userId > 0 && user_has_place_complete_access($placeId, $userId);
+$mode = strtolower(trim((string) ($_GET['mode'] ?? '')));
+
+if (!in_array($mode, ['', 'media', 'report', 'history'], true)) {
+    llama_place_campsite_detail_json(
+        ['ok' => false, 'error' => 'Invalid Site detail mode.'],
+        400
+    );
+}
 
 try {
     $db = db();
@@ -91,18 +99,55 @@ try {
         llama_place_campsite_detail_json(['ok' => false, 'error' => 'Site not found.'], 404);
     }
 
-    // This endpoint includes full Scout answers, media and immutable history.
-    // A Site's public catalog listing is not permission to disclose that
-    // richer member-only payload. Public detail needs its own field whitelist.
+    /*
+     * Site media has its own access tier.
+     *
+     * A visible public Site may expose photo previews to Guests and allow any
+     * signed-in Member to open those photos. Full Scout answers and immutable
+     * history still require Complete Place access.
+     */
+    if ($mode === '' || $mode === 'media') {
+        $images =
+            llama_place_campsite_images(
+                $db,
+                $placeId,
+                $campsiteId
+            );
+
+        $sitePayload =
+            $canRead
+                ? $site
+                : [
+                    'id' => (int) ($site['id'] ?? 0),
+                    'display_name' => (string) ($site['display_name'] ?? ''),
+                    'site_code' => (string) ($site['site_code'] ?? ''),
+                    'site_name' => (string) ($site['site_name'] ?? ''),
+                ];
+
+        llama_place_campsite_detail_json([
+            'ok' => true,
+            'site' => $sitePayload,
+            'images' =>
+                llama_place_campsite_detail_unique_images(
+                    $images
+                ),
+            'photo_access' => [
+                'can_preview' => true,
+                'can_open' => $userId > 0,
+            ],
+        ]);
+    }
+
     if (!$canRead) {
         llama_place_campsite_detail_json(
-            ['ok' => false, 'error' => 'Complete Place access is required.'], 403
+            ['ok' => false, 'error' => 'Complete Place access is required.'],
+            403
         );
     }
 
     // Authorized Site history is read directly from immutable approved reports.
     // This mode never changes the existing Site detail/report response shape.
-    if (($_GET['mode'] ?? '') === 'history') {
+    if ($mode === 'history') {
         $target = llama_report_verified_target(
             $db, $placeId, 'site', 'campsite_record', $campsiteId
         );
@@ -117,17 +162,6 @@ try {
             'ok' => true,
             'siteId' => $campsiteId,
             'reports' => $history,
-        ]);
-    }
-
-    // Media and report consumers continue using their existing response shape.
-    if (($_GET['mode'] ?? '') !== 'report') {
-        $images = llama_place_campsite_images($db, $placeId, $campsiteId);
-
-        llama_place_campsite_detail_json([
-            'ok' => true,
-            'site' => $site,
-            'images' => llama_place_campsite_detail_unique_images($images),
         ]);
     }
 

@@ -73,6 +73,8 @@ function llama_place_report_approved_question_visibility(): array
     $publicKeys = [
         'name',
         'type',
+        'latitude',
+        'longitude',
         'elevation_feet',
         'city',
         'county',

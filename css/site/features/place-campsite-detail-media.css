@@ -51,11 +51,29 @@
     scroll-snap-align: start;
 }
 
-.place-campsite-gallery-item a {
+.place-campsite-gallery-item a,
+.place-campsite-gallery-preview {
     display: block;
     aspect-ratio: 4 / 3;
     overflow: hidden;
+}
+
+.place-campsite-gallery-item a {
     cursor: zoom-in;
+}
+
+.place-campsite-gallery.is-preview {
+    grid-auto-columns: minmax(96px, 16%);
+}
+
+.place-campsite-gallery.is-preview .place-campsite-gallery-item {
+    opacity: .82;
+}
+
+.place-campsite-photo-access-note {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: .78rem;
 }
 
 .place-campsite-gallery-item img {
@@ -182,6 +200,10 @@
 
     .place-campsite-gallery {
         grid-auto-columns: minmax(140px, 57%);
+    }
+
+    .place-campsite-gallery.is-preview {
+        grid-auto-columns: minmax(96px, 34%);
     }
 
     .place-campsite-card-grid {

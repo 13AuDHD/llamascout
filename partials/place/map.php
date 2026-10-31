@@ -49,7 +49,7 @@ if (
 
 $placeMapHasLayerAccess =
     !empty(
-        $hasMemberAccess
+        $hasCompleteAccess
     );
 
 $placeMapCanEditAreas =
@@ -66,10 +66,10 @@ $placeMapMaxZoom = 20;
 $placeMapIsScopedContributor =
     $placeMapHasLayerAccess
     && empty(
-        $hasGlobalMemberAccess
+        $hasGlobalCompleteAccess
     )
     && !empty(
-        $hasContributorPlaceAccess
+        $hasEarnedPlaceAccess
     );
 
 $placeMapTiles =

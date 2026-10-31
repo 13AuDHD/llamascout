@@ -86,6 +86,11 @@ $primitiveSite = [
     'site_type' => 'tent_site',
     'raw_site_type' => 'Primitive backcountry',
 ];
+$vehiclePulloffSite = [
+    'id' => 102,
+    'site_type' => 'vehicle-pulloff',
+    'raw_site_type' => 'Vehicle pull-off',
+];
 
 visibility_assert(
     llama_site_is_public($developedPlace, $ordinarySite, []),
@@ -94,6 +99,10 @@ visibility_assert(
 visibility_assert(
     !llama_site_is_public($developedPlace, $primitiveSite, []),
     'Primitive Site nested in a developed campground must remain restricted.'
+);
+visibility_assert(
+    !llama_site_is_public($developedPlace, $vehiclePulloffSite, []),
+    'Vehicle pulloff Site nested in a developed campground must remain restricted.'
 );
 visibility_assert(
     !llama_site_is_public($developedPlace, $ordinarySite, [100 => true]),

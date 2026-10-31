@@ -129,24 +129,24 @@ $userId =
         ? (int) $user['id']
         : 0;
 
-$hasGlobalMemberAccess =
+$hasGlobalCompleteAccess =
     user_has_member_access(
         $userId > 0
             ? $userId
             : null
     );
 
-$hasContributorPlaceAccess =
+$hasEarnedPlaceAccess =
     false;
 
-$hasMemberAccess =
-    $hasGlobalMemberAccess;
+$hasCompleteAccess =
+    $hasGlobalCompleteAccess;
 
 $place =
     null;
 
 if ($slug !== '') {
-    if ($hasGlobalMemberAccess) {
+    if ($hasGlobalCompleteAccess) {
         $place =
             place_member_by_slug(
                 $slug
@@ -165,10 +165,10 @@ if ($slug !== '') {
                 $userId
             )
         ) {
-            $hasContributorPlaceAccess =
+            $hasEarnedPlaceAccess =
                 true;
 
-            $hasMemberAccess =
+            $hasCompleteAccess =
                 true;
 
             $place =
@@ -213,6 +213,51 @@ if (!$place) {
         . '/partials/footer.php';
 
     exit;
+}
+
+/*
+ * Issue #41 access vocabulary.
+ *
+ * "Member" means a signed-in account. Complete Access is a separate
+ * entitlement supplied globally or earned for this specific Place.
+ */
+$isLoggedIn =
+    $userId > 0;
+
+$placeReportCanViewCommunity =
+    $hasCompleteAccess;
+
+/*
+ * The page itself was already authorized above. Load the complete published
+ * Place record only as the server-side source for the canonical Scout Report.
+ * The report renderer performs value-level access checks before emitting HTML.
+ * Restricted Places still fail the authorized lookup above and never reach
+ * this code for an unauthorized viewer.
+ */
+$placeReportSource =
+    $place;
+
+if (!$hasCompleteAccess) {
+    try {
+        $completePublishedPlace =
+            place_member_by_slug(
+                $slug
+            );
+
+        if (
+            $completePublishedPlace
+            && (int) ($completePublishedPlace['id'] ?? 0)
+                === (int) ($place['id'] ?? 0)
+        ) {
+            $placeReportSource =
+                $completePublishedPlace;
+        }
+    } catch (Throwable $exception) {
+        llama_log_caught_exception(
+            $exception,
+            'place.canonical_report_source'
+        );
+    }
 }
 
 $isSaved =
@@ -458,54 +503,6 @@ $locationParts =
         ]
     );
 
-$details =
-    $hasMemberAccess
-        ? (
-            $place['details']
-            ?? []
-        )
-        : [];
-
-$connectivity =
-    $hasMemberAccess
-        ? (
-            $place['connectivity']
-            ?? []
-        )
-        : [];
-
-$sensory =
-    $hasMemberAccess
-        ? (
-            $place['sensory']
-            ?? []
-        )
-        : [];
-
-$sensoryDetails =
-    $hasMemberAccess
-        ? (
-            $place['sensory_details']
-            ?? []
-        )
-        : [];
-
-$rules =
-    $hasMemberAccess
-        ? (
-            $place['rules']
-            ?? []
-        )
-        : [];
-
-$experience =
-    $hasMemberAccess
-        ? (
-            $place['experience']
-            ?? []
-        )
-        : [];
-
 $db =
     db();
 
@@ -529,7 +526,7 @@ $reportCompleteness = [
 
 try {
     $completionSourcePlace =
-        $hasMemberAccess
+        $hasCompleteAccess
             ? $place
             : place_member_by_slug(
                 (string) $place['slug']
@@ -660,7 +657,7 @@ $canOpenPlaceGallery =
     $placePhotoPermissions['can_open'];
 
 $gallerySourceImages =
-    $hasMemberAccess
+    $hasCompleteAccess
         ? (
             $place['images']
             ?? []
@@ -690,7 +687,7 @@ if (
             )
         );
 
-    if ($hasMemberAccess) {
+    if ($hasCompleteAccess) {
         foreach (
             $galleryImages
             as $image
@@ -808,17 +805,12 @@ require
         . '/partials/place/facts-weather-amenities.php';
     ?>
 
-    <?php require __DIR__ . '/partials/place/public-facility.php'; ?>
-    <?php require __DIR__ . '/partials/place/public-scout-facts.php'; ?>
-
-    <?php if (!$hasMemberAccess): ?>
-        <?php require __DIR__ . '/partials/place/gallery.php'; ?>
-    <?php endif; ?>
+    <?php require __DIR__ . '/partials/place/gallery.php'; ?>
 
     <div
         data-place-campsites-mount
         data-place-slug="<?= place_h((string) $place['slug']) ?>"
-        data-public-catalog="<?= $hasMemberAccess ? '0' : '1' ?>"
+        data-complete-access="<?= $hasCompleteAccess ? '1' : '0' ?>"
     ></div>
 
     <?php
