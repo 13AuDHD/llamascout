@@ -1041,7 +1041,7 @@
                         const sourceLabel = clean(source.label);
                         if (sourceLine) {
                             sourceLine.textContent = [
-                                dateLabel ? (isImportedSource ? 'Source updated ' + dateLabel : dateLabel) : '',
+                                dateLabel,
                                 sourceLabel
                             ].filter(Boolean).join(' · ');
                             sourceLine.hidden = !sourceLine.textContent;
