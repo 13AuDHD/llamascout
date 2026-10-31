@@ -152,7 +152,16 @@ function llama_site_is_public(array $place, array $site, array $restrictedSiteId
     // reconciled; a public developed Place cannot silently publish them.
     foreach (['raw_site_type', 'site_type'] as $field) {
         $siteType = strtolower((string) ($site[$field] ?? ''));
-        foreach (['dispersed', 'primitive', 'backcountry', 'boondock'] as $marker) {
+        foreach ([
+            'dispersed',
+            'primitive',
+            'backcountry',
+            'boondock',
+            'vehicle-pulloff',
+            'vehicle_pulloff',
+            'vehicle pulloff',
+            'vehicle pull-off',
+        ] as $marker) {
             if (str_contains($siteType, $marker)) {
                 return false;
             }
