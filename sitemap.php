@@ -59,7 +59,6 @@ $addUrl = static function (
 
 $staticPages = [
     ['https://llamascout.com/', null, 'daily', '1.0'],
-    ['https://llamascout.com/map.php', null, 'daily', '1.0'],
     ['https://llamascout.com/field-guides', null, 'weekly', '0.8'],
     ['https://llamascout.com/membership', null, 'weekly', '0.8'],
     ['https://llamascout.com/shop.php', null, 'weekly', '0.8'],
@@ -94,7 +93,7 @@ try {
             updated_at
          FROM places
          WHERE status IN ("active", "featured")
-           AND type <> "dispersed-camping"
+           AND type NOT IN ("dispersed-camping", "vehicle-pulloff")
            AND slug IS NOT NULL
            AND slug <> ""
          ORDER BY id ASC'
