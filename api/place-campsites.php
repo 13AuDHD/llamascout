@@ -80,6 +80,14 @@ try {
                     'site_code' => (string) ($site['site_code'] ?? ''),
                     'site_name' => (string) ($site['site_name'] ?? ''),
                     'site_type' => (string) ($site['site_type'] ?? ''),
+                    // Public-facing campground basics only. No GPS, photos,
+                    // community observations or detailed Scout Report data.
+                    'parking_style' => (string) ($site['parking_style'] ?? ''),
+                    'hookup_status' => (string) ($site['hookup_status'] ?? ''),
+                    'accessible_status' => (string) ($site['accessible_status'] ?? ''),
+                    'electric_hookup' => $site['electric_hookup'] ?? null,
+                    'is_closed' => (bool) ($site['is_closed'] ?? false),
+                    'operating_status' => $site['operating_status'] ?? null,
                 ];
                 continue;
             }
