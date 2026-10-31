@@ -810,7 +810,7 @@ require
     <div
         data-place-campsites-mount
         data-place-slug="<?= place_h((string) $place['slug']) ?>"
-        data-public-catalog="<?= $hasCompleteAccess ? '0' : '1' ?>"
+        data-complete-access="<?= $hasCompleteAccess ? '1' : '0' ?>"
     ></div>
 
     <?php
