@@ -99,7 +99,7 @@ require __DIR__ . '/access-alert.php';
                         </button>
                     </form>
 
-                    <?php if ($hasGlobalMemberAccess): ?>
+                    <?php if ($hasGlobalCompleteAccess): ?>
                         <a
                             class="place-detail-action-button"
                             href="/compare.php?places=<?= rawurlencode((string) $place['slug']) ?>"
