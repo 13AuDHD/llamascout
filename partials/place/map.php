@@ -499,9 +499,15 @@ $placeMapEditorUrl =
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="/js/place-map.js"></script>
 
+<!--
+    The Place/Site explorer is part of the shared V3 navigation shell, not a
+    Complete Access map layer. Guests and free Members need it so selecting a
+    Site still leaves the parent Place button available to return to Place details.
+-->
+<script src="/js/place-explorer.js" defer></script>
+
 <?php if ($placeMapHasLayerAccess): ?>
     <script src="/js/place-campsite-points.js"></script>
-    <script src="/js/place-explorer.js" defer></script>
     <script src="/js/map-land-overlays.js"></script>
     <script src="/js/map-weather-overlays.js"></script>
     <script src="https://unpkg.com/h3-js@4.2.1"></script>
