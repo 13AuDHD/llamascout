@@ -11,8 +11,6 @@ require_once dirname(__DIR__, 2)
  * Scout Report structure. Complete Access controls answers and the richer
  * overnight/Site experience, not which Scout Report exists.
  */
-$viewerHasCompleteAccess =
-    (bool) ($hasCompleteAccess ?? false);
 ?>
 
 <?php if (!empty($hasEarnedPlaceAccess) && empty($hasGlobalCompleteAccess)): ?>
