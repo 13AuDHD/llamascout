@@ -1980,6 +1980,17 @@ function llama_place_update_approve(
     );
 
 
+    // Entire Place updates use the same target-keyed current store as Add
+    // Place and scoped updates. Publish only touched questions, retaining
+    // every unrelated answer and the immutable observation history.
+    if (llama_report_current_store_available($db)) {
+        foreach ($reportAnswers as $key => $rawValue) {
+            llama_report_current_store_save(
+                $db, $placeId, 'place', 'place', $placeId, $key, $rawValue
+            );
+        }
+    }
+
     // Confirm each approved Place observation reached the current
     // published projection before the moderation transaction commits.
     $publishedAnswers = llama_place_report_current_place_answers($db, $placeId);
@@ -2005,17 +2016,6 @@ function llama_place_update_approve(
         ) {
             throw new RuntimeException(
                 'An approved Place update answer did not match the published value. Approval was cancelled.'
-            );
-        }
-    }
-
-    // Entire Place updates use the same target-keyed current store as Add
-    // Place and scoped updates. Publish only touched questions, retaining
-    // every unrelated answer and the immutable observation history.
-    if (llama_report_current_store_available($db)) {
-        foreach ($reportAnswers as $key => $rawValue) {
-            llama_report_current_store_save(
-                $db, $placeId, 'place', 'place', $placeId, $key, $rawValue
             );
         }
     }
