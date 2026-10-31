@@ -68,6 +68,7 @@ function llama_report_current_store_save(
     llama_report_current_store_target($db, $placeId, $scope, $source, $targetId);
     $field = llama_place_report_fields()[$key] ?? null;
     if (!is_array($field) || !empty($field['derived'])
+        || ($scope !== 'place' && !empty($field['location_field']))
         || !in_array($scope, (array) ($field['report_scopes'] ?? []), true)) {
         throw new InvalidArgumentException('Question is not writable for this reporting target.');
     }
