@@ -69,7 +69,7 @@ if (
 }
 
 $placeReportFields =
-    llama_place_report_fields();
+    llama_report_questions();
 
 $placeReportSections =
     llama_place_report_sections();
@@ -80,7 +80,7 @@ $placeReportSections =
  * storage and site switching. Unlisted legacy fields are not displayed.
  */
 $publicReportGroups =
-    llama_place_report_effective_report_groups($placeReportFields);
+    llama_report_public_question_groups();
 
 $approvedGroupPages =
     llama_place_report_approved_group_page_lookup();
@@ -1270,7 +1270,7 @@ foreach (
              */
             // Use the same canonical grouping and order as the editable form.
             $orderedBuckets = array_filter(
-                llama_place_report_group_eligible_questions($reportedFields),
+                llama_report_group_selected_questions($reportedFields),
                 static fn (array $bucket): bool => !empty($bucket['fields'])
             );
             ?>
