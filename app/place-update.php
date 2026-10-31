@@ -1995,7 +1995,7 @@ function llama_place_update_approve(
     // published projection before the moderation transaction commits.
     $publishedAnswers = llama_place_report_current_place_answers($db, $placeId);
     foreach ($reportAnswers as $key => $submittedValue) {
-        $field = llama_place_report_fields()[$key] ?? null;
+        $field = llama_report_question((string) $key);
         $publishedAnswer = $publishedAnswers[$key] ?? null;
         if (!is_array($field) || !is_array($publishedAnswer) || empty($publishedAnswer['recorded'])) {
             throw new RuntimeException(
