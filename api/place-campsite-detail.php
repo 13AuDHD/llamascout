@@ -182,6 +182,15 @@ try {
             $effectiveValues
         );
 
+    // Include the full eligible question inventory, including unanswered
+    // keys. Otherwise the browser can resurrect an obsolete value from a
+    // legacy campsite column when the canonical answer is unanswered.
+    $site['report_answer_states'] = [];
+    foreach ($currentAnswers as $key => $answer) {
+        $site['report_answer_states'][(string) $key] =
+            (string) ($answer['state'] ?? 'unanswered');
+    }
+
     $site['report_inherited_values'] =
         llama_scoped_report_display_values(
             $inheritedValues
