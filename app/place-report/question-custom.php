@@ -9,6 +9,8 @@ declare(strict_types=1);
  * $add('example_key', 'Example question?', 'site_vehicle', 'tri',
  *      'details.example_key', [
  *          'scope_group' => 'site', // place, place_area, site, all
+ *          'layout_section' => 'site',
+ *          'layout_group' => 'selection_type',
  *          'report_group' => '<an existing approved report group key>',
  *          'report_visibility' => 'community', // public or community
  *          'allow_unknown' => true,
@@ -17,6 +19,9 @@ declare(strict_types=1);
  * Field keys must remain stable after publishing. To retire a question,
  * add its key to llama_place_report_retired_question_keys() in fields.php.
  * Existing approved questions retain their authoritative PDF ordering.
+ * New fields should specify scope_group, layout_section, layout_group,
+ * report_group and report_visibility here, without editing flow-scopes.php,
+ * flow-layout.php, or presentation pages.
  *
  * New questions can use V3 storage without a new legacy SQL column.
  * Actual page permissions and membership gating remain server-side.
