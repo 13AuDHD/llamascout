@@ -129,24 +129,24 @@ $userId =
         ? (int) $user['id']
         : 0;
 
-$hasGlobalMemberAccess =
+$hasGlobalCompleteAccess =
     user_has_member_access(
         $userId > 0
             ? $userId
             : null
     );
 
-$hasContributorPlaceAccess =
+$hasEarnedPlaceAccess =
     false;
 
-$hasMemberAccess =
-    $hasGlobalMemberAccess;
+$hasCompleteAccess =
+    $hasGlobalCompleteAccess;
 
 $place =
     null;
 
 if ($slug !== '') {
-    if ($hasGlobalMemberAccess) {
+    if ($hasGlobalCompleteAccess) {
         $place =
             place_member_by_slug(
                 $slug
@@ -165,10 +165,10 @@ if ($slug !== '') {
                 $userId
             )
         ) {
-            $hasContributorPlaceAccess =
+            $hasEarnedPlaceAccess =
                 true;
 
-            $hasMemberAccess =
+            $hasCompleteAccess =
                 true;
 
             $place =
@@ -218,23 +218,11 @@ if (!$place) {
 /*
  * Issue #41 access vocabulary.
  *
- * $hasMemberAccess is retained temporarily for older partials. In this page it
- * means Complete Access, not merely "has an account". New work should use the
- * explicit flags below so account state and paid/earned access do not drift
- * back together.
+ * "Member" means a signed-in account. Complete Access is a separate
+ * entitlement supplied globally or earned for this specific Place.
  */
 $isLoggedIn =
     $userId > 0;
-
-$hasGlobalCompleteAccess =
-    $hasGlobalMemberAccess;
-
-$hasEarnedPlaceAccess =
-    $hasContributorPlaceAccess;
-
-$hasCompleteAccess =
-    $hasGlobalCompleteAccess
-    || $hasEarnedPlaceAccess;
 
 $placeReportCanViewCommunity =
     $hasCompleteAccess;
@@ -538,7 +526,7 @@ $reportCompleteness = [
 
 try {
     $completionSourcePlace =
-        $hasMemberAccess
+        $hasCompleteAccess
             ? $place
             : place_member_by_slug(
                 (string) $place['slug']
@@ -669,7 +657,7 @@ $canOpenPlaceGallery =
     $placePhotoPermissions['can_open'];
 
 $gallerySourceImages =
-    $hasMemberAccess
+    $hasCompleteAccess
         ? (
             $place['images']
             ?? []
@@ -699,7 +687,7 @@ if (
             )
         );
 
-    if ($hasMemberAccess) {
+    if ($hasCompleteAccess) {
         foreach (
             $galleryImages
             as $image
@@ -822,7 +810,7 @@ require
     <div
         data-place-campsites-mount
         data-place-slug="<?= place_h((string) $place['slug']) ?>"
-        data-public-catalog="<?= $hasMemberAccess ? '0' : '1' ?>"
+        data-public-catalog="<?= $hasCompleteAccess ? '0' : '1' ?>"
     ></div>
 
     <?php
