@@ -522,6 +522,13 @@ function llama_place_report_apply_layout_metadata(
                 'information_location',
             ];
 
+        // New questions own their layout metadata at registration. Existing
+        // audited questions still use the historical ordered assignment map.
+        if (isset($field['layout_section'], $field['layout_group'])) {
+            $section = (string) $field['layout_section'];
+            $group = (string) $field['layout_group'];
+        }
+
         $field['layout_section'] =
             $section;
 
