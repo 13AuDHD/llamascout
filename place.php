@@ -786,6 +786,8 @@ require
         . '/partials/place/facts-weather-amenities.php';
     ?>
 
+    <?php require __DIR__ . '/partials/place/public-facility.php'; ?>
+
     <div
         data-place-campsites-mount
         data-place-slug="<?= place_h((string) $place['slug']) ?>"
