@@ -451,6 +451,21 @@ function llama_scoped_report_clear_override(
         $scopeId,
         $fieldKey,
     ]);
+
+    // Clear the unified current observation in the same transaction.
+    // Otherwise its higher read precedence would resurrect the override
+    // immediately after the legacy row is removed.
+    if (llama_report_current_store_available($db)) {
+        llama_report_current_store_save(
+            $db,
+            $placeId,
+            $scope,
+            $source,
+            $scopeId,
+            $fieldKey,
+            llama_place_report_unanswered_token()
+        );
+    }
 }
 
 
