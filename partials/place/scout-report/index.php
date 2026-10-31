@@ -26,9 +26,23 @@ if (empty($isDemoScoutReport)) {
     }
 }
 
+/*
+ * Issue #41: every authorized viewer uses the same canonical Scout Report
+ * renderer. The presentation source may contain the complete published Place
+ * record, while the renderer independently decides which answers this viewer
+ * may see. Never use a stripped Place object to invent a second report shape.
+ */
+$placeReportSource =
+    is_array($placeReportSource ?? null)
+        ? $placeReportSource
+        : $place;
+
+$placeReportCanViewCommunity =
+    (bool) ($placeReportCanViewCommunity ?? true);
+
 $placeReportData =
     llama_place_report_data_from_published_place(
-        $place,
+        $placeReportSource,
         $publishedUnknown
     );
 
