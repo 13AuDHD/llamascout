@@ -754,12 +754,22 @@ function llama_place_report_effective_report_groups(array $fields): array
 {
     $groups = llama_place_report_approved_groups_in_page_order();
     $included = [];
-    foreach ($groups as $definition) {
-        foreach ((array) ($definition[1] ?? []) as $key) {
+    foreach ($groups as &$definition) {
+        // The approved PDF fixes historical ordering, not permanent
+        // membership. Retired questions must disappear from public views.
+        $definition[1] = array_values(array_filter(
+            (array) ($definition[1] ?? []),
+            static fn (string $key): bool =>
+                isset($fields[$key]) && empty($fields[$key]['derived'])
+                    && empty($fields[$key]['hide_public'])
+        ));
+        foreach ($definition[1] as $key) {
             $included[(string) $key] = true;
         }
     }
+    unset($definition);
 
+    $extra = [];
     foreach ($fields as $key => $field) {
         if (isset($included[$key])
             || empty($field['approved_question'])
@@ -769,12 +779,20 @@ function llama_place_report_effective_report_groups(array $fields): array
             continue;
         }
         $groupKey = (string) ($field['approved_question_group'] ?? '');
-        if (!isset($groups[$groupKey])) {
-            continue;
+        if (isset($groups[$groupKey])) {
+            $extra[$groupKey][$key] = $field;
         }
-        $groups[$groupKey][1][] = $key;
-        $included[$key] = true;
     }
-
+    foreach ($extra as $group => $members) {
+        $index = array_flip(array_keys($members));
+        uksort($members, static function ($a, $b) use ($members, $index): int {
+            $aOrder = (int) ($members[$a]['report_order'] ?? PHP_INT_MAX);
+            $bOrder = (int) ($members[$b]['report_order'] ?? PHP_INT_MAX);
+            return ($aOrder <=> $bOrder) ?: ($index[$a] <=> $index[$b]);
+        });
+        foreach ($members as $key => $_field) {
+            $groups[$group][1][] = $key;
+        }
+    }
     return $groups;
 }
