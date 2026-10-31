@@ -1141,6 +1141,71 @@
         );
     };
 
+    // Guest visitors receive a strict, minimal public catalog. This
+    // deliberately does not use the member Site selector: that selector
+    // fetches full reports, photos, and immutable history on selection.
+    const renderPublicCatalog = (payload) => {
+        const sites = Array.isArray(payload.sites) ? payload.sites : [];
+        if (!sites.length || !payload.browser?.show_site_layer) {
+            mount.remove();
+            return;
+        }
+
+        mount.innerHTML = `
+            <section class="place-section place-campsites"
+                aria-labelledby="place-campsites-heading" data-place-campsites>
+                <div class="place-campsites-heading">
+                    <div>
+                        <p class="eyebrow">Sites</p>
+                        <h2 id="place-campsites-heading">Campground Sites</h2>
+                        <p>Basic public campsite information. Full Scout Reports
+                            require Place access.</p>
+                    </div>
+                    <strong class="place-campsites-count">
+                        ${sites.length.toLocaleString()}
+                        ${sites.length === 1 ? 'Site' : 'Sites'}
+                    </strong>
+                </div>
+                <div class="place-campsites-tools">
+                    <label class="place-campsites-search">
+                        <span>Find a Site</span>
+                        <input type="search" placeholder="Site number or name"
+                            autocomplete="off" data-campsite-public-search>
+                    </label>
+                </div>
+                <div class="place-campsites-list" data-campsite-public-list
+                    aria-label="Public campground Sites"></div>
+            </section>
+        `;
+
+        const search = mount.querySelector('[data-campsite-public-search]');
+        const list = mount.querySelector('[data-campsite-public-list]');
+        const render = () => {
+            const query = clean(search.value).toLowerCase();
+            const visible = sites.filter((site) => {
+                const name = clean(site.display_name || site.site_name || site.site_code);
+                const type = clean(siteTypeLabel(site.site_type));
+                return !query || (name + ' ' + type).toLowerCase().includes(query);
+            });
+            if (!visible.length) {
+                list.innerHTML = '<div class="place-campsites-empty">No matching Sites.</div>';
+                return;
+            }
+            list.innerHTML = visible.map((site) => `
+                <div class="place-campsite-row">
+                    <span class="place-campsite-row-name">
+                        ${escapeHtml(smartCase(site.display_name || site.site_name || site.site_code))}
+                    </span>
+                    <span class="place-campsite-row-summary">
+                        ${escapeHtml(siteTypeLabel(site.site_type))}
+                    </span>
+                </div>
+            `).join('');
+        };
+        search.addEventListener('input', render);
+        render();
+    };
+
     const renderBrowser = (
         payload
     ) => {
@@ -1730,9 +1795,11 @@
                 return;
             }
 
-            renderBrowser(
-                payload
-            );
+            if (mount.dataset.publicCatalog === '1') {
+                renderPublicCatalog(payload);
+            } else {
+                renderBrowser(payload);
+            }
 
         } catch (error) {
             console.error(
