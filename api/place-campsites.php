@@ -84,8 +84,21 @@ try {
                  * shared Site browser can then populate the canonical Scout
                  * Report cards without maintaining a second public-only UI.
                  */
-                $hasOfficialDetails =
-                    $officialDetails !== [];
+                $officialDetailKeys =
+                    array_fill_keys(
+                        array_values(
+                            array_filter(
+                                array_map(
+                                    static fn (array $detail): string =>
+                                        (string) ($detail['source_key'] ?? ''),
+                                    $officialDetails
+                                ),
+                                static fn (string $key): bool =>
+                                    $key !== ''
+                            )
+                        ),
+                        true
+                    );
 
                 $catalog[] = [
                     'id' => (int) ($site['id'] ?? 0),
@@ -101,43 +114,43 @@ try {
                     'accessible_status' => (string) ($site['accessible_status'] ?? ''),
                     'electric_hookup' => $site['electric_hookup'] ?? null,
                     'max_vehicle_length_ft' =>
-                        $hasOfficialDetails
+                        isset($officialDetailKeys['max_vehicle_length_ft'])
                             ? ($site['max_vehicle_length_ft'] ?? null)
                             : null,
                     'max_people' =>
-                        $hasOfficialDetails
+                        isset($officialDetailKeys['max_people'])
                             ? ($site['max_people'] ?? null)
                             : null,
                     'max_vehicles' =>
-                        $hasOfficialDetails
+                        isset($officialDetailKeys['max_vehicles'])
                             ? ($site['max_vehicles'] ?? null)
                             : null,
                     'site_length_ft' =>
-                        $hasOfficialDetails
+                        isset($officialDetailKeys['site_length_ft'])
                             ? ($site['site_length_ft'] ?? null)
                             : null,
                     'site_width_ft' =>
-                        $hasOfficialDetails
+                        isset($officialDetailKeys['site_width_ft'])
                             ? ($site['site_width_ft'] ?? null)
                             : null,
                     'tent_pad' =>
-                        $hasOfficialDetails
+                        isset($officialDetailKeys['tent_pad'])
                             ? ($site['tent_pad'] ?? null)
                             : null,
                     'tent_pad_length_ft' =>
-                        $hasOfficialDetails
+                        isset($officialDetailKeys['tent_pad_length_ft'])
                             ? ($site['tent_pad_length_ft'] ?? null)
                             : null,
                     'tent_pad_width_ft' =>
-                        $hasOfficialDetails
+                        isset($officialDetailKeys['tent_pad_width_ft'])
                             ? ($site['tent_pad_width_ft'] ?? null)
                             : null,
                     'water_hookup' =>
-                        $hasOfficialDetails
+                        isset($officialDetailKeys['water_hookup'])
                             ? ($site['water_hookup'] ?? null)
                             : null,
                     'sewer_hookup' =>
-                        $hasOfficialDetails
+                        isset($officialDetailKeys['sewer_hookup'])
                             ? ($site['sewer_hookup'] ?? null)
                             : null,
                     'is_closed' => (bool) ($site['is_closed'] ?? false),
