@@ -1117,9 +1117,31 @@ foreach (
         <?php if ($placeReportReadMode === 'scout-report' && $sectionKey === 'basic'): ?>
             <?php
             $officialContact = [
-                'Official Address' => ['value' => trim((string) ($publicFacility['address'] ?? '')), 'icon' => 'map-pin'],
-                'Phone Number' => ['value' => trim((string) ($publicFacility['phone'] ?? '')), 'icon' => 'phone'],
-                'Email Address' => ['value' => trim((string) ($publicFacility['email'] ?? '')), 'icon' => 'mail'],
+                'Official Address' => [
+                    'value' => trim((string) ($publicFacility['address'] ?? '')),
+                    'icon' => 'map-pin',
+                    'kind' => 'text',
+                ],
+                'Phone Number' => [
+                    'value' => trim((string) ($publicFacility['phone'] ?? '')),
+                    'icon' => 'phone',
+                    'kind' => 'phone',
+                ],
+                'Email Address' => [
+                    'value' => trim((string) ($publicFacility['email'] ?? '')),
+                    'icon' => 'mail',
+                    'kind' => 'email',
+                ],
+                'Published Fees' => [
+                    'value' => trim((string) ($publicFacility['fee_description'] ?? '')),
+                    'icon' => 'receipt',
+                    'kind' => 'text',
+                ],
+                'Reservations' => [
+                    'value' => trim((string) ($publicFacility['reservation_url'] ?? '')),
+                    'icon' => 'calendar',
+                    'kind' => 'url',
+                ],
             ];
             ?>
             <div class="scout-report-grid">
@@ -1129,10 +1151,19 @@ foreach (
                         <div class="scout-report-value-content">
                             <span><?= $e($contactLabel) ?></span>
                             <strong>
-                                <?php if ($contactLabel === 'Phone Number'): ?>
+                                <?php if (($contact['kind'] ?? '') === 'phone'): ?>
                                     <a href="tel:<?= $e(preg_replace('/[^0-9+]/', '', $contact['value'])) ?>"><?= $e($contact['value']) ?></a>
-                                <?php elseif ($contactLabel === 'Email Address'): ?>
+                                <?php elseif (($contact['kind'] ?? '') === 'email'): ?>
                                     <a href="mailto:<?= $e($contact['value']) ?>"><?= $e($contact['value']) ?></a>
+                                <?php elseif (
+                                    ($contact['kind'] ?? '') === 'url'
+                                    && preg_match('~^https?://~i', (string) $contact['value']) === 1
+                                ): ?>
+                                    <a
+                                        href="<?= $e($contact['value']) ?>"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    ><?= $e($contact['value']) ?></a>
                                 <?php else: ?>
                                     <?= $e($contact['value']) ?>
                                 <?php endif; ?>
