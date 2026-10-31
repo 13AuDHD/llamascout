@@ -13,7 +13,7 @@ declare(strict_types=1);
  * The existing table is retained for mixed-use exceptions and old reviews.
  * Missing table/schema is an error, not permission to publish.
  */
-function llama_site_public_visibility_ids(PDO $db, int $placeId): array
+function llama_site_restricted_visibility_ids(PDO $db, int $placeId): array
 {
     if ($placeId < 1) {
         return [];
@@ -33,8 +33,8 @@ function llama_site_public_visibility_ids(PDO $db, int $placeId): array
 }
 
 /**
- * The third argument contains restricted Site IDs (historical name retained
- * to avoid changing all callers). Absence of an override follows Place type.
+ * The third argument contains restricted Site IDs. Absence of an override
+ * follows Place type.
  */
 function llama_site_is_public(array $place, array $site, array $restrictedSiteIds): bool
 {
