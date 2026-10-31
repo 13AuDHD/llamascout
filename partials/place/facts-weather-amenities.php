@@ -1,8 +1,7 @@
 <?php
 
 $hasExactPlaceCoordinates =
-    $hasMemberAccess
-    && ($place['latitude'] ?? null) !== null
+    ($place['latitude'] ?? null) !== null
     && ($place['longitude'] ?? null) !== null
     && is_numeric($place['latitude'])
     && is_numeric($place['longitude']);
@@ -31,8 +30,7 @@ $placeRoad =
     );
 
 if (
-    $hasMemberAccess
-    && $placeRoad === ''
+    $placeRoad === ''
     && !empty($place['id'])
 ) {
     try {
