@@ -20,19 +20,24 @@ function llama_scoped_report_form_model(PDO $db, int $placeId, string $scope = '
     $targets = llama_report_targets($db, $placeId);
     $id = $scope === 'place' ? $placeId : (int) $scopeId;
     $target = llama_report_verified_target($db, $placeId, $scope, $source, $id);
-    $fields = llama_place_report_fields_for_scope($scope);
+    $fields = llama_report_questions_for_scope($scope, true);
     $parent = null;
     if (!empty($target['parent_area_id'])) {
         $parent = llama_report_verified_target($db, $placeId, 'area', 'map_feature', (int) $target['parent_area_id']);
     }
     if ($scope === 'place') {
-        $data = [];
-        foreach (llama_place_report_current_values($db, $placeId) as $path => $value) {
-            llama_place_report_set_path($data, $path, $value);
+        // Same effective canonical Place observations used by the public
+        // report and scoped inheritance, including V3-only questions.
+        $values = [];
+        foreach (llama_place_report_current_place_answers($db, $placeId) as $key => $answer) {
+            if (empty($answer['recorded']) || !isset($fields[$key])) {
+                continue;
+            }
+            $values[$key] = llama_place_report_current_answer_legacy_value($answer);
         }
-        $data['_answer_state'] = llama_place_report_published_answer_state($db, $placeId);
-        $values = array_intersect_key(llama_scoped_report_values_from_data($data), $fields);
-        $model = ['values'=>$values,'direct'=>$values,'overrides'=>$values,'area'=>[], 'inherited'=>[], 'provenance'=>[]];
+        $model = ['values' => $values, 'direct' => $values,
+            'overrides' => $values, 'area' => [], 'inherited' => [],
+            'provenance' => []];
     } else {
         $model = llama_place_report_target_model($db, $placeId, $target);
     }
