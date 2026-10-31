@@ -116,6 +116,27 @@ function admin_place_save_shared_report(PDO $db, int $actorUserId, int $placeId,
         if (!$lock->fetchColumn()) { throw new RuntimeException('Place not found.'); }
         $place = admin_place_get($db, $placeId);
         $baseData = admin_place_shared_report_data($db, $placeId);
+        // Admin edits must compare against the same effective answers that
+        // Place, Area and Site readers use. Otherwise a V3-only question
+        // can be lost when saving an unrelated legacy-column field.
+        $unknown = array_fill_keys(llama_place_report_unknown_fields($baseData), true);
+        foreach (llama_place_report_current_place_answers($db, $placeId) as $key => $answer) {
+            if (empty($answer['recorded'])) {
+                continue;
+            }
+            $field = llama_place_report_fields()[$key] ?? null;
+            if (!is_array($field) || !in_array('place', (array) ($field['report_scopes'] ?? []), true)) {
+                continue;
+            }
+            if (($answer['state'] ?? '') === 'unknown') {
+                $unknown[$key] = true;
+                llama_place_report_set_path($baseData, (string) $field['storage'], null);
+            } else {
+                unset($unknown[$key]);
+                llama_place_report_set_path($baseData, (string) $field['storage'], $answer['value']);
+            }
+        }
+        $baseData['_answer_state'] = array_keys($unknown);
         $placeLevelInput = admin_place_without_campsite_fields(llama_place_report_expand_presence($input));
         $allowed = llama_place_report_fields_for_scope('place');
         $placeLevelInput = array_intersect_key($placeLevelInput, $allowed);
