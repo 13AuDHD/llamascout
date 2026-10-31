@@ -25,6 +25,20 @@ $cases = [
         !llama_site_can_read($dispersedPlace, $developedSite, false, $restrictedIds),
     'explicitly dispersed Site stays private in developed Place' =>
         !llama_site_can_read($developedPlace, $dispersedSite, false, []),
+    'imported primitive Site stays private' =>
+        !llama_site_can_read(
+            $developedPlace,
+            ['id' => 43, 'site_type' => 'tent_site', 'raw_site_type' => 'primitive'],
+            false,
+            []
+        ),
+    'backcountry Site stays private' =>
+        !llama_site_can_read(
+            $developedPlace,
+            ['id' => 44, 'site_type' => 'backcountry_site', 'raw_site_type' => ''],
+            false,
+            []
+        ),
     'mixed developed Site restriction stays private' =>
         !llama_site_can_read($developedPlace, $developedSite, false, $restrictedIds),
     'other Place type stays private' =>
