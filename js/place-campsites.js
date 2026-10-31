@@ -902,9 +902,18 @@
             site.report_override_values
         );
 
-        // The canonical published projection is the final authority.
-        // Legacy campsite columns remain a fallback for older records,
-        // but cannot replace a canonical winner with a different value.
+        // The canonical model lists unanswered keys as well as answers.
+        // Clear any legacy-column fallback for those questions before
+        // overlaying the final published values. A stale legacy column
+        // must never turn a canonical "Not provided" into a false answer.
+        if (site.report_answer_states && typeof site.report_answer_states === 'object') {
+            Object.entries(site.report_answer_states).forEach(([key, state]) => {
+                if (state === 'unanswered') {
+                    delete values[key];
+                }
+            });
+        }
+
         mergeReportValues(
             site.report_effective_values
         );
