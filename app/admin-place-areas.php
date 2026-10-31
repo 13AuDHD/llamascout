@@ -138,8 +138,7 @@ function admin_place_save_area_answers(
             llama_scoped_report_clear_override($db, $placeId, 'area', $areaId, 'map_feature', $key);
             continue;
         }
-        $value = llama_place_report_scoped_value($field, $raw);
-
+        // The shared scoped writer owns normalization and answer state.
         llama_scoped_report_save(
             $db,
             $placeId,
@@ -147,7 +146,7 @@ function admin_place_save_area_answers(
             $areaId,
             'map_feature',
             $key,
-            $value
+            $raw
         );
 
         $saved++;
