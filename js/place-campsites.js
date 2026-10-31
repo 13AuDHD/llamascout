@@ -80,7 +80,7 @@
      * The catalog endpoint remains responsible for field-level disclosure.
      */
     const hasCompleteAccess =
-        mount.dataset.publicCatalog !== '1';
+        mount.dataset.completeAccess === '1';
 
     const escapeHtml = (value) => {
         const node =
