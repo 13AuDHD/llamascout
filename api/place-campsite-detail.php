@@ -171,55 +171,9 @@ try {
             'effective'
         );
 
-    // Resolve public contributor usernames and imported source labels.
-    // Only data already permitted by the Site access gate is returned.
-    $contributorIds = [];
-    foreach ($currentAnswers as $answer) {
-        $id = (int) ($answer['approved_report']['contributor_id'] ?? 0);
-        if ($id > 0) {
-            $contributorIds[$id] = $id;
-        }
-    }
-    $usernames = [];
-    if ($contributorIds) {
-        $placeholders = implode(',', array_fill(0, count($contributorIds), '?'));
-        $userStmt = $db->prepare(
-            'SELECT id, username FROM users WHERE id IN (' . $placeholders . ')'
-        );
-        $userStmt->execute(array_values($contributorIds));
-        while ($userRow = $userStmt->fetch(PDO::FETCH_ASSOC)) {
-            $usernames[(int) $userRow['id']] = (string) $userRow['username'];
-        }
-    }
-
-    $site['report_answer_sources'] = [];
-    foreach ($currentAnswers as $fieldKey => $answer) {
-        $report = $answer['approved_report'] ?? null;
-        if (is_array($report)) {
-            $memberId = (int) ($report['contributor_id'] ?? 0);
-            $username = trim((string) ($usernames[$memberId] ?? ''));
-            $site['report_answer_sources'][(string) $fieldKey] = [
-                'visitDate' => $report['visit_date'] ?? null,
-                'submittedAt' => $report['submitted_at'] ?? null,
-                'label' => $username !== '' ? $username : 'Former member',
-                'kind' => 'member',
-            ];
-            continue;
-        }
-        if (!empty($answer['imported'])) {
-            $origin = (array) ($answer['origin'] ?? []);
-            $provider = trim((string) ($origin['provider'] ?? ''));
-            if ($provider !== '') {
-                $site['report_answer_sources'][(string) $fieldKey] = [
-                    'label' => $provider,
-                    'kind' => 'source',
-                    'visitDate' => null,
-                    'submittedAt' => null,
-                    'sourceUpdatedAt' => $origin['source_updated_at'] ?? null,
-                ];
-            }
-        }
-    }
+    // Same attribution service as the Place report. Only sources matched
+    // to the currently published observation are eligible for display.
+    $site['report_answer_sources'] = llama_report_answer_sources($db, $currentAnswers);
 
     $site['report_inherited_values'] =
         llama_scoped_report_display_values(
