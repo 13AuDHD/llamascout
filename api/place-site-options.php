@@ -110,6 +110,18 @@ try {
         );
     }
 
+    // Do not reveal even the Place identity to unauthorized accounts
+    // through this alternate Site selector endpoint.
+    if (
+        strtolower((string) ($place['type'] ?? '')) === 'dispersed-camping'
+        && !user_has_place_complete_access($placeId, $userId)
+    ) {
+        llama_place_site_options_json(
+            ['ok' => false, 'error' => 'Place not found.'],
+            404
+        );
+    }
+
     $sites =
         llama_place_campsites(
             $db,
