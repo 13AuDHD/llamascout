@@ -7,7 +7,8 @@ declare(strict_types=1);
  *
  * A Place's public listing does not make its Sites public. Dispersed Sites
  * remain member-only, including imported and featured/curated records.
- * Developed campground Sites become public only after an explicit review.
+ * Developed campground Sites become public only after an explicit review
+ * of both Site classification and visibility.
  */
 function llama_site_public_visibility_ids(PDO $db, int $placeId): array
 {
@@ -18,7 +19,7 @@ function llama_site_public_visibility_ids(PDO $db, int $placeId): array
     try {
         $stmt = $db->prepare(
             'SELECT campsite_id FROM place_site_visibility
-             WHERE place_id = ? AND visibility = "public"'
+             WHERE place_id = ? AND site_kind = "developed" AND visibility = "public"'
         );
         $stmt->execute([$placeId]);
         return array_fill_keys(array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN)), true);
