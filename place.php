@@ -786,12 +786,11 @@ require
         . '/partials/place/facts-weather-amenities.php';
     ?>
 
-    <?php if ($hasMemberAccess): ?>
-        <div
-            data-place-campsites-mount
-            data-place-slug="<?= place_h((string) $place['slug']) ?>"
-        ></div>
-    <?php endif; ?>
+    <div
+        data-place-campsites-mount
+        data-place-slug="<?= place_h((string) $place['slug']) ?>"
+        data-public-catalog="<?= $hasMemberAccess ? '0' : '1' ?>"
+    ></div>
 
     <?php
     require
