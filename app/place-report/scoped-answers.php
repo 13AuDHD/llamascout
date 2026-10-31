@@ -204,6 +204,16 @@ function llama_scoped_report_load(
             );
     }
 
+    // Prefer V3 rows while retaining older rows as a compatibility fallback.
+    if (llama_report_current_store_available($db)) {
+        foreach (llama_report_current_store_load(
+            $db, $placeId, $scope, $source, $scopeId
+        ) as $key => $answer) {
+            $answers[$key] = $answer['state'] === 'unknown'
+                ? llama_place_report_unknown_token()
+                : $answer['value'];
+        }
+    }
     return $answers;
 }
 
