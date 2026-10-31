@@ -63,8 +63,9 @@ if ($canPreviewPlacePhotos && $galleryImages):
                 : 'Sign in with a free account to enlarge and browse these photos.' ?>
         </p>
     </section>
+<?php endif; ?>
 
-    <?php if ($canOpenPlaceGallery): ?>
+<?php if ($canOpenPlaceGallery): ?>
         <dialog class="place-gallery-lightbox" id="place-gallery-lightbox" aria-label="Photo viewer">
             <div class="place-gallery-lightbox-inner">
                 <div class="place-gallery-lightbox-top">
@@ -86,5 +87,4 @@ if ($canPreviewPlacePhotos && $galleryImages):
                 <div class="place-gallery-lightbox-thumbs" id="place-gallery-lightbox-thumbs"></div>
             </div>
         </dialog>
-    <?php endif; ?>
 <?php endif; ?>
