@@ -126,3 +126,37 @@ function llama_report_question_manifest(string $scope, bool $reconciliation = fa
     }
     return $result;
 }
+
+/**
+ * Check that centrally registered V3 questions contain enough information
+ * for every interface to place them without page-specific configuration.
+ * Does not mutate definitions, answers, or history.
+ *
+ * @return list<string>
+ */
+function llama_report_question_catalog_issues(): array
+{
+    $issues = [];
+    $groups = llama_place_report_approved_question_groups();
+    foreach (llama_report_questions() as $key => $field) {
+        if (!isset($field['scope_group'])) {
+            continue; // Existing audited questions use the legacy inventory.
+        }
+        if (!in_array((string) $field['scope_group'], ['place', 'place_area', 'site', 'all'], true)) {
+            $issues[] = 'Invalid scope_group on question: ' . $key;
+        }
+        foreach (['layout_section', 'layout_group', 'report_group', 'report_visibility'] as $meta) {
+            if (!isset($field[$meta]) || $field[$meta] === '') {
+                $issues[] = 'Question ' . $key . ' is missing ' . $meta;
+            }
+        }
+        if (isset($field['report_group']) && !isset($groups[(string) $field['report_group']])) {
+            $issues[] = 'Unknown report group on question: ' . $key;
+        }
+        if (isset($field['report_visibility'])
+            && !in_array((string) $field['report_visibility'], ['public', 'community'], true)) {
+            $issues[] = 'Invalid report visibility on question: ' . $key;
+        }
+    }
+    return $issues;
+}
