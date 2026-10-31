@@ -1042,18 +1042,7 @@
                             );
                             valueContent?.append(sourceLine);
                         }
-                        const isImportedSource = source.kind === 'source';
-                        const date = clean(
-                            isImportedSource
-                                ? source.sourceUpdatedAt
-                                : (source.visitDate || source.submittedAt)
-                        );
-                        const isoDate = date.substring(0, 10);
-                        const dateLabel = /^\d{4}-\d{2}-\d{2}$/.test(isoDate)
-                            ? new Date(isoDate + 'T12:00:00').toLocaleDateString(
-                                undefined, { year: 'numeric', month: 'short', day: 'numeric' }
-                            )
-                            : '';
+                        const dateLabel = clean(source.dateLabel);
                         const sourceLabel = clean(source.label);
                         if (sourceLine) {
                             sourceLine.textContent = [
