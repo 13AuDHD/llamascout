@@ -88,11 +88,6 @@ function llama_place_report_fields(): array
 
     llama_place_report_add_summary_fields($f, $add);
 
-    // All new V3 questions register in one place, before metadata and
-    // ownership/layout passes. Existing consumers see the finalized catalog.
-    require_once __DIR__ . '/question-custom.php';
-    llama_report_register_custom_questions($add);
-
     require_once __DIR__ . '/flow-conditions.php';
     llama_place_report_add_flow_condition_fields($f, $add);
 
@@ -111,6 +106,10 @@ function llama_place_report_fields(): array
     require_once __DIR__ . '/fields-place-operating.php';
     llama_place_report_add_operating_fields($add);
 
+    // Register custom questions last so they cannot be silently replaced
+    // by a legacy module that happens to use the same key.
+    require_once __DIR__ . '/question-custom.php';
+    llama_report_register_custom_questions($add);
     /*
      * ---------------------------------------------------------
      * 2. Apply behavior only after the registry is complete.
