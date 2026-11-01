@@ -529,57 +529,205 @@
     padding: 0;
     overflow: hidden;
     border-radius: 16px;
+    background: transparent;
+    color: #fff;
+    box-shadow: none;
 }
 
 .map-card .leaflet-popup-content {
+    width: auto !important;
     margin: 0;
+}
+
+.map-card .leaflet-popup-tip {
+    background: #17201b;
+    box-shadow: none;
 }
 
 .map-popup {
-    width: 220px;
+    position: relative;
+    width: 250px;
+    min-height: 190px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, .16);
+    border-radius: 16px;
+    background: #26342e;
+    color: #fff;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, .34);
+    isolation: isolate;
 }
 
-.map-popup > img {
+.map-popup-media,
+.map-popup-shade {
+    position: absolute;
+    inset: 0;
     display: block;
+}
+
+.map-popup-media {
+    z-index: 0;
+    background: #26342e;
+}
+
+.map-popup-media > img {
     width: 100%;
-    height: 110px;
-    margin: 0;
+    height: 100%;
+    display: block;
     object-fit: cover;
 }
 
-.map-popup > div {
+.map-popup-fallback {
+    width: 100%;
+    height: 100%;
     display: grid;
-    gap: 5px;
-    padding: 14px 20px 16px;
+    place-items: center;
+    background:
+        radial-gradient(
+            circle at 76% 20%,
+            rgba(255, 255, 255, .12),
+            transparent 34%
+        ),
+        linear-gradient(
+            145deg,
+            #31483d,
+            #1e2924
+        );
+}
+
+.map-popup-fallback > i {
+    width: 44px;
+    height: 44px;
+    display: block;
+    opacity: .34;
+    background: #fff;
+}
+
+.map-popup-fallback.is-resource .map-resource-fallback-icon {
+    width: 44px;
+    height: 44px;
+    display: block;
+    opacity: .36;
+    background: #fff;
+    -webkit-mask:
+        var(--resource-icon)
+        center / contain no-repeat;
+    mask:
+        var(--resource-icon)
+        center / contain no-repeat;
+}
+
+.map-popup-shade {
+    z-index: 1;
+    background:
+        linear-gradient(
+            180deg,
+            rgba(0, 0, 0, .34) 0%,
+            rgba(0, 0, 0, .17) 30%,
+            rgba(0, 0, 0, .78) 69%,
+            rgba(0, 0, 0, .94) 100%
+        );
+}
+
+.map-popup-content {
+    position: relative;
+    z-index: 2;
+    min-height: 190px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 6px;
+    padding: 42px 16px 16px;
 }
 
 .map-popup-type {
-    color: #666;
-    font-size: .68rem;
-    font-weight: 800;
-    letter-spacing: .06em;
+    color: rgba(255, 255, 255, .88);
+    font-size: .66rem;
+    font-weight: 900;
+    letter-spacing: .065em;
+    line-height: 1.25;
     text-transform: uppercase;
+    text-shadow: 0 1px 6px rgba(0, 0, 0, .72);
 }
 
 .map-popup strong {
-    font-size: 1rem;
+    display: block;
+    color: #fff;
+    font-size: 1.08rem;
+    font-weight: 900;
+    line-height: 1.17;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, .8);
 }
 
-.map-popup span {
-    font-size: .8rem;
+.map-popup-location,
+.map-popup-hours,
+.map-popup-exact {
+    color: rgba(255, 255, 255, .88);
+    font-size: .76rem;
+    font-weight: 700;
+    line-height: 1.25;
+    text-shadow: 0 1px 5px rgba(0, 0, 0, .75);
 }
 
+.map-popup-location,
 .map-popup-exact {
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    font-weight: 750;
 }
 
-.map-popup a {
-    margin-top: 5px;
-    font-weight: 800;
+.map-popup-location .llama-icon-mask,
+.map-popup-exact .llama-icon-mask {
+    flex: 0 0 auto;
+    color: currentColor;
 }
+
+.map-resource-popup-services {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 2px;
+}
+
+.map-resource-popup-services > span {
+    padding: 4px 7px;
+    border: 1px solid rgba(255, 255, 255, .28);
+    border-radius: 999px;
+    background: rgba(0, 0, 0, .42);
+    color: #fff;
+    font-size: .64rem;
+    font-weight: 800;
+    line-height: 1;
+    backdrop-filter: blur(7px);
+    -webkit-backdrop-filter: blur(7px);
+}
+
+.map-popup-action {
+    width: fit-content;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 31px;
+    margin-top: 3px;
+    padding: 6px 9px;
+    border: 1px solid rgba(255, 255, 255, .34);
+    border-radius: 999px;
+    background: rgba(0, 0, 0, .46);
+    color: #fff !important;
+    font-size: .72rem;
+    font-weight: 850;
+    line-height: 1;
+    text-decoration: none;
+    backdrop-filter: blur(7px);
+    -webkit-backdrop-filter: blur(7px);
+}
+
+.map-popup-action:hover,
+.map-popup-action:focus {
+    background: rgba(0, 0, 0, .68);
+    color: #fff !important;
+    text-decoration: none;
+}
+
 
 
 /* =========================================================
@@ -1057,51 +1205,61 @@ html[data-reduced-motion="true"] .map-locate-button.is-locating .map-locate-icon
 }
 
 .map-result-card-fallback.is-resource.is-convenience_store,
+.map-popup-fallback.is-resource.is-convenience_store,
 .map-resource-marker.is-convenience_store {
     --resource-icon: url('/assets/icons/building-store.svg');
 }
 
 .map-result-card-fallback.is-resource.is-water_station,
+.map-popup-fallback.is-resource.is-water_station,
 .map-resource-marker.is-water_station {
     --resource-icon: url('/assets/icons/at-water-tap.svg');
 }
 
 .map-result-card-fallback.is-resource.is-dump_station,
+.map-popup-fallback.is-resource.is-dump_station,
 .map-resource-marker.is-dump_station {
     --resource-icon: url('/assets/icons/trash.svg');
 }
 
 .map-result-card-fallback.is-resource.is-restroom_facility,
+.map-popup-fallback.is-resource.is-restroom_facility,
 .map-resource-marker.is-restroom_facility {
     --resource-icon: url('/assets/icons/at-toilet.svg');
 }
 
 .map-result-card-fallback.is-resource.is-shower_facility,
+.map-popup-fallback.is-resource.is-shower_facility,
 .map-resource-marker.is-shower_facility {
     --resource-icon: url('/assets/icons/at-shower-facilities.svg');
 }
 
 .map-result-card-fallback.is-resource.is-laundry,
+.map-popup-fallback.is-resource.is-laundry,
 .map-resource-marker.is-laundry {
     --resource-icon: url('/assets/icons/basket.svg');
 }
 
 .map-result-card-fallback.is-resource.is-propane_fill,
+.map-popup-fallback.is-resource.is-propane_fill,
 .map-resource-marker.is-propane_fill {
     --resource-icon: url('/assets/icons/propane.svg');
 }
 
 .map-result-card-fallback.is-resource.is-ev_charging,
+.map-popup-fallback.is-resource.is-ev_charging,
 .map-resource-marker.is-ev_charging {
     --resource-icon: url('/assets/icons/charging-pile.svg');
 }
 
 .map-result-card-fallback.is-resource.is-fuel_station,
+.map-popup-fallback.is-resource.is-fuel_station,
 .map-resource-marker.is-fuel_station {
     --resource-icon: url('/assets/icons/gas-station.svg');
 }
 
 .map-result-card-fallback.is-resource.is-other,
+.map-popup-fallback.is-resource.is-other,
 .map-resource-marker.is-other {
     --resource-icon: url('/assets/icons/map-pin.svg');
 }
