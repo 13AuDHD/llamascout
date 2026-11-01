@@ -146,6 +146,10 @@ $form =
         ? $_POST
         : $resource;
 
+$postFailed =
+    ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST'
+    && $error !== '';
+
 $selectedServices = [];
 
 foreach (
@@ -171,10 +175,7 @@ foreach (
     }
 }
 
-if (
-    ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST'
-    && $error !== ''
-) {
+if ($postFailed) {
     $selectedServices =
         is_array($_POST['services'] ?? null)
             ? $_POST['services']
@@ -515,11 +516,9 @@ $datetimeLocal =
                         : [];
 
                 $enabled =
-                    !empty($service)
-                    && (
-                        !array_key_exists('enabled', $service)
-                        || !empty($service['enabled'])
-                    );
+                    $postFailed
+                        ? !empty($service['enabled'])
+                        : !empty($service['is_active']);
                 ?>
                 <tr>
                     <td data-label="Service">
