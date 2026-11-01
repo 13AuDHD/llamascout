@@ -91,7 +91,11 @@ $placeMapCellApi =
     );
 
 $placeMapFeaturesApi =
-    '/api/place-map-features.php?slug='
+    (
+        $placeMapHasLayerAccess
+            ? '/api/place-map-features.php?slug='
+            : '/api/place-map-public-areas.php?slug='
+    )
     . rawurlencode(
         (string) (
             $place['slug']
@@ -220,9 +224,9 @@ $placeMapEditorUrl =
         data-place-cell-api="<?= place_h(
             $placeMapCellApi
         ) ?>"
-        data-place-map-features-api="<?= $placeMapHasLayerAccess
-            ? place_h($placeMapFeaturesApi)
-            : '' ?>"
+        data-place-map-features-api="<?= place_h(
+            $placeMapFeaturesApi
+        ) ?>"
     >
         <?php if ($placeMapHasLayerAccess): ?>
 
