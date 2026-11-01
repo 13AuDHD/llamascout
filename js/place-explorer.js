@@ -236,7 +236,7 @@
 
     const oldIntro = section.querySelector('.place-stay-intro');
     if (oldIntro) {
-        oldIntro.textContent = 'Select this location or explore individual sites.';
+        oldIntro.textContent = 'Select this Place or explore Areas and individual Sites.';
     }
     overview.addEventListener('click', () => placeView('card'));
     section.addEventListener('click', (event) => {
