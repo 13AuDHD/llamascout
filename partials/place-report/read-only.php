@@ -842,6 +842,17 @@ $renderCompoundValue =
         <div
             class="<?= $e($class) ?>"
             data-report-compound-question="<?= $e($compoundKey) ?>"
+            <?php if (
+                $placeReportReadMode === 'scout-report'
+                && $compoundReportScopes
+            ): ?>
+                data-report-scopes="<?= $e(
+                    implode(
+                        ' ',
+                        $compoundReportScopes
+                    )
+                ) ?>"
+            <?php endif; ?>
         >
             <div class="scout-report-value-content">
                 <span>
