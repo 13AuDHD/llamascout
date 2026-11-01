@@ -1,31 +1,171 @@
 (() => {
     'use strict';
 
-    // Public Scout Report: show only the selected record's question groups.
+    // V3 report context: Place, Area and Site are separate record levels.
     // Reuse the existing explorer/browser selection events; no second selector.
     const report = document.querySelector('.scout-report');
     if (report) {
-        const placeGroups = '.scout-report-scope-place, .scout-report-scope-other-place';
-        const siteGroups = '.scout-report-scope-site, .scout-report-scope-space';
-        const showReportScope = (scope) => {
-            const siteSelected = scope !== 'place';
-            report.dataset.activeReportScope = siteSelected ? 'site' : 'place';
-            report.querySelectorAll(placeGroups).forEach((group) => {
-                group.hidden = siteSelected;
-            });
-            report.querySelectorAll(siteGroups).forEach((group) => {
-                group.hidden = !siteSelected;
-            });
+        const sections =
+            Array.from(
+                report.querySelectorAll(
+                    '.scout-report-section[data-report-page]'
+                )
+            );
+
+        const scopedItems =
+            Array.from(
+                report.querySelectorAll(
+                    '.scout-report-item'
+                )
+            );
+
+        const initialItemHidden =
+            new Map(
+                scopedItems.map(
+                    (item) => [
+                        item,
+                        item.hidden,
+                    ]
+                )
+            );
+
+        const scopesFor =
+            (element) =>
+                String(
+                    element?.dataset
+                        ?.reportScopes
+                    || ''
+                )
+                    .split(/\s+/)
+                    .map((value) => value.trim())
+                    .filter(Boolean);
+
+        const restoreItemVisibility = () => {
+            for (const item of scopedItems) {
+                item.hidden =
+                    initialItemHidden.get(item)
+                    ?? false;
+            }
+
+            report
+                .querySelectorAll(
+                    '.scout-report-grid, .scout-report-subsection'
+                )
+                .forEach(
+                    (element) => {
+                        element.hidden = false;
+                    }
+                );
         };
-        const initialSite = new URLSearchParams(window.location.search).get('site');
-        showReportScope(initialSite && /^\d+$/.test(initialSite) ? 'site' : 'place');
-        window.addEventListener('llama:explorer-selection', (event) => {
-            const kind = String(event.detail?.kind || 'place');
-            showReportScope(kind === 'place' || kind === 'area' ? 'place' : 'site');
-        });
-        window.addEventListener('llama:explorer-browser-site-selected', () => {
-            showReportScope('site');
-        });
+
+        const showReportScope = (scope) => {
+            report.dataset.activeReportScope =
+                scope;
+
+            restoreItemVisibility();
+
+            if (scope === 'area') {
+                for (const section of sections) {
+                    const sectionScopes =
+                        scopesFor(section);
+
+                    if (!sectionScopes.includes('area')) {
+                        section.hidden = true;
+                        continue;
+                    }
+
+                    section.hidden = false;
+
+                    const items =
+                        Array.from(
+                            section.querySelectorAll(
+                                '.scout-report-item'
+                            )
+                        );
+
+                    for (const item of items) {
+                        const itemScopes =
+                            scopesFor(item);
+
+                        item.hidden =
+                            !itemScopes.includes(
+                                'area'
+                            );
+                    }
+
+                    section
+                        .querySelectorAll(
+                            '.scout-report-subsection, .scout-report-grid'
+                        )
+                        .forEach(
+                            (container) => {
+                                container.hidden =
+                                    !container.querySelector(
+                                        '.scout-report-item:not([hidden])'
+                                    );
+                            }
+                        );
+
+                    section.hidden =
+                        !section.querySelector(
+                            '.scout-report-item:not([hidden])'
+                        );
+                }
+
+                return;
+            }
+
+            for (const section of sections) {
+                section.hidden =
+                    String(
+                        section.dataset
+                            .reportPage
+                        || ''
+                    )
+                    !== scope;
+            }
+        };
+
+        const initialSite =
+            new URLSearchParams(
+                window.location.search
+            ).get('site');
+
+        showReportScope(
+            initialSite
+            && /^\d+$/.test(initialSite)
+                ? 'site'
+                : 'place'
+        );
+
+        window.addEventListener(
+            'llama:explorer-selection',
+            (event) => {
+                const kind =
+                    String(
+                        event.detail?.kind
+                        || 'place'
+                    );
+
+                showReportScope(
+                    kind === 'place'
+                        ? 'place'
+                        : (
+                            kind === 'area'
+                            || kind === 'parking'
+                                ? 'area'
+                                : 'site'
+                        )
+                );
+            }
+        );
+
+        window.addEventListener(
+            'llama:explorer-browser-site-selected',
+            () => {
+                showReportScope('site');
+            }
+        );
     }
 
     const mount =
