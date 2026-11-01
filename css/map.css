@@ -965,3 +965,253 @@ html[data-reduced-motion="true"] .map-locate-button.is-locating .map-locate-icon
     outline: 3px solid var(--focus);
     outline-offset: 3px;
 }
+
+
+/* =========================================================
+   STANDALONE RESOURCE RESULTS
+   Resources are independent map entities, not Place cards.
+   ========================================================= */
+
+.map-results-group {
+    display: grid;
+    gap: 9px;
+}
+
+.map-results-group + .map-results-group {
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+}
+
+.map-results-subheading {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: .72rem;
+    font-weight: 900;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+}
+
+.map-resource-results {
+    display: grid;
+    gap: 10px;
+}
+
+.map-resource-card {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 0;
+    overflow: hidden;
+    padding: 0;
+    border: 1px solid color-mix(in srgb, #8a6511 42%, var(--border));
+    border-radius: 13px;
+    background: color-mix(in srgb, #f7d978 6%, var(--surface));
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition:
+        border-color .16s ease,
+        box-shadow .16s ease,
+        transform .16s ease;
+}
+
+.map-resource-card:hover {
+    border-color: #8a6511;
+    box-shadow: 0 7px 18px rgba(0, 0, 0, .08);
+    transform: translateY(-1px);
+}
+
+.map-resource-card:focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 3px;
+}
+
+.map-resource-card-icon {
+    display: grid;
+    place-items: center;
+    min-height: 112px;
+    background: #8a6511;
+}
+
+.map-resource-card-icon i,
+.map-resource-marker::after {
+    content: '';
+    width: 28px;
+    height: 28px;
+    background: #fff;
+    -webkit-mask:
+        var(--resource-icon)
+        center / contain no-repeat;
+    mask:
+        var(--resource-icon)
+        center / contain no-repeat;
+}
+
+.map-resource-card-icon.is-convenience_store,
+.map-resource-marker.is-convenience_store {
+    --resource-icon: url('/assets/icons/building-store.svg');
+}
+
+.map-resource-card-icon.is-water_station,
+.map-resource-marker.is-water_station {
+    --resource-icon: url('/assets/icons/at-water-tap.svg');
+}
+
+.map-resource-card-icon.is-dump_station,
+.map-resource-marker.is-dump_station {
+    --resource-icon: url('/assets/icons/trash.svg');
+}
+
+.map-resource-card-icon.is-restroom_facility,
+.map-resource-marker.is-restroom_facility {
+    --resource-icon: url('/assets/icons/at-toilet.svg');
+}
+
+.map-resource-card-icon.is-shower_facility,
+.map-resource-marker.is-shower_facility {
+    --resource-icon: url('/assets/icons/at-shower-facilities.svg');
+}
+
+.map-resource-card-icon.is-laundry,
+.map-resource-marker.is-laundry {
+    --resource-icon: url('/assets/icons/basket.svg');
+}
+
+.map-resource-card-icon.is-propane_fill,
+.map-resource-marker.is-propane_fill {
+    --resource-icon: url('/assets/icons/propane.svg');
+}
+
+.map-resource-card-icon.is-ev_charging,
+.map-resource-marker.is-ev_charging {
+    --resource-icon: url('/assets/icons/charging-pile.svg');
+}
+
+.map-resource-card-icon.is-fuel_station,
+.map-resource-marker.is-fuel_station {
+    --resource-icon: url('/assets/icons/gas-station.svg');
+}
+
+.map-resource-card-icon.is-other,
+.map-resource-marker.is-other {
+    --resource-icon: url('/assets/icons/map-pin.svg');
+}
+
+.map-resource-card-body {
+    display: block;
+    min-width: 0;
+    padding: 11px 12px;
+}
+
+.map-resource-card-topline {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    color: var(--text-muted);
+    font-size: .63rem;
+    font-weight: 900;
+    letter-spacing: .055em;
+    text-transform: uppercase;
+}
+
+.map-resource-card-topline strong {
+    color: #8a6511;
+    text-align: right;
+}
+
+.map-resource-card-name {
+    display: block;
+    margin-top: 4px;
+    color: var(--text);
+    font-size: 1rem;
+    font-weight: 850;
+    line-height: 1.2;
+}
+
+.map-resource-card-location {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 5px;
+    color: var(--text-muted);
+    font-size: .76rem;
+}
+
+.map-resource-services,
+.map-resource-card-meta,
+.map-resource-popup-services {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.map-resource-services {
+    margin-top: 8px;
+}
+
+.map-resource-card-meta {
+    margin-top: 7px;
+}
+
+.map-resource-services > span,
+.map-resource-card-meta > span,
+.map-resource-popup-services > span {
+    padding: 3px 6px;
+    border: 1px solid color-mix(in srgb, #8a6511 34%, var(--border));
+    border-radius: 999px;
+    background: color-mix(in srgb, #f7d978 8%, var(--surface));
+    color: var(--text-muted);
+    font-size: .64rem;
+    font-weight: 750;
+}
+
+.map-resource-card-meta > span {
+    background: var(--surface);
+    border-color: var(--border);
+}
+
+.map-resource-marker-shell {
+    border: 0;
+    background: transparent;
+}
+
+.map-resource-marker {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border: 3px solid #fff;
+    border-radius: 10px;
+    background: #8a6511;
+    box-shadow: 0 3px 9px rgba(0, 0, 0, .35);
+}
+
+.map-resource-marker::after {
+    width: 20px;
+    height: 20px;
+}
+
+.map-resource-popup-services {
+    margin-top: 3px;
+}
+
+.map-resource-popup .map-resource-popup-services > span {
+    font-size: .67rem;
+}
+
+@media (max-width: 640px) {
+    .map-resource-card {
+        grid-template-columns: 62px minmax(0, 1fr);
+    }
+
+    .map-resource-card-icon {
+        min-height: 104px;
+    }
+
+    .map-resource-card-icon i {
+        width: 24px;
+        height: 24px;
+    }
+}

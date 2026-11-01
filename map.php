@@ -18,7 +18,7 @@ $hasMapMemberAccess =
     );
 
 $pageTitle = 'Llama Scout | Know the Place Before You Go';
-$pageDescription = 'Explore Llama Scout Places on the interactive map by location, type, land manager, elevation, and public amenities.';
+$pageDescription = 'Explore Llama Scout Places and standalone Resources on the interactive map by location, type, services, land manager, elevation, and public amenities.';
 $canonicalUrl = 'https://llamascout.com/';
 
 require __DIR__ . '/partials/header.php';
@@ -49,9 +49,10 @@ require __DIR__ . '/partials/cell-coverage-update-banner.php';
 
                 <p class="map-hero-lede">
                     Search visible Places by location, land management, type,
-                    elevation, and public amenities. Public Places use their
-                    stored coordinates. Complete Access also reveals restricted
-                    locations and detailed map layers.
+                    elevation, and public amenities. Standalone Resources add
+                    practical service points such as water, dump stations, and
+                    propane. Complete Access also reveals restricted locations
+                    and detailed map layers.
                 </p>
             </div>
 
@@ -72,7 +73,7 @@ require __DIR__ . '/partials/cell-coverage-update-banner.php';
                     <input
                         id="map-search"
                         type="search"
-                        placeholder="Search Places, towns, counties..."
+                        placeholder="Search Places, Resources, towns..."
                         autocomplete="off"
                     >
                 </label>
@@ -384,7 +385,7 @@ require __DIR__ . '/partials/cell-coverage-update-banner.php';
                         ></div>
 
                         <div class="map-count-badge">
-                            <strong id="map-status">Loading Places...</strong>
+                            <strong id="map-status">Loading map...</strong>
                             <span id="map-location-precision">
                                 Stored Place locations
                             </span>
@@ -394,12 +395,12 @@ require __DIR__ . '/partials/cell-coverage-update-banner.php';
                 </div>
 
 
-                <aside class="map-results-column" aria-labelledby="places-heading">
+                <aside class="map-results-column" aria-labelledby="map-results-heading">
 
                     <div class="map-results-heading">
                         <div>
                             <p class="map-eyebrow">Results</p>
-                            <h2 id="places-heading">Places</h2>
+                            <h2 id="map-results-heading">Places &amp; Resources</h2>
                         </div>
 
                         <button
@@ -412,11 +413,44 @@ require __DIR__ . '/partials/cell-coverage-update-banner.php';
                         </button>
                     </div>
 
-                    <div
-                        id="place-results"
-                        class="map-place-results"
-                        aria-live="polite"
-                    ></div>
+                    <section
+                        id="place-results-section"
+                        class="map-results-group"
+                        aria-labelledby="map-places-heading"
+                    >
+                        <h3
+                            id="map-places-heading"
+                            class="map-results-subheading"
+                        >
+                            Places
+                        </h3>
+
+                        <div
+                            id="place-results"
+                            class="map-place-results"
+                            aria-live="polite"
+                        ></div>
+                    </section>
+
+                    <section
+                        id="resource-results-section"
+                        class="map-results-group"
+                        aria-labelledby="map-resources-heading"
+                        hidden
+                    >
+                        <h3
+                            id="map-resources-heading"
+                            class="map-results-subheading"
+                        >
+                            Resources
+                        </h3>
+
+                        <div
+                            id="resource-results"
+                            class="map-resource-results"
+                            aria-live="polite"
+                        ></div>
+                    </section>
 
                     <div
                         id="map-empty"
@@ -424,8 +458,8 @@ require __DIR__ . '/partials/cell-coverage-update-banner.php';
                         hidden
                     >
                         <i aria-hidden="true"><?= llama_icon('map-pin') ?></i>
-                        <h3>No Places match those filters.</h3>
-                        <p>Try clearing one or more filters.</p>
+                        <h3>No Places or Resources match.</h3>
+                        <p>Try clearing filters or moving the map.</p>
                     </div>
 
                 </aside>
