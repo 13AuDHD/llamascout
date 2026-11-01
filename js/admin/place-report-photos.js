@@ -276,7 +276,7 @@
 
         if (!target || target.supported === false || count < 1) {
             photoSaveStatus.textContent =
-                'Select a Place or saved Site and add a photo first.';
+                'Select a Place, Area, or saved Site and add a photo first.';
             return;
         }
 
@@ -509,9 +509,7 @@
                         String(
                             target?.reason
                             || (
-                                target?.scope === 'area'
-                                    ? 'Photos are not available for Areas yet.'
-                                    : 'Save this Site once before adding photos.'
+                                'Save this target before adding photos.'
                             )
                         );
                 }
@@ -562,9 +560,7 @@
                         : String(
                             target.reason
                             || (
-                                target.scope === 'area'
-                                    ? 'Area photos are not yet supported.'
-                                    : 'Save this Site once before adding photos.'
+                                'Save this target before adding photos.'
                             )
                         );
             }

@@ -31,6 +31,16 @@
     let highlight = null;
     let lastSelection = null;
 
+    const areaPhotoDetail =
+        section.querySelector(
+            '[data-stay-area-photo-detail]'
+        );
+
+    const canOpenAreaPhotos =
+        section.dataset
+            .areaPhotoOpen
+        === '1';
+
     /*
      * Preserve the server-rendered Place-level Scout Report. Site switching
      * has its own effective-value payload, while Area switching applies only
@@ -60,6 +70,282 @@
             )
         );
 
+
+    const hideAreaPhotos = () => {
+        if (!areaPhotoDetail) {
+            return;
+        }
+
+        areaPhotoDetail.hidden =
+            true;
+
+        areaPhotoDetail.replaceChildren();
+    };
+
+    const renderAreaPhotos =
+        (row, areaName) => {
+            if (!areaPhotoDetail) {
+                return;
+            }
+
+            let photos = [];
+
+            try {
+                photos =
+                    JSON.parse(
+                        row.dataset
+                            .stayAreaImages
+                        || '[]'
+                    );
+            } catch (error) {
+                console.error(
+                    'Llama Scout Area photo payload error:',
+                    error
+                );
+
+                photos = [];
+            }
+
+            if (!Array.isArray(photos)) {
+                photos = [];
+            }
+
+            photos =
+                photos.filter(
+                    (photo) =>
+                        photo
+                        && typeof photo === 'object'
+                        && String(
+                            photo.src
+                            || ''
+                        ).trim() !== ''
+                );
+
+            areaPhotoDetail.replaceChildren();
+
+            if (photos.length < 1) {
+                areaPhotoDetail.hidden =
+                    true;
+
+                return;
+            }
+
+            const heading =
+                document.createElement(
+                    'div'
+                );
+
+            heading.className =
+                'place-area-photo-heading';
+
+            const eyebrow =
+                document.createElement(
+                    'p'
+                );
+
+            eyebrow.className =
+                'eyebrow';
+
+            eyebrow.textContent =
+                'Area photos';
+
+            const title =
+                document.createElement(
+                    'h3'
+                );
+
+            title.textContent =
+                areaName
+                || 'Selected Area';
+
+            heading.append(
+                eyebrow,
+                title
+            );
+
+            const gallery =
+                document.createElement(
+                    'div'
+                );
+
+            gallery.className =
+                'place-campsite-gallery'
+                + (
+                    canOpenAreaPhotos
+                        ? ''
+                        : ' is-preview'
+                );
+
+            photos.forEach(
+                (photo) => {
+                    const figure =
+                        document.createElement(
+                            'figure'
+                        );
+
+                    figure.className =
+                        'place-campsite-gallery-item'
+                        + (
+                            canOpenAreaPhotos
+                                ? ''
+                                : ' is-preview'
+                        );
+
+                    const image =
+                        document.createElement(
+                            'img'
+                        );
+
+                    image.src =
+                        String(
+                            photo.src
+                            || ''
+                        );
+
+                    image.alt =
+                        String(
+                            photo.alt
+                            || areaName
+                            || 'Area photo'
+                        );
+
+                    image.loading =
+                        'lazy';
+
+                    const caption =
+                        String(
+                            photo.caption
+                            || ''
+                        ).trim();
+
+                    const credit =
+                        String(
+                            photo.credit
+                            || ''
+                        ).trim();
+
+                    if (canOpenAreaPhotos) {
+                        const link =
+                            document.createElement(
+                                'a'
+                            );
+
+                        link.href =
+                            image.src;
+
+                        link.target =
+                            '_blank';
+
+                        link.rel =
+                            'noopener noreferrer';
+
+                        link.dataset
+                            .photoCaption =
+                            caption;
+
+                        link.dataset
+                            .photoCredit =
+                            credit;
+
+                        link.appendChild(
+                            image
+                        );
+
+                        figure.appendChild(
+                            link
+                        );
+                    } else {
+                        const preview =
+                            document.createElement(
+                                'div'
+                            );
+
+                        preview.className =
+                            'place-campsite-gallery-preview';
+
+                        preview.appendChild(
+                            image
+                        );
+
+                        figure.appendChild(
+                            preview
+                        );
+                    }
+
+                    if (
+                        caption !== ''
+                        || credit !== ''
+                    ) {
+                        const figcaption =
+                            document.createElement(
+                                'figcaption'
+                            );
+
+                        if (caption !== '') {
+                            const captionText =
+                                document.createElement(
+                                    'span'
+                                );
+
+                            captionText.textContent =
+                                caption;
+
+                            figcaption.appendChild(
+                                captionText
+                            );
+                        }
+
+                        if (credit !== '') {
+                            const creditText =
+                                document.createElement(
+                                    'small'
+                                );
+
+                            creditText.textContent =
+                                'Credit: '
+                                + credit;
+
+                            figcaption.appendChild(
+                                creditText
+                            );
+                        }
+
+                        figure.appendChild(
+                            figcaption
+                        );
+                    }
+
+                    gallery.appendChild(
+                        figure
+                    );
+                }
+            );
+
+            areaPhotoDetail.append(
+                heading,
+                gallery
+            );
+
+            if (!canOpenAreaPhotos) {
+                const note =
+                    document.createElement(
+                        'p'
+                    );
+
+                note.className =
+                    'place-campsite-photo-access-note';
+
+                note.textContent =
+                    'Sign in with a free account to enlarge and browse these Area photos.';
+
+                areaPhotoDetail.appendChild(
+                    note
+                );
+            }
+
+            areaPhotoDetail.hidden =
+                false;
+        };
 
     const updateTargetContributionPrompts =
         () => {
@@ -1078,14 +1364,22 @@
              * Canonical Site clicks are handled by place-campsites.js, which
              * already applies Place -> Area -> Site effective answers.
              *
-             * Area rows restore the original Place report and then apply only
-             * that selected Area's direct overrides.
+             * Area rows use the server-resolved Area -> Place effective values.
              */
             if (isArea) {
                 applyAreaReport(
                     row
                 );
-            } else if (isMapSite) {
+
+                renderAreaPhotos(
+                    row,
+                    name
+                );
+            } else {
+                hideAreaPhotos();
+            }
+
+            if (isMapSite) {
                 restorePlaceReport();
                 publishWarnings({
                     restore:
@@ -1162,6 +1456,24 @@
                 );
             }
         };
+
+    window.addEventListener(
+        'llama:explorer-selection',
+        (event) => {
+            const kind =
+                String(
+                    event.detail?.kind
+                    || 'place'
+                );
+
+            if (
+                kind !== 'area'
+                && kind !== 'parking'
+            ) {
+                hideAreaPhotos();
+            }
+        }
+    );
 
     const observer =
         new MutationObserver(

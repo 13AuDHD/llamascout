@@ -8,6 +8,7 @@ require_once dirname(__DIR__, 2) . '/app/place-campsites.php';
 require_once dirname(__DIR__, 2) . '/app/place-report.php';
 require_once dirname(__DIR__, 2) . '/app/place-report/scoped-answers.php';
 require_once dirname(__DIR__, 2) . '/app/place-report/scoped-warnings.php';
+require_once dirname(__DIR__, 2) . '/app/place-area-media.php';
 
 $placeId =
     (int) (
@@ -388,6 +389,7 @@ foreach ($stayFeatures as $feature) {
 
     $reportValues = [];
     $reportWarnings = [];
+    $areaImages = [];
 
     try {
         $resolvedAreaReport =
@@ -464,6 +466,67 @@ foreach ($stayFeatures as $feature) {
         );
     }
 
+    try {
+        $areaImages =
+            array_values(
+                array_map(
+                    static function (array $image): array {
+                        $src =
+                            trim(
+                                (string) (
+                                    $image['src']
+                                    ?? ''
+                                )
+                            );
+
+                        return [
+                            'src' =>
+                                $src !== ''
+                                    ? place_image_url($src)
+                                    : '',
+                            'alt' =>
+                                trim(
+                                    (string) (
+                                        $image['alt_text']
+                                        ?? ''
+                                    )
+                                ),
+                            'caption' =>
+                                trim(
+                                    (string) (
+                                        $image['caption']
+                                        ?? ''
+                                    )
+                                ),
+                            'credit' =>
+                                trim(
+                                    (string) (
+                                        $image['source_credit']
+                                        ?? ''
+                                    )
+                                ),
+                        ];
+                    },
+                    llama_place_area_images(
+                        $stayDb,
+                        $placeId,
+                        $id
+                    )
+                )
+            );
+    } catch (Throwable $exception) {
+        llama_log_caught_exception(
+            $exception,
+            'public.overnight-options.area_images',
+            [
+                'place_id' =>
+                    $placeId,
+                'area_id' =>
+                    $id,
+            ]
+        );
+    }
+
     $stayAreas[] = [
         'id' =>
             $id,
@@ -484,6 +547,20 @@ foreach ($stayFeatures as $feature) {
 
         'report_warnings' =>
             $reportWarnings,
+
+        'images' =>
+            array_values(
+                array_filter(
+                    $areaImages,
+                    static fn (array $image): bool =>
+                        trim(
+                            (string) (
+                                $image['src']
+                                ?? ''
+                            )
+                        ) !== ''
+                )
+            ),
     ];
 }
 
@@ -509,6 +586,7 @@ $hasSupplementalStayOptions =
 <section
     class="place-section place-overnight-options"
     data-stay-options
+    data-area-photo-open="<?= (int) ($userId ?? 0) > 0 ? '1' : '0' ?>"
     aria-labelledby="place-overnight-options-heading"
 >
     <header class="place-overnight-options-heading">
@@ -631,6 +709,14 @@ $hasSupplementalStayOptions =
                     )
                     ?: '{}'
                 ) ?>"
+                data-stay-area-images="<?= place_h(
+                    json_encode(
+                        $area['images'],
+                        JSON_UNESCAPED_SLASHES
+                        | JSON_UNESCAPED_UNICODE
+                    )
+                    ?: '[]'
+                ) ?>"
             >
                 <span class="place-campsite-row-name">
                     <?= place_h($area['name']) ?>
@@ -649,6 +735,12 @@ $hasSupplementalStayOptions =
         <?php endforeach; ?>
 
     </div>
+
+    <div
+        class="place-area-photo-detail"
+        data-stay-area-photo-detail
+        hidden
+    ></div>
 
 </section>
 
