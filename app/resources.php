@@ -2,12 +2,34 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/resource-media.php';
+
 /**
  * V3 standalone Resource model.
  *
  * A Resource is its own map entity. It does not require a Place, Area, or Site
  * parent. A Resource can provide one or more services.
  */
+
+function llama_resource_slug(string $name): string
+{
+    $slug =
+        strtolower(
+            trim(
+                preg_replace(
+                    '/[^a-z0-9]+/i',
+                    '-',
+                    $name
+                )
+                ?? ''
+            )
+        );
+
+    return trim(
+        mb_substr($slug, 0, 190),
+        '-'
+    );
+}
 
 function llama_resource_types(): array
 {
@@ -178,6 +200,7 @@ function llama_resources(
             id,
             resource_type,
             name,
+            slug,
             latitude,
             longitude,
             street_address,
@@ -240,6 +263,14 @@ function llama_resources(
                 $row['resource_type']
             );
 
+        $row['slug'] =
+            trim(
+                (string) (
+                    $row['slug']
+                    ?? ''
+                )
+            );
+
         $row['has_coordinates'] =
             llama_resource_coordinates_valid(
                 $row['latitude'] ?? null,
@@ -254,17 +285,64 @@ function llama_resources(
             $row['longitude'] = null;
         }
 
+        $resourceId =
+            (int) ($row['id'] ?? 0);
+
         $row['services'] =
             llama_resource_services(
                 $db,
-                (int) ($row['id'] ?? 0),
+                $resourceId,
                 $activeOnly
             );
+
+        $row['images'] =
+            llama_resource_images(
+                $db,
+                $resourceId
+            );
+
+        $row['featured_image'] =
+            $row['images'][0]
+            ?? [];
     }
 
     unset($row);
 
     return $rows;
+}
+
+function llama_resource_by_slug(
+    PDO $db,
+    string $slug
+): array {
+    $slug = trim($slug);
+
+    if ($slug === '') {
+        return [];
+    }
+
+    $stmt = $db->prepare(
+        'SELECT id
+         FROM resources
+         WHERE slug = ?
+           AND is_active = 1
+         LIMIT 1'
+    );
+
+    $stmt->execute([$slug]);
+
+    $resourceId =
+        (int) (
+            $stmt->fetchColumn()
+            ?: 0
+        );
+
+    return $resourceId > 0
+        ? llama_resource(
+            $db,
+            $resourceId
+        )
+        : [];
 }
 
 function llama_resource(
@@ -364,6 +442,13 @@ function llama_resource_public_view(array $resource): array
                     ?? ''
                 )
             ),
+        'slug' =>
+            trim(
+                (string) (
+                    $resource['slug']
+                    ?? ''
+                )
+            ),
         'latitude' =>
             !empty($resource['has_coordinates'])
                 ? (float) $resource['latitude']
@@ -457,6 +542,23 @@ function llama_resource_public_view(array $resource): array
         'verified_at' =>
             $resource['verified_at']
                 ?? null,
+        'featured_image' =>
+            !empty($resource['featured_image']['src'])
+                ? [
+                    'src' =>
+                        llama_resource_image_url(
+                            $resource['featured_image']['src']
+                        ),
+                    'alt_text' =>
+                        trim(
+                            (string) (
+                                $resource['featured_image']['alt_text']
+                                ?? $resource['name']
+                                ?? ''
+                            )
+                        ),
+                ]
+                : null,
         'services' =>
             $services,
     ];
