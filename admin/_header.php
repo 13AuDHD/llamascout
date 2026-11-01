@@ -240,6 +240,11 @@ function admin_shell_nav_class(string $key, string $active): string
             'pages' => ['places.css'],
             'features' => ['list-filters.css'],
         ],
+        'resources.php' => [
+            'pages' => ['resources.css'],
+            'features' => [],
+        ],
+
         'closed-places.php' => [
             'pages' => [],
             'features' => ['closed-places.css'],
@@ -598,6 +603,22 @@ function admin_shell_nav_class(string $key, string $active): string
         </a>
 
         <p class="admin-nav-label">Map Data</p>
+
+        <a
+            class="<?= admin_shell_nav_class(
+                'resources',
+                $adminActiveNav
+            ) ?>"
+            href="<?= moderation_e(
+                $adminUrl . '/resources.php'
+            ) ?>"
+        >
+            <i aria-hidden="true">
+                <?= llama_icon('map-pin') ?>
+            </i>
+
+            <span>Resources</span>
+        </a>
 
         <a
             class="<?= admin_shell_nav_class(
