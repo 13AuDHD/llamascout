@@ -257,7 +257,8 @@ function llama_resources(
         $row['services'] =
             llama_resource_services(
                 $db,
-                (int) ($row['id'] ?? 0)
+                (int) ($row['id'] ?? 0),
+                $activeOnly
             );
     }
 
