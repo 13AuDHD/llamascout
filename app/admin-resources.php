@@ -713,7 +713,8 @@ function admin_resource_add_photos(
             $path =
                 trim(
                     (string) (
-                        $photo['path']
+                        $photo['url']
+                        ?? $photo['path']
                         ?? ''
                     )
                 );
@@ -735,12 +736,19 @@ function admin_resource_add_photos(
 
             $inserted++;
         }
+
+        if ($saved && $inserted < 1) {
+            throw new RuntimeException(
+                'The Resource photo was processed but could not be attached.'
+            );
+        }
     } catch (Throwable $exception) {
         foreach ($saved as $photo) {
             $path =
                 trim(
                     (string) (
-                        $photo['path']
+                        $photo['url']
+                        ?? $photo['path']
                         ?? ''
                     )
                 );
