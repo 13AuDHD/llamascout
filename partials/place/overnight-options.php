@@ -300,14 +300,10 @@ foreach ($stayFeatures as $feature) {
             ?? ''
         );
 
-    if (
-        $featureType === 'parking_area'
-        && $use !== 'overnight_vehicle_parking'
-        && $overnight === ''
-    ) {
-        continue;
-    }
-
+    /*
+     * Every mapped Area is a Place child. Do not hide day-use parking Areas
+     * merely because they have no overnight-specific metadata.
+     */
 
     $id =
         (int) (

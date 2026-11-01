@@ -728,6 +728,18 @@
             wrapper.className =
                 'place-map-feature-popup';
 
+            wrapper.dataset.mapFeatureId =
+                String(
+                    feature.id
+                    || ''
+                );
+
+            wrapper.dataset.mapFeatureType =
+                String(
+                    feature.feature_type
+                    || ''
+                );
+
             const siteDetails =
                 feature.site_details
                 || {};

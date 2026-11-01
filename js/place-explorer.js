@@ -256,31 +256,35 @@
         return rows.length === 1 ? rows[0] : null;
     };
 
-    // Green and purple shapes describe geography; they are not popup targets.
-    // Orange Site markers and blue parking areas retain their own interactions.
+    // The Place boundary remains background geography. Areas are selectable
+    // child records and keep their own map interactions.
     const silentPolygon = (layer) => {
         const type = String(layer?.options?.className || '');
         const boundary = type.includes('place-map-feature--place-boundary');
-        const camping = type.includes('place-map-feature--camping-area');
-        if (!boundary && !camping) return false;
-        if (boundary && !activePlaceLayer) activePlaceLayer = layer;
-        if (camping && !activePlaceLayer) activePlaceLayer = layer;
+        if (!boundary) return false;
+        if (!activePlaceLayer) activePlaceLayer = layer;
         layer.unbindPopup?.();
         return true;
     };
     map.eachLayer(silentPolygon);
     map.on('layeradd', (event) => silentPolygon(event.layer));
 
-    const mapCardFor = (label, select) => {
+    const mapCardFor = (
+        label,
+        select,
+        colorName = 'green',
+        detailLabel = 'Camping area'
+    ) => {
         const card = document.createElement('button');
         card.type = 'button';
-        card.className = 'place-explorer-map-card is-blue';
+        card.className =
+            `place-explorer-map-card is-${colorName}`;
         const body = document.createElement('span');
         body.className = 'place-explorer-map-card-body';
         const heading = document.createElement('strong');
         heading.textContent = label;
         const detail = document.createElement('span');
-        detail.textContent = 'Parking area';
+        detail.textContent = detailLabel;
         body.append(heading, detail);
         card.append(body);
         card.addEventListener('click', (event) => {
@@ -349,7 +353,7 @@
     map.eachLayer(registerPlacePin);
     map.on('layeradd', (event) => registerPlacePin(event.layer));
 
-    // Preserve the blue parking-area card. Green/purple polygon popups are off.
+    // Camping and parking Area polygons are selectable child records.
     map.on('popupopen', (event) => {
         const popup = event.popup;
         const layer = popup?._source;
@@ -357,15 +361,72 @@
             map.closePopup(popup);
             return;
         }
-        const type = String(layer?.options?.className || '');
-        if (!type.includes('place-map-feature--parking-area')) return;
+
         const original = popup.getContent();
+
         if (!(original instanceof HTMLElement)
-            || original.classList.contains('place-explorer-map-card')) return;
-        const label = original.querySelector('strong')?.textContent?.trim() || '';
-        const area = findAreaRow(label, true);
-        if (!area) return;
-        popup.setContent(mapCardFor(label, () => selectArea(area, 'map')));
+            || original.classList.contains('place-explorer-map-card')) {
+            return;
+        }
+
+        const featureType =
+            String(
+                original.dataset
+                    .mapFeatureType
+                || ''
+            );
+
+        if (
+            featureType !== 'camping_area'
+            && featureType !== 'parking_area'
+        ) {
+            return;
+        }
+
+        const featureId =
+            String(
+                original.dataset
+                    .mapFeatureId
+                || ''
+            );
+
+        const label =
+            original.querySelector('strong')
+                ?.textContent
+                ?.trim()
+            || '';
+
+        const parking =
+            featureType === 'parking_area';
+
+        const area =
+            (
+                featureId !== ''
+                    ? section.querySelector(
+                        `[data-stay-area-id="${CSS.escape(featureId)}"]`
+                    )
+                    : null
+            )
+            || findAreaRow(
+                label,
+                parking
+            );
+
+        if (!area) {
+            return;
+        }
+
+        popup.setContent(
+            mapCardFor(
+                label,
+                () => selectArea(area, 'map'),
+                parking ? 'blue' : 'green',
+                parking
+                    ? 'Parking area'
+                    : 'Camping area'
+            )
+        );
+
         popup.update();
     });
 
