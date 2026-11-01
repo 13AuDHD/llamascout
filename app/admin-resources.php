@@ -8,7 +8,7 @@ require_once __DIR__ . '/photo-upload.php';
 function admin_resources_tables_ready(PDO $db): bool
 {
     try {
-        $db->query('SELECT slug FROM resources LIMIT 1');
+        $db->query('SELECT slug, marker_service_type FROM resources LIMIT 1');
         $db->query('SELECT 1 FROM resource_services LIMIT 1');
         $db->query('SELECT 1 FROM resource_images LIMIT 1');
         return true;
@@ -387,6 +387,28 @@ function admin_resource_save(
             $input
         );
 
+    $markerServiceType =
+        strtolower(
+            trim(
+                (string) (
+                    $input['marker_service_type']
+                    ?? ''
+                )
+            )
+        );
+
+    if (
+        $markerServiceType !== ''
+        && !array_key_exists(
+            $markerServiceType,
+            $services
+        )
+    ) {
+        throw new InvalidArgumentException(
+            'The map marker Service must be one of the Services enabled for this Resource.'
+        );
+    }
+
     $fields = [
         'street_address' => 255,
         'city' => 120,
@@ -442,6 +464,7 @@ function admin_resource_save(
                 $db->prepare(
                     'INSERT INTO resources (
                         resource_type,
+                        marker_service_type,
                         name,
                         slug,
                         latitude,
@@ -464,13 +487,16 @@ function admin_resource_save(
                         created_by,
                         updated_by
                      ) VALUES (
-                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
                         ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
                      )'
                 );
 
             $stmt->execute([
                 $resourceType,
+                $markerServiceType !== ''
+                    ? $markerServiceType
+                    : null,
                 $name,
                 $slug,
                 $latitude,
@@ -507,6 +533,7 @@ function admin_resource_save(
                 $db->prepare(
                     'UPDATE resources
                      SET resource_type = ?,
+                         marker_service_type = ?,
                          name = ?,
                          slug = ?,
                          latitude = ?,
@@ -533,6 +560,9 @@ function admin_resource_save(
 
             $stmt->execute([
                 $resourceType,
+                $markerServiceType !== ''
+                    ? $markerServiceType
+                    : null,
                 $name,
                 $slug,
                 $latitude,

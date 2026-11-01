@@ -1265,6 +1265,61 @@ html[data-reduced-motion="true"] .map-locate-button.is-locating .map-locate-icon
     --resource-icon: url('/assets/icons/map-pin.svg');
 }
 
+/* Resource marker icon is driven by the selected Service, not Resource type. */
+.map-resource-marker.is-service-potable_water,
+.map-resource-marker.is-service-water_fill {
+    --resource-icon: url('/assets/icons/at-water-tap.svg');
+}
+
+.map-resource-marker.is-service-dump_station {
+    --resource-icon: url('/assets/icons/trash.svg');
+}
+
+.map-resource-marker.is-service-toilet {
+    --resource-icon: url('/assets/icons/at-toilet.svg');
+}
+
+.map-resource-marker.is-service-shower {
+    --resource-icon: url('/assets/icons/at-shower-facilities.svg');
+}
+
+.map-resource-marker.is-service-trash,
+.map-resource-marker.is-service-recycling {
+    --resource-icon: url('/assets/icons/trash.svg');
+}
+
+.map-resource-marker.is-service-ev_charging {
+    --resource-icon: url('/assets/icons/charging-pile.svg');
+}
+
+.map-resource-marker.is-service-propane {
+    --resource-icon: url('/assets/icons/propane.svg');
+}
+
+.map-resource-marker.is-service-laundry {
+    --resource-icon: url('/assets/icons/basket.svg');
+}
+
+.map-resource-marker.is-service-fuel {
+    --resource-icon: url('/assets/icons/gas-station.svg');
+}
+
+.map-resource-marker.is-service-air {
+    --resource-icon: url('/assets/icons/at-strong-wind.svg');
+}
+
+.map-resource-marker.is-service-ice {
+    --resource-icon: url('/assets/icons/snowflake.svg');
+}
+
+.map-resource-marker.is-service-groceries {
+    --resource-icon: url('/assets/icons/shopping-cart.svg');
+}
+
+.map-resource-marker.is-service-other {
+    --resource-icon: url('/assets/icons/map-pin.svg');
+}
+
 .map-resource-marker-shell {
     border: 0;
     background: transparent;

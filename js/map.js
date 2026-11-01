@@ -552,6 +552,23 @@
     };
 
 
+    const resourceMarkerServiceClass = (resource) => {
+        const fallbackService =
+            resourceServices(resource)[0]?.service_type
+            || 'other';
+
+        const serviceType =
+            String(
+                resource?.marker_service_type
+                || fallbackService
+            )
+                .trim()
+                .toLowerCase()
+                .replace(/[^a-z0-9_-]+/g, '-');
+
+        return 'is-service-' + (serviceType || 'other');
+    };
+
     const resourceServices = (resource) =>
         Array.isArray(resource?.services)
             ? resource.services.filter(
@@ -1116,7 +1133,7 @@ popupAnchor: [0, -42]
             className:
                 'map-resource-marker-shell',
             html:
-                `<span class="map-resource-marker ${resourceTypeClass(resource)}" aria-hidden="true"></span>`,
+                `<span class="map-resource-marker ${resourceMarkerServiceClass(resource)}" aria-hidden="true"></span>`,
             iconSize: [36, 36],
             iconAnchor: [18, 18],
             popupAnchor: [0, -20]
