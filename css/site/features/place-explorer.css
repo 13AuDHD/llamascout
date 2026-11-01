@@ -61,6 +61,23 @@
     display: none;
 }
 
+.place-area-photo-detail {
+    margin-top: 18px;
+    padding-left: 12px;
+    border-left: 3px solid var(--explorer-color);
+}
+
+.place-area-photo-heading {
+    display: grid;
+    gap: 4px;
+    margin-bottom: 10px;
+}
+
+.place-area-photo-heading .eyebrow,
+.place-area-photo-heading h3 {
+    margin: 0;
+}
+
 /* Mirror the current context throughout the Scout Report without changing facts. */
 .scout-report[data-explorer-color] {
     --explorer-report-color: #249b56;
