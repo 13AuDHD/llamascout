@@ -31,6 +31,164 @@ function llama_resource_slug(string $name): string
     );
 }
 
+function llama_resource_hours_modes(): array
+{
+    return [
+        '24_hours' => '24 Hours',
+        'fixed_hours' => 'Fixed Hours',
+        'varied_hours' => 'Varied Hours',
+    ];
+}
+
+function llama_resource_weekdays(): array
+{
+    return [
+        0 => 'Sunday',
+        1 => 'Monday',
+        2 => 'Tuesday',
+        3 => 'Wednesday',
+        4 => 'Thursday',
+        5 => 'Friday',
+        6 => 'Saturday',
+    ];
+}
+
+function llama_resource_hour_options(): array
+{
+    $options = [];
+
+    for ($hour = 0; $hour <= 23; $hour++) {
+        $displayHour = $hour % 12;
+
+        if ($displayHour === 0) {
+            $displayHour = 12;
+        }
+
+        $options[$hour] =
+            $displayHour
+            . ' '
+            . ($hour < 12 ? 'AM' : 'PM');
+    }
+
+    return $options;
+}
+
+function llama_resource_hour_label(mixed $hour): string
+{
+    if (!is_numeric($hour)) {
+        return '';
+    }
+
+    $hour = (int) $hour;
+
+    return llama_resource_hour_options()[$hour]
+        ?? '';
+}
+
+function llama_resource_weekly_hours(
+    PDO $db,
+    int $resourceId
+): array {
+    if ($resourceId < 1) {
+        return [];
+    }
+
+    $stmt = $db->prepare(
+        'SELECT
+            day_of_week,
+            open_hour,
+            close_hour
+         FROM resource_weekly_hours
+         WHERE resource_id = ?
+         ORDER BY day_of_week ASC'
+    );
+
+    $stmt->execute([$resourceId]);
+
+    $rows =
+        $stmt->fetchAll(PDO::FETCH_ASSOC)
+        ?: [];
+
+    $hours = [];
+
+    foreach ($rows as $row) {
+        $day =
+            (int) (
+                $row['day_of_week']
+                ?? -1
+            );
+
+        if (!array_key_exists(
+            $day,
+            llama_resource_weekdays()
+        )) {
+            continue;
+        }
+
+        $hours[$day] = [
+            'open_hour' =>
+                (int) (
+                    $row['open_hour']
+                    ?? 0
+                ),
+            'close_hour' =>
+                (int) (
+                    $row['close_hour']
+                    ?? 0
+                ),
+        ];
+    }
+
+    return $hours;
+}
+
+function llama_resource_hours_summary(
+    array $resource
+): string {
+    $mode =
+        trim(
+            (string) (
+                $resource['hours_mode']
+                ?? ''
+            )
+        );
+
+    if ($mode === '24_hours') {
+        return '24 Hours';
+    }
+
+    if ($mode === 'fixed_hours') {
+        $open =
+            llama_resource_hour_label(
+                $resource['fixed_open_hour']
+                ?? null
+            );
+
+        $close =
+            llama_resource_hour_label(
+                $resource['fixed_close_hour']
+                ?? null
+            );
+
+        if ($open !== '' && $close !== '') {
+            return $open . ' – ' . $close;
+        }
+
+        return 'Fixed Hours';
+    }
+
+    if ($mode === 'varied_hours') {
+        return 'Varied Hours';
+    }
+
+    return trim(
+        (string) (
+            $resource['hours_text']
+            ?? ''
+        )
+    );
+}
+
 function llama_resource_types(): array
 {
     return [
@@ -212,6 +370,9 @@ function llama_resources(
             phone,
             website_url,
             hours_text,
+            hours_mode,
+            fixed_open_hour,
+            fixed_close_hour,
             status,
             notes,
             source_provider,
@@ -335,6 +496,17 @@ function llama_resources(
         $row['marker_service_label'] =
             llama_resource_service_type_label(
                 $row['marker_service_effective_type']
+            );
+
+        $row['weekly_hours'] =
+            llama_resource_weekly_hours(
+                $db,
+                $resourceId
+            );
+
+        $row['hours_text'] =
+            llama_resource_hours_summary(
+                $row
             );
 
         $row['images'] =
@@ -569,6 +741,26 @@ function llama_resource_public_view(array $resource): array
                     $resource['hours_text']
                     ?? ''
                 )
+            ),
+        'hours_mode' =>
+            trim(
+                (string) (
+                    $resource['hours_mode']
+                    ?? ''
+                )
+            ),
+        'fixed_open_hour' =>
+            isset($resource['fixed_open_hour'])
+                ? (int) $resource['fixed_open_hour']
+                : null,
+        'fixed_close_hour' =>
+            isset($resource['fixed_close_hour'])
+                ? (int) $resource['fixed_close_hour']
+                : null,
+        'weekly_hours' =>
+            (array) (
+                $resource['weekly_hours']
+                ?? []
             ),
         'status' =>
             (string) (
