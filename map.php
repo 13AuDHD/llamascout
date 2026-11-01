@@ -414,6 +414,7 @@ require __DIR__ . '/partials/cell-coverage-update-banner.php';
                     </div>
 
                     <section
+                        id="place-results-section"
                         class="map-results-group"
                         aria-labelledby="map-places-heading"
                     >
