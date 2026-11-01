@@ -735,6 +735,7 @@
    ========================================================= */
 
 .map-card .leaflet-popup-close-button {
+    z-index: 5;
     top: 8px;
     right: 8px;
     width: 30px;
@@ -1292,22 +1293,6 @@ html[data-reduced-motion="true"] .map-locate-button.is-locating .map-locate-icon
     mask:
         var(--resource-icon)
         center / contain no-repeat;
-}
-
-.map-resource-popup-services {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
-    margin-top: 3px;
-}
-
-.map-resource-popup-services > span {
-    padding: 3px 6px;
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    color: #666;
-    font-size: .67rem;
-    font-weight: 750;
 }
 
 @media (max-width: 640px) {
