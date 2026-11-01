@@ -1,0 +1,21 @@
+CREATE TABLE IF NOT EXISTS place_area_images (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    place_id BIGINT UNSIGNED NOT NULL,
+    area_feature_id BIGINT UNSIGNED NOT NULL,
+    src VARCHAR(500) NOT NULL,
+    alt_text VARCHAR(300) NULL,
+    caption VARCHAR(500) NULL,
+    is_featured TINYINT(1) NOT NULL DEFAULT 0,
+    sort_order INT NOT NULL DEFAULT 0,
+    uploaded_by BIGINT UNSIGNED NULL,
+    source_provider VARCHAR(160) NULL,
+    source_external_id VARCHAR(255) NULL,
+    source_url TEXT NULL,
+    source_credit VARCHAR(255) NULL,
+    source_updated_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_place_area_images_owner (place_id, area_feature_id, is_featured, sort_order, id),
+    KEY idx_place_area_images_uploaded_by (uploaded_by)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
