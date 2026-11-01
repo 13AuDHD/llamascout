@@ -3,12 +3,14 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/resources.php';
+require_once __DIR__ . '/photo-upload.php';
 
 function admin_resources_tables_ready(PDO $db): bool
 {
     try {
-        $db->query('SELECT 1 FROM resources LIMIT 1');
+        $db->query('SELECT slug FROM resources LIMIT 1');
         $db->query('SELECT 1 FROM resource_services LIMIT 1');
+        $db->query('SELECT 1 FROM resource_images LIMIT 1');
         return true;
     } catch (Throwable) {
         return false;
@@ -218,6 +220,57 @@ function admin_resource_save(
         );
     }
 
+    $slug =
+        llama_resource_slug(
+            $name
+        );
+
+    if ($slug === '') {
+        throw new InvalidArgumentException(
+            'Resource name must produce a valid URL slug.'
+        );
+    }
+
+    $duplicateName =
+        $db->prepare(
+            'SELECT id
+             FROM resources
+             WHERE name = ?
+               AND id <> ?
+             LIMIT 1'
+        );
+
+    $duplicateName->execute([
+        $name,
+        max(0, $resourceId),
+    ]);
+
+    if ($duplicateName->fetchColumn()) {
+        throw new InvalidArgumentException(
+            'A Resource with that name already exists. Include the store or station number so every Resource name stays unique.'
+        );
+    }
+
+    $duplicateSlug =
+        $db->prepare(
+            'SELECT id
+             FROM resources
+             WHERE slug = ?
+               AND id <> ?
+             LIMIT 1'
+        );
+
+    $duplicateSlug->execute([
+        $slug,
+        max(0, $resourceId),
+    ]);
+
+    if ($duplicateSlug->fetchColumn()) {
+        throw new InvalidArgumentException(
+            'That Resource name produces a URL already used by another Resource. Make the name more specific.'
+        );
+    }
+
     $resourceType =
         trim(
             (string) (
@@ -390,6 +443,7 @@ function admin_resource_save(
                     'INSERT INTO resources (
                         resource_type,
                         name,
+                        slug,
                         latitude,
                         longitude,
                         street_address,
@@ -410,7 +464,7 @@ function admin_resource_save(
                         created_by,
                         updated_by
                      ) VALUES (
-                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
                         ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
                      )'
                 );
@@ -418,6 +472,7 @@ function admin_resource_save(
             $stmt->execute([
                 $resourceType,
                 $name,
+                $slug,
                 $latitude,
                 $longitude,
                 $clean['street_address'] ?: null,
@@ -453,6 +508,7 @@ function admin_resource_save(
                     'UPDATE resources
                      SET resource_type = ?,
                          name = ?,
+                         slug = ?,
                          latitude = ?,
                          longitude = ?,
                          street_address = ?,
@@ -478,6 +534,7 @@ function admin_resource_save(
             $stmt->execute([
                 $resourceType,
                 $name,
+                $slug,
                 $latitude,
                 $longitude,
                 $clean['street_address'] ?: null,
@@ -605,4 +662,218 @@ function admin_resource_deactivate(
 
         throw $exception;
     }
+}
+
+
+function admin_resource_add_photos(
+    PDO $db,
+    int $actorUserId,
+    int $resourceId,
+    array $files
+): int {
+    $resource =
+        admin_resource_get(
+            $db,
+            $resourceId
+        );
+
+    if (!$resource) {
+        throw new InvalidArgumentException(
+            'Resource not found.'
+        );
+    }
+
+    $existing =
+        llama_resource_images(
+            $db,
+            $resourceId
+        );
+
+    $remaining =
+        3 - count($existing);
+
+    if ($remaining < 1) {
+        throw new InvalidArgumentException(
+            'This Resource already has the maximum of 3 photos.'
+        );
+    }
+
+    $saved =
+        llama_store_uploaded_photos(
+            $files,
+            $actorUserId,
+            'resources',
+            $remaining
+        );
+
+    $inserted = 0;
+
+    try {
+        foreach ($saved as $photo) {
+            $path =
+                trim(
+                    (string) (
+                        $photo['path']
+                        ?? ''
+                    )
+                );
+
+            if ($path === '') {
+                continue;
+            }
+
+            llama_resource_image_insert(
+                $db,
+                $resourceId,
+                $path,
+                (string) (
+                    $resource['name']
+                    ?? 'Resource'
+                ),
+                $actorUserId
+            );
+
+            $inserted++;
+        }
+    } catch (Throwable $exception) {
+        foreach ($saved as $photo) {
+            $path =
+                trim(
+                    (string) (
+                        $photo['path']
+                        ?? ''
+                    )
+                );
+
+            if ($path !== '') {
+                llama_delete_managed_photo(
+                    $path,
+                    $actorUserId,
+                    'resources'
+                );
+            }
+        }
+
+        throw $exception;
+    }
+
+    return $inserted;
+}
+
+function admin_resource_delete_photo(
+    PDO $db,
+    int $resourceId,
+    int $imageId
+): void {
+    $image =
+        llama_resource_image(
+            $db,
+            $resourceId,
+            $imageId
+        );
+
+    if (!$image) {
+        throw new InvalidArgumentException(
+            'Resource photo not found.'
+        );
+    }
+
+    $path =
+        trim(
+            (string) (
+                $image['src']
+                ?? ''
+            )
+        );
+
+    $uploadedBy =
+        (int) (
+            $image['uploaded_by']
+            ?? 0
+        );
+
+    $delete =
+        $db->prepare(
+            'DELETE FROM resource_images
+             WHERE id = ?
+               AND resource_id = ?'
+        );
+
+    $delete->execute([
+        $imageId,
+        $resourceId,
+    ]);
+
+    $remaining =
+        llama_resource_images(
+            $db,
+            $resourceId
+        );
+
+    if ($remaining) {
+        llama_resource_images_reorder(
+            $db,
+            $resourceId,
+            array_map(
+                static fn (array $row): int =>
+                    (int) $row['id'],
+                $remaining
+            )
+        );
+    }
+
+    if ($path !== '' && $uploadedBy > 0) {
+        llama_delete_managed_photo(
+            $path,
+            $uploadedBy,
+            'resources'
+        );
+    }
+}
+
+function admin_resource_make_hero(
+    PDO $db,
+    int $resourceId,
+    int $imageId
+): void {
+    $images =
+        llama_resource_images(
+            $db,
+            $resourceId
+        );
+
+    $ids =
+        array_values(
+            array_map(
+                static fn (array $image): int =>
+                    (int) ($image['id'] ?? 0),
+                $images
+            )
+        );
+
+    $position =
+        array_search(
+            $imageId,
+            $ids,
+            true
+        );
+
+    if ($position === false) {
+        throw new InvalidArgumentException(
+            'Resource photo not found.'
+        );
+    }
+
+    unset($ids[$position]);
+
+    array_unshift(
+        $ids,
+        $imageId
+    );
+
+    llama_resource_images_reorder(
+        $db,
+        $resourceId,
+        array_values($ids)
+    );
 }
