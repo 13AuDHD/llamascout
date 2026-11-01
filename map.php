@@ -18,7 +18,7 @@ $hasMapMemberAccess =
     );
 
 $pageTitle = 'Llama Scout | Know the Place Before You Go';
-$pageDescription = 'Explore Llama Scout Places on the interactive map by location, type, land manager, elevation, and public amenities.';
+$pageDescription = 'Explore Llama Scout Places and standalone Resources on the interactive map by location, type, services, land manager, elevation, and public amenities.';
 $canonicalUrl = 'https://llamascout.com/';
 
 require __DIR__ . '/partials/header.php';
@@ -49,9 +49,10 @@ require __DIR__ . '/partials/cell-coverage-update-banner.php';
 
                 <p class="map-hero-lede">
                     Search visible Places by location, land management, type,
-                    elevation, and public amenities. Public Places use their
-                    stored coordinates. Complete Access also reveals restricted
-                    locations and detailed map layers.
+                    elevation, and public amenities. Standalone Resources add
+                    practical service points such as water, dump stations, and
+                    propane. Complete Access also reveals restricted locations
+                    and detailed map layers.
                 </p>
             </div>
 
@@ -384,7 +385,7 @@ require __DIR__ . '/partials/cell-coverage-update-banner.php';
                         ></div>
 
                         <div class="map-count-badge">
-                            <strong id="map-status">Loading Places...</strong>
+                            <strong id="map-status">Loading map...</strong>
                             <span id="map-location-precision">
                                 Stored Place locations
                             </span>
