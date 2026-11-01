@@ -677,7 +677,7 @@
                         ? sources[key]
                         : null;
 
-                if (source && !unknown) {
+                if (source) {
                     if (!sourceLine) {
                         sourceLine =
                             document.createElement(
