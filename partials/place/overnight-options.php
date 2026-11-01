@@ -18,8 +18,6 @@ $placeId =
 $stayViewerHasCompleteAccess =
     (bool) ($hasCompleteAccess ?? false);
 
-if ($stayViewerHasCompleteAccess) {
-
 $baseCampingFee =
     $place['rules']['fee']
     ?? null;
@@ -251,6 +249,17 @@ foreach ($stayFeatures as $feature) {
 }
 
 
+if (!$stayViewerHasCompleteAccess) {
+    /*
+     * Legacy map-only Site identities remain Complete Access-only. Public
+     * viewers use the canonical Site catalog instead.
+     */
+    $stayMappedSites = [];
+}
+
+$stayReportFields =
+    llama_place_report_fields();
+
 $stayAreas = [];
 
 foreach ($stayFeatures as $feature) {
@@ -395,21 +404,56 @@ foreach ($stayFeatures as $feature) {
                 'map_feature'
             );
 
+        $resolvedAreaValues =
+            (array) (
+                $resolvedAreaReport['values']
+                ?? []
+            );
+
+        $visibleAreaValues =
+            array_filter(
+                $resolvedAreaValues,
+                static function (
+                    mixed $value,
+                    string $fieldKey
+                ) use (
+                    $stayReportFields,
+                    $stayViewerHasCompleteAccess
+                ): bool {
+                    $field =
+                        $stayReportFields[
+                            $fieldKey
+                        ]
+                        ?? null;
+
+                    return is_array($field)
+                        && in_array(
+                            'area',
+                            (array) (
+                                $field['report_scopes']
+                                ?? []
+                            ),
+                            true
+                        )
+                        && llama_place_report_field_visibility_allows(
+                            $field,
+                            $stayViewerHasCompleteAccess
+                        );
+                },
+                ARRAY_FILTER_USE_BOTH
+            );
+
         $reportValues =
             llama_scoped_report_display_values(
-                (array) (
-                    $resolvedAreaReport['direct']
-                    ?? []
-                )
+                $visibleAreaValues
             );
 
         $reportWarnings =
-            llama_scoped_report_quick_warnings(
-                (array) (
-                    $resolvedAreaReport['values']
-                    ?? []
+            $stayViewerHasCompleteAccess
+                ? llama_scoped_report_quick_warnings(
+                    $resolvedAreaValues
                 )
-            );
+                : [];
     } catch (Throwable $exception) {
         llama_log_caught_exception(
             $exception,
@@ -447,16 +491,6 @@ foreach ($stayFeatures as $feature) {
     ];
 }
 
-
-} else {
-    /*
-     * Guests and free Members use the same section and Site browser, but
-     * supplemental map-only Sites and Areas remain undisclosed without
-     * Complete Access.
-     */
-    $stayMappedSites = [];
-    $stayAreas = [];
-}
 
 $hasSupplementalStayOptions =
     $stayAreas

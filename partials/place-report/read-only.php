@@ -381,6 +381,20 @@ $renderValue =
          */
         $hideUntilCampsite =
             false;
+
+        $fieldReportScopes =
+            array_values(
+                array_intersect(
+                    ['place', 'area', 'site'],
+                    array_map(
+                        'strval',
+                        (array) (
+                            $field['report_scopes']
+                            ?? []
+                        )
+                    )
+                )
+            );
         ?>
 
         <div
@@ -388,6 +402,17 @@ $renderValue =
             <?php if ($isCampsiteSwitchable): ?>
                 data-campsite-report-field="<?= $e($key) ?>"
                 data-campsite-report-type="<?= $e($type) ?>"
+            <?php endif; ?>
+            <?php if (
+                $placeReportReadMode === 'scout-report'
+                && $fieldReportScopes
+            ): ?>
+                data-report-scopes="<?= $e(
+                    implode(
+                        ' ',
+                        $fieldReportScopes
+                    )
+                ) ?>"
             <?php endif; ?>
             <?php if ($isAccessLocked): ?>
                 data-report-access-locked="1"
@@ -601,11 +626,48 @@ $renderCompoundValue =
                 false
             );
 
+        $compoundReportScopes =
+            array_values(
+                array_unique(
+                    array_merge(
+                        ...array_map(
+                            static fn (array $componentField): array =>
+                                array_values(
+                                    array_intersect(
+                                        ['place', 'area', 'site'],
+                                        array_map(
+                                            'strval',
+                                            (array) (
+                                                $componentField['report_scopes']
+                                                ?? []
+                                            )
+                                        )
+                                    )
+                                ),
+                            array_values(
+                                $componentFields
+                            )
+                        )
+                    )
+                )
+            );
+
         if ($isAccessLocked) {
             ?>
             <div
                 class="scout-report-item scout-report-value-item is-access-locked"
                 data-report-compound-question="<?= $e($compoundKey) ?>"
+                <?php if (
+                    $placeReportReadMode === 'scout-report'
+                    && $compoundReportScopes
+                ): ?>
+                    data-report-scopes="<?= $e(
+                        implode(
+                            ' ',
+                            $compoundReportScopes
+                        )
+                    ) ?>"
+                <?php endif; ?>
             >
                 <div class="scout-report-value-content">
                     <span>
@@ -780,6 +842,17 @@ $renderCompoundValue =
         <div
             class="<?= $e($class) ?>"
             data-report-compound-question="<?= $e($compoundKey) ?>"
+            <?php if (
+                $placeReportReadMode === 'scout-report'
+                && $compoundReportScopes
+            ): ?>
+                data-report-scopes="<?= $e(
+                    implode(
+                        ' ',
+                        $compoundReportScopes
+                    )
+                ) ?>"
+            <?php endif; ?>
         >
             <div class="scout-report-value-content">
                 <span>
@@ -1095,6 +1168,48 @@ foreach (
         $reportPageKey === 'place'
             ? 'scout-report-scope-place'
             : 'scout-report-scope-site';
+
+    $sectionReportScopes =
+        [];
+
+    foreach (
+        (array) (
+            $publicReportGroups[$sectionKey][1]
+            ?? []
+        )
+        as $sectionFieldKey
+    ) {
+        $sectionField =
+            $placeReportFields[
+                (string) $sectionFieldKey
+            ]
+            ?? null;
+
+        if (!is_array($sectionField)) {
+            continue;
+        }
+
+        foreach (
+            (array) (
+                $sectionField['report_scopes']
+                ?? []
+            )
+            as $sectionScope
+        ) {
+            $sectionScope =
+                (string) $sectionScope;
+
+            if (in_array(
+                $sectionScope,
+                ['place', 'area', 'site'],
+                true
+            )) {
+                $sectionReportScopes[
+                    $sectionScope
+                ] = true;
+            }
+        }
+    }
     ?>
     <section
         class="scout-report-section<?= $placeReportReadMode === 'scout-report' ? ' ' . $reportScopeClass : '' ?>"
@@ -1103,6 +1218,19 @@ foreach (
             && $reportPageKey !== ''
         ): ?>
             data-report-page="<?= $e($reportPageKey) ?>"
+        <?php endif; ?>
+        <?php if (
+            $placeReportReadMode === 'scout-report'
+            && $sectionReportScopes
+        ): ?>
+            data-report-scopes="<?= $e(
+                implode(
+                    ' ',
+                    array_keys(
+                        $sectionReportScopes
+                    )
+                )
+            ) ?>"
         <?php endif; ?>
         <?php if (
             $placeReportReadMode === 'scout-report'
