@@ -389,30 +389,36 @@ foreach ($stayFeatures as $feature) {
 
     $reportValues = [];
     $reportWarnings = [];
+    $reportSources = [];
     $areaImages = [];
 
     try {
-        $resolvedAreaReport =
-            llama_scoped_report_effective_answers(
+        /*
+         * Use the canonical current-answer model so Area rendering shares the
+         * same precedence and immutable-report attribution as Site rendering.
+         */
+        $areaCurrentModel =
+            llama_place_report_current_answer_model_with_history(
                 $stayDb,
                 $placeId,
-                $stayPlaceReportValues,
-                'area',
-                $id,
-                'map_feature'
+                [
+                    'scope' => 'area',
+                    'source' => 'map_feature',
+                    'id' => $id,
+                ]
             );
 
-        $resolvedAreaValues =
+        $areaCurrentAnswers =
             (array) (
-                $resolvedAreaReport['values']
+                $areaCurrentModel['answers']
                 ?? []
             );
 
-        $visibleAreaValues =
+        $visibleAreaAnswers =
             array_filter(
-                $resolvedAreaValues,
+                $areaCurrentAnswers,
                 static function (
-                    mixed $value,
+                    array $answer,
                     string $fieldKey
                 ) use (
                     $stayReportFields,
@@ -441,15 +447,61 @@ foreach ($stayFeatures as $feature) {
                 ARRAY_FILTER_USE_BOTH
             );
 
+        $visibleAreaValues =
+            llama_place_report_current_answer_values(
+                $visibleAreaAnswers,
+                'effective'
+            );
+
         $reportValues =
             llama_scoped_report_display_values(
                 $visibleAreaValues
             );
 
+        $reportSources =
+            llama_report_answer_sources(
+                $stayDb,
+                $visibleAreaAnswers
+            );
+
+        foreach (
+            $visibleAreaAnswers
+            as $fieldKey => $answer
+        ) {
+            if (
+                empty($answer['recorded'])
+                || !isset(
+                    $reportSources[$fieldKey]
+                )
+            ) {
+                continue;
+            }
+
+            $origin =
+                (array) (
+                    $answer['origin']
+                    ?? []
+                );
+
+            $originScope =
+                (string) (
+                    $origin['scope']
+                    ?? ''
+                );
+
+            $reportSources[$fieldKey]['inherited'] =
+                !empty(
+                    $answer['inherited']
+                );
+
+            $reportSources[$fieldKey]['originScope'] =
+                $originScope;
+        }
+
         $reportWarnings =
             $stayViewerHasCompleteAccess
                 ? llama_scoped_report_quick_warnings(
-                    $resolvedAreaValues
+                    $visibleAreaValues
                 )
                 : [];
     } catch (Throwable $exception) {
@@ -547,6 +599,9 @@ foreach ($stayFeatures as $feature) {
 
         'report_warnings' =>
             $reportWarnings,
+
+        'report_sources' =>
+            $reportSources,
 
         'images' =>
             array_values(
@@ -704,6 +759,14 @@ $hasSupplementalStayOptions =
                 data-stay-report-warnings="<?= place_h(
                     json_encode(
                         $area['report_warnings'],
+                        JSON_UNESCAPED_SLASHES
+                        | JSON_UNESCAPED_UNICODE
+                    )
+                    ?: '{}'
+                ) ?>"
+                data-stay-report-sources="<?= place_h(
+                    json_encode(
+                        $area['report_sources'],
                         JSON_UNESCAPED_SLASHES
                         | JSON_UNESCAPED_UNICODE
                     )
