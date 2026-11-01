@@ -1031,7 +1031,7 @@ popupAnchor: [0, -42]
             resourceServices(resource);
 
         const shownServices =
-            services.slice(0, 4);
+            services.slice(0, 3);
 
         const remaining =
             Math.max(
@@ -1042,87 +1042,103 @@ popupAnchor: [0, -42]
         const location =
             resourceLocationLabel(resource);
 
-        const status =
-            String(
-                resource.status
-                || 'unknown'
+        const image =
+            imageUrl(
+                resource?.featured_image?.src
+                || ''
             );
 
         if (card instanceof HTMLAnchorElement) {
-            card.href = resourceUrl(resource);
+            card.href =
+                resourceUrl(resource);
         } else {
             card.type = 'button';
         }
 
-        card.className = 'map-resource-card';
+        card.className =
+            'map-result-card map-resource-card';
+
         card.setAttribute(
             'aria-label',
             resource.slug
-                ? `View ${String(resource.name || 'Resource')}`
-                : `Show ${String(resource.name || 'Resource')} on map`
+                ? \`View \${String(resource.name || 'Resource')}\`
+                : \`Show \${String(resource.name || 'Resource')} on map\`
         );
 
-        card.innerHTML = `
-            <span class="map-resource-card-icon ${resourceTypeClass(resource)}" aria-hidden="true">
-                <i></i>
-            </span>
-
-            <span class="map-resource-card-body">
-                <span class="map-resource-card-topline">
-                    <span>Resource</span>
-                    <strong>${escapeHtml(
-                        resource.resource_type_label
-                        || formatLabel(resource.resource_type)
-                    )}</strong>
-                </span>
-
-                <span class="map-resource-card-name">
-                    ${escapeHtml(resource.name || 'Resource')}
-                </span>
-
-                ${
-                    location
-                        ? `
-                            <span class="map-resource-card-location">
-                                <i class="llama-icon-mask" style="--llama-icon-mask:url('/assets/icons/map-pin.svg')" aria-hidden="true"></i>
-                                ${escapeHtml(location)}
+        card.innerHTML = \`
+            <span
+                class="map-result-card-media"
+                aria-hidden="true"
+            >
+                \${
+                    image
+                        ? \`
+                            <img
+                                class="map-result-card-image"
+                                src="\${escapeHtml(image)}"
+                                alt=""
+                                loading="lazy"
+                            >
+                        \`
+                        : \`
+                            <span class="map-result-card-fallback is-resource \${resourceTypeClass(resource)}">
+                                <i class="map-resource-fallback-icon"></i>
                             </span>
-                        `
-                        : ''
+                        \`
                 }
+            </span>
 
-                <span class="map-resource-services">
-                    ${shownServices
-                        .map(
-                            (service) =>
-                                `<span>${escapeHtml(
-                                    service.service_type_label
-                                    || formatLabel(service.service_type)
-                                )}</span>`
-                        )
-                        .join('')}
-                    ${
-                        remaining > 0
-                            ? `<span>+${remaining} more</span>`
-                            : ''
-                    }
+            <span
+                class="map-result-card-shade"
+                aria-hidden="true"
+            ></span>
+
+            <span class="map-result-card-content">
+                <span class="map-result-card-topline">
+                    <span class="map-result-card-type">
+                        Resource ·
+                        \${escapeHtml(
+                            resource.resource_type_label
+                            || formatLabel(resource.resource_type)
+                        )}
+                    </span>
                 </span>
 
-                <span class="map-resource-card-meta">
-                    ${
-                        status !== 'unknown'
-                            ? `<span>${escapeHtml(formatLabel(status))}</span>`
+                <span class="map-result-card-main">
+                    <strong class="map-result-card-name">
+                        \${escapeHtml(resource.name || 'Resource')}
+                    </strong>
+
+                    \${
+                        location
+                            ? \`
+                                <span class="map-result-card-location">
+                                    <i class="llama-icon-mask" style="--llama-icon-mask:url('/assets/icons/map-pin.svg')" aria-hidden="true"></i>
+                                    \${escapeHtml(location)}
+                                </span>
+                            \`
                             : ''
                     }
 
-                    ${
-                        resource.hours_text
-                            ? `<span>${escapeHtml(resource.hours_text)}</span>`
-                            : ''
-                    }
+                    <span class="map-result-card-pills map-resource-services">
+                        \${shownServices
+                            .map(
+                                (service) =>
+                                    \`<span>\${escapeHtml(
+                                        service.service_type_label
+                                        || formatLabel(service.service_type)
+                                    )}</span>\`
+                            )
+                            .join('')}
+                        \${
+                            remaining > 0
+                                ? \`<span>+\${remaining} more</span>\`
+                                : ''
+                        }
+                    </span>
                 </span>
             </span>
-        `;
+        \`;
 
         const focusMarker = () => {
             if (!marker) {
@@ -1159,31 +1175,6 @@ popupAnchor: [0, -42]
         return card;
     };
 
-
-    const resourcesInsideMap = () => {
-        const bounds =
-            map.getBounds();
-
-        return filteredResources.filter(
-            (resource) => {
-                const coordinates =
-                    resourceCoordinates(resource);
-
-                if (!coordinates) {
-                    return false;
-                }
-
-                return bounds.contains(
-                    L.latLng(
-                        coordinates[0],
-                        coordinates[1]
-                    )
-                );
-            }
-        );
-    };
-
-
     const renderAmenities = (place) => {
         const items = Object.entries(amenityLabels)
             .filter(([key]) => Number(place.amenities?.[key] || 0) === 1)
@@ -1204,118 +1195,170 @@ popupAnchor: [0, -42]
 
 
     const renderCard = (place, marker) => {
-        const card = document.createElement('a');
-        const image = imageUrl(place.featured_image);
-        const location = locationLabel(place);
-        const url = placeUrl(place);
-        const featured = isFeaturedPlace(place);
-        const partner = activePartner(place);
-        const affiliate = isAffiliatePlace(place);
-        const paid = campingFeeStatus(place) === 'paid' || campingFeeStatus(place) === 'mixed';
-        if (partner?.use_branded_cards) registerPartnerStyles(partner);
+        const card =
+            document.createElement('a');
+
+        const image =
+            imageUrl(
+                place.featured_image
+            );
+
+        const location =
+            locationLabel(place);
+
+        const url =
+            placeUrl(place);
+
+        const featured =
+            isFeaturedPlace(place);
+
+        const partner =
+            activePartner(place);
+
+        const affiliate =
+            isAffiliatePlace(place);
+
+        const paid =
+            campingFeeStatus(place) === 'paid'
+            || campingFeeStatus(place) === 'mixed';
+
+        if (partner?.use_branded_cards) {
+            registerPartnerStyles(partner);
+        }
 
         card.className =
-            'map-place-card' +
-            (isClosedPlace(place) ? ' is-closed' : '') +
-            (featured ? ' is-featured' : '') +
-            (paid ? ' is-paid-place' : '') +
-            (partner?.use_branded_cards ? ` is-partner-branded map-partner-${Number(partner.id)}` : '');
+            'map-result-card map-place-card'
+            + (isClosedPlace(place) ? ' is-closed' : '')
+            + (featured ? ' is-featured' : '')
+            + (paid ? ' is-paid-place' : '')
+            + (
+                partner?.use_branded_cards
+                    ? \` is-partner-branded map-partner-\${Number(partner.id)}\`
+                    : ''
+            );
+
         card.href = url;
+
         card.setAttribute(
             'aria-label',
-            `View ${String(place.name || 'Place')}`
+            \`View \${String(place.name || 'Place')}\`
         );
 
-        card.innerHTML = `
-            <span class="map-place-image">
-                ${
+        card.innerHTML = \`
+            <span
+                class="map-result-card-media"
+                aria-hidden="true"
+            >
+                \${
                     image
-                        ? `
+                        ? \`
                             <img
-                                src="${escapeHtml(image)}"
-                                alt="${escapeHtml(place.featured_image_alt || place.name)}"
+                                class="map-result-card-image"
+                                src="\${escapeHtml(image)}"
+                                alt=""
                                 loading="lazy"
                             >
-                        `
-                        : `
-                            <span class="map-place-image-placeholder">
-                                <i class="llama-icon-mask" style="--llama-icon-mask:url('/assets/icons/mountain.svg')" aria-hidden="true"></i>
+                        \`
+                        : \`
+                            <span class="map-result-card-fallback is-place">
+                                <i
+                                    class="llama-icon-mask"
+                                    style="--llama-icon-mask:url('/assets/icons/mountain.svg')"
+                                ></i>
                             </span>
-                        `
+                        \`
                 }
-
-                <span class="map-place-badges">
-                    ${isClosedPlace(place)
-                        ? '<span class="map-featured-badge map-closed-badge"><span class="map-closed-badge-icon" aria-hidden="true"></span> Closed</span>'
-                        : ''}
-                    ${
-                        featured
-                            ? `<span class="map-featured-badge">
-                                    <span aria-hidden="true">★</span>
-                                Featured
-                            </span>`
-                            : ''
-                    }
-                    ${
-                        affiliate
-                            ? '<span class="map-featured-badge map-affiliate-badge">Affiliate</span>'
-                            : ''
-                    }
-                    ${
-                        paid
-                            ? '<span class="map-featured-badge map-paid-badge"><span class="map-paid-symbol" aria-hidden="true">$</span> Paid</span>'
-                            : ''
-                    }
-                </span>
             </span>
 
-            <div class="map-place-body">
-                <div class="map-place-topline">
-                    <span>${escapeHtml(formatLabel(place.type))}</span>
-                </div>
+            <span
+                class="map-result-card-shade"
+                aria-hidden="true"
+            ></span>
 
-                <h3>${escapeHtml(place.name)}</h3>
+            <span class="map-result-card-content">
+                <span class="map-result-card-topline">
+                    <span class="map-result-card-type">
+                        \${escapeHtml(formatLabel(place.type))}
+                    </span>
 
-                ${
-                    location
-                        ? `
-                            <p class="map-place-location">
-                                <i class="llama-icon-mask" style="--llama-icon-mask:url('/assets/icons/map-pin.svg')" aria-hidden="true"></i>
-                                ${escapeHtml(location)}
-                            </p>
-                        `
-                        : ''
-                }
+                    <span class="map-result-card-badges">
+                        \${
+                            isClosedPlace(place)
+                                ? '<span class="map-featured-badge map-closed-badge"><span class="map-closed-badge-icon" aria-hidden="true"></span> Closed</span>'
+                                : ''
+                        }
+                        \${
+                            featured
+                                ? \`<span class="map-featured-badge">
+                                        <span aria-hidden="true">★</span>
+                                        Featured
+                                   </span>\`
+                                : ''
+                        }
+                        \${
+                            affiliate
+                                ? '<span class="map-featured-badge map-affiliate-badge">Affiliate</span>'
+                                : ''
+                        }
+                        \${
+                            paid
+                                ? '<span class="map-featured-badge map-paid-badge"><span class="map-paid-symbol" aria-hidden="true">$</span> Paid</span>'
+                                : ''
+                        }
+                    </span>
+                </span>
 
-                <div class="map-place-meta">
-                    ${
-                        place.elevation_feet
-                            ? `<span>${Number(place.elevation_feet).toLocaleString()} ft</span>`
+                <span class="map-result-card-main">
+                    <strong class="map-result-card-name">
+                        \${escapeHtml(place.name)}
+                    </strong>
+
+                    \${
+                        location
+                            ? \`
+                                <span class="map-result-card-location">
+                                    <i class="llama-icon-mask" style="--llama-icon-mask:url('/assets/icons/map-pin.svg')" aria-hidden="true"></i>
+                                    \${escapeHtml(location)}
+                                </span>
+                            \`
                             : ''
                     }
 
-                    ${
-                        place.land_manager
-                            ? `<span>${escapeHtml(place.land_manager)}</span>`
-                            : ''
-                    }
-                </div>
-            </div>
-        `;
+                    <span class="map-result-card-pills">
+                        \${
+                            place.elevation_feet
+                                ? \`<span>\${Number(place.elevation_feet).toLocaleString()} ft</span>\`
+                                : ''
+                        }
+
+                        \${
+                            place.land_manager
+                                ? \`<span>\${escapeHtml(place.land_manager)}</span>\`
+                                : ''
+                        }
+                    </span>
+                </span>
+            </span>
+        \`;
 
         if (marker) {
-            card.addEventListener('mouseenter', () => {
-                marker.openPopup();
-            });
+            card.addEventListener(
+                'mouseenter',
+                () => {
+                    marker.openPopup();
+                }
+            );
 
-            card.addEventListener('focus', () => {
-                marker.openPopup();
-            });
+            card.addEventListener(
+                'focus',
+                () => {
+                    marker.openPopup();
+                }
+            );
         }
 
         return card;
     };
-
 
     const placesInsideMap = () => {
         const bounds = map.getBounds();
