@@ -20,6 +20,7 @@
         status: document.getElementById('map-status'),
         precision: document.getElementById('map-location-precision'),
         results: document.getElementById('place-results'),
+        placeSection: document.getElementById('place-results-section'),
         resourceResults: document.getElementById('resource-results'),
         resourceSection: document.getElementById('resource-results-section'),
         empty: document.getElementById('map-empty'),
@@ -1343,6 +1344,11 @@ popupAnchor: [0, -42]
                     );
                 }
             );
+        }
+
+        if (controls.placeSection) {
+            controls.placeSection.hidden =
+                visiblePlaces.length === 0;
         }
 
         if (controls.resourceSection) {
