@@ -591,17 +591,11 @@ function admin_resource_deactivate(
             $resourceId,
         ]);
 
-        $services =
-            $db->prepare(
-                'UPDATE resource_services
-                 SET is_active = 0
-                 WHERE resource_id = ?'
-            );
-
-        $services->execute([
-            $resourceId,
-        ]);
-
+        /*
+         * Preserve the Resource's Service configuration. Public readers already
+         * exclude an inactive Resource, and keeping Service state intact makes
+         * later reactivation deterministic.
+         */
         $db->commit();
 
     } catch (Throwable $exception) {
