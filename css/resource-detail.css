@@ -1,0 +1,204 @@
+/* =========================================================
+   RESOURCE DETAIL
+   Uses the same hero/gallery visual language as Place pages.
+   ========================================================= */
+
+.resource-page {
+    overflow: hidden;
+}
+
+.resource-detail-body {
+    padding-top: 34px;
+    padding-bottom: 54px;
+}
+
+.resource-hero-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-top: 14px;
+}
+
+.resource-hero-pills > span,
+.resource-status-pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 31px;
+    padding: 6px 9px;
+    border: 1px solid rgba(255, 255, 255, .38);
+    border-radius: 999px;
+    background: rgba(0, 0, 0, .38);
+    color: #fff;
+    font-size: .72rem;
+    font-weight: 850;
+    backdrop-filter: blur(10px);
+}
+
+.place-detail-hero.no-image .resource-hero-pills > span,
+.place-detail-hero.no-image .resource-status-pill {
+    border-color: var(--border);
+    background: var(--surface);
+    color: var(--text);
+}
+
+.resource-detail-section {
+    padding: 26px 0 34px;
+    border-bottom: 1px solid var(--border);
+}
+
+.resource-section-heading h2,
+.resource-info-card h2 {
+    margin: 0;
+    font-size: clamp(1.55rem, 3vw, 2.2rem);
+}
+
+.resource-service-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.resource-service-card,
+.resource-info-card {
+    min-width: 0;
+    padding: 18px;
+    border: 1px solid var(--border);
+    border-radius: 15px;
+    background: var(--surface);
+}
+
+.resource-service-card > header {
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.resource-service-card header p {
+    margin: 0 0 3px;
+    color: var(--text-muted);
+    font-size: .66rem;
+    font-weight: 850;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+
+.resource-service-card h3 {
+    margin: 0;
+    font-size: 1.15rem;
+}
+
+.resource-service-status {
+    flex: 0 0 auto;
+    padding: 5px 8px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--text-muted);
+    font-size: .66rem;
+    font-weight: 850;
+}
+
+.resource-service-status.is-available,
+.resource-status-pill.is-available {
+    border-color: color-mix(in srgb, #237a4b 55%, var(--border));
+}
+
+.resource-service-status.is-closed,
+.resource-service-status.is-temporarily_unavailable,
+.resource-status-pill.is-closed,
+.resource-status-pill.is-temporarily_unavailable {
+    border-color: color-mix(in srgb, #b64236 58%, var(--border));
+}
+
+.resource-service-facts,
+.resource-info-list {
+    display: grid;
+    gap: 10px;
+    margin: 15px 0 0;
+}
+
+.resource-service-facts > div,
+.resource-info-list > div {
+    display: grid;
+    gap: 3px;
+}
+
+.resource-service-facts dt,
+.resource-info-list dt {
+    color: var(--text-muted);
+    font-size: .67rem;
+    font-weight: 850;
+    letter-spacing: .055em;
+    text-transform: uppercase;
+}
+
+.resource-service-facts dd,
+.resource-info-list dd {
+    margin: 0;
+    font-size: .88rem;
+    line-height: 1.45;
+}
+
+.resource-info-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.resource-info-grid.resource-detail-section {
+    border-bottom: 0;
+}
+
+.resource-notes {
+    margin: 14px 0 0;
+    line-height: 1.6;
+}
+
+.resource-notes.is-empty {
+    color: var(--text-muted);
+}
+
+.resource-source {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-top: 18px;
+}
+
+.resource-source span {
+    padding: 5px 8px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--text-muted);
+    font-size: .69rem;
+}
+
+.resource-photo-section {
+    border-top: 1px solid var(--border);
+    border-bottom: 0;
+}
+
+.resource-link-button {
+    display: inline-flex;
+    margin-top: 16px;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: inherit;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.resource-not-found {
+    padding: 70px 0;
+}
+
+@media (max-width: 760px) {
+    .resource-service-grid,
+    .resource-info-grid {
+        grid-template-columns: 1fr;
+    }
+}
