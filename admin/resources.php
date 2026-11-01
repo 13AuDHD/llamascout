@@ -306,7 +306,7 @@ $datetimeLocal =
             value="<?= (int) $resourceId ?>"
         >
 
-        <div class="admin-integration-summary">
+        <div class="admin-resource-form-grid">
 
             <label>
                 <span>Resource name</span>
@@ -404,9 +404,9 @@ $datetimeLocal =
 
         </div>
 
-        <h3>Address and contact</h3>
+        <h3 class="admin-resource-section-title">Address and contact</h3>
 
-        <div class="admin-integration-summary">
+        <div class="admin-resource-form-grid">
 
             <label>
                 <span>Street address</span>
@@ -481,15 +481,15 @@ $datetimeLocal =
 
         </div>
 
-        <h3>Services</h3>
+        <h3 class="admin-resource-section-title">Services</h3>
 
-        <p class="admin-place-muted">
+        <p class="admin-resource-section-copy">
             A Resource can provide more than one Service. Check every Service
             available at this exact location.
         </p>
 
         <div class="admin-integration-table-wrap">
-            <table class="admin-integration-table">
+            <table class="admin-integration-table admin-resource-service-table">
                 <thead>
                 <tr>
                     <th>Service</th>
@@ -585,6 +585,7 @@ $datetimeLocal =
                     </td>
 
                     <td data-label="Access / notes">
+                        <div class="admin-resource-service-notes">
                         <input
                             type="text"
                             name="services[<?= $e($serviceType) ?>][access_notes]"
@@ -598,6 +599,7 @@ $datetimeLocal =
                             value="<?= $e($service['notes'] ?? '') ?>"
                             placeholder="Service-specific notes"
                         >
+                        </div>
                     </td>
                 </tr>
                 <?php endforeach; ?>
@@ -605,9 +607,9 @@ $datetimeLocal =
             </table>
         </div>
 
-        <h3>Resource notes and source</h3>
+        <h3 class="admin-resource-section-title">Resource notes and source</h3>
 
-        <div class="admin-integration-summary">
+        <div class="admin-resource-form-grid">
 
             <label>
                 <span>Resource notes</span>
@@ -779,7 +781,7 @@ $datetimeLocal =
                     )
                 );
             ?>
-            <tr>
+            <tr class="<?= empty($row['is_active']) ? 'admin-resource-inactive' : '' ?>">
                 <td data-label="Resource">
                     <strong><?= $e($row['name'] ?? 'Resource') ?></strong>
                 </td>
@@ -823,7 +825,10 @@ $datetimeLocal =
                     </span>
                 </td>
 
-                <td data-label="GPS">
+                <td
+                    data-label="GPS"
+                    class="admin-resource-gps"
+                >
                     <?php if (!empty($row['has_coordinates'])): ?>
                         <?= $e(
                             number_format(
