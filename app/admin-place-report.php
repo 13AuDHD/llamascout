@@ -8,6 +8,7 @@ require_once __DIR__ . '/place-report.php';
 require_once __DIR__ . '/photo-upload.php';
 require_once __DIR__ . '/admin-place-sites.php';
 require_once __DIR__ . '/place-campsite-media.php';
+require_once __DIR__ . '/place-area-media.php';
 
 /**
  * Shared Admin Place Report service.
@@ -393,6 +394,18 @@ function admin_place_report_target_images(
             );
     }
 
+    if ($scope === 'area') {
+        return
+            llama_place_area_images(
+                $db,
+                $placeId,
+                (int) (
+                    $target['id']
+                    ?? 0
+                )
+            );
+    }
+
     if ($scope === 'place') {
         return
             admin_place_images(
@@ -401,11 +414,6 @@ function admin_place_report_target_images(
             );
     }
 
-    /*
-     * Area photo persistence is intentionally not invented here. A proper
-     * Area-media owner can be added later without polluting
-     * place_images or place_campsite_images.
-     */
     return [];
 }
 
@@ -437,12 +445,6 @@ function admin_place_add_photos_in_report_transaction(
             ?? ''
         );
 
-    if ($scope === 'area') {
-        throw new RuntimeException(
-            'Photos are not available for Areas yet.'
-        );
-    }
-
     $existing =
         admin_place_report_target_images(
             $db,
@@ -451,7 +453,11 @@ function admin_place_add_photos_in_report_transaction(
         );
 
     $limit =
-        $scope === 'site'
+        in_array(
+            $scope,
+            ['site', 'area'],
+            true
+        )
             ? 10
             : 30;
 
@@ -463,9 +469,14 @@ function admin_place_add_photos_in_report_transaction(
 
     if ($remaining < 1) {
         throw new RuntimeException(
-            $scope === 'site'
-                ? 'This Site already has the maximum of 10 photos.'
-                : 'This Place already has the maximum of 30 photos.'
+            match ($scope) {
+                'site' =>
+                    'This Site already has the maximum of 10 photos.',
+                'area' =>
+                    'This Area already has the maximum of 10 photos.',
+                default =>
+                    'This Place already has the maximum of 30 photos.',
+            }
         );
     }
 
@@ -484,13 +495,30 @@ function admin_place_add_photos_in_report_transaction(
                 ?? 0
             );
 
+        $areaFeatureId = 0;
+
         $destination =
             '/uploads/places/'
             . $placeId
             . '/sites/'
             . $campsiteId;
+    } elseif ($scope === 'area') {
+        $campsiteId = 0;
+
+        $areaFeatureId =
+            (int) (
+                $target['id']
+                ?? 0
+            );
+
+        $destination =
+            '/uploads/places/'
+            . $placeId
+            . '/areas/'
+            . $areaFeatureId;
     } else {
         $campsiteId = 0;
+        $areaFeatureId = 0;
 
         $destination =
             '/uploads/places/'
@@ -553,6 +581,51 @@ function admin_place_add_photos_in_report_transaction(
         $auditMeta = [
             'place_id' => $placeId,
             'campsite_id' => $campsiteId,
+            'count' => $inserted,
+        ];
+
+    } elseif ($scope === 'area') {
+        foreach ($committed as $photo) {
+            $path =
+                trim(
+                    (string) (
+                        $photo['path']
+                        ?? ''
+                    )
+                );
+
+            if ($path === '') {
+                continue;
+            }
+
+            llama_place_area_image_insert(
+                $db,
+                $placeId,
+                $areaFeatureId,
+                $path,
+                trim(
+                    (string) (
+                        $photo['alt']
+                        ?? ''
+                    )
+                ) ?: null,
+                null,
+                $actorUserId,
+                'Llama Scout'
+            );
+
+            $inserted++;
+        }
+
+        $auditAction =
+            'place.area_photos_added';
+
+        $auditMessage =
+            'Added Area photos.';
+
+        $auditMeta = [
+            'place_id' => $placeId,
+            'area_feature_id' => $areaFeatureId,
             'count' => $inserted,
         ];
 
@@ -791,9 +864,114 @@ function admin_place_delete_image_in_report_transaction(
         return $path;
     }
 
+    if ($scope === 'area') {
+        $areaFeatureId =
+            (int) (
+                $target['id']
+                ?? 0
+            );
+
+        $image =
+            llama_place_area_image(
+                $db,
+                $placeId,
+                $areaFeatureId,
+                $imageId
+            );
+
+        if (!$image) {
+            throw new RuntimeException(
+                'Area photo not found.'
+            );
+        }
+
+        $path =
+            trim(
+                (string) (
+                    $image['src']
+                    ?? ''
+                )
+            );
+
+        $wasFeatured =
+            (int) (
+                $image['is_featured']
+                ?? 0
+            ) === 1;
+
+        $delete =
+            $db->prepare(
+                'DELETE FROM place_area_images
+                 WHERE id = ?
+                   AND place_id = ?
+                   AND area_feature_id = ?'
+            );
+
+        $delete->execute([
+            $imageId,
+            $placeId,
+            $areaFeatureId,
+        ]);
+
+        if ($delete->rowCount() !== 1) {
+            throw new RuntimeException(
+                'Area photo could not be removed.'
+            );
+        }
+
+        if ($wasFeatured) {
+            $next =
+                $db->prepare(
+                    'SELECT id
+                     FROM place_area_images
+                     WHERE place_id = ?
+                       AND area_feature_id = ?
+                     ORDER BY
+                        sort_order ASC,
+                        id ASC
+                     LIMIT 1'
+                );
+
+            $next->execute([
+                $placeId,
+                $areaFeatureId,
+            ]);
+
+            $nextId =
+                (int) (
+                    $next->fetchColumn()
+                    ?: 0
+                );
+
+            if ($nextId > 0) {
+                llama_place_area_image_set_featured(
+                    $db,
+                    $placeId,
+                    $areaFeatureId,
+                    $nextId
+                );
+            }
+        }
+
+        admin_users_audit(
+            $db,
+            $actorUserId,
+            null,
+            'place.area_photo_deleted',
+            'Deleted an Area photo.',
+            [
+                'place_id' => $placeId,
+                'area_feature_id' => $areaFeatureId,
+                'image_id' => $imageId,
+            ]
+        );
+
+        return $path;
+    }
+
     if ($scope !== 'place') {
         throw new RuntimeException(
-            'Photos are not available for Areas yet.'
+            'Unsupported photo target.'
         );
     }
 
