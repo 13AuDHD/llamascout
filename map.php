@@ -72,7 +72,7 @@ require __DIR__ . '/partials/cell-coverage-update-banner.php';
                     <input
                         id="map-search"
                         type="search"
-                        placeholder="Search Places, towns, counties..."
+                        placeholder="Search Places, Resources, towns..."
                         autocomplete="off"
                     >
                 </label>
@@ -394,12 +394,12 @@ require __DIR__ . '/partials/cell-coverage-update-banner.php';
                 </div>
 
 
-                <aside class="map-results-column" aria-labelledby="places-heading">
+                <aside class="map-results-column" aria-labelledby="map-results-heading">
 
                     <div class="map-results-heading">
                         <div>
                             <p class="map-eyebrow">Results</p>
-                            <h2 id="places-heading">Places</h2>
+                            <h2 id="map-results-heading">Places &amp; Resources</h2>
                         </div>
 
                         <button
@@ -412,11 +412,43 @@ require __DIR__ . '/partials/cell-coverage-update-banner.php';
                         </button>
                     </div>
 
-                    <div
-                        id="place-results"
-                        class="map-place-results"
-                        aria-live="polite"
-                    ></div>
+                    <section
+                        class="map-results-group"
+                        aria-labelledby="map-places-heading"
+                    >
+                        <h3
+                            id="map-places-heading"
+                            class="map-results-subheading"
+                        >
+                            Places
+                        </h3>
+
+                        <div
+                            id="place-results"
+                            class="map-place-results"
+                            aria-live="polite"
+                        ></div>
+                    </section>
+
+                    <section
+                        id="resource-results-section"
+                        class="map-results-group"
+                        aria-labelledby="map-resources-heading"
+                        hidden
+                    >
+                        <h3
+                            id="map-resources-heading"
+                            class="map-results-subheading"
+                        >
+                            Resources
+                        </h3>
+
+                        <div
+                            id="resource-results"
+                            class="map-resource-results"
+                            aria-live="polite"
+                        ></div>
+                    </section>
 
                     <div
                         id="map-empty"
@@ -424,8 +456,8 @@ require __DIR__ . '/partials/cell-coverage-update-banner.php';
                         hidden
                     >
                         <i aria-hidden="true"><?= llama_icon('map-pin') ?></i>
-                        <h3>No Places match those filters.</h3>
-                        <p>Try clearing one or more filters.</p>
+                        <h3>No Places or Resources match.</h3>
+                        <p>Try clearing filters or moving the map.</p>
                     </div>
 
                 </aside>
