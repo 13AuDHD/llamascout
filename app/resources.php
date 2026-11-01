@@ -171,7 +171,7 @@ function llama_resource_hours_summary(
             );
 
         if ($open !== '' && $close !== '') {
-            return $open . ' – ' . $close;
+            return $open . ' - ' . $close;
         }
 
         return 'Fixed Hours';
