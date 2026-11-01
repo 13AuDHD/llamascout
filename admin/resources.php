@@ -79,6 +79,64 @@ if (
                 exit;
             }
 
+            if ($action === 'upload_photos') {
+                $added =
+                    admin_resource_add_photos(
+                        $db,
+                        $actorUserId,
+                        $resourceId,
+                        $_FILES['resource_photos']
+                        ?? []
+                    );
+
+                header(
+                    'Location: /resources.php?id='
+                    . $resourceId
+                    . '&photos_added='
+                    . $added
+                );
+
+                exit;
+            }
+
+            if ($action === 'delete_photo') {
+                admin_resource_delete_photo(
+                    $db,
+                    $resourceId,
+                    (int) (
+                        $_POST['image_id']
+                        ?? 0
+                    )
+                );
+
+                header(
+                    'Location: /resources.php?id='
+                    . $resourceId
+                    . '&photo_deleted=1'
+                );
+
+                exit;
+            }
+
+            if ($action === 'make_hero') {
+                admin_resource_make_hero(
+                    $db,
+                    $resourceId,
+                    (int) (
+                        $_POST['image_id']
+                        ?? 0
+                    )
+                );
+
+                header(
+                    'Location: /resources.php?id='
+                    . $resourceId
+                    . '&hero_updated=1'
+                );
+
+                exit;
+            }
+
             throw new InvalidArgumentException(
                 'Choose a valid Resource action.'
             );
@@ -121,6 +179,33 @@ if (
     && (string) ($_GET['deactivated'] ?? '') === '1'
 ) {
     $notice = 'Resource deactivated.';
+}
+
+if (
+    $tablesReady
+    && (int) ($_GET['photos_added'] ?? 0) > 0
+) {
+    $count = (int) $_GET['photos_added'];
+
+    $notice =
+        $count
+        . ' Resource photo'
+        . ($count === 1 ? '' : 's')
+        . ' added.';
+}
+
+if (
+    $tablesReady
+    && (string) ($_GET['photo_deleted'] ?? '') === '1'
+) {
+    $notice = 'Resource photo deleted.';
+}
+
+if (
+    $tablesReady
+    && (string) ($_GET['hero_updated'] ?? '') === '1'
+) {
+    $notice = 'Resource hero photo updated.';
 }
 
 $resources =
@@ -725,6 +810,190 @@ $datetimeLocal =
     <?php endif; ?>
 
 </section>
+
+<?php if ($editing): ?>
+<section class="admin-panel">
+    <header class="admin-panel-header">
+        <div>
+            <p>Resource page</p>
+            <h2>Photos</h2>
+        </div>
+
+        <a
+            class="admin-button is-muted"
+            href="https://llamascout.com/resource.php?slug=<?= rawurlencode(
+                (string) (
+                    $resource['slug']
+                    ?? ''
+                )
+            ) ?>"
+            target="_blank"
+            rel="noopener"
+        >
+            View Resource
+        </a>
+    </header>
+
+    <?php
+    $resourcePhotos =
+        llama_resource_images(
+            $db,
+            $resourceId
+        );
+
+    $resourcePhotoRemaining =
+        max(
+            0,
+            3 - count($resourcePhotos)
+        );
+    ?>
+
+    <?php if ($resourcePhotos): ?>
+    <div class="admin-resource-photo-grid">
+        <?php foreach ($resourcePhotos as $photo): ?>
+        <article class="admin-resource-photo<?= !empty($photo['is_featured']) ? ' is-hero' : '' ?>">
+            <img
+                src="<?= $e(
+                    llama_resource_image_url(
+                        $photo['src']
+                        ?? ''
+                    )
+                ) ?>"
+                alt="<?= $e(
+                    $photo['alt_text']
+                    ?? $resource['name']
+                    ?? 'Resource'
+                ) ?>"
+            >
+
+            <div>
+                <?php if (!empty($photo['is_featured'])): ?>
+                    <strong>Hero photo</strong>
+                <?php else: ?>
+                    <form method="post">
+                        <input
+                            type="hidden"
+                            name="csrf_token"
+                            value="<?= $e(moderation_csrf_token()) ?>"
+                        >
+                        <input
+                            type="hidden"
+                            name="resource_action"
+                            value="make_hero"
+                        >
+                        <input
+                            type="hidden"
+                            name="resource_id"
+                            value="<?= (int) $resourceId ?>"
+                        >
+                        <input
+                            type="hidden"
+                            name="image_id"
+                            value="<?= (int) $photo['id'] ?>"
+                        >
+                        <button
+                            class="admin-button is-muted"
+                            type="submit"
+                        >
+                            Make hero
+                        </button>
+                    </form>
+                <?php endif; ?>
+
+                <form
+                    method="post"
+                    onsubmit="return confirm('Delete this Resource photo?');"
+                >
+                    <input
+                        type="hidden"
+                        name="csrf_token"
+                        value="<?= $e(moderation_csrf_token()) ?>"
+                    >
+                    <input
+                        type="hidden"
+                        name="resource_action"
+                        value="delete_photo"
+                    >
+                    <input
+                        type="hidden"
+                        name="resource_id"
+                        value="<?= (int) $resourceId ?>"
+                    >
+                    <input
+                        type="hidden"
+                        name="image_id"
+                        value="<?= (int) $photo['id'] ?>"
+                    >
+                    <button
+                        class="admin-button is-muted"
+                        type="submit"
+                    >
+                        Delete
+                    </button>
+                </form>
+            </div>
+        </article>
+        <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
+
+    <?php if ($resourcePhotoRemaining > 0): ?>
+    <form
+        class="admin-user-action-box"
+        method="post"
+        enctype="multipart/form-data"
+    >
+        <input
+            type="hidden"
+            name="csrf_token"
+            value="<?= $e(moderation_csrf_token()) ?>"
+        >
+        <input
+            type="hidden"
+            name="resource_action"
+            value="upload_photos"
+        >
+        <input
+            type="hidden"
+            name="resource_id"
+            value="<?= (int) $resourceId ?>"
+        >
+
+        <label class="admin-resource-photo-upload">
+            <span>
+                Add up to
+                <?= (int) $resourcePhotoRemaining ?>
+                more photo<?= $resourcePhotoRemaining === 1 ? '' : 's' ?>
+            </span>
+
+            <input
+                type="file"
+                name="resource_photos[]"
+                accept="image/*"
+                multiple
+                required
+            >
+        </label>
+
+        <div class="admin-user-form-actions">
+            <button
+                class="admin-button"
+                type="submit"
+            >
+                Upload Resource photos
+            </button>
+        </div>
+    </form>
+    <?php endif; ?>
+
+    <div class="admin-user-action-box">
+        <p>
+            Resource galleries are limited to 3 photos. The first photo is the
+            hero image used on the Resource page and map card.
+        </p>
+    </div>
+</section>
+<?php endif; ?>
 
 <section class="admin-panel">
     <header class="admin-panel-header">
