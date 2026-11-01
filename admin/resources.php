@@ -431,6 +431,32 @@ $datetimeLocal =
             </label>
 
             <label>
+                <span>Map marker service</span>
+                <select name="marker_service_type">
+                    <option value="">
+                        Auto: first enabled Service
+                    </option>
+                    <?php foreach (
+                        llama_resource_service_types()
+                        as $value => $label
+                    ): ?>
+                    <option
+                        value="<?= $e($value) ?>"
+                        <?= (string) ($form['marker_service_type'] ?? '') === $value
+                            ? 'selected'
+                            : '' ?>
+                    >
+                        <?= $e($label) ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+                <small>
+                    Choose the Service icon people should recognize on the map.
+                    It must also be checked under Services below.
+                </small>
+            </label>
+
+            <label>
                 <span>Overall status</span>
                 <select name="status">
                     <?php foreach (
