@@ -637,17 +637,9 @@
         min-height: 0;
     }
 
-    .map-place-results {
+    .map-place-results,
+    .map-resource-results {
         grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .map-place-card {
-        grid-template-columns: 1fr;
-    }
-
-    .map-place-image {
-        aspect-ratio: 16 / 9;
-        min-height: 0;
     }
 }
 
@@ -673,7 +665,8 @@
         height: 430px;
     }
 
-    .map-place-results {
+    .map-place-results,
+    .map-resource-results {
         grid-template-columns: 1fr;
     }
 
@@ -693,27 +686,6 @@
    MAP RESULT INTERACTIONS + LOCATION CONTROL
    ========================================================= */
 
-.map-place-card {
-    color: inherit;
-    text-decoration: none;
-    cursor: pointer;
-    transition:
-        border-color .16s ease,
-        box-shadow .16s ease,
-        transform .16s ease;
-}
-
-.map-place-card:hover {
-    border-color: color-mix(in srgb, var(--text) 34%, var(--border));
-    box-shadow: 0 8px 22px rgba(0, 0, 0, .08);
-    transform: translateY(-1px);
-}
-
-.map-place-card:focus-visible {
-    outline: 3px solid var(--focus);
-    outline-offset: 3px;
-}
-
 .map-place-card.is-featured {
     border: 3px solid #226CD4;
     background: color-mix(in srgb, #226CD4 6%, var(--surface));
@@ -722,29 +694,6 @@
 .map-place-card.is-paid-place:not(.is-featured):not(.is-partner-branded) {
     border: 3px solid #237A4B;
     background: color-mix(in srgb, #237A4B 6%, var(--surface));
-}
-
-.map-place-body,
-.map-place-location,
-.map-place-meta,
-.map-place-topline {
-    min-width: 0;
-}
-
-.map-place-body {
-    display: block;
-}
-
-.map-place-body h3 {
-    color: var(--text);
-}
-
-.map-place-location {
-    display: block;
-}
-
-.map-place-meta {
-    display: flex;
 }
 
 .map-featured-badge {
@@ -900,14 +849,18 @@
     50% { opacity: .5; transform: scale(.86); }
 }
 
-html[data-reduced-motion="true"] .map-place-card,
+html[data-reduced-motion="true"] .map-result-card,
 html[data-reduced-motion="true"] .map-locate-button.is-locating .map-locate-icon {
     transition: none;
     animation: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .map-place-card {
+    .map-result-card {
+        transition: none;
+    }
+
+    .map-result-card-image {
         transition: none;
     }
 
@@ -939,20 +892,6 @@ html[data-reduced-motion="true"] .map-locate-button.is-locating .map-locate-icon
 .map-place-card .map-paid-badge {
     background: #237a4b;
     color: #fff;
-}
-
-/* Keep multiple pills visible as a compact row over the image. */
-.map-place-badges {
-    position: absolute;
-    z-index: 3;
-    left: 10px;
-    bottom: 10px;
-    right: 10px;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 6px;
-    pointer-events: none;
 }
 
 .map-paid-symbol {
