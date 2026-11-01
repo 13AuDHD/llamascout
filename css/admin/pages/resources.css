@@ -107,3 +107,65 @@
         text-transform: uppercase;
     }
 }
+
+
+/* Resource page photos */
+
+.admin-resource-photo-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    padding: 16px;
+}
+
+.admin-resource-photo {
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+}
+
+.admin-resource-photo.is-hero {
+    border-color: #8a6511;
+}
+
+.admin-resource-photo > img {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    display: block;
+    object-fit: cover;
+    background: var(--background);
+}
+
+.admin-resource-photo > div {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 10px;
+}
+
+.admin-resource-photo > div > strong {
+    margin-right: auto;
+    font-size: .72rem;
+}
+
+.admin-resource-photo > div form {
+    margin: 0;
+}
+
+.admin-resource-photo-upload {
+    display: grid;
+    gap: 8px;
+}
+
+.admin-resource-photo-upload > span {
+    font-weight: 800;
+}
+
+@media (max-width: 760px) {
+    .admin-resource-photo-grid {
+        grid-template-columns: 1fr;
+    }
+}

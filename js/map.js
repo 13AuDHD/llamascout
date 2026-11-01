@@ -502,6 +502,11 @@
         encodeURIComponent(String(place.slug || ''));
 
 
+    const resourceUrl = (resource) =>
+        '/resource.php?slug=' +
+        encodeURIComponent(String(resource?.slug || ''));
+
+
     const locationLabel = (place) =>
         [place.city, place.state].filter(Boolean).join(', ');
 
@@ -990,6 +995,12 @@ popupAnchor: [0, -42]
                         <i class="llama-icon-mask" style="--llama-icon-mask:url('/assets/icons/current-location.svg')" aria-hidden="true"></i>
                         Resource location
                     </span>
+
+                    ${
+                        resource.slug
+                            ? `<a href="${resourceUrl(resource)}">View Resource</a>`
+                            : ''
+                    }
                 </div>
             </article>
         `;
@@ -1010,7 +1021,11 @@ popupAnchor: [0, -42]
 
     const renderResourceCard = (resource, marker) => {
         const card =
-            document.createElement('button');
+            document.createElement(
+                resource.slug
+                    ? 'a'
+                    : 'button'
+            );
 
         const services =
             resourceServices(resource);
@@ -1033,11 +1048,18 @@ popupAnchor: [0, -42]
                 || 'unknown'
             );
 
-        card.type = 'button';
+        if (card instanceof HTMLAnchorElement) {
+            card.href = resourceUrl(resource);
+        } else {
+            card.type = 'button';
+        }
+
         card.className = 'map-resource-card';
         card.setAttribute(
             'aria-label',
-            `Show ${String(resource.name || 'Resource')} on map`
+            resource.slug
+                ? `View ${String(resource.name || 'Resource')}`
+                : `Show ${String(resource.name || 'Resource')} on map`
         );
 
         card.innerHTML = `
@@ -1117,10 +1139,12 @@ popupAnchor: [0, -42]
             );
         };
 
-        card.addEventListener(
-            'click',
-            focusMarker
-        );
+        if (!(card instanceof HTMLAnchorElement)) {
+            card.addEventListener(
+                'click',
+                focusMarker
+            );
+        }
 
         card.addEventListener(
             'mouseenter',
