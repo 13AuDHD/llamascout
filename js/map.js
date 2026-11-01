@@ -913,19 +913,46 @@ popupAnchor: [0, -42]
 
 
     const popupHtml = (place) => {
-        const location = locationLabel(place);
-        const image = imageUrl(place.featured_image);
+        const location =
+            locationLabel(place);
+
+        const image =
+            imageUrl(
+                place.featured_image
+            );
 
         return `
-            <article class="map-popup">
-                ${
-                    image
-                        ? `<img src="${escapeHtml(image)}"
-                             alt="${escapeHtml(place.featured_image_alt || place.name)}">`
-                        : ''
-                }
+            <article class="map-popup map-popup-card">
+                <span
+                    class="map-popup-media"
+                    aria-hidden="true"
+                >
+                    ${
+                        image
+                            ? `
+                                <img
+                                    src="${escapeHtml(image)}"
+                                    alt=""
+                                    loading="lazy"
+                                >
+                            `
+                            : `
+                                <span class="map-popup-fallback">
+                                    <i
+                                        class="llama-icon-mask"
+                                        style="--llama-icon-mask:url('/assets/icons/mountain.svg')"
+                                    ></i>
+                                </span>
+                            `
+                    }
+                </span>
 
-                <div>
+                <span
+                    class="map-popup-shade"
+                    aria-hidden="true"
+                ></span>
+
+                <div class="map-popup-content">
                     <span class="map-popup-type">
                         ${escapeHtml(formatLabel(place.type))}
                     </span>
@@ -934,13 +961,34 @@ popupAnchor: [0, -42]
 
                     ${
                         location
-                            ? `<span>${escapeHtml(location)}</span>`
+                            ? `
+                                <span class="map-popup-location">
+                                    <i
+                                        class="llama-icon-mask"
+                                        style="--llama-icon-mask:url('/assets/icons/map-pin.svg')"
+                                        aria-hidden="true"
+                                    ></i>
+                                    ${escapeHtml(location)}
+                                </span>
+                            `
                             : ''
                     }
 
-                    <span class="map-popup-exact"><i class="llama-icon-mask" style="--llama-icon-mask:url('/assets/icons/current-location.svg')" aria-hidden="true"></i> Stored location</span>
+                    <span class="map-popup-exact">
+                        <i
+                            class="llama-icon-mask"
+                            style="--llama-icon-mask:url('/assets/icons/current-location.svg')"
+                            aria-hidden="true"
+                        ></i>
+                        Stored location
+                    </span>
 
-                    <a href="${placeUrl(place)}">View Place</a>
+                    <a
+                        class="map-popup-action"
+                        href="${placeUrl(place)}"
+                    >
+                        View Place
+                    </a>
                 </div>
             </article>
         `;
@@ -955,9 +1003,41 @@ popupAnchor: [0, -42]
             resourceServices(resource)
                 .slice(0, 5);
 
+        const image =
+            imageUrl(
+                resource?.featured_image?.src
+                || ''
+            );
+
         return `
-            <article class="map-popup map-resource-popup">
-                <div>
+            <article class="map-popup map-popup-card map-resource-popup">
+                <span
+                    class="map-popup-media"
+                    aria-hidden="true"
+                >
+                    ${
+                        image
+                            ? `
+                                <img
+                                    src="${escapeHtml(image)}"
+                                    alt=""
+                                    loading="lazy"
+                                >
+                            `
+                            : `
+                                <span class="map-popup-fallback is-resource ${resourceTypeClass(resource)}">
+                                    <i class="map-resource-fallback-icon"></i>
+                                </span>
+                            `
+                    }
+                </span>
+
+                <span
+                    class="map-popup-shade"
+                    aria-hidden="true"
+                ></span>
+
+                <div class="map-popup-content">
                     <span class="map-popup-type">
                         Resource · ${escapeHtml(
                             resource.resource_type_label
@@ -969,7 +1049,16 @@ popupAnchor: [0, -42]
 
                     ${
                         location
-                            ? `<span>${escapeHtml(location)}</span>`
+                            ? `
+                                <span class="map-popup-location">
+                                    <i
+                                        class="llama-icon-mask"
+                                        style="--llama-icon-mask:url('/assets/icons/map-pin.svg')"
+                                        aria-hidden="true"
+                                    ></i>
+                                    ${escapeHtml(location)}
+                                </span>
+                            `
                             : ''
                     }
 
@@ -987,18 +1076,33 @@ popupAnchor: [0, -42]
 
                     ${
                         resource.hours_text
-                            ? `<span>${escapeHtml(resource.hours_text)}</span>`
+                            ? `
+                                <span class="map-popup-hours">
+                                    ${escapeHtml(resource.hours_text)}
+                                </span>
+                            `
                             : ''
                     }
 
                     <span class="map-popup-exact">
-                        <i class="llama-icon-mask" style="--llama-icon-mask:url('/assets/icons/current-location.svg')" aria-hidden="true"></i>
+                        <i
+                            class="llama-icon-mask"
+                            style="--llama-icon-mask:url('/assets/icons/current-location.svg')"
+                            aria-hidden="true"
+                        ></i>
                         Resource location
                     </span>
 
                     ${
                         resource.slug
-                            ? `<a href="${resourceUrl(resource)}">View Resource</a>`
+                            ? `
+                                <a
+                                    class="map-popup-action"
+                                    href="${resourceUrl(resource)}"
+                                >
+                                    View Resource
+                                </a>
+                            `
                             : ''
                     }
                 </div>
