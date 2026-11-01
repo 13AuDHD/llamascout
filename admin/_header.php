@@ -601,6 +601,22 @@ function admin_shell_nav_class(string $key, string $active): string
 
         <a
             class="<?= admin_shell_nav_class(
+                'resources',
+                $adminActiveNav
+            ) ?>"
+            href="<?= moderation_e(
+                $adminUrl . '/resources.php'
+            ) ?>"
+        >
+            <i aria-hidden="true">
+                <?= llama_icon('map-pin') ?>
+            </i>
+
+            <span>Resources</span>
+        </a>
+
+        <a
+            class="<?= admin_shell_nav_class(
                 'cell-coverage',
                 $adminActiveNav
             ) ?>"
