@@ -511,12 +511,20 @@
             restorePlaceReport();
 
             let values = {};
+            let sources = {};
 
             try {
                 values =
                     JSON.parse(
                         row.dataset
                             .stayReportValues
+                        || '{}'
+                    );
+
+                sources =
+                    JSON.parse(
+                        row.dataset
+                            .stayReportSources
                         || '{}'
                     );
             } catch (error) {
@@ -526,6 +534,7 @@
                 );
 
                 values = {};
+                sources = {};
             }
 
             if (
@@ -535,6 +544,15 @@
                 || Array.isArray(values)
             ) {
                 return;
+            }
+
+            if (
+                !sources
+                || typeof sources
+                    !== 'object'
+                || Array.isArray(sources)
+            ) {
+                sources = {};
             }
 
             for (
@@ -646,6 +664,87 @@
                     'is-explicit-unknown',
                     unknown
                 );
+
+                let sourceLine =
+                    card.querySelector(
+                        '.scout-report-answer-source'
+                    );
+
+                const source =
+                    sources[key]
+                    && typeof sources[key]
+                        === 'object'
+                        ? sources[key]
+                        : null;
+
+                if (source) {
+                    if (!sourceLine) {
+                        sourceLine =
+                            document.createElement(
+                                'small'
+                            );
+
+                        sourceLine.className =
+                            'scout-report-answer-source';
+
+                        const valueContent =
+                            card.querySelector(
+                                '.scout-report-value-content, .scout-rating-content'
+                            );
+
+                        valueContent?.appendChild(
+                            sourceLine
+                        );
+                    }
+
+                    const dateLabel =
+                        String(
+                            source.dateLabel
+                            || ''
+                        ).trim();
+
+                    const sourceLabel =
+                        String(
+                            source.label
+                            || ''
+                        ).trim();
+
+                    const originScope =
+                        String(
+                            source.originScope
+                            || ''
+                        ).trim();
+
+                    const inheritedLabel =
+                        source.inherited === true
+                            ? (
+                                originScope === 'place'
+                                    ? 'Inherited from Place'
+                                    : (
+                                        originScope === 'area'
+                                            ? 'Inherited from Area'
+                                            : 'Inherited'
+                                    )
+                            )
+                            : '';
+
+                    if (sourceLine) {
+                        sourceLine.textContent =
+                            [
+                                dateLabel,
+                                inheritedLabel,
+                                sourceLabel,
+                            ]
+                                .filter(Boolean)
+                                .join(' · ');
+
+                        sourceLine.hidden =
+                            sourceLine.textContent === '';
+                    }
+                } else if (sourceLine) {
+                    sourceLine.textContent = '';
+                    sourceLine.hidden = true;
+                }
 
                 if (ratingStrong) {
                     const match =
