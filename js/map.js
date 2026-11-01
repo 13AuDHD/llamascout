@@ -20,6 +20,8 @@
         status: document.getElementById('map-status'),
         precision: document.getElementById('map-location-precision'),
         results: document.getElementById('place-results'),
+        resourceResults: document.getElementById('resource-results'),
+        resourceSection: document.getElementById('resource-results-section'),
         empty: document.getElementById('map-empty'),
         layerControl: document.getElementById('map-layer-control'),
 
@@ -63,8 +65,12 @@
     let places = [];
     let filteredPlaces = [];
     let visiblePlaces = [];
+    let resources = [];
+    let filteredResources = [];
+    let visibleResources = [];
     let markers = [];
     let markerByPlace = new Map();
+    let markerByResource = new Map();
     let memberMapAccess = initialMemberAccess;
     let selectedLayer = 'auto';
     let activeTileLayer = null;
@@ -499,6 +505,98 @@
         [place.city, place.state].filter(Boolean).join(', ');
 
 
+    const resourceLocationLabel = (resource) =>
+        [
+            resource.city,
+            resource.state_region
+        ].filter(Boolean).join(', ');
+
+
+    const resourceCoordinates = (resource) => {
+        const latitude = Number(resource?.latitude);
+        const longitude = Number(resource?.longitude);
+
+        if (
+            !Number.isFinite(latitude)
+            || !Number.isFinite(longitude)
+            || latitude < -90
+            || latitude > 90
+            || longitude < -180
+            || longitude > 180
+            || (latitude === 0 && longitude === 0)
+        ) {
+            return null;
+        }
+
+        return [latitude, longitude];
+    };
+
+
+    const resourceTypeClass = (resource) => {
+        const type =
+            String(
+                resource?.resource_type
+                || 'other'
+            )
+                .trim()
+                .toLowerCase()
+                .replace(/[^a-z0-9_-]+/g, '-');
+
+        return 'is-' + (type || 'other');
+    };
+
+
+    const resourceServices = (resource) =>
+        Array.isArray(resource?.services)
+            ? resource.services.filter(
+                (service) =>
+                    service
+                    && typeof service === 'object'
+                    && String(
+                        service.service_type_label
+                        || service.service_type
+                        || ''
+                    ).trim() !== ''
+            )
+            : [];
+
+
+    const resourceMatches = (resource) => {
+        const search =
+            String(
+                controls.search?.value
+                || ''
+            )
+                .trim()
+                .toLowerCase();
+
+        if (search === '') {
+            return true;
+        }
+
+        const searchable = [
+            resource.name,
+            resource.resource_type,
+            resource.resource_type_label,
+            resource.street_address,
+            resource.city,
+            resource.state_region,
+            resource.postal_code,
+            ...resourceServices(resource).flatMap(
+                (service) => [
+                    service.service_type,
+                    service.service_type_label
+                ]
+            )
+        ]
+            .filter(Boolean)
+            .join(' ')
+            .toLowerCase();
+
+        return searchable.includes(search);
+    };
+
+
     const isFeaturedPlace = (place) =>
         String(place?.status || '').toLowerCase() === 'featured' ||
         place?.is_featured === true ||
@@ -778,12 +876,19 @@ popupAnchor: [0, -42]
 
         markers = [];
         markerByPlace.clear();
+        markerByResource.clear();
     };
 
 
     const fitVisiblePlaces = () => {
-        const bounds = filteredPlaces
-            .map(placeCoordinates)            .filter(Boolean);
+        const bounds = [
+            ...filteredPlaces
+                .map(placeCoordinates)
+                .filter(Boolean),
+            ...filteredResources
+                .map(resourceCoordinates)
+                .filter(Boolean)
+        ];
 
         const fitMaxZoom = 16;
 
@@ -833,6 +938,224 @@ popupAnchor: [0, -42]
                 </div>
             </article>
         `;
+    };
+
+
+    const resourcePopupHtml = (resource) => {
+        const location =
+            resourceLocationLabel(resource);
+
+        const services =
+            resourceServices(resource)
+                .slice(0, 5);
+
+        return `
+            <article class="map-popup map-resource-popup">
+                <div>
+                    <span class="map-popup-type">
+                        Resource · ${escapeHtml(
+                            resource.resource_type_label
+                            || formatLabel(resource.resource_type)
+                        )}
+                    </span>
+
+                    <strong>${escapeHtml(resource.name || 'Resource')}</strong>
+
+                    ${
+                        location
+                            ? `<span>${escapeHtml(location)}</span>`
+                            : ''
+                    }
+
+                    <div class="map-resource-popup-services">
+                        ${services
+                            .map(
+                                (service) =>
+                                    `<span>${escapeHtml(
+                                        service.service_type_label
+                                        || formatLabel(service.service_type)
+                                    )}</span>`
+                            )
+                            .join('')}
+                    </div>
+
+                    ${
+                        resource.hours_text
+                            ? `<span>${escapeHtml(resource.hours_text)}</span>`
+                            : ''
+                    }
+
+                    <span class="map-popup-exact">
+                        <i class="llama-icon-mask" style="--llama-icon-mask:url('/assets/icons/current-location.svg')" aria-hidden="true"></i>
+                        Resource location
+                    </span>
+                </div>
+            </article>
+        `;
+    };
+
+
+    const resourceMarkerIcon = (resource) =>
+        L.divIcon({
+            className:
+                'map-resource-marker-shell',
+            html:
+                `<span class="map-resource-marker ${resourceTypeClass(resource)}" aria-hidden="true"></span>`,
+            iconSize: [36, 36],
+            iconAnchor: [18, 18],
+            popupAnchor: [0, -20]
+        });
+
+
+    const renderResourceCard = (resource, marker) => {
+        const card =
+            document.createElement('button');
+
+        const services =
+            resourceServices(resource);
+
+        const shownServices =
+            services.slice(0, 4);
+
+        const remaining =
+            Math.max(
+                0,
+                services.length - shownServices.length
+            );
+
+        const location =
+            resourceLocationLabel(resource);
+
+        const status =
+            String(
+                resource.status
+                || 'unknown'
+            );
+
+        card.type = 'button';
+        card.className = 'map-resource-card';
+        card.setAttribute(
+            'aria-label',
+            `Show ${String(resource.name || 'Resource')} on map`
+        );
+
+        card.innerHTML = `
+            <span class="map-resource-card-icon ${resourceTypeClass(resource)}" aria-hidden="true">
+                <i></i>
+            </span>
+
+            <span class="map-resource-card-body">
+                <span class="map-resource-card-topline">
+                    <span>Resource</span>
+                    <strong>${escapeHtml(
+                        resource.resource_type_label
+                        || formatLabel(resource.resource_type)
+                    )}</strong>
+                </span>
+
+                <span class="map-resource-card-name">
+                    ${escapeHtml(resource.name || 'Resource')}
+                </span>
+
+                ${
+                    location
+                        ? `
+                            <span class="map-resource-card-location">
+                                <i class="llama-icon-mask" style="--llama-icon-mask:url('/assets/icons/map-pin.svg')" aria-hidden="true"></i>
+                                ${escapeHtml(location)}
+                            </span>
+                        `
+                        : ''
+                }
+
+                <span class="map-resource-services">
+                    ${shownServices
+                        .map(
+                            (service) =>
+                                `<span>${escapeHtml(
+                                    service.service_type_label
+                                    || formatLabel(service.service_type)
+                                )}</span>`
+                        )
+                        .join('')}
+                    ${
+                        remaining > 0
+                            ? `<span>+${remaining} more</span>`
+                            : ''
+                    }
+                </span>
+
+                <span class="map-resource-card-meta">
+                    ${
+                        status !== 'unknown'
+                            ? `<span>${escapeHtml(formatLabel(status))}</span>`
+                            : ''
+                    }
+
+                    ${
+                        resource.hours_text
+                            ? `<span>${escapeHtml(resource.hours_text)}</span>`
+                            : ''
+                    }
+                </span>
+            </span>
+        `;
+
+        const focusMarker = () => {
+            if (!marker) {
+                return;
+            }
+
+            marker.openPopup();
+
+            map.panTo(
+                marker.getLatLng(),
+                {
+                    animate: true
+                }
+            );
+        };
+
+        card.addEventListener(
+            'click',
+            focusMarker
+        );
+
+        card.addEventListener(
+            'mouseenter',
+            () => marker?.openPopup()
+        );
+
+        card.addEventListener(
+            'focus',
+            () => marker?.openPopup()
+        );
+
+        return card;
+    };
+
+
+    const resourcesInsideMap = () => {
+        const bounds =
+            map.getBounds();
+
+        return filteredResources.filter(
+            (resource) => {
+                const coordinates =
+                    resourceCoordinates(resource);
+
+                if (!coordinates) {
+                    return false;
+                }
+
+                return bounds.contains(
+                    L.latLng(
+                        coordinates[0],
+                        coordinates[1]
+                    )
+                );
+            }
+        );
     };
 
 
@@ -987,7 +1310,11 @@ popupAnchor: [0, -42]
 
 
     const renderViewportCards = () => {
-        visiblePlaces = placesInsideMap();
+        visiblePlaces =
+            placesInsideMap();
+
+        visibleResources =
+            resourcesInsideMap();
 
         if (controls.results) {
             controls.results.innerHTML = '';
@@ -1002,38 +1329,70 @@ popupAnchor: [0, -42]
             });
         }
 
+        if (controls.resourceResults) {
+            controls.resourceResults.innerHTML = '';
+
+            visibleResources.forEach(
+                (resource) => {
+                    controls.resourceResults.appendChild(
+                        renderResourceCard(
+                            resource,
+                            markerByResource.get(resource)
+                            || null
+                        )
+                    );
+                }
+            );
+        }
+
+        if (controls.resourceSection) {
+            controls.resourceSection.hidden =
+                visibleResources.length === 0;
+        }
+
         if (controls.status) {
             controls.status.textContent =
-                `${visiblePlaces.length} Place${visiblePlaces.length === 1 ? '' : 's'} shown`;
+                `${visiblePlaces.length} Place${visiblePlaces.length === 1 ? '' : 's'} · ${visibleResources.length} Resource${visibleResources.length === 1 ? '' : 's'} shown`;
         }
 
         if (controls.empty) {
-            const heading = controls.empty.querySelector('h3');
-            const paragraph = controls.empty.querySelector('p');
+            const heading =
+                controls.empty.querySelector('h3');
+
+            const paragraph =
+                controls.empty.querySelector('p');
+
+            const visibleCount =
+                visiblePlaces.length
+                + visibleResources.length;
 
             controls.empty.hidden =
-                visiblePlaces.length !== 0;
+                visibleCount !== 0;
 
-            if (visiblePlaces.length === 0) {
-                if (filteredPlaces.length === 0) {
+            if (visibleCount === 0) {
+                const filteredCount =
+                    filteredPlaces.length
+                    + filteredResources.length;
+
+                if (filteredCount === 0) {
                     if (heading) {
                         heading.textContent =
-                            'No Places match those filters.';
+                            'No Places or Resources match.';
                     }
 
                     if (paragraph) {
                         paragraph.textContent =
-                            'Try clearing one or more filters.';
+                            'Try changing the search or clearing Place filters.';
                     }
                 } else {
                     if (heading) {
                         heading.textContent =
-                            'No Places in this map area.';
+                            'No Places or Resources in this map area.';
                     }
 
                     if (paragraph) {
                         paragraph.textContent =
-                            'Pan the map, zoom out, or choose Fit map to bring matching Places back into view.';
+                            'Pan the map, zoom out, or choose Fit map to bring matching results back into view.';
                     }
                 }
             }
@@ -1042,7 +1401,11 @@ popupAnchor: [0, -42]
 
 
     const render = (fitMap = false) => {
-        filteredPlaces = places.filter(matches);
+        filteredPlaces =
+            places.filter(matches);
+
+        filteredResources =
+            resources.filter(resourceMatches);
 
         clearMarkers();
 
@@ -1066,6 +1429,43 @@ popupAnchor: [0, -42]
             markers.push(marker);
             markerByPlace.set(place, marker);
         });
+
+        filteredResources.forEach(
+            (resource) => {
+                const coordinates =
+                    resourceCoordinates(resource);
+
+                if (!coordinates) {
+                    return;
+                }
+
+                const marker =
+                    L.marker(
+                        coordinates,
+                        {
+                            icon:
+                                resourceMarkerIcon(
+                                    resource
+                                )
+                        }
+                    );
+
+                marker.bindPopup(
+                    resourcePopupHtml(
+                        resource
+                    )
+                );
+
+                marker.addTo(map);
+
+                markers.push(marker);
+
+                markerByResource.set(
+                    resource,
+                    marker
+                );
+            }
+        );
 
         updateFilterCount();
 
@@ -1123,25 +1523,61 @@ popupAnchor: [0, -42]
         }
 
         try {
-            const response = await fetch(
-                '/api/places.php',
-                {
-                    cache: 'no-store',
-                    credentials: 'same-origin',
-                    headers: {
-                        'Accept': 'application/json'
+            const [
+                response,
+                resourceResponse
+            ] = await Promise.all([
+                fetch(
+                    '/api/places.php',
+                    {
+                        cache: 'no-store',
+                        credentials: 'same-origin',
+                        headers: {
+                            'Accept': 'application/json'
+                        }
                     }
-                }
-            );
+                ),
+                fetch(
+                    '/api/resources.php',
+                    {
+                        cache: 'no-store',
+                        credentials: 'same-origin',
+                        headers: {
+                            'Accept': 'application/json'
+                        }
+                    }
+                ).catch(() => null)
+            ]);
 
             if (!response.ok) {
                 throw new Error('Unable to load Places.');
             }
 
-            const data = await response.json();
+            const data =
+                await response.json();
 
             if (!data.ok || !Array.isArray(data.places)) {
                 throw new Error('Unexpected Places response.');
+            }
+
+            let resourceData = {
+                ok: false,
+                resources: []
+            };
+
+            if (
+                resourceResponse
+                && resourceResponse.ok
+            ) {
+                try {
+                    resourceData =
+                        await resourceResponse.json();
+                } catch (error) {
+                    console.error(
+                        'Llama Scout Resource map data:',
+                        error
+                    );
+                }
             }
 
             syncMapAccess(
@@ -1165,6 +1601,14 @@ popupAnchor: [0, -42]
             }
 
             places = data.places;
+
+            resources =
+                resourceData.ok
+                && Array.isArray(
+                    resourceData.resources
+                )
+                    ? resourceData.resources
+                    : [];
 
             populateFilters();
             render(true);
