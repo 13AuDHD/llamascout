@@ -199,6 +199,7 @@ function llama_resources(
         'SELECT
             id,
             resource_type,
+            marker_service_type,
             name,
             slug,
             latitude,
@@ -293,6 +294,47 @@ function llama_resources(
                 $db,
                 $resourceId,
                 $activeOnly
+            );
+
+        $row['marker_service_type'] =
+            strtolower(
+                trim(
+                    (string) (
+                        $row['marker_service_type']
+                        ?? ''
+                    )
+                )
+            );
+
+        $activeServiceTypes =
+            array_values(
+                array_filter(
+                    array_map(
+                        static fn (array $service): string =>
+                            (string) (
+                                $service['service_type']
+                                ?? ''
+                            ),
+                        $row['services']
+                    )
+                )
+            );
+
+        $row['marker_service_effective_type'] =
+            in_array(
+                $row['marker_service_type'],
+                $activeServiceTypes,
+                true
+            )
+                ? $row['marker_service_type']
+                : (
+                    $activeServiceTypes[0]
+                    ?? 'other'
+                );
+
+        $row['marker_service_label'] =
+            llama_resource_service_type_label(
+                $row['marker_service_effective_type']
             );
 
         $row['images'] =
@@ -433,6 +475,17 @@ function llama_resource_public_view(array $resource): array
         'resource_type_label' =>
             (string) (
                 $resource['resource_type_label']
+                ?? ''
+            ),
+        'marker_service_type' =>
+            (string) (
+                $resource['marker_service_effective_type']
+                ?? $resource['marker_service_type']
+                ?? 'other'
+            ),
+        'marker_service_label' =>
+            (string) (
+                $resource['marker_service_label']
                 ?? ''
             ),
         'name' =>
