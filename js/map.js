@@ -1061,30 +1061,30 @@ popupAnchor: [0, -42]
         card.setAttribute(
             'aria-label',
             resource.slug
-                ? \`View \${String(resource.name || 'Resource')}\`
-                : \`Show \${String(resource.name || 'Resource')} on map\`
+                ? `View ${String(resource.name || 'Resource')}`
+                : `Show ${String(resource.name || 'Resource')} on map`
         );
 
-        card.innerHTML = \`
+        card.innerHTML = `
             <span
                 class="map-result-card-media"
                 aria-hidden="true"
             >
-                \${
+                ${
                     image
-                        ? \`
+                        ? `
                             <img
                                 class="map-result-card-image"
-                                src="\${escapeHtml(image)}"
+                                src="${escapeHtml(image)}"
                                 alt=""
                                 loading="lazy"
                             >
-                        \`
-                        : \`
-                            <span class="map-result-card-fallback is-resource \${resourceTypeClass(resource)}">
+                        `
+                        : `
+                            <span class="map-result-card-fallback is-resource ${resourceTypeClass(resource)}">
                                 <i class="map-resource-fallback-icon"></i>
                             </span>
-                        \`
+                        `
                 }
             </span>
 
@@ -1097,7 +1097,7 @@ popupAnchor: [0, -42]
                 <span class="map-result-card-topline">
                     <span class="map-result-card-type">
                         Resource ·
-                        \${escapeHtml(
+                        ${escapeHtml(
                             resource.resource_type_label
                             || formatLabel(resource.resource_type)
                         )}
@@ -1106,39 +1106,39 @@ popupAnchor: [0, -42]
 
                 <span class="map-result-card-main">
                     <strong class="map-result-card-name">
-                        \${escapeHtml(resource.name || 'Resource')}
+                        ${escapeHtml(resource.name || 'Resource')}
                     </strong>
 
-                    \${
+                    ${
                         location
-                            ? \`
+                            ? `
                                 <span class="map-result-card-location">
                                     <i class="llama-icon-mask" style="--llama-icon-mask:url('/assets/icons/map-pin.svg')" aria-hidden="true"></i>
-                                    \${escapeHtml(location)}
+                                    ${escapeHtml(location)}
                                 </span>
-                            \`
+                            `
                             : ''
                     }
 
                     <span class="map-result-card-pills map-resource-services">
-                        \${shownServices
+                        ${shownServices
                             .map(
                                 (service) =>
-                                    \`<span>\${escapeHtml(
+                                    `<span>${escapeHtml(
                                         service.service_type_label
                                         || formatLabel(service.service_type)
-                                    )}</span>\`
+                                    )}</span>`
                             )
                             .join('')}
-                        \${
+                        ${
                             remaining > 0
-                                ? \`<span>+\${remaining} more</span>\`
+                                ? `<span>+${remaining} more</span>`
                                 : ''
                         }
                     </span>
                 </span>
             </span>
-        \`;
+        `;
 
         const focusMarker = () => {
             if (!marker) {
@@ -1233,7 +1233,7 @@ popupAnchor: [0, -42]
             + (paid ? ' is-paid-place' : '')
             + (
                 partner?.use_branded_cards
-                    ? \` is-partner-branded map-partner-\${Number(partner.id)}\`
+                    ? ` is-partner-branded map-partner-${Number(partner.id)}`
                     : ''
             );
 
@@ -1241,32 +1241,32 @@ popupAnchor: [0, -42]
 
         card.setAttribute(
             'aria-label',
-            \`View \${String(place.name || 'Place')}\`
+            `View ${String(place.name || 'Place')}`
         );
 
-        card.innerHTML = \`
+        card.innerHTML = `
             <span
                 class="map-result-card-media"
                 aria-hidden="true"
             >
-                \${
+                ${
                     image
-                        ? \`
+                        ? `
                             <img
                                 class="map-result-card-image"
-                                src="\${escapeHtml(image)}"
+                                src="${escapeHtml(image)}"
                                 alt=""
                                 loading="lazy"
                             >
-                        \`
-                        : \`
+                        `
+                        : `
                             <span class="map-result-card-fallback is-place">
                                 <i
                                     class="llama-icon-mask"
                                     style="--llama-icon-mask:url('/assets/icons/mountain.svg')"
                                 ></i>
                             </span>
-                        \`
+                        `
                 }
             </span>
 
@@ -1278,29 +1278,29 @@ popupAnchor: [0, -42]
             <span class="map-result-card-content">
                 <span class="map-result-card-topline">
                     <span class="map-result-card-type">
-                        \${escapeHtml(formatLabel(place.type))}
+                        ${escapeHtml(formatLabel(place.type))}
                     </span>
 
                     <span class="map-result-card-badges">
-                        \${
+                        ${
                             isClosedPlace(place)
                                 ? '<span class="map-featured-badge map-closed-badge"><span class="map-closed-badge-icon" aria-hidden="true"></span> Closed</span>'
                                 : ''
                         }
-                        \${
+                        ${
                             featured
-                                ? \`<span class="map-featured-badge">
+                                ? `<span class="map-featured-badge">
                                         <span aria-hidden="true">★</span>
                                         Featured
-                                   </span>\`
+                                   </span>`
                                 : ''
                         }
-                        \${
+                        ${
                             affiliate
                                 ? '<span class="map-featured-badge map-affiliate-badge">Affiliate</span>'
                                 : ''
                         }
-                        \${
+                        ${
                             paid
                                 ? '<span class="map-featured-badge map-paid-badge"><span class="map-paid-symbol" aria-hidden="true">$</span> Paid</span>'
                                 : ''
@@ -1310,36 +1310,36 @@ popupAnchor: [0, -42]
 
                 <span class="map-result-card-main">
                     <strong class="map-result-card-name">
-                        \${escapeHtml(place.name)}
+                        ${escapeHtml(place.name)}
                     </strong>
 
-                    \${
+                    ${
                         location
-                            ? \`
+                            ? `
                                 <span class="map-result-card-location">
                                     <i class="llama-icon-mask" style="--llama-icon-mask:url('/assets/icons/map-pin.svg')" aria-hidden="true"></i>
-                                    \${escapeHtml(location)}
+                                    ${escapeHtml(location)}
                                 </span>
-                            \`
+                            `
                             : ''
                     }
 
                     <span class="map-result-card-pills">
-                        \${
+                        ${
                             place.elevation_feet
-                                ? \`<span>\${Number(place.elevation_feet).toLocaleString()} ft</span>\`
+                                ? `<span>${Number(place.elevation_feet).toLocaleString()} ft</span>`
                                 : ''
                         }
 
-                        \${
+                        ${
                             place.land_manager
-                                ? \`<span>\${escapeHtml(place.land_manager)}</span>\`
+                                ? `<span>${escapeHtml(place.land_manager)}</span>`
                                 : ''
                         }
                     </span>
                 </span>
             </span>
-        \`;
+        `;
 
         if (marker) {
             card.addEventListener(
