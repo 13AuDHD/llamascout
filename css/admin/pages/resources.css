@@ -169,3 +169,76 @@
         grid-template-columns: 1fr;
     }
 }
+
+
+/* Structured Resource hours */
+
+.admin-resource-field-wide {
+    grid-column: 1 / -1;
+}
+
+.admin-resource-hours-panel {
+    display: grid;
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.admin-resource-hours-panel[hidden],
+.admin-resource-weekly-hours[hidden] {
+    display: none;
+}
+
+.admin-resource-weekly-hours {
+    display: grid;
+    gap: 8px;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--background);
+}
+
+.admin-resource-weekly-heading,
+.admin-resource-weekly-row {
+    display: grid;
+    grid-template-columns:
+        minmax(90px, .8fr)
+        minmax(0, 1fr)
+        minmax(0, 1fr);
+    gap: 10px;
+    align-items: center;
+}
+
+.admin-resource-weekly-heading {
+    color: var(--text-muted);
+    font-size: .65rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.admin-resource-weekly-row strong {
+    font-size: .82rem;
+}
+
+.admin-resource-weekly-row label {
+    display: block;
+}
+
+.admin-resource-weekly-row select {
+    width: 100%;
+}
+
+@media (max-width: 760px) {
+    .admin-resource-hours-panel {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-resource-weekly-heading,
+    .admin-resource-weekly-row {
+        grid-template-columns:
+            minmax(72px, .7fr)
+            minmax(0, 1fr)
+            minmax(0, 1fr);
+        gap: 7px;
+    }
+}

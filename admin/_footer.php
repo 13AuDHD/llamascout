@@ -127,6 +127,10 @@ if (
     <script src="/js/admin-place-access-alert.js"></script>
 <?php endif; ?>
 
+<?php if ($adminFooterScript === 'resources.php'): ?>
+    <script src="/js/admin/resources.js"></script>
+<?php endif; ?>
+
 <?php if ($adminFooterScript === 'place.php'): ?>
     <script src="https://llamascout.com/js/admin-place-campsite-link.js"></script>
 <?php endif; ?>

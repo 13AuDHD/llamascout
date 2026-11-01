@@ -267,6 +267,110 @@ if ($postFailed) {
             : [];
 }
 
+$coordinatesValue =
+    trim(
+        (string) (
+            $form['coordinates']
+            ?? ''
+        )
+    );
+
+if (
+    $coordinatesValue === ''
+    && isset(
+        $form['latitude'],
+        $form['longitude']
+    )
+) {
+    $coordinatesValue =
+        rtrim(
+            rtrim(
+                number_format(
+                    (float) $form['latitude'],
+                    7,
+                    '.',
+                    ''
+                ),
+                '0'
+            ),
+            '.'
+        )
+        . ', '
+        . rtrim(
+            rtrim(
+                number_format(
+                    (float) $form['longitude'],
+                    7,
+                    '.',
+                    ''
+                ),
+                '0'
+            ),
+            '.'
+        );
+}
+
+$hoursModeValue =
+    trim(
+        (string) (
+            $form['hours_mode']
+            ?? ''
+        )
+    );
+
+if ($hoursModeValue === '') {
+    $hoursModeValue =
+        strtolower(
+            trim(
+                (string) (
+                    $form['hours_text']
+                    ?? ''
+                )
+            )
+        ) === '24 hours'
+            ? '24_hours'
+            : '24_hours';
+}
+
+$fixedOpenValue =
+    array_key_exists(
+        'fixed_open_hour',
+        $form
+    )
+        && $form['fixed_open_hour'] !== null
+        ? (string) $form['fixed_open_hour']
+        : '';
+
+$fixedCloseValue =
+    array_key_exists(
+        'fixed_close_hour',
+        $form
+    )
+        && $form['fixed_close_hour'] !== null
+        ? (string) $form['fixed_close_hour']
+        : '';
+
+$weeklyFormHours =
+    is_array(
+        $form['weekly_hours']
+        ?? null
+    )
+        ? $form['weekly_hours']
+        : (
+            is_array(
+                $resource['weekly_hours']
+                ?? null
+            )
+                ? $resource['weekly_hours']
+                : []
+        );
+
+$hourOptions =
+    llama_resource_hour_options();
+
+$weekdayLabels =
+    llama_resource_weekdays();
+
 $stats = admin_dashboard_stats($db);
 
 $adminNavCounts = [
@@ -450,10 +554,6 @@ $datetimeLocal =
                     </option>
                     <?php endforeach; ?>
                 </select>
-                <small>
-                    Choose the Service icon people should recognize on the map.
-                    It must also be checked under Services below.
-                </small>
             </label>
 
             <label>
@@ -476,43 +576,165 @@ $datetimeLocal =
             </label>
 
             <label>
-                <span>Latitude</span>
+                <span>GPS coordinates</span>
                 <input
-                    type="number"
-                    name="latitude"
-                    step="0.0000001"
-                    min="-90"
-                    max="90"
+                    type="text"
+                    name="coordinates"
                     required
-                    value="<?= $e($form['latitude'] ?? '') ?>"
-                    placeholder="37.2753000"
-                >
-            </label>
-
-            <label>
-                <span>Longitude</span>
-                <input
-                    type="number"
-                    name="longitude"
-                    step="0.0000001"
-                    min="-180"
-                    max="180"
-                    required
-                    value="<?= $e($form['longitude'] ?? '') ?>"
-                    placeholder="-107.8801000"
+                    value="<?= $e($coordinatesValue) ?>"
+                    placeholder="37.2694035, -107.9126176"
+                    inputmode="decimal"
+                    autocomplete="off"
                 >
             </label>
 
             <label>
                 <span>Hours</span>
-                <input
-                    type="text"
-                    name="hours_text"
-                    maxlength="255"
-                    value="<?= $e($form['hours_text'] ?? '') ?>"
-                    placeholder="24 hours"
+                <select
+                    name="hours_mode"
+                    data-resource-hours-mode
+                    required
                 >
+                    <?php foreach (
+                        llama_resource_hours_modes()
+                        as $value => $label
+                    ): ?>
+                    <option
+                        value="<?= $e($value) ?>"
+                        <?= $hoursModeValue === $value
+                            ? 'selected'
+                            : '' ?>
+                    >
+                        <?= $e($label) ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
             </label>
+
+            <div
+                class="admin-resource-hours-panel admin-resource-field-wide"
+                data-resource-hours-panel="fixed_hours"
+                <?= $hoursModeValue === 'fixed_hours' ? '' : 'hidden' ?>
+            >
+                <label>
+                    <span>Open</span>
+                    <select name="fixed_open_hour">
+                        <option value="">Choose time</option>
+                        <?php foreach ($hourOptions as $hour => $label): ?>
+                        <option
+                            value="<?= (int) $hour ?>"
+                            <?= $fixedOpenValue === (string) $hour
+                                ? 'selected'
+                                : '' ?>
+                        >
+                            <?= $e($label) ?>
+                        </option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+
+                <label>
+                    <span>Close</span>
+                    <select name="fixed_close_hour">
+                        <option value="">Choose time</option>
+                        <?php foreach ($hourOptions as $hour => $label): ?>
+                        <option
+                            value="<?= (int) $hour ?>"
+                            <?= $fixedCloseValue === (string) $hour
+                                ? 'selected'
+                                : '' ?>
+                        >
+                            <?= $e($label) ?>
+                        </option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+            </div>
+
+            <div
+                class="admin-resource-weekly-hours admin-resource-field-wide"
+                data-resource-hours-panel="varied_hours"
+                <?= $hoursModeValue === 'varied_hours' ? '' : 'hidden' ?>
+            >
+                <div class="admin-resource-weekly-heading">
+                    <span>Day</span>
+                    <span>Open</span>
+                    <span>Close</span>
+                </div>
+
+                <?php foreach ($weekdayLabels as $day => $dayLabel): ?>
+                <?php
+                $dayHours =
+                    is_array(
+                        $weeklyFormHours[$day]
+                        ?? null
+                    )
+                        ? $weeklyFormHours[$day]
+                        : [];
+
+                $dayOpen =
+                    array_key_exists(
+                        'open_hour',
+                        $dayHours
+                    )
+                        ? (string) $dayHours['open_hour']
+                        : '';
+
+                $dayClose =
+                    array_key_exists(
+                        'close_hour',
+                        $dayHours
+                    )
+                        ? (string) $dayHours['close_hour']
+                        : '';
+                ?>
+                <div class="admin-resource-weekly-row">
+                    <strong><?= $e($dayLabel) ?></strong>
+
+                    <label>
+                        <span class="sr-only">
+                            <?= $e($dayLabel) ?> open
+                        </span>
+                        <select
+                            name="weekly_hours[<?= (int) $day ?>][open_hour]"
+                        >
+                            <option value="">Choose</option>
+                            <?php foreach ($hourOptions as $hour => $label): ?>
+                            <option
+                                value="<?= (int) $hour ?>"
+                                <?= $dayOpen === (string) $hour
+                                    ? 'selected'
+                                    : '' ?>
+                            >
+                                <?= $e($label) ?>
+                            </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+
+                    <label>
+                        <span class="sr-only">
+                            <?= $e($dayLabel) ?> close
+                        </span>
+                        <select
+                            name="weekly_hours[<?= (int) $day ?>][close_hour]"
+                        >
+                            <option value="">Choose</option>
+                            <?php foreach ($hourOptions as $hour => $label): ?>
+                            <option
+                                value="<?= (int) $hour ?>"
+                                <?= $dayClose === (string) $hour
+                                    ? 'selected'
+                                    : '' ?>
+                            >
+                                <?= $e($label) ?>
+                            </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+                </div>
+                <?php endforeach; ?>
+            </div>
 
         </div>
 

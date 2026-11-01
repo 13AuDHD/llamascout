@@ -8,9 +8,19 @@ require_once __DIR__ . '/photo-upload.php';
 function admin_resources_tables_ready(PDO $db): bool
 {
     try {
-        $db->query('SELECT slug, marker_service_type FROM resources LIMIT 1');
+        $db->query(
+            'SELECT
+                slug,
+                marker_service_type,
+                hours_mode,
+                fixed_open_hour,
+                fixed_close_hour
+             FROM resources
+             LIMIT 1'
+        );
         $db->query('SELECT 1 FROM resource_services LIMIT 1');
         $db->query('SELECT 1 FROM resource_images LIMIT 1');
+        $db->query('SELECT 1 FROM resource_weekly_hours LIMIT 1');
         return true;
     } catch (Throwable) {
         return false;
@@ -290,35 +300,46 @@ function admin_resource_save(
         );
     }
 
-    $latitudeText =
+    $coordinates =
         trim(
             (string) (
-                $input['latitude']
+                $input['coordinates']
                 ?? ''
             )
         );
 
-    $longitudeText =
-        trim(
-            (string) (
-                $input['longitude']
-                ?? ''
+    $coordinateParts =
+        array_map(
+            'trim',
+            explode(
+                ',',
+                $coordinates
             )
         );
 
     if (
-        !llama_resource_coordinates_valid(
-            $latitudeText,
-            $longitudeText
+        count($coordinateParts) !== 2
+        || !llama_resource_coordinates_valid(
+            $coordinateParts[0] ?? null,
+            $coordinateParts[1] ?? null
         )
     ) {
         throw new InvalidArgumentException(
-            'Enter valid exact GPS coordinates for the Resource.'
+            'Enter GPS coordinates as latitude, longitude.'
         );
     }
 
-    $latitude = round((float) $latitudeText, 7);
-    $longitude = round((float) $longitudeText, 7);
+    $latitude =
+        round(
+            (float) $coordinateParts[0],
+            7
+        );
+
+    $longitude =
+        round(
+            (float) $coordinateParts[1],
+            7
+        );
 
     $status =
         trim(
@@ -409,13 +430,116 @@ function admin_resource_save(
         );
     }
 
+    $hoursMode =
+        trim(
+            (string) (
+                $input['hours_mode']
+                ?? ''
+            )
+        );
+
+    if (
+        !array_key_exists(
+            $hoursMode,
+            llama_resource_hours_modes()
+        )
+    ) {
+        throw new InvalidArgumentException(
+            'Choose a valid hours type.'
+        );
+    }
+
+    $fixedOpenHour = null;
+    $fixedCloseHour = null;
+    $weeklyHours = [];
+
+    $validateHour =
+        static function (
+            mixed $value,
+            string $label
+        ): int {
+            if (
+                !is_numeric($value)
+                || (int) $value < 0
+                || (int) $value > 23
+                || (string) (int) $value !== trim((string) $value)
+            ) {
+                throw new InvalidArgumentException(
+                    'Choose a valid time for ' . $label . '.'
+                );
+            }
+
+            return (int) $value;
+        };
+
+    if ($hoursMode === 'fixed_hours') {
+        $fixedOpenHour =
+            $validateHour(
+                $input['fixed_open_hour']
+                ?? null,
+                'opening time'
+            );
+
+        $fixedCloseHour =
+            $validateHour(
+                $input['fixed_close_hour']
+                ?? null,
+                'closing time'
+            );
+    }
+
+    if ($hoursMode === 'varied_hours') {
+        $submittedWeekly =
+            is_array(
+                $input['weekly_hours']
+                ?? null
+            )
+                ? $input['weekly_hours']
+                : [];
+
+        foreach (
+            llama_resource_weekdays()
+            as $day => $dayLabel
+        ) {
+            $row =
+                is_array(
+                    $submittedWeekly[$day]
+                    ?? null
+                )
+                    ? $submittedWeekly[$day]
+                    : [];
+
+            $weeklyHours[$day] = [
+                'open_hour' =>
+                    $validateHour(
+                        $row['open_hour']
+                        ?? null,
+                        $dayLabel . ' opening time'
+                    ),
+                'close_hour' =>
+                    $validateHour(
+                        $row['close_hour']
+                        ?? null,
+                        $dayLabel . ' closing time'
+                    ),
+            ];
+        }
+    }
+
+    $hoursText =
+        llama_resource_hours_summary([
+            'hours_mode' => $hoursMode,
+            'fixed_open_hour' => $fixedOpenHour,
+            'fixed_close_hour' => $fixedCloseHour,
+            'hours_text' => '',
+        ]);
+
     $fields = [
         'street_address' => 255,
         'city' => 120,
         'state_region' => 120,
         'postal_code' => 32,
         'phone' => 64,
-        'hours_text' => 255,
         'source_provider' => 160,
         'source_external_id' => 255,
     ];
@@ -477,6 +601,9 @@ function admin_resource_save(
                         phone,
                         website_url,
                         hours_text,
+                        hours_mode,
+                        fixed_open_hour,
+                        fixed_close_hour,
                         status,
                         notes,
                         source_provider,
@@ -488,7 +615,7 @@ function admin_resource_save(
                         updated_by
                      ) VALUES (
                         ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
                      )'
                 );
 
@@ -508,7 +635,10 @@ function admin_resource_save(
                 $countryCode ?: null,
                 $clean['phone'] ?: null,
                 $websiteUrl,
-                $clean['hours_text'] ?: null,
+                $hoursText,
+                $hoursMode,
+                $fixedOpenHour,
+                $fixedCloseHour,
                 $status,
                 $notes ?: null,
                 $clean['source_provider'] ?: null,
@@ -546,6 +676,9 @@ function admin_resource_save(
                          phone = ?,
                          website_url = ?,
                          hours_text = ?,
+                         hours_mode = ?,
+                         fixed_open_hour = ?,
+                         fixed_close_hour = ?,
                          status = ?,
                          notes = ?,
                          source_provider = ?,
@@ -574,7 +707,10 @@ function admin_resource_save(
                 $countryCode ?: null,
                 $clean['phone'] ?: null,
                 $websiteUrl,
-                $clean['hours_text'] ?: null,
+                $hoursText,
+                $hoursMode,
+                $fixedOpenHour,
+                $fixedCloseHour,
                 $status,
                 $notes ?: null,
                 $clean['source_provider'] ?: null,
@@ -636,6 +772,37 @@ function admin_resource_save(
                 $service['notes'] ?: null,
                 $sortOrder++,
             ]);
+        }
+
+        $deleteWeekly =
+            $db->prepare(
+                'DELETE FROM resource_weekly_hours
+                 WHERE resource_id = ?'
+            );
+
+        $deleteWeekly->execute([
+            $resourceId,
+        ]);
+
+        if ($hoursMode === 'varied_hours') {
+            $insertWeekly =
+                $db->prepare(
+                    'INSERT INTO resource_weekly_hours (
+                        resource_id,
+                        day_of_week,
+                        open_hour,
+                        close_hour
+                     ) VALUES (?, ?, ?, ?)'
+                );
+
+            foreach ($weeklyHours as $day => $row) {
+                $insertWeekly->execute([
+                    $resourceId,
+                    $day,
+                    $row['open_hour'],
+                    $row['close_hour'],
+                ]);
+            }
         }
 
         $db->commit();
