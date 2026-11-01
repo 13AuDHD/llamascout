@@ -189,6 +189,17 @@ foreach ($adminPlaceAreas as $area) {
         continue;
     }
 
+    $areaTarget = [
+        'scope' => 'area',
+        'source' => $source,
+        'id' => $scopeId,
+        'label' =>
+            (string) (
+                $area['label']
+                ?? ('Area #' . $scopeId)
+            ),
+    ];
+
     $adminPlacePhotoTargets[
         'area:'
         . $source
@@ -196,17 +207,21 @@ foreach ($adminPlaceAreas as $area) {
         . $scopeId
     ] = [
         'label' =>
-            (string) (
-                $area['label']
-                ?? ('Area #' . $scopeId)
-            ),
+            $areaTarget['label'],
 
         'scope' => 'area',
         'source' => $source,
         'id' => $scopeId,
-        'supported' => false,
-        'max' => 0,
-        'photos' => [],
+        'supported' => true,
+        'max' => 10,
+        'photos' =>
+            $serializePhotos(
+                admin_place_report_target_images(
+                    $db,
+                    $placeId,
+                    $areaTarget
+                )
+            ),
     ];
 }
 
@@ -324,7 +339,7 @@ $placeReportPhotoEndpoint = '/photo-upload.php';
 $placeReportPhotoCsrf = llama_photo_csrf_token();
 $placeReportPhotoMax = 10;
 $placeReportPhotoTitle = 'Place photos';
-$placeReportPhotoHelp = 'Add photos to the currently selected Place or Site.';
+$placeReportPhotoHelp = 'Add photos to the currently selected Place, Area, or Site.';
 ?>
 
 <?php if ($notice !== ''): ?>
