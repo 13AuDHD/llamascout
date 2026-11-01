@@ -1,0 +1,109 @@
+/* =========================================================
+   ADMIN PAGE: RESOURCES
+   Standalone V3 Resource + Service editor.
+   ========================================================= */
+
+.admin-resource-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.admin-resource-form-grid label,
+.admin-resource-service-table label {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+}
+
+.admin-resource-form-grid label > span {
+    color: var(--text-muted);
+    font-size: .68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.admin-resource-form-grid input,
+.admin-resource-form-grid select,
+.admin-resource-form-grid textarea,
+.admin-resource-service-table input,
+.admin-resource-service-table select {
+    width: 100%;
+}
+
+.admin-resource-form-grid textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.admin-resource-section-title {
+    margin: 22px 0 8px;
+}
+
+.admin-resource-section-copy {
+    margin: 0 0 12px;
+    color: var(--text-muted);
+}
+
+.admin-resource-service-table td:first-child label {
+    display: flex;
+    grid-template-columns: none;
+    align-items: center;
+    gap: 8px;
+}
+
+.admin-resource-service-table td:first-child input {
+    width: auto;
+}
+
+.admin-resource-service-notes {
+    display: grid;
+    gap: 6px;
+    min-width: 220px;
+}
+
+.admin-resource-gps {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.admin-resource-inactive {
+    opacity: .68;
+}
+
+@media (max-width: 760px) {
+    .admin-resource-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-resource-service-table,
+    .admin-resource-service-table tbody,
+    .admin-resource-service-table tr,
+    .admin-resource-service-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .admin-resource-service-table thead {
+        display: none;
+    }
+
+    .admin-resource-service-table tr {
+        padding: 12px 0;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .admin-resource-service-table td {
+        padding: 6px 0;
+    }
+
+    .admin-resource-service-table td::before {
+        content: attr(data-label);
+        display: block;
+        margin-bottom: 4px;
+        color: var(--text-muted);
+        font-size: .62rem;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+}
