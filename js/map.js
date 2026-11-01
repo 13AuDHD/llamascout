@@ -1175,6 +1175,30 @@ popupAnchor: [0, -42]
         return card;
     };
 
+    const resourcesInsideMap = () => {
+        const bounds =
+            map.getBounds();
+
+        return filteredResources.filter(
+            (resource) => {
+                const coordinates =
+                    resourceCoordinates(resource);
+
+                if (!coordinates) {
+                    return false;
+                }
+
+                return bounds.contains(
+                    L.latLng(
+                        coordinates[0],
+                        coordinates[1]
+                    )
+                );
+            }
+        );
+    };
+
+
     const renderAmenities = (place) => {
         const items = Object.entries(amenityLabels)
             .filter(([key]) => Number(place.amenities?.[key] || 0) === 1)
