@@ -61,6 +61,41 @@ $check('Public questions use one approved catalog', static function () use ($ass
     }
 });
 
+$check('Published Place uses latest canonical current answers', static function () use ($assert): void {
+    $old = [
+        'name' => 'Old name',
+        'rules' => [
+            'place_open_year_round' => '1',
+            'season_begins' => '05-01',
+        ],
+    ];
+    $current = [
+        'name' => [
+            'recorded' => true,
+            'state' => 'answered',
+            'value' => 'Latest approved name',
+        ],
+        'place_open_year_round' => [
+            'recorded' => true,
+            'state' => 'unknown',
+            'value' => null,
+        ],
+        'season_begins' => [
+            'recorded' => false,
+            'state' => 'unanswered',
+            'value' => null,
+        ],
+    ];
+    $data = llama_place_report_project_current_place_answers($old, $current);
+    $assert($data['name'] === 'Latest approved name', 'Old published name overrode current value');
+    $assert(llama_place_report_get_path($data, 'rules.place_open_year_round') === null,
+        'Unknown left behind the old Yes/No answer');
+    $assert(in_array('place_open_year_round', $data['_answer_state'], true),
+        'Explicit Unknown state was lost');
+    $assert(llama_place_report_get_path($data, 'rules.season_begins') === null,
+        'Unanswered question resurrected an old published value');
+});
+
 $check('Explicit unanswered is distinct from Unknown', static function () use ($fields, $assert): void {
     $u = llama_place_report_parse_answer($fields['daytime_noise'], llama_place_report_unknown_token());
     $n = llama_place_report_parse_answer($fields['daytime_noise'], llama_place_report_unanswered_token());
