@@ -64,6 +64,16 @@
 
             restoreItemVisibility();
 
+            // Temporary full-question inventory review: keep Place and Site
+            // question groups on screen for every selected context. Values
+            // still come from the authorized selected target.
+            if (report.dataset.questionInventoryReview === '1') {
+                for (const section of sections) {
+                    section.hidden = false;
+                }
+                return;
+            }
+
             if (scope === 'area') {
                 for (const section of sections) {
                     const sectionScopes =
