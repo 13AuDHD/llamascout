@@ -223,9 +223,9 @@ function llama_place_report_layout_assignments(): array
             'amenity_dishwashing_station',
             'amenity_recycling',
             'amenity_electricity',
-            'amenity_fishing_pier',
-            'amenity_lake_access',
             'amenity_river_access',
+            'amenity_lake_access',
+            'amenity_fishing_pier',
             'amenity_trailhead',
             'amenity_trailhead_parking',
             'amenity_camp_store',
@@ -247,8 +247,8 @@ function llama_place_report_layout_assignments(): array
 
         'place:seasonal_conditions' => [
             'best_months',
-            'hurricane_risk',
             'heat_season_risk',
+            'hurricane_risk',
         ],
 
         'place:connectivity_services' => [
