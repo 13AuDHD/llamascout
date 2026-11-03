@@ -30,7 +30,7 @@ function llama_scoped_report_validate_source(string $scope, string $source): voi
 
 function llama_scoped_report_field(string $key, string $scope): array
 {
-    $field = llama_place_report_fields()[$key] ?? null;
+    $field = llama_report_question($key);
 
     if (
         !is_array($field)
@@ -193,9 +193,14 @@ function llama_scoped_report_load(
         )
         as $row
     ) {
-        $answers[
-            (string) $row['field_key']
-        ] =
+        $rowKey = (string) $row['field_key'];
+        $field = llama_report_question($rowKey);
+        if (!is_array($field)
+            || !in_array($scope, (array) ($field['report_scopes'] ?? []), true)
+            || !empty($field['location_field'])) {
+            continue;
+        }
+        $answers[$rowKey] =
             json_decode(
                 (string) $row['value_json'],
                 true,
@@ -285,7 +290,7 @@ function llama_scoped_report_effective_answers_for_targets(PDO $db, int $placeId
             }
         }
     }
-    $fields = llama_place_report_fields();
+    $fields = llama_report_questions();
     $results = [];
     foreach ($targets as $target) {
         $scope = (string) $target['scope'];
@@ -339,7 +344,7 @@ function llama_scoped_report_display_values(
     }
 
     $definitions =
-        llama_place_report_fields();
+        llama_report_questions();
 
     $data =
         [];
