@@ -36,3 +36,6 @@ jobs:
       - name: Verify public Place photo access contract
         if: always()
         run: php tools/place-photo-access-smoke.php
+      - name: Verify canonical Place page access contract
+        if: always()
+        run: php tools/place-page-access-smoke.php
