@@ -24,8 +24,22 @@ $placeReportCanViewCommunity =
 $placeReportData =
     llama_place_report_data_from_published_place(
         $placeReportSource,
-        $publishedUnknown
+        []
     );
+
+if (empty($isDemoScoutReport) && !empty($placeReportSource['id'])) {
+    try {
+        $placeReportData =
+            llama_place_report_data_from_current_place(
+                db(),
+                $placeReportSource
+            );
+    } catch (Throwable $exception) {
+        // Keep the public Place readable if the current-answer store fails.
+        // Only approved questions can render in the shared read-only view.
+        llama_log_caught_exception($exception, 'scout-report.current-place');
+    }
+}
 
 $placeReportReadMode =
     'scout-report';
