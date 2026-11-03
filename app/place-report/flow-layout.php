@@ -15,8 +15,8 @@ require_once __DIR__ . '/approved-questions.php';
  *
  * This is the only grouping/order projection for the approved questionnaire.
  * Eligibility (Place/Area/Site, workflow storage, and dependencies) must be
- * resolved before calling this function. Unapproved legacy questions are
- * retained in a separate review group rather than silently discarded.
+ * resolved before calling this function. Unapproved definitions are not
+ * questions and cannot be assigned a display group.
  */
 function llama_place_report_group_eligible_questions(array $eligibleFields): array
 {
@@ -28,11 +28,7 @@ function llama_place_report_group_eligible_questions(array $eligibleFields): arr
             'fields' => [],
         ];
     }
-    $groups['additional_questions'] = [
-        'label' => 'Additional Questions',
-        'fields' => [],
-    ];
-
+    // Every visible question must belong to an approved group.
     /*
      * Group and position come from the finalized canonical field registry.
      * The editable form and public report must not independently reinterpret
@@ -44,7 +40,7 @@ function llama_place_report_group_eligible_questions(array $eligibleFields): arr
             empty($field['approved_question'])
             || !array_key_exists($group, $approved)
         ) {
-            $group = 'additional_questions';
+            continue;
         }
         $groups[$group]['fields'][$key] = $field;
     }
@@ -55,7 +51,11 @@ function llama_place_report_group_eligible_questions(array $eligibleFields): arr
             $positioned[] = [
                 'key' => $key,
                 'field' => $field,
-                'position' => (int) ($field['report_order'] ?? $field['approved_question_position'] ?? PHP_INT_MAX),
+                'position' => (int) (
+                    ($field['approved_question_position'] ?? PHP_INT_MAX) !== PHP_INT_MAX
+                        ? $field['approved_question_position']
+                        : ($field['report_order'] ?? PHP_INT_MAX)
+                ),
             ];
         }
         usort($positioned, static fn (array $a, array $b): int =>
@@ -546,32 +546,7 @@ function llama_place_report_apply_layout_metadata(
                 'Site size / capacity type';
         }
 
-        if (
-            in_array(
-                $key,
-                [
-                    'max_trailer_length_feet',
-                    'trailer_suitable',
-                    'rv_suitable',
-                    'tent_camping_suitable',
-                ],
-                true
-            )
-        ) {
-            /*
-             * Older Site suitability records remain available for review,
-             * without turning them into active contributor questions.
-             */
-            $field['layout_section'] =
-                'compatibility';
-
-            $field['layout_group'] =
-                'legacy_fit';
-
-            $field['counts_toward_completion'] =
-                false;
-
-        }
+        // Approved Site suitability questions retain their normal layout.
     }
 
     unset($field);
