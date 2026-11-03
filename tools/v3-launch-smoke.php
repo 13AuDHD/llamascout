@@ -42,11 +42,15 @@ $check('Only approved questions appear in the shared catalog', static function (
 });
 $check('Approved questions have shared layout metadata', static function () use ($assert): void {
     $layouts = llama_place_report_layout_groups();
+    $missing = [];
     foreach (llama_report_questions() as $key => $field) {
         $section = (string) ($field['layout_section'] ?? '');
         $group = (string) ($field['layout_group'] ?? '');
-        $assert(isset($layouts[$section][$group]), "Approved question lacks layout: $key ($section/$group)");
+        if (!isset($layouts[$section][$group])) {
+            $missing[] = "$key ($section/$group)";
+        }
     }
+    $assert(!$missing, 'Approved questions missing layout: ' . implode(', ', $missing));
 });
 $check('Public questions use one approved catalog', static function () use ($assert): void {
     $catalog = llama_report_questions();
