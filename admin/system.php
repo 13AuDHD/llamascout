@@ -413,6 +413,16 @@ if (isset($_GET['audit_answers']) || ($_POST['action'] ?? '') === 'prune_invalid
     }
 }
 
+$questionInventory = isset($_GET['question_inventory'])
+    ? llama_place_report_fields()
+    : null;
+$approvedQuestionGroups = $questionInventory !== null
+    ? llama_place_report_approved_question_groups()
+    : [];
+$approvedQuestionLookup = $questionInventory !== null
+    ? llama_place_report_approved_question_lookup()
+    : [];
+
 $testAccounts =
     admin_testing_accounts($db);
 
@@ -1218,6 +1228,129 @@ require __DIR__ . '/_header.php';
 
 </section>
 
+
+<section class="admin-panel" id="question-inventory">
+<header class="admin-panel-header">
+    <div>
+        <p>Scout Report testing</p>
+        <h2>Complete Question Inventory</h2>
+    </div>
+</header>
+<div class="admin-system-operation-body">
+    <p>
+        One unfiltered questionnaire for reviewing names, groups, order, answer
+        options and original ownership. Place type and parent answers do not
+        remove questions during this review. Existing answer storage and
+        permissions are not changed.
+    </p>
+    <p>
+        <a class="admin-button" href="/system.php?question_inventory=1#question-inventory">
+            Show every registered question and answer choice
+        </a>
+    </p>
+    <?php if (is_array($questionInventory)): ?>
+        <p>
+            <strong><?= number_format(count($approvedQuestionLookup)) ?></strong>
+            approved questions and
+            <strong><?= number_format(count(array_diff_key($questionInventory, $approvedQuestionLookup))) ?></strong>
+            additional registered definitions for review.
+            The additional definitions are not automatically approved or
+            published as live questions.
+        </p>
+        <?php foreach ($approvedQuestionGroups as $inventoryGroup => $inventoryDefinition): ?>
+            <?php
+                $inventoryKeys = (array) ($inventoryDefinition[1] ?? []);
+                $inventoryLabel = (string) ($inventoryDefinition[0] ?? $inventoryGroup);
+            ?>
+            <details>
+                <summary>
+                    <strong><?= moderation_e($inventoryLabel) ?></strong>
+                    (<?= number_format(count($inventoryKeys)) ?>)
+                </summary>
+                <?php foreach ($inventoryKeys as $inventoryKey): ?>
+                    <?php $inventoryField = $questionInventory[$inventoryKey] ?? null; ?>
+                    <details>
+                        <summary>
+                            <?= moderation_e((string) ($inventoryField['label'] ?? 'Missing field definition')) ?>
+                            <code><?= moderation_e((string) $inventoryKey) ?></code>
+                        </summary>
+                        <?php if ($inventoryField === null): ?>
+                            <p>Approved question has no registered definition.</p>
+                        <?php else: ?>
+                            <p>
+                                Input: <?= moderation_e((string) ($inventoryField['type'] ?? '')) ?>;
+                                original ownership:
+                                <?= moderation_e(implode(', ', (array) ($inventoryField['report_scopes'] ?? []))) ?>
+                            </p>
+                            <?php $inventoryOptions = (array) ($inventoryField['options'] ?? []); ?>
+                            <?php if ($inventoryOptions): ?>
+                                <p>Available answers:</p>
+                                <ul>
+                                    <?php foreach ($inventoryOptions as $optionKey => $optionLabel): ?>
+                                        <li>
+                                            <?= moderation_e(is_array($optionLabel)
+                                                ? json_encode($optionLabel, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+                                                : (string) $optionLabel) ?>
+                                            <code><?= moderation_e((string) $optionKey) ?></code>
+                                        </li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            <?php else: ?>
+                                <p><?= !empty($inventoryField['allow_unknown'])
+                                    ? 'Free entry or fixed answer scale; Unknown is supported.'
+                                    : 'Free entry or fixed answer scale.' ?></p>
+                            <?php endif; ?>
+                        <?php endif; ?>
+                    </details>
+                <?php endforeach; ?>
+            </details>
+        <?php endforeach; ?>
+        <?php $inventoryExtras = array_diff_key($questionInventory, $approvedQuestionLookup); ?>
+        <details>
+            <summary>
+                <strong>Registered definitions not in the approved questionnaire</strong>
+                (<?= number_format(count($inventoryExtras)) ?>)
+            </summary>
+            <p>
+                These are review candidates only, not automatically restored
+                questions. Choose which to add to the approved list and where.
+            </p>
+            <?php foreach ($inventoryExtras as $inventoryKey => $inventoryField): ?>
+                <details>
+                    <summary>
+                        <?= moderation_e((string) ($inventoryField['label'] ?? $inventoryKey)) ?>
+                        <code><?= moderation_e((string) $inventoryKey) ?></code>
+                    </summary>
+                    <p>
+                        Input: <?= moderation_e((string) ($inventoryField['type'] ?? '')) ?>;
+                        original ownership:
+                        <?= moderation_e(implode(', ', (array) ($inventoryField['report_scopes'] ?? []))) ?>
+                        <?= !empty($inventoryField['derived']) ? '; calculated/internal' : '' ?>
+                    </p>
+                    <?php foreach ((array) ($inventoryField['options'] ?? []) as $key => $label): ?>
+                        <p>
+                            <?= moderation_e(is_array($label)
+                                ? json_encode($label, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+                                : (string) $label) ?>
+                            <code><?= moderation_e((string) $key) ?></code>
+                        </p>
+                    <?php endforeach; ?>
+                </details>
+            <?php endforeach; ?>
+        </details>
+        <details>
+            <summary>Read-only official information</summary>
+            <?php foreach (llama_place_report_approved_source_fields() as $inventoryKey => $sourceField): ?>
+                <p>
+                    <?= moderation_e((string) ($sourceField['label'] ?? $inventoryKey)) ?>
+                    <code><?= moderation_e((string) $inventoryKey) ?></code>
+                    (official source, read-only)
+                </p>
+            <?php endforeach; ?>
+        </details>
+    <?php endif; ?>
+</div>
+</section>
 
 <section class="admin-panel" id="report-answer-audit">
 <header class="admin-panel-header">

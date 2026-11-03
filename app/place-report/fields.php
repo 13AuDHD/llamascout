@@ -5,6 +5,22 @@ declare(strict_types=1);
 /* Canonical field registry assembled from smaller section files. */
 
 /**
+ * Temporary full-question inventory review.
+ *
+ * Do not use Place type, conditional parent answers, or selected Site as
+ * reasons to hide questions during the owner's questionnaire audit.
+ * The original applicability rules remain in their source modules and can
+ * be reinstated by switching this off after review.
+ *
+ * This is a presentation/applicability switch, NOT a storage/scope migration.
+ * Existing permission checks and Place/Area/Site write ownership still apply.
+ */
+function llama_place_report_full_inventory_review_enabled(): bool
+{
+    return true;
+}
+
+/**
  * Retired question keys remain readable in historical records but do not
  * appear in active forms, completion, or moderation question inventories.
  * Retire a question here without deleting its historical answer data.
@@ -318,6 +334,16 @@ function llama_place_report_fields(): array
     // state-specific managers populated by the existing shared browser UI.
     $f['land_manager']['allow_custom'] = true;
     $f['land_type']['allow_custom'] = true;
+    // Keep every approved question visible regardless of Place type or
+    // conditional parent answers during the question inventory review.
+    // Original rule definitions remain untouched in their individual modules.
+    if (llama_place_report_full_inventory_review_enabled()) {
+        foreach ($f as &$field) {
+            $field['applicable_if'] = [];
+        }
+        unset($field);
+    }
+
     // Never synthesize extra answers into retired storage columns.
     return $registry = $f;
 }

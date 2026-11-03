@@ -40,6 +40,35 @@ $check('Only approved questions appear in the shared catalog', static function (
         }
     }
 });
+$check('Full inventory review shows approved questions across Place types', static function () use ($assert): void {
+    $assert(llama_place_report_full_inventory_review_enabled(), 'Inventory review is not enabled');
+    $catalog = llama_report_questions();
+    foreach (['heat_season_risk', 'amenity_river_access', 'amenity_lake_access',
+        'amenity_campground_host', 'site_hookups_available', 'hookup_electric_service'] as $key) {
+        $assert(isset($catalog[$key]), 'Missing approved inventory question: ' . $key);
+    }
+    foreach ($catalog as $key => $field) {
+        $assert((array) ($field['applicable_if'] ?? []) === [],
+            'Condition still hides a question: ' . $key);
+        $assert(llama_place_report_question_applicable(['type' => 'dispersed-camping'], $key),
+            'Dispersed Place hides question: ' . $key);
+        $assert(llama_place_report_question_applicable(['type' => 'campground'], $key),
+            'Campground hides question: ' . $key);
+    }
+    $groups = llama_place_report_approved_question_groups();
+    $seasonal = (array) $groups['seasonal_access'][1];
+    $hot = array_search('heat_season_risk', $seasonal, true);
+    $hurricane = array_search('hurricane_risk', $seasonal, true);
+    $seasonEnd = array_search('approach_reopening_day', $seasonal, true);
+    $assert($hot === $seasonEnd + 1 && $hurricane === $hot + 1,
+        'Heat Season Risk is not immediately before Hurricane Risk after Season Ends');
+    $amenities = (array) $groups['amenities'][1];
+    $pier = array_search('amenity_fishing_pier', $amenities, true);
+    $assert($amenities[$pier - 2] === 'amenity_river_access'
+        && $amenities[$pier - 1] === 'amenity_lake_access',
+        'River/Lake Access must appear immediately before Fishing Pier');
+});
+
 $check('Approved questions have shared layout metadata', static function () use ($assert): void {
     $layouts = llama_place_report_layout_groups();
     $missing = [];

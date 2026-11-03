@@ -1310,6 +1310,7 @@ $renderCompoundField =
 <script
     type="application/json"
     data-place-report-schema-config
+    data-inventory-review="<?= llama_place_report_full_inventory_review_enabled() ? '1' : '0' ?>"
 ><?= json_encode(
     $placeReportBrowserConfig,
     JSON_UNESCAPED_SLASHES

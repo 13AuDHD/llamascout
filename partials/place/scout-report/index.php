@@ -62,6 +62,7 @@ $compareReportHistoryUrl =
 <section
     class="scout-report"
     aria-labelledby="scout-report-heading"
+    data-question-inventory-review="<?= llama_place_report_full_inventory_review_enabled() ? '1' : '0' ?>"
 >
     <header class="scout-report-header">
         <div>
