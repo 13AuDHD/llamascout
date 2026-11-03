@@ -659,8 +659,7 @@
 }
 
 .map-popup-location,
-.map-popup-hours,
-.map-popup-exact {
+.map-popup-hours {
     color: rgba(255, 255, 255, .88);
     font-size: .76rem;
     font-weight: 700;
@@ -668,15 +667,13 @@
     text-shadow: 0 1px 5px rgba(0, 0, 0, .75);
 }
 
-.map-popup-location,
-.map-popup-exact {
+.map-popup-location {
     display: inline-flex;
     align-items: center;
     gap: 5px;
 }
 
-.map-popup-location .llama-icon-mask,
-.map-popup-exact .llama-icon-mask {
+.map-popup-location .llama-icon-mask {
     flex: 0 0 auto;
     color: currentColor;
 }

@@ -991,15 +991,6 @@ popupAnchor: [0, -42]
                             : ''
                     }
 
-                    <span class="map-popup-exact">
-                        <i
-                            class="llama-icon-mask"
-                            style="--llama-icon-mask:url('/assets/icons/current-location.svg')"
-                            aria-hidden="true"
-                        ></i>
-                        Stored location
-                    </span>
-
                     <a
                         class="map-popup-action"
                         href="${placeUrl(place)}"
@@ -1100,15 +1091,6 @@ popupAnchor: [0, -42]
                             `
                             : ''
                     }
-
-                    <span class="map-popup-exact">
-                        <i
-                            class="llama-icon-mask"
-                            style="--llama-icon-mask:url('/assets/icons/current-location.svg')"
-                            aria-hidden="true"
-                        ></i>
-                        Resource location
-                    </span>
 
                     ${
                         resource.slug
