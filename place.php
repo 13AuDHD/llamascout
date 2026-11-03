@@ -146,36 +146,30 @@ $place =
     null;
 
 if ($slug !== '') {
-    if ($hasGlobalCompleteAccess) {
-        $place =
-            place_member_by_slug(
-                $slug
-            );
-    } else {
-        $place =
-            place_public_by_slug(
-                $slug
-            );
+    /*
+     * One authorized Place presentation model for every viewer.
+     * Place-level visibility is enforced inside the loader before the
+     * structurally complete object is hydrated.
+     */
+    $place =
+        place_presentation_by_slug(
+            $slug
+        );
 
-        if (
-            $place
-            && $userId > 0
-            && user_has_place_complete_access(
-                (int) $place['id'],
-                $userId
-            )
-        ) {
-            $hasEarnedPlaceAccess =
-                true;
+    if (
+        $place
+        && !$hasGlobalCompleteAccess
+        && $userId > 0
+        && user_has_place_complete_access(
+            (int) $place['id'],
+            $userId
+        )
+    ) {
+        $hasEarnedPlaceAccess =
+            true;
 
-            $hasCompleteAccess =
-                true;
-
-            $place =
-                place_member_by_slug(
-                    $slug
-                );
-        }
+        $hasCompleteAccess =
+            true;
     }
 }
 
@@ -236,29 +230,6 @@ $placeReportCanViewCommunity =
  */
 $placeReportSource =
     $place;
-
-if (!$hasCompleteAccess) {
-    try {
-        $completePublishedPlace =
-            place_member_by_slug(
-                $slug
-            );
-
-        if (
-            $completePublishedPlace
-            && (int) ($completePublishedPlace['id'] ?? 0)
-                === (int) ($place['id'] ?? 0)
-        ) {
-            $placeReportSource =
-                $completePublishedPlace;
-        }
-    } catch (Throwable $exception) {
-        llama_log_caught_exception(
-            $exception,
-            'place.canonical_report_source'
-        );
-    }
-}
 
 $isSaved =
     $userId > 0
@@ -526,11 +497,7 @@ $reportCompleteness = [
 
 try {
     $completionSourcePlace =
-        $hasCompleteAccess
-            ? $place
-            : place_member_by_slug(
-                (string) $place['slug']
-            );
+        $place;
 
     if ($completionSourcePlace) {
         $publishedUnknownFields =

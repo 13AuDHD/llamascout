@@ -437,6 +437,167 @@ function places_map(
 }
 
 
+function place_presentation_by_slug(
+    string $slug
+): ?array {
+    $canViewDemo =
+        llama_partner_demo_viewer_can_access();
+
+    $visibilitySql =
+        llama_partner_demo_visibility_sql(
+            $canViewDemo,
+            'p'
+        );
+
+    $locationVisibilitySql =
+        llama_place_visibility_sql('p');
+
+    $demoExistsSql =
+        llama_partner_demo_exists_sql(
+            'p'
+        );
+
+    $stmt = db()->prepare(
+        "
+        SELECT
+            p.id,
+            p.slug,
+            p.name,
+            p.type,
+            p.status,
+            p.source_type,
+            p.description,
+
+            p.latitude,
+            p.longitude,
+            p.elevation_feet,
+            p.road,
+
+            p.city,
+            p.county,
+            p.state,
+            p.region,
+            p.land_manager,
+            p.land_type,
+
+            p.sensory_summary,
+            p.access_summary,
+
+            p.last_verified_at,
+            p.last_field_checked_on,
+            p.published_at,
+
+            CASE
+                WHEN $demoExistsSql
+                THEN 1
+                ELSE 0
+            END AS is_demo
+
+        FROM places p
+
+        WHERE p.slug = ?
+          AND $visibilitySql
+          AND $locationVisibilitySql
+
+        LIMIT 1
+        "
+    );
+
+    $stmt->execute([
+        $slug,
+    ]);
+
+    $place =
+        $stmt->fetch(
+            PDO::FETCH_ASSOC
+        );
+
+    if (!$place) {
+        return null;
+    }
+
+    $place =
+        places_normalize_single_county(
+            $place
+        );
+
+    $place['is_demo'] =
+        (int) (
+            $place['is_demo']
+            ?? 0
+        );
+
+    $place['coordinate_status'] =
+        llama_coordinate_status(
+            $place['latitude'] ?? null,
+            $place['longitude'] ?? null,
+            $place['last_verified_at'] ?? null
+        );
+
+    $placeId =
+        (int) $place['id'];
+
+    /*
+     * This is the canonical presentation model for the Place page.
+     * It always hydrates the same structural object after the Place-level
+     * visibility boundary succeeds. Rendering code decides which individual
+     * values/actions are public, locked, or interactive for the viewer.
+     */
+    $place['images'] =
+        place_gallery_images(
+            $placeId
+        );
+
+    $place['featured_image'] =
+        $place['images'][0]
+        ?? place_public_featured_image(
+            $placeId
+        );
+
+    $place['amenities'] =
+        place_public_amenities(
+            $placeId
+        );
+
+    $place['details'] =
+        place_member_row(
+            'place_details',
+            $placeId
+        );
+
+    $place['connectivity'] =
+        place_member_row(
+            'place_connectivity',
+            $placeId
+        );
+
+    $place['sensory_details'] =
+        place_member_row(
+            'place_sensory_details',
+            $placeId
+        );
+
+    $place['rules'] =
+        place_member_row(
+            'place_rules',
+            $placeId
+        );
+
+    $place['experience'] =
+        place_member_row(
+            'place_experience',
+            $placeId
+        );
+
+    $place['sensory'] =
+        place_member_sensory(
+            $placeId
+        );
+
+    return $place;
+}
+
+
 function place_public_by_slug(
     string $slug
 ): ?array {
