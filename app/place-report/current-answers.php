@@ -420,7 +420,20 @@ function llama_place_report_data_from_current_place(
         $place,
         llama_place_report_published_answer_state($db, $placeId)
     );
-    $answers = llama_place_report_current_place_answers($db, $placeId);
+    return llama_place_report_project_current_place_answers(
+        $data,
+        llama_place_report_current_place_answers($db, $placeId)
+    );
+}
+
+/**
+ * Pure projection shared by public rendering and regression tests.
+ * Missing and Unknown current answers never resurrect older published values.
+ */
+function llama_place_report_project_current_place_answers(
+    array $data,
+    array $answers
+): array {
     $unknownKeys = [];
 
     foreach (llama_report_questions() as $key => $field) {
