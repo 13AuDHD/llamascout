@@ -80,6 +80,16 @@ function llama_place_report_add_site_fields(
         'points_categories' => ['site_vehicle'],
     ]);
 
+    $add('max_rv_length_feet', 'Maximum RV / trailer length', 'site_vehicle', 'select', 'details.max_rv_length_feet', [
+        'options' => [
+            '15' => 'About 15 ft', '20' => 'About 20 ft', '25' => 'About 25 ft',
+            '30' => 'About 30 ft', '35' => 'About 35 ft', '40' => 'About 40 ft',
+            '45' => 'About 45 ft', '50' => 'About 50 ft', '60' => '50+ ft',
+        ],
+        'allow_unknown' => true,
+        'points_categories' => ['site_vehicle'],
+    ]);
+
     $add('parking_surface', 'Parking surface', 'site_vehicle', 'select', 'details.parking_surface', [
         'options' => llama_place_report_surface_options(),
         'allow_unknown' => true,
