@@ -307,10 +307,9 @@ function llama_place_report_layout_assignments(): array
 
         'place:operating_closures' => [
             'place_open_year_round',
-            'place_operating_start_month',
-            'place_operating_start_day',
-            'place_operating_end_month',
-            'place_operating_end_day',
+            'seasonal_closure',
+            'season_begins',
+            'season_ends',
             'place_open_24_hours',
             'place_opening_time',
             'place_closing_time',
