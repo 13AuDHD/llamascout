@@ -21,9 +21,14 @@ require_once dirname(__DIR__, 2) . '/app/place-report.php';
 
 $publicFactGroups = [];
 try {
-    // Read the same published answers members see, but render only explicitly
-    // public, Place-owned questions. No private value enters HTML or JS.
-    $publishedPlace = place_member_by_slug((string) ($place['slug'] ?? ''));
+    // Use the already-authorized canonical Place presentation object, then
+    // render only explicitly public, Place-owned questions. No private value
+    // enters HTML or JS.
+    $publishedPlace =
+        is_array($placeReportSource ?? null)
+            ? $placeReportSource
+            : $place;
+
     if ($publishedPlace) {
         $placeId = (int) ($place['id'] ?? 0);
         $states = llama_place_report_published_answer_state(db(), $placeId);
