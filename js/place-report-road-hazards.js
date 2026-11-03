@@ -46,12 +46,15 @@
     }
 
     function refresh() {
+      const inventoryReview =
+        document.querySelector('[data-place-report-schema-config]')?.dataset.inventoryReview === '1';
       const selected = new Set(hazards.filter(el => el.checked).map(el => el.value));
       const noneOrUnknown = [...SPECIAL].some(v => selected.has(v));
       HAZARDS.forEach(key => {
         const card = fieldCard(key);
         if (!card) return;
-        card.hidden = noneOrUnknown || !selected.has(key);
+        // During question inventory review, no parent answer hides a question.
+        card.hidden = !inventoryReview && (noneOrUnknown || !selected.has(key));
       });
     }
 
