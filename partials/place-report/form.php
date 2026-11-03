@@ -1331,15 +1331,10 @@ $renderCompoundField =
 /* Exactly three top-level sections; nested groups reuse canonical field renderers. */
 $reportLayoutGroups = llama_place_report_layout_groups();
 
-$reportLayoutGroups['legacy_review'] = [
-    'review' => 'Questions for Review',
-];
-
 $reportMainLabels = [
     'getting_there' => ['Getting There', 'road'],
     'place' => ['Place', 'info-circle'],
     'site' => ['Site', 'camper'],
-    'legacy_review' => ['Legacy Review', 'info-circle'],
 ];
 
 $placeReportVisibleFields = [];
@@ -1377,8 +1372,10 @@ foreach ($placeReportFields as $fieldKey => $field) {
             $reportLayoutGroups[$section]
         )
     ) {
-        $field['layout_section'] = 'legacy_review';
-        $field['layout_group'] = 'review';
+        // Never invent an extra section to display a misplaced question.
+        // The catalog audit reports missing approved layout metadata.
+        error_log('Llama Scout: approved question has no shared layout: ' . $fieldKey);
+        continue;
     }
 
     $placeReportVisibleFields[$fieldKey] = $field;
