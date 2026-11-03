@@ -1,8 +1,8 @@
 name: V3 Reporting Smoke Tests
 
 on:
-  push:
-    branches: [v3-development]
+  pull_request:
+    branches: [main]
     paths:
       - '.github/workflows/v3-reporting-smoke.yml'
       - 'tools/v3-launch-smoke.php'
