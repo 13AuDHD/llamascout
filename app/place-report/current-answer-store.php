@@ -104,7 +104,7 @@ function llama_report_current_store_save(
 /** Decode one V3 row consistently for single-target and bulk readers. */
 function llama_report_current_store_decode(array $row, string $scope): ?array
 {
-    $field = llama_place_report_fields()[(string) $row['question_key']] ?? null;
+    $field = llama_report_question((string) $row['question_key']);
     if (!is_array($field) || !empty($field['derived'])
         || !in_array($scope, (array) ($field['report_scopes'] ?? []), true)) {
         return null;
