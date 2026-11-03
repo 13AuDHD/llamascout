@@ -48,6 +48,11 @@ $publicAreaApi =
         $root . '/api/place-map-public-areas.php'
     );
 
+$publicScoutFacts =
+    file_get_contents(
+        $root . '/partials/place/public-scout-facts.php'
+    );
+
 $sitemap =
     file_get_contents(
         $root . '/sitemap.php'
@@ -71,6 +76,18 @@ place_page_assert(
         'place_member_by_slug('
     ),
     'Place page no longer selects public/member Place loaders.'
+);
+
+place_page_assert(
+    !str_contains(
+        $publicScoutFacts,
+        'place_member_by_slug('
+    )
+    && str_contains(
+        $publicScoutFacts,
+        '$placeReportSource'
+    ),
+    'Public Scout facts reuse the canonical Place presentation source.'
 );
 
 place_page_assert(
