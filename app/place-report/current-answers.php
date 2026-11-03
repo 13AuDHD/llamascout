@@ -398,6 +398,57 @@ function llama_place_report_current_place_answers(
 }
 
 /**
+ * Build one Place display/scoring data model from current approved answers.
+ *
+ * Preserve the Place presentation object (photos, official source details,
+ * navigation data), but make question answers and Unknown states come from
+ * the exact same winner selection used by Admin/Area/Site current reads.
+ *
+ * A published column is still considered when a newer store row is absent,
+ * so existing test Places keep their approved facts during cutover.
+ */
+function llama_place_report_data_from_current_place(
+    PDO $db,
+    array $place
+): array {
+    $placeId = (int) ($place['id'] ?? 0);
+    if ($placeId < 1) {
+        throw new InvalidArgumentException('Invalid Place for report display.');
+    }
+
+    $data = llama_place_report_data_from_published_place(
+        $place,
+        llama_place_report_published_answer_state($db, $placeId)
+    );
+    $answers = llama_place_report_current_place_answers($db, $placeId);
+    $unknownKeys = [];
+
+    foreach (llama_report_questions() as $key => $field) {
+        if (!in_array('place', (array) ($field['report_scopes'] ?? []), true)) {
+            continue;
+        }
+        $answer = $answers[$key] ?? null;
+        $path = (string) ($field['storage'] ?? '');
+        if ($path === '') {
+            continue;
+        }
+        if (!is_array($answer) || empty($answer['recorded'])) {
+            llama_place_report_set_path($data, $path, null);
+            continue;
+        }
+
+        if (($answer['state'] ?? '') === 'unknown') {
+            $unknownKeys[] = (string) $key;
+            llama_place_report_set_path($data, $path, null);
+            continue;
+        }
+        llama_place_report_set_path($data, $path, $answer['value']);
+    }
+    $data['_answer_state'] = $unknownKeys;
+    return $data;
+}
+
+/**
  * Build effective Area or Site current-answer envelopes.
  *
  * The supplied target is reverified against the Place before reading.
