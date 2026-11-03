@@ -500,16 +500,10 @@ try {
         $place;
 
     if ($completionSourcePlace) {
-        $publishedUnknownFields =
-            llama_place_report_published_answer_state(
-                $db,
-                (int) $place['id']
-            );
-
         $completionData =
-            llama_place_report_data_from_published_place(
-                $completionSourcePlace,
-                $publishedUnknownFields
+            llama_place_report_data_from_current_place(
+                $db,
+                $completionSourcePlace
             );
 
         $completionPhotos =
