@@ -22,6 +22,45 @@ $check('Registry loaded', static function () use ($fields, $assert): void {
     $assert(count($fields) > 100, 'Expected canonical field inventory');
     $assert(isset($fields['daytime_noise'], $fields['nighttime_noise'], $fields['site_length_feet']), 'Missing core questions');
 });
+$check('Only approved questions appear in the shared catalog', static function () use ($fields, $assert): void {
+    $catalog = llama_report_questions();
+    $assert(isset($catalog['max_rv_length_feet']), 'Approved maximum RV length is missing');
+    $assert(isset($catalog['rv_suitable'], $catalog['tent_camping_suitable']),
+        'Approved Site suitability questions are missing');
+    $assert(!isset($catalog['max_trailer_length_feet']), 'Retired trailer-length question is visible');
+    $assert(!isset($catalog['trailer_suitable']), 'Unapproved trailer suitability is visible');
+    foreach ($catalog as $key => $field) {
+        $assert(!empty($field['approved_question']) && empty($field['derived']),
+            "Non-approved question in catalog: $key");
+    }
+    foreach (llama_report_group_selected_questions($fields) as $group => $definition) {
+        $assert($group !== 'additional_questions', 'Extra question group was returned');
+        foreach ($definition['fields'] as $key => $_field) {
+            $assert(isset($catalog[$key]), "Unapproved grouped question: $key");
+        }
+    }
+});
+$check('Approved questions have shared layout metadata', static function () use ($assert): void {
+    $layouts = llama_place_report_layout_groups();
+    $missing = [];
+    foreach (llama_report_questions() as $key => $field) {
+        $section = (string) ($field['layout_section'] ?? '');
+        $group = (string) ($field['layout_group'] ?? '');
+        if (!isset($layouts[$section][$group])) {
+            $missing[] = "$key ($section/$group)";
+        }
+    }
+    $assert(!$missing, 'Approved questions missing layout: ' . implode(', ', $missing));
+});
+$check('Public questions use one approved catalog', static function () use ($assert): void {
+    $catalog = llama_report_questions();
+    foreach (llama_report_public_question_groups() as $definition) {
+        foreach ($definition[1] as $key) {
+            $assert(isset($catalog[$key]), "Public question absent from approved catalog: $key");
+        }
+    }
+});
+
 $check('Explicit unanswered is distinct from Unknown', static function () use ($fields, $assert): void {
     $u = llama_place_report_parse_answer($fields['daytime_noise'], llama_place_report_unknown_token());
     $n = llama_place_report_parse_answer($fields['daytime_noise'], llama_place_report_unanswered_token());

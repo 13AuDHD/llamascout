@@ -259,7 +259,7 @@ if (!$stayViewerHasCompleteAccess) {
 }
 
 $stayReportFields =
-    llama_place_report_fields();
+    llama_report_questions();
 
 $stayAreas = [];
 

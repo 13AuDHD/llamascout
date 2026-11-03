@@ -13,7 +13,14 @@ declare(strict_types=1);
 /** @return array<string,array<string,mixed>> */
 function llama_report_questions(): array
 {
-    return llama_place_report_fields();
+    // Only approved PDF questions and explicitly registered V3 additions
+    // may appear in forms, public pages, moderation or current-answer reads.
+    return array_filter(
+        llama_place_report_fields(),
+        static fn (array $field): bool =>
+            !empty($field['approved_question'])
+            && empty($field['derived'])
+    );
 }
 
 /** Return the same question identity to forms, moderators and readers. */

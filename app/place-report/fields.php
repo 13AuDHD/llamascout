@@ -318,16 +318,7 @@ function llama_place_report_fields(): array
     // state-specific managers populated by the existing shared browser UI.
     $f['land_manager']['allow_custom'] = true;
     $f['land_type']['allow_custom'] = true;
-    $mirrors = [
-        'road_overall_difficulty' => ['details.road_difficulty', 'identity'],
-        'best_months' => ['rules.recommended_travel_season', 'identity'],
-        'experience_quiet_evening' => ['experience.recommended_quiet_evening', 'recommendation'],
-        'experience_sensory_retreat' => ['experience.recommended_sensory_retreat', 'recommendation'],
-        'experience_stargazing' => ['experience.recommended_stargazing', 'recommendation'],
-    ];
-    foreach ($mirrors as $key => [$storage, $transform]) {
-        $f[$key]['compatibility_mirror'] = ['storage' => $storage, 'transform' => $transform];
-    }
+    // Never synthesize extra answers into retired storage columns.
     return $registry = $f;
 }
 
@@ -343,6 +334,9 @@ function llama_place_report_field_by_storage(string $storage): ?array
     if ($index === null) {
         $index = [];
         foreach (llama_place_report_fields() as $field) {
+            if (empty($field['approved_question']) || !empty($field['derived'])) {
+                continue;
+            }
             $path = (string) ($field['storage'] ?? '');
             if ($path !== '' && !array_key_exists($path, $index)) {
                 $index[$path] = $field;
@@ -391,6 +385,10 @@ function llama_place_report_published_definitions(): array
         llama_place_report_fields()
         as $key => $field
     ) {
+        if (empty($field['approved_question']) || !empty($field['derived'])) {
+            continue;
+        }
+
         $storageDefinition =
             llama_place_report_storage_definition(
                 $field

@@ -38,7 +38,7 @@ function llama_place_report_apply_form_cleanup_metadata(array &$fields): void
             continue;
         }
         $fields[$key]['layout_section'] = 'place';
-        $fields[$key]['layout_group'] = 'operating';
+        $fields[$key]['layout_group'] = 'operating_closures';
         $fields[$key]['derived'] = false;
         $fields[$key]['counts_toward_completion'] = true;
         $fields[$key]['points_categories'] = ['seasons_rules_services'];
@@ -49,7 +49,7 @@ function llama_place_report_apply_form_cleanup_metadata(array &$fields): void
     if (isset($fields['seasonal_closure'])) {
         $fields['seasonal_closure']['label'] = 'Entire Place closes seasonally?';
         $fields['seasonal_closure']['layout_section'] = 'place';
-        $fields['seasonal_closure']['layout_group'] = 'operating';
+        $fields['seasonal_closure']['layout_group'] = 'operating_closures';
         $fields['seasonal_closure']['derived'] = false;
         $fields['seasonal_closure']['counts_toward_completion'] = true;
     }

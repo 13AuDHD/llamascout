@@ -298,7 +298,7 @@ function llama_place_report_form_input_from_data(array $data): array
 {
     $input = [];
 
-    foreach (llama_place_report_fields() as $key => $field) {
+    foreach (llama_report_questions() as $key => $field) {
         $value =
             llama_place_report_form_value_from_data(
                 $data,
@@ -361,7 +361,7 @@ function llama_place_report_build_data(
 
     $unknownFields = [];
 
-    foreach (llama_place_report_fields() as $key => $field) {
+    foreach (llama_report_questions() as $key => $field) {
         $type = (string) $field['type'];
         if (!empty($field['derived'])) { continue; }
 
@@ -846,7 +846,7 @@ function llama_place_report_completion_items(
         );
 
     foreach (
-        llama_place_report_fields()
+        llama_report_questions()
         as $fieldKey => $field
     ) {
         $fieldKey =
@@ -1087,9 +1087,7 @@ function llama_place_report_display_value(
     array $data,
     string $fieldKey
 ): ?string {
-    $field =
-        llama_place_report_fields()[$fieldKey]
-        ?? null;
+    $field = llama_report_question($fieldKey);
 
     if (!$field) {
         return null;

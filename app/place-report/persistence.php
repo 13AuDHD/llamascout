@@ -71,7 +71,7 @@ function llama_place_report_current_value(PDO $db, int $placeId, string $path, b
 function llama_place_report_publish_data(PDO $db, int $placeId, array $data, array $keys): void
 {
     if (!$db->inTransaction()) { throw new RuntimeException('Report publication requires an active transaction.'); }
-    $fields = llama_place_report_fields();
+    $fields = llama_report_questions();
     $paths = [];
     $unknown = llama_place_report_unknown_fields($data);
     $writeUnified = llama_report_current_store_available($db);
@@ -108,7 +108,7 @@ function llama_place_report_submission_answers(array $data): array
     $placeKeys = [];
     $siteAnswers = [];
 
-    foreach (llama_place_report_fields() as $key => $field) {
+    foreach (llama_report_questions() as $key => $field) {
         $path = (string) $field['storage'];
         if (!llama_place_report_has_path($data, $path) || !empty($field['derived'])) { continue; }
 

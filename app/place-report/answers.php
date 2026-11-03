@@ -323,7 +323,7 @@ function llama_place_report_fields_for_scope(string $scope): array
     if (!in_array($scope, ['place','area','site'], true)) {
         throw new InvalidArgumentException('Invalid reporting scope.');
     }
-    return array_filter(llama_place_report_fields(), static fn(array $field): bool =>
+    return array_filter(llama_report_questions(), static fn(array $field): bool =>
         empty($field['derived']) && in_array($scope, (array) $field['report_scopes'], true));
 }
 
@@ -346,7 +346,7 @@ function llama_scoped_report_values_from_data(array $data): array
     $values = [];
 
     foreach (
-        llama_place_report_fields()
+        llama_report_questions()
         as $fieldKey => $field
     ) {
         $fieldKey =
@@ -384,13 +384,13 @@ function llama_scoped_report_values_from_data(array $data): array
 function llama_place_report_expand_presence(array $input): array
 {
     foreach ((array) ($input['_report_present'] ?? []) as $key => $present) {
-        $field = llama_place_report_fields()[$key] ?? null;
+        $field = llama_report_question((string) $key);
         if (!$field || array_key_exists($key, $input) || (string) $present !== '1') { continue; }
         if ($field['type'] === 'checkbox') { $input[$key] = '0'; }
         if ($field['type'] === 'multiselect') { $input[$key] = []; }
     }
     foreach ((array) ($input['_report_unknown'] ?? []) as $key => $selected) {
-        $field = llama_place_report_fields()[$key] ?? null;
+        $field = llama_report_question((string) $key);
         if ($field && !empty($field['allow_unknown']) && (string) $selected === '1') {
             $input[$key] = llama_place_report_unknown_token();
         }
@@ -454,7 +454,7 @@ function llama_place_report_changed_keys(array $before, array $after, array $key
 {
     $changed = [];
     foreach ($keys as $key) {
-        $field = llama_place_report_fields()[$key] ?? null;
+        $field = llama_report_question((string) $key);
         if (!$field) { continue; }
         if (llama_place_report_answer_state($before, $key) !== llama_place_report_answer_state($after, $key)
             || !llama_place_report_values_equal(llama_place_report_get_path($before, $field['storage']),

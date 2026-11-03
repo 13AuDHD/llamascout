@@ -8,6 +8,7 @@ require_once dirname(__DIR__) . '/app/admin-system.php';
 require_once dirname(__DIR__) . '/app/admin-maintenance-console.php';
 require_once dirname(__DIR__) . '/app/printful-webhook-security.php';
 require_once dirname(__DIR__) . '/app/admin-testing.php';
+require_once dirname(__DIR__) . '/app/place-report/diagnostics.php';
 require_once __DIR__ . '/_dashboard.php';
 
 $adminUser = moderation_require_admin();
@@ -107,7 +108,14 @@ if (
                 )
             );
 
-            if ($action === 'run_maintenance_worker') {
+            if ($action === 'prune_invalid_report_answers') {
+                if (!$actorIsOwner) {
+                    throw new RuntimeException('Only the Owner may remove obsolete current answers.');
+                }
+                $removed = llama_report_prune_invalid_current_answers($db);
+                $notice = 'Removed ' . number_format($removed)
+                    . ' obsolete current-answer rows. Approved answers and immutable report history were not changed.';
+            } elseif ($action === 'run_maintenance_worker') {
                 $run =
                     admin_maintenance_console_run_worker(
                         $db,
@@ -393,6 +401,17 @@ unset(
     $healthCard,
     $healthStatus
 );
+
+$answerIntegrity = null;
+$answerIntegrityError = '';
+if (isset($_GET['audit_answers']) || ($_POST['action'] ?? '') === 'prune_invalid_report_answers') {
+    try {
+        $answerIntegrity = llama_report_current_answer_integrity($db);
+    } catch (Throwable $exception) {
+        llama_log_caught_exception($exception, 'admin.system.report_answer_integrity');
+        $answerIntegrityError = 'The current-answer audit could not be completed. Check the application error log.';
+    }
+}
 
 $testAccounts =
     admin_testing_accounts($db);
@@ -1199,6 +1218,65 @@ require __DIR__ . '/_header.php';
 
 </section>
 
+
+<section class="admin-panel" id="report-answer-audit">
+<header class="admin-panel-header">
+    <div>
+        <p>Scout Report testing</p>
+        <h2>Question and Answer Integrity</h2>
+    </div>
+</header>
+<div class="admin-system-operation-body">
+    <p>
+        Check existing current answers against the one approved question list.
+        This does not create or update Places. Only unsupported question keys,
+        incorrect Place/Area/Site ownership, and invalid scoped location answers
+        are flagged. Immutable Scout report history is not affected.
+    </p>
+    <p><a class="admin-button" href="/system.php?audit_answers=1#report-answer-audit">Run current-answer audit</a></p>
+
+    <?php if ($answerIntegrityError !== ''): ?>
+        <p><?= moderation_e($answerIntegrityError) ?></p>
+    <?php elseif (is_array($answerIntegrity)): ?>
+        <p>
+            <strong><?= number_format((int) $answerIntegrity['count']) ?></strong>
+            invalid current-answer rows across
+            <?= number_format(count((array) $answerIntegrity['stores'])) ?>
+            available answer stores.
+        </p>
+        <?php if (!$answerIntegrity['problems']): ?>
+            <p>No unapproved or wrongly scoped current answers were found in the checked stores.</p>
+        <?php else: ?>
+            <div class="admin-table-scroll">
+                <table class="admin-table">
+                    <thead><tr>
+                        <th>Storage</th><th>Question key</th><th>Scope</th><th>Rows</th><th>Problem</th>
+                    </tr></thead>
+                    <tbody>
+                    <?php foreach ($answerIntegrity['problems'] as $problem): ?>
+                        <tr>
+                            <td><?= moderation_e($problem['table']) ?></td>
+                            <td><?= moderation_e($problem['key']) ?></td>
+                            <td><?= moderation_e($problem['scope']) ?></td>
+                            <td><?= number_format((int) $problem['count']) ?></td>
+                            <td><?= moderation_e($problem['reason']) ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+            <?php if ($actorIsOwner): ?>
+                <form method="post" action="/system.php?audit_answers=1#report-answer-audit"
+                      onsubmit="return confirm('Remove all invalid current-answer rows shown by the audit? Approved answers, Places and immutable report history are retained.');">
+                    <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+                    <input type="hidden" name="action" value="prune_invalid_report_answers">
+                    <button class="admin-button" type="submit">Remove obsolete current answers</button>
+                </form>
+            <?php endif; ?>
+        <?php endif; ?>
+    <?php endif; ?>
+</div>
+</section>
 
 <div class="admin-system-operations-grid">
 
