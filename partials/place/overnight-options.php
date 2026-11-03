@@ -29,12 +29,9 @@ $stayPlaceReportValues = [];
 
 try {
     $stayPlaceReportData =
-        llama_place_report_data_from_published_place(
-            $place,
-            llama_place_report_published_answer_state(
-                $stayDb,
-                $placeId
-            )
+        llama_place_report_data_from_current_place(
+            $stayDb,
+            $place
         );
 
     $stayPlaceReportValues =
