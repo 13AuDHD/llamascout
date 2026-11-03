@@ -319,7 +319,7 @@ function llama_place_report_current_place_answers(
     $answers = [];
 
     foreach (
-        llama_place_report_fields()
+        llama_report_questions()
         as $fieldKey => $field
     ) {
         if (
@@ -363,14 +363,13 @@ function llama_place_report_current_place_answers(
             );
     }
 
-    // Overlay only questions actually written to the unified current store.
-    // Older Places and questions without a V3 row keep their legacy values.
-    // Explicit Unknown, false, zero and empty lists are all retained.
+    // Overlay stored observations only for approved questions. Approved
+    // published values stay readable until live migration is verified.
     if (llama_report_current_store_available($db)) {
         $stored = llama_report_current_store_load(
             $db, $placeId, 'place', 'place', $placeId
         );
-        $fields = llama_place_report_fields();
+        $fields = llama_report_questions();
         foreach ($stored as $key => $observation) {
             $field = $fields[$key] ?? null;
             if (!is_array($field)
@@ -467,7 +466,7 @@ function llama_place_report_current_target_answers(
     $answers = [];
 
     foreach (
-        llama_place_report_fields()
+        llama_report_questions()
         as $fieldKey => $field
     ) {
         if (
