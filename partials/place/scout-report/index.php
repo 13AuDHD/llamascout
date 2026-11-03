@@ -7,26 +7,7 @@ require_once dirname(__DIR__, 3)
 require_once dirname(__DIR__, 3)
     . '/app/usfs-place-report.php';
 
-$publishedUnknown = [];
-
-if (empty($isDemoScoutReport)) {
-    try {
-        $publishedUnknown =
-            llama_place_report_published_answer_state(
-                db(),
-                (int) ($place['id'] ?? 0)
-            );
-    } catch (Throwable $exception) {
-        /*
-         * This fallback prevents an old published Place from white-screening
-         * if the explicit answer-state migration has not been installed yet.
-         * New approvals require the migration and will fail safely instead.
-         */
-        $publishedUnknown = [];
-    }
-}
-
-/*
+ /*
  * Issue #41: every authorized viewer uses the same canonical Scout Report
  * renderer. The presentation source may contain the complete published Place
  * record, while the renderer independently decides which answers this viewer
