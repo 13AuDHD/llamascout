@@ -295,3 +295,115 @@ function llama_place_report_schema_issues(PDO $db): array
 
     return array_values(array_unique($issues));
 }
+
+/**
+ * Audit the two mutable current-answer stores against the approved question
+ * inventory. Historical Scout report snapshots are intentionally untouched.
+ *
+ * @return array{problems:list<array<string,mixed>>,count:int,stores:list<string>}
+ */
+function llama_report_current_answer_integrity(PDO $db): array
+{
+    $catalog = llama_report_questions();
+    $problems = [];
+    $stores = [];
+
+    $sources = [
+        'place_report_current_answers' => [
+            'key_column' => 'question_key',
+            'scope_column' => 'target_scope',
+        ],
+        'place_report_scoped_answers' => [
+            'key_column' => 'field_key',
+            'scope_column' => 'scope_type',
+        ],
+    ];
+
+    foreach ($sources as $table => $columns) {
+        $exists = $db->prepare(
+            'SELECT COUNT(*) FROM information_schema.TABLES
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?'
+        );
+        $exists->execute([$table]);
+        if ((int) $exists->fetchColumn() !== 1) {
+            continue;
+        }
+        $stores[] = $table;
+        $keyColumn = $columns['key_column'];
+        $scopeColumn = $columns['scope_column'];
+        // Identifiers are hardcoded above. Never interpolate user input.
+        $query = $db->query(
+            "SELECT `$keyColumn` AS question_key,
+                    `$scopeColumn` AS answer_scope,
+                    COUNT(*) AS answer_count
+             FROM `$table`
+             GROUP BY `$keyColumn`, `$scopeColumn`"
+        );
+        foreach ($query->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $key = (string) $row['question_key'];
+            $scope = (string) $row['answer_scope'];
+            $field = $catalog[$key] ?? null;
+            $reason = null;
+            if (!is_array($field)) {
+                $reason = 'Question is not in the approved catalog';
+            } elseif (!in_array($scope, (array) ($field['report_scopes'] ?? []), true)) {
+                $reason = 'Question does not belong to this scope';
+            } elseif ($scope !== 'place' && !empty($field['location_field'])) {
+                $reason = 'Place location cannot be overridden at this scope';
+            }
+            if ($reason !== null) {
+                $problems[] = [
+                    'table' => $table,
+                    'key_column' => $keyColumn,
+                    'scope_column' => $scopeColumn,
+                    'key' => $key,
+                    'scope' => $scope,
+                    'count' => (int) $row['answer_count'],
+                    'reason' => $reason,
+                ];
+            }
+        }
+    }
+
+    return [
+        'problems' => $problems,
+        'count' => array_sum(array_column($problems, 'count')),
+        'stores' => $stores,
+    ];
+}
+
+/**
+ * Remove only invalid mutable current-answer rows after Owner authorization.
+ * No Place, Site, immutable report, source record or approved answer is deleted.
+ * Re-evaluate the approval list within the same transaction before deleting.
+ */
+function llama_report_prune_invalid_current_answers(PDO $db): int
+{
+    if ($db->inTransaction()) {
+        throw new RuntimeException('Run the answer cleanup outside another transaction.');
+    }
+    $db->beginTransaction();
+    try {
+        $audit = llama_report_current_answer_integrity($db);
+        $deleted = 0;
+        foreach ($audit['problems'] as $problem) {
+            // These identifiers originate exclusively from the static whitelist.
+            $table = $problem['table'];
+            $keyColumn = $problem['key_column'];
+            $scopeColumn = $problem['scope_column'];
+            $statement = $db->prepare(
+                "DELETE FROM `$table`
+                 WHERE `$keyColumn` = ? AND `$scopeColumn` = ?"
+            );
+            $statement->execute([$problem['key'], $problem['scope']]);
+            $deleted += $statement->rowCount();
+        }
+        $db->commit();
+        return $deleted;
+    } catch (Throwable $exception) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+        throw $exception;
+    }
+}
