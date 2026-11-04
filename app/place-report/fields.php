@@ -66,6 +66,13 @@ function llama_place_report_retired_question_keys(): array
         // Retired unapproved Rules & Restrictions helpers.
         'fire_activities_conditional_details',
         'camping_permit_url',
+
+        // Retired unapproved Place amenity leftovers.
+        'amenity_none',
+        'amenity_recycling',
+        'amenity_electricity',
+        'amenity_water_filling_station',
+        'amenity_trailhead_parking',
     ];
 }
 
