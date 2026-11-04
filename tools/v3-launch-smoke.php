@@ -192,6 +192,136 @@ $check('Full inventory review shows approved questions across Place types', stat
         'River/Lake Access must appear immediately before Fishing Pier');
 });
 
+$check('Getting There parent-child rules are declared beneath inventory review', static function () use ($assert): void {
+    $makeCapture = static function (array &$captured): callable {
+        return static function (
+            string $key,
+            string $label,
+            string $section,
+            string $type,
+            string $storage,
+            array $extra = []
+        ) use (&$captured): void {
+            $captured[$key] = array_merge([
+                'key' => $key,
+                'label' => $label,
+                'section' => $section,
+                'type' => $type,
+                'storage' => $storage,
+                'applicable_if' => [],
+            ], $extra);
+        };
+    };
+
+    $road = [];
+    llama_place_report_add_road_restriction_questions($makeCapture($road));
+    $assert(($road['approach_road_fee']['applicable_if'][0] ?? []) === [
+        'field' => 'approach_fee_required',
+        'operator' => 'equals',
+        'value' => '1',
+    ], 'Road access/Parking fee amount is not a child of the fee question');
+    $assert(($road['approach_gate_access_type']['applicable_if'][0] ?? []) === [
+        'field' => 'approach_gate_present',
+        'operator' => 'equals',
+        'value' => '1',
+    ], 'Approach gate type is not a child of Road gated?');
+    foreach (['approach_gate_opens', 'approach_gate_closes'] as $key) {
+        $assert(($road[$key]['applicable_if'][0] ?? []) === [
+            'field' => 'approach_gate_access_type',
+            'operator' => 'equals',
+            'value' => 'scheduled',
+        ], $key . ' is not a child of scheduled gate access');
+    }
+
+    $seasonRaw = [];
+    $seasonAdd = $makeCapture($seasonRaw);
+    llama_place_report_add_season_fields($seasonRaw, $seasonAdd);
+    foreach (['season_begins', 'season_ends'] as $key) {
+        $assert(($seasonRaw[$key]['applicable_if'][0] ?? []) === [
+            'field' => 'seasonal_closure',
+            'operator' => 'equals',
+            'value' => '1',
+        ], $key . ' is not a child of Seasonal Closure');
+    }
+
+    $hazards = [];
+    foreach ([
+        'approach_deep_ruts',
+        'rocks',
+        'washboards',
+        'mud_risk',
+        'steep_grades',
+        'drop_off_exposure',
+    ] as $key) {
+        $hazards[$key] = ['applicable_if' => []];
+    }
+    llama_place_report_apply_road_hazard_dependencies($hazards);
+    foreach (array_keys($hazards) as $key) {
+        $assert(($hazards[$key]['applicable_if'][0]['field'] ?? '') === 'approach_road_hazards',
+            $key . ' is not a child of Road Hazards Present');
+        $assert(($hazards[$key]['applicable_if'][0]['value'] ?? []) === [$key],
+            $key . ' does not use its matching Road Hazards Present pill');
+    }
+
+    $operating = [];
+    llama_place_report_add_operating_fields($makeCapture($operating));
+    $assert(($operating['place_gate_access_type']['applicable_if'][0]['field'] ?? '') === 'place_entrance_gate',
+        'Place Gate Access Type is not a child of Place Gated');
+    foreach (['place_gate_opening_time', 'place_gate_closing_time'] as $key) {
+        $conditions = (array) ($operating[$key]['applicable_if'] ?? []);
+        $assert(count($conditions) === 2
+            && ($conditions[0]['field'] ?? '') === 'place_entrance_gate'
+            && ($conditions[1]['field'] ?? '') === 'place_gate_access_type'
+            && ($conditions[1]['value'] ?? '') === 'scheduled',
+            $key . ' is not restricted to a scheduled Place gate');
+    }
+});
+
+$check('Getting There cleanup keeps only supported active questions', static function () use ($assert): void {
+    $fields = llama_place_report_fields();
+    foreach ([
+        'approach_width_restricted',
+        'approach_narrowest_width_feet',
+        'road_overall_difficulty',
+        'road_stress',
+        'access_summary',
+        'approach_restriction_details',
+        'approach_access_info_url',
+        'approach_year_round',
+        'approach_seasonal_closure',
+        'approach_closure_month',
+        'approach_closure_day',
+        'approach_reopening_month',
+        'approach_reopening_day',
+        'approach_seasonal_restrictions',
+        'approach_road_conditions_url',
+    ] as $key) {
+        $assert(!isset($fields[$key]), 'Retired Getting There question is still active: ' . $key);
+    }
+
+    $groups = llama_place_report_approved_question_groups();
+    $assert((array) $groups['gate_access'][1] === [
+        'approach_gate_present',
+        'approach_gate_access_type',
+        'approach_gate_opens',
+        'approach_gate_closes',
+    ], 'Getting There Gate Access still contains Place entrance-gate questions');
+
+    foreach ([
+        'place_entrance_gate',
+        'place_gate_access_type',
+        'place_gate_opening_time',
+        'place_gate_closing_time',
+    ] as $key) {
+        $assert(in_array($key, (array) $groups['operating'][1], true),
+            'Operating Hours is missing moved Place gate question: ' . $key);
+    }
+
+    $layouts = llama_place_report_layout_groups();
+    $assert(($layouts['place']['nearest_services'] ?? '') === 'Nearest Services',
+        'Nearest Services is not its own Place category');
+});
+
 $check('Approved questions have shared layout metadata', static function () use ($assert): void {
     $layouts = llama_place_report_layout_groups();
     $missing = [];
