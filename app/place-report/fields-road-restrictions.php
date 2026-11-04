@@ -15,15 +15,16 @@ function llama_place_report_add_road_restriction_questions(callable $add): void
                 'public' => 'Public road',
                 'usfs' => 'Forest Service road',
                 'blm' => 'BLM road',
+                'tribal' => 'Native/Tribal road',
                 'private' => 'Private road',
                 'other' => 'Other',
             ],
         ]);
     $add('approach_permit_required', 'Road access permit required?',
         'road_access', 'tri', 'details.approach_permit_required', $common);
-    $add('approach_fee_required', 'Road access fee required?',
+    $add('approach_fee_required', 'Road access/Parking fee?',
         'road_access', 'tri', 'details.approach_fee_required', $common);
-    $add('approach_road_fee', 'Road access fee ($)', 'road_access',
+    $add('approach_road_fee', 'Road access/Parking fee ($)', 'road_access',
         'number', 'details.approach_road_fee', $common + [
             'step' => '.01',
             'min' => '0',
