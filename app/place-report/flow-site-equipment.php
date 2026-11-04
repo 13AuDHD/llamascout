@@ -25,9 +25,6 @@ function llama_place_report_apply_site_equipment_metadata(
         'site_hookups_available' =>
             'Hookups',
 
-        'hookup_electric' =>
-            'Power / electric hookup?',
-
         'hookup_electric_service' =>
             'Electrical Service',
 
@@ -72,9 +69,6 @@ function llama_place_report_apply_site_equipment_metadata(
 
         'site_hookups_available' =>
             'Whether this individual Site has any utility hookups. Shared Place utilities belong under Facilities & Amenities.',
-
-        'hookup_electric' =>
-            'Power or electrical connection available directly at this Site.',
 
         'hookup_electric_service' =>
             'Electrical service available directly at this Site.',
@@ -126,27 +120,20 @@ function llama_place_report_apply_site_equipment_metadata(
         ]];
     }
 
-    /*
-     * Keep the individual utility questions visible. The broad hookup answer
-     * is useful context, but it must not hide known electric/water/sewer facts.
-     */
     foreach (
         [
-            'hookup_electric',
+            'hookup_electric_service',
             'hookup_water',
             'hookup_sewer',
         ]
         as $key
     ) {
-        if (isset($fields[$key])) {
-            $fields[$key]['applicable_if'] =
-                [];
+        if (!isset($fields[$key])) {
+            continue;
         }
-    }
 
-    if (isset($fields['hookup_electric_service'])) {
-        $fields['hookup_electric_service']['applicable_if'] = [[
-            'field' => 'hookup_electric',
+        $fields[$key]['applicable_if'] = [[
+            'field' => 'site_hookups_available',
             'operator' => 'equals',
             'value' => '1',
         ]];
