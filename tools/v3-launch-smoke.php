@@ -849,6 +849,30 @@ $check('Safety and Hazards keeps only approved independent questions', static fu
     }
 });
 
+$check('Experience and Recommendations keeps only approved independent questions', static function () use ($assert): void {
+    $fields = llama_place_report_fields();
+
+    foreach ([
+        'experience_night_sky',
+        'experience_overnight_comfort',
+        'experience_extended_stay_comfort',
+        'experience_remote_work',
+        'recommended_quiet_evening',
+        'recommended_sensory_retreat',
+        'recommended_stargazing',
+    ] as $key) {
+        $assert(!isset($fields[$key]),
+            'Retired experience question is still active: ' . $key);
+    }
+
+    $groups = llama_place_report_approved_question_groups();
+    foreach ((array) $groups['experience_public'][1] as $key) {
+        $assert(isset($fields[$key]), 'Approved experience question is missing: ' . $key);
+        $assert((array) ($fields[$key]['applicable_if'] ?? []) === [],
+            'Approved experience question unexpectedly became dependent: ' . $key);
+    }
+});
+
 $check('Approved questions have shared layout metadata', static function () use ($assert): void {
     $layouts = llama_place_report_layout_groups();
     $missing = [];

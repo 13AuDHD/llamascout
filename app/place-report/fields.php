@@ -92,6 +92,15 @@ function llama_place_report_retired_question_keys(): array
         // Retired unapproved Safety & Hazards leftovers.
         'cliff_exposure',
         'warning_motorized_recreation_traffic',
+
+        // Retired unapproved Experience & Recommendations leftovers.
+        'experience_night_sky',
+        'experience_overnight_comfort',
+        'experience_extended_stay_comfort',
+        'experience_remote_work',
+        'recommended_quiet_evening',
+        'recommended_sensory_retreat',
+        'recommended_stargazing',
     ];
 }
 
