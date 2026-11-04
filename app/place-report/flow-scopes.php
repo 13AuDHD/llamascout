@@ -195,7 +195,6 @@ function llama_place_report_scope_overrides(): array
             'pack_it_in_pack_it_out',
             'residential_use_prohibited',
             'current_fire_restrictions_url',
-            'camping_permit_url',
             'fire_activity_permit_url',
             'overnight_vehicle_tent_permit_url',
 
@@ -335,7 +334,6 @@ function llama_place_report_scope_overrides(): array
             'generator_max_run_hours',
             'generator_restriction_details',
             'campfire_allowed',
-            'fire_activities_conditional_details',
             'place_charcoal_grills_allowed',
             'place_propane_fire_pits_allowed',
             'place_quiet_hours',
