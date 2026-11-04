@@ -243,7 +243,7 @@ function llama_place_report_layout_assignments(): array
             'nearest_hospital',
         ],
 
-        'place:connectivity_services' => [
+        'site:connectivity_services' => [
             'connectivity_overall',
             'connectivity_t_mobile',
             'connectivity_verizon',
@@ -466,7 +466,7 @@ function llama_place_report_apply_layout_metadata(
         'rules' => ['place', 'place_rules'],
         'sensory' => ['site', 'sensory_environment'],
         'landscape_setting' => ['site', 'sensory_environment'],
-        'connectivity' => ['place', 'connectivity_services'],
+        'connectivity' => ['site', 'connectivity_services'],
         'accessibility' => ['site', 'site_accessibility'],
         'experience' => ['site', 'experience_recommendations'],
         'safety' => ['site', 'safety_hazards'],
