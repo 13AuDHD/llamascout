@@ -40,19 +40,21 @@ function llama_place_report_add_road_seasonal_questions(callable $add): void
             'select', 'details.approach_' . $key . '_day',
             $common + $whenClosed + ['options' => $days]);
     }
-    $add('approach_winter_maintenance', 'Winter road maintenance', 'road_access',
+    $add('approach_winter_maintenance', 'Winter Road Maintenance', 'road_access',
         'select', 'details.approach_winter_maintenance', $common + [
             'options' => [
-                'regular' => 'Regularly plowed',
-                'occasional' => 'Occasionally plowed',
-                'none' => 'Not maintained',
+                'not_applicable' => 'Not Applicable',
+                'occasional' => 'Occasionally Plowed',
+                'regular' => 'Frequently Plowed',
+                'none' => 'Not Maintained',
             ],
         ]);
-    $add('approach_snow_chains', 'Snow chains required?', 'road_access',
+    $add('approach_snow_chains', 'Snow Chains', 'road_access',
         'select', 'details.approach_snow_chains', $common + [
             'options' => [
+                'not_applicable' => 'Not Applicable',
                 'no' => 'No',
-                'conditional' => 'Conditional',
+                'conditional' => 'Recommended',
                 'required' => 'Required',
             ],
         ]);
