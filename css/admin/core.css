@@ -48,6 +48,7 @@
 }
 
 .admin-sidebar-top {
+    position: relative;
     flex: 0 0 auto;
     height: var(--admin-topbar-height);
     min-height: var(--admin-topbar-height);
@@ -87,7 +88,12 @@
     transform: translateY(5px);
 }
 
-.admin-brand span {
+.admin-sidebar-role {
+    position: absolute;
+    right: 18px;
+    top: 50%;
+    transform: translateY(-50%);
+
     padding: 4px 7px;
 
     border: 1px solid var(--border);
@@ -1280,8 +1286,19 @@ html[data-reduced-motion="true"] .admin-toggle-knob {
     }
 
     .admin-sidebar-close {
+        position: absolute;
+        top: 8px;
+        right: 12px;
+
         display: grid;
         place-items: center;
+    }
+
+    .admin-sidebar-role {
+        top: auto;
+        bottom: 9px;
+        right: 12px;
+        transform: none;
     }
 
     .admin-app.is-menu-open .admin-sidebar {
