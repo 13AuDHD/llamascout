@@ -17,7 +17,7 @@ declare(strict_types=1);
  */
 function llama_place_report_full_inventory_review_enabled(): bool
 {
-    return true;
+    return false;
 }
 
 /**
