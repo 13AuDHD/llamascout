@@ -889,8 +889,12 @@ $check('Scout Notes and Place History stay independent and moderator notes stay 
         'Moderator contributor_notes helper was accidentally retired');
     $assert(($fields['contributor_notes']['approved_question_group'] ?? null) === null,
         'Moderator contributor_notes leaked into the approved public questionnaire');
-    $assert(($fields['contributor_notes']['layout_section'] ?? null) !== 'site',
-        'Moderator contributor_notes leaked into the public Site layout');
+    $assert(!empty($fields['contributor_notes']['hide_public']),
+        'Moderator contributor_notes is not hidden from public presentation');
+    $assert(!empty($fields['contributor_notes']['moderation_only']),
+        'Moderator contributor_notes is not explicitly marked moderation-only');
+    $assert(empty($fields['contributor_notes']['counts_toward_completion']),
+        'Moderator contributor_notes still counts toward Scout Report completion');
 });
 
 $check('Road Conditions approved inventory matches reviewed questions', static function () use ($assert): void {
