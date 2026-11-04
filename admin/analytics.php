@@ -2547,6 +2547,29 @@ require __DIR__ . '/_header.php';
 ?>
 
 
+<section class="admin-panel admin-analytics-section" aria-labelledby="admin-inventory-heading">
+    <header class="admin-panel-header">
+        <div>
+            <p>Database</p>
+            <h2 id="admin-inventory-heading">Inventory</h2>
+        </div>
+    </header>
+    <div class="admin-analytics-metrics is-three">
+        <div>
+            <span>Places</span>
+            <strong><?= number_format((int) $stats['total_places']) ?></strong>
+        </div>
+        <div>
+            <span>Sites</span>
+            <strong><?= number_format((int) $stats['total_sites']) ?></strong>
+        </div>
+        <div>
+            <span>Resources</span>
+            <strong><?= number_format((int) $stats['total_resources']) ?></strong>
+        </div>
+    </div>
+</section>
+
 <?php if ($analyticsWarnings): ?>
 
 <div class="admin-analytics-warning">
