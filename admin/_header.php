@@ -478,8 +478,9 @@ function admin_shell_nav_class(string $key, string $active): string
                 src="<?= htmlspecialchars(llama_brand_logo_light_url(), ENT_QUOTES, 'UTF-8') ?>"
                 alt="Llama Scout"
             >
-            <span><?= moderation_e($adminShellRole) ?></span>
         </a>
+
+        <span class="admin-sidebar-role"><?= moderation_e($adminShellRole) ?></span>
 
         <button
             class="admin-sidebar-close"
