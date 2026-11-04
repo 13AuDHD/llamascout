@@ -27,7 +27,27 @@ function llama_place_report_full_inventory_review_enabled(): bool
  */
 function llama_place_report_retired_question_keys(): array
 {
-    return ['max_trailer_length_feet'];
+    return [
+        'max_trailer_length_feet',
+
+        // Retired Getting There questions. Historical values remain readable
+        // in old reports/storage, but these definitions are no longer active.
+        'approach_width_restricted',
+        'approach_narrowest_width_feet',
+        'road_overall_difficulty',
+        'road_stress',
+        'access_summary',
+        'approach_restriction_details',
+        'approach_access_info_url',
+        'approach_year_round',
+        'approach_seasonal_closure',
+        'approach_closure_month',
+        'approach_closure_day',
+        'approach_reopening_month',
+        'approach_reopening_day',
+        'approach_seasonal_restrictions',
+        'approach_road_conditions_url',
+    ];
 }
 
 function llama_place_report_fields(): array
