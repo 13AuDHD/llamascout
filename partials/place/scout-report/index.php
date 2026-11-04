@@ -68,6 +68,28 @@ $compareReportHistoryUrl =
         <div>
             <p class="eyebrow">Member details</p>
             <h2 id="scout-report-heading">Scout Report</h2>
+            <div
+                class="place-report-completeness scout-report-completeness"
+                title="How many Scout Report questions have been addressed. Known and Unknown responses count as addressed. Unanswered questions do not."
+            >
+                <i aria-hidden="true"><?= llama_icon('list-check') ?></i>
+                <span>
+                    Report completeness
+                    <?= (int) ($reportCompleteness['percent'] ?? 0) ?>%
+                    <?php if (
+                        isset(
+                            $reportCompleteness['answered'],
+                            $reportCompleteness['total']
+                        )
+                        && (int) $reportCompleteness['total'] > 0
+                    ): ?>
+                        ·
+                        <?= (int) $reportCompleteness['answered'] ?>
+                        /
+                        <?= (int) $reportCompleteness['total'] ?>
+                    <?php endif; ?>
+                </span>
+            </div>
         </div>
 
         <?php if ($compareReportHistoryUrl !== ''): ?>
