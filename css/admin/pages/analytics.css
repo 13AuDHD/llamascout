@@ -91,6 +91,15 @@
     border-top: 1px solid var(--border);
 }
 
+.admin-analytics-metrics.is-three {
+    grid-template-columns:
+        repeat(3, minmax(0, 1fr));
+}
+
+.admin-analytics-metrics.is-three strong {
+    font-size: 1.45rem;
+}
+
 .admin-analytics-metrics.is-four {
     grid-template-columns:
         repeat(4, minmax(0, 1fr));
