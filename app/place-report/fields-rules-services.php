@@ -155,6 +155,9 @@ function llama_place_report_add_rules_service_fields(
         'wide' => true,
         'placeholder' => 'https://...',
         'points_categories' => ['seasons_rules_services'],
+        'applicable_if' => [[
+            'field' => 'reservation_required', 'operator' => 'equals', 'value' => '1',
+        ]],
     ]);
 
     $add('reservation_fee', 'Reservation / booking fee', 'rules', 'number', 'rules.reservation_fee', [
@@ -166,6 +169,9 @@ function llama_place_report_add_rules_service_fields(
         'points_categories' => ['seasons_rules_services'],
         'help' =>
             'A separate reservation or booking charge added to the stay. Do not enter the nightly camping price here.',
+        'applicable_if' => [[
+            'field' => 'reservation_required', 'operator' => 'equals', 'value' => '1',
+        ]],
     ]);
 
     $add('membership_required', 'Membership required?', 'rules', 'tri', 'rules.membership_required', [
@@ -177,6 +183,9 @@ function llama_place_report_add_rules_service_fields(
         'wide' => true,
         'placeholder' => 'https://...',
         'points_categories' => ['seasons_rules_services'],
+        'applicable_if' => [[
+            'field' => 'membership_required', 'operator' => 'equals', 'value' => '1',
+        ]],
     ]);
 
     $add('membership_fee', 'Membership fee', 'rules', 'number', 'rules.membership_fee', [
@@ -188,6 +197,9 @@ function llama_place_report_add_rules_service_fields(
         'points_categories' => ['seasons_rules_services'],
         'help' =>
             'The cost of the required membership itself. Do not enter a nightly camping rate, reservation fee, entrance fee, or parking fee here.',
+        'applicable_if' => [[
+            'field' => 'membership_required', 'operator' => 'equals', 'value' => '1',
+        ]],
     ]);
 
     $add('check_in_required', 'Check-in required?', 'rules', 'tri', 'rules.check_in_required', [
@@ -197,6 +209,9 @@ function llama_place_report_add_rules_service_fields(
 
     $add('check_in_begins', 'Check-in begins', 'rules', 'select', 'rules.check_in_begins', [
         'allow_unknown' => true,
+        'applicable_if' => [[
+            'field' => 'check_in_required', 'operator' => 'equals', 'value' => '1',
+        ]],
         'options' => [
             'anytime' => 'Anytime',
             '10:00' => '10 AM',
@@ -218,6 +233,9 @@ function llama_place_report_add_rules_service_fields(
 
     $add('checkout_ends', 'Check-out ends', 'rules', 'select', 'rules.checkout_ends', [
         'allow_unknown' => true,
+        'applicable_if' => [[
+            'field' => 'check_out_required', 'operator' => 'equals', 'value' => '1',
+        ]],
         'options' => [
             'anytime' => 'Anytime',
             '06:00' => '6 AM',
@@ -276,9 +294,28 @@ function llama_place_report_add_rules_service_fields(
         'step' => '.01', 'min' => '0', 'max' => '100000', 'format' => 'currency',
         'allow_unknown' => true, 'points_categories' => ['seasons_rules_services'],
         'help' => 'Use only when the reported charge combines entrance and parking. Existing separate entrance/facility and parking fees remain available; do not count the same charge twice.',
+        'applicable_if' => [[
+            'field' => 'parking_entrance_required', 'operator' => 'equals', 'value' => '1',
+        ]],
     ]);
-    $add('discounts_available', 'Discounts available', 'rules', 'textarea', 'rules.discounts_available', [
-        'wide' => true, 'rows' => 3, 'counts_toward_completion' => false,
+    $add('discounts_available', 'Discounts Available', 'rules', 'multiselect', 'rules.discounts_available', [
+        'wide' => true,
+        'summary' => 'Select discounts',
+        'options' => [
+            'senior' => 'Senior',
+            'military_veteran' => 'Military/Veteran',
+            'disability_access' => 'Disability/Access',
+            'interagency_pass' => 'Interagency Pass',
+            'annual_pass' => 'Annual Pass',
+            'resident_local' => 'Resident/Local',
+            'membership' => 'Membership',
+            'first_responder' => 'First Responder',
+            'other' => 'Other',
+            'none' => 'None',
+            'unknown' => 'Unknown',
+        ],
+        'exclusive_options' => ['none', 'unknown'],
+        'counts_toward_completion' => false,
         'points_categories' => ['seasons_rules_services'],
     ]);
 
