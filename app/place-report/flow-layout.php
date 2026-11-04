@@ -178,13 +178,8 @@ function llama_place_report_layout_assignments(): array
         'place:overnight_stays' => [
             'campsite_count',
             'overnight_camping_allowed',
-            'tent_camping_allowed',
-            'rv_camping_allowed',
-            'car_truck_camping',
             'dispersed_camping_allowed',
             'designated_sites_only',
-            'overnight_restrictions',
-            'camping_conditional_details',
         ],
 
         'place:reservations_pricing' => [
@@ -295,7 +290,6 @@ function llama_place_report_layout_assignments(): array
             'place_additional_rules',
             'fire_activity_permit_url',
             'camping_permit_url',
-            'overnight_vehicle_tent_permit_url',
         ],
 
         'place:operating_closures' => [

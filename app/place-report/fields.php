@@ -54,6 +54,14 @@ function llama_place_report_retired_question_keys(): array
         'shared_accessible_facilities',
         'shared_accessible_facility_types',
         'amenity_accessible_showers',
+
+        // Retired unapproved Camping & Overnight Stays questions.
+        'tent_camping_allowed',
+        'rv_camping_allowed',
+        'car_truck_camping',
+        'overnight_restrictions',
+        'camping_conditional_details',
+        'overnight_vehicle_tent_permit_url',
     ];
 }
 

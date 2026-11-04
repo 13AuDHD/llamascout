@@ -80,13 +80,6 @@ function llama_place_report_add_permission_fields(
         $fields[$key]['allow_unknown'] = true;
     }
 
-    $carTruckOptions = [
-        '0' => 'No',
-        '1' => 'Yes',
-        '2' => 'Permit required',
-        '3' => 'Conditional',
-    ];
-
     $labels = [
         'overnight_camping_allowed' =>
             'Overnight stay permitted?',
@@ -139,21 +132,6 @@ function llama_place_report_add_permission_fields(
         }
     }
 
-    $add(
-        'car_truck_camping',
-        'Sleeping in a car / truck permitted?',
-        'rules',
-        'select',
-        'rules.car_truck_camping',
-        [
-            'allow_unknown' => true,
-            'options' => $carTruckOptions,
-            'points_categories' => ['seasons_rules_services'],
-            'help' =>
-                'Record the documented or posted rule for sleeping overnight inside a car, SUV, van, pickup, or similar non-RV vehicle. This is not a parking-permission question: a vehicle may be allowed to park while sleeping in it is prohibited.',
-        ]
-    );
-
     $groups = [
         'camping' => [
             'label' =>
@@ -162,7 +140,6 @@ function llama_place_report_add_permission_fields(
             'fields' => [
                 'overnight_camping_allowed',
                 'dispersed_camping_allowed',
-                'car_truck_camping',
             ],
 
             'help' =>
