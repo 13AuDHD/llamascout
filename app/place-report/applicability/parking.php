@@ -128,6 +128,7 @@ function llama_place_report_apply_parking_profiles(
             'mud_season_risk',
             'snow_risk',
             'monsoon_risk',
+            'tornado_risk',
             'hurricane_risk',
             'heat_season_risk',
             'seasonal_access_note',
