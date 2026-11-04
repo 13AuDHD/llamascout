@@ -833,6 +833,22 @@ $check('Approved sensory questions stay independent and legacy overlaps stay ret
     }
 });
 
+$check('Safety and Hazards keeps only approved independent questions', static function () use ($assert): void {
+    $fields = llama_place_report_fields();
+
+    foreach (['cliff_exposure', 'warning_motorized_recreation_traffic'] as $key) {
+        $assert(!isset($fields[$key]),
+            'Retired safety question is still active: ' . $key);
+    }
+
+    $groups = llama_place_report_approved_question_groups();
+    foreach ((array) $groups['safety_public'][1] as $key) {
+        $assert(isset($fields[$key]), 'Approved safety question is missing: ' . $key);
+        $assert((array) ($fields[$key]['applicable_if'] ?? []) === [],
+            'Approved safety question unexpectedly became dependent: ' . $key);
+    }
+});
+
 $check('Approved questions have shared layout metadata', static function () use ($assert): void {
     $layouts = llama_place_report_layout_groups();
     $missing = [];
