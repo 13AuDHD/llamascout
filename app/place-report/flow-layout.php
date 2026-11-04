@@ -403,6 +403,7 @@ function llama_place_report_layout_assignments(): array
             'environment_sun_exposure',
             'environment_shade',
             'tree_cover',
+            'environment_notes',
             'daytime_social_interaction', 'daytime_noise', 'daytime_traffic',
             'daytime_crowds', 'daytime_privacy', 'daytime_light_pollution',
             'daytime_sensory_comfort', 'felt_safe_daytime_rating',
