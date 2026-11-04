@@ -958,6 +958,48 @@ $check('Road Conditions approved inventory matches reviewed questions', static f
         'Retired Access Restrictions remains active');
 });
 
+$check('Fees and Reservations renders on Site with reviewed ownership preserved', static function () use ($assert): void {
+    $fields = llama_place_report_fields();
+    $groups = llama_place_report_approved_group_page_lookup();
+
+    $assert(($groups['fees']['page'] ?? '') === 'site',
+        'Approved Fees & Reservations group is not assigned to Site');
+
+    foreach ((array) llama_place_report_approved_question_groups()['fees'][1] as $key) {
+        $assert(($fields[$key]['layout_section'] ?? '') === 'site',
+            'Fees & Reservations question is not rendered on Site: ' . $key);
+        $assert(($fields[$key]['layout_group'] ?? '') === 'reservations_pricing',
+            'Fees & Reservations question left the shared pricing layout group: ' . $key);
+    }
+
+    $assert(($fields['fee']['report_scope_group'] ?? '') === 'place',
+        'Base Camping Fee should remain Place-only');
+    foreach ([
+        'extra_vehicle_fee',
+        'membership_required',
+        'membership_fee',
+        'membership_url',
+        'parking_entrance_required',
+        'parking_entrance_fee',
+        'discounts_available',
+    ] as $key) {
+        $assert(($fields[$key]['report_scope_group'] ?? '') === 'place_area',
+            'Shared fee policy lost Place/Area ownership: ' . $key);
+    }
+    foreach ([
+        'reservation_required',
+        'reservation_fee',
+        'reservation_url',
+        'check_in_required',
+        'check_in_begins',
+        'check_out_required',
+        'checkout_ends',
+    ] as $key) {
+        $assert(($fields[$key]['report_scope_group'] ?? '') === 'all',
+            'Override-capable fee/reservation field lost inheritance: ' . $key);
+    }
+});
+
 $check('Approved questions have shared layout metadata', static function () use ($assert): void {
     $layouts = llama_place_report_layout_groups();
     $missing = [];
