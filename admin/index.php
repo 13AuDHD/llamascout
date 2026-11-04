@@ -104,44 +104,6 @@ require __DIR__ . '/_header.php';
 </section>
 
 
-<section class="admin-inventory" aria-labelledby="admin-inventory-heading">
-    <h2 id="admin-inventory-heading">Inventory</h2>
-    <div class="admin-stat-grid admin-inventory-grid">
-        <div class="admin-stat-card">
-            <span class="admin-stat-icon">
-                <i aria-hidden="true"><?= llama_icon('map-pin') ?></i>
-            </span>
-            <div>
-                <span>Places</span>
-                <strong><?= number_format((int) $stats['total_places']) ?></strong>
-                <small>Total records</small>
-            </div>
-        </div>
-
-        <div class="admin-stat-card">
-            <span class="admin-stat-icon">
-                <i aria-hidden="true"><?= llama_icon('tent') ?></i>
-            </span>
-            <div>
-                <span>Sites</span>
-                <strong><?= number_format((int) $stats['total_sites']) ?></strong>
-                <small>Total records</small>
-            </div>
-        </div>
-
-        <div class="admin-stat-card">
-            <span class="admin-stat-icon">
-                <i aria-hidden="true"><?= llama_icon('droplets') ?></i>
-            </span>
-            <div>
-                <span>Resources</span>
-                <strong><?= number_format((int) $stats['total_resources']) ?></strong>
-                <small>Total records</small>
-            </div>
-        </div>
-    </div>
-</section>
-
 <section class="admin-stat-grid" aria-label="Admin work queues">
 
     <a class="admin-stat-card is-action" href="/submissions.php">
