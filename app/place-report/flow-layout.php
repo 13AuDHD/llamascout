@@ -106,7 +106,6 @@ function llama_place_report_layout_groups(): array
         'place' => [
             'information_location' => 'Information & Location',
             'overnight_stays' => 'Camping & Overnight Stays',
-            'reservations_pricing' => 'Reservations & Pricing',
             'shared_amenities' => 'Facilities & Amenities',
             'activities_recreation' => 'Activities & Recreation',
             'seasonal_conditions' => 'Seasonal Conditions',
@@ -116,6 +115,7 @@ function llama_place_report_layout_groups(): array
         ],
         'site' => [
             'selection_type' => 'Site & Capacity',
+            'reservations_pricing' => 'Fees & Reservations',
             'site_dimensions' => 'Site Dimensions',
             'parking_maneuvering' => 'Parking & Maneuvering',
             'camping_equipment' => 'Site Amenities',
@@ -181,7 +181,7 @@ function llama_place_report_layout_assignments(): array
             'designated_sites_only',
         ],
 
-        'place:reservations_pricing' => [
+        'site:reservations_pricing' => [
             'fee',
             'extra_vehicle_fee',
             'reservation_required',
