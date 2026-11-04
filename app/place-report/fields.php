@@ -88,6 +88,10 @@ function llama_place_report_retired_question_keys(): array
         // Daytime, Nighttime, and Specific Sensory questions.
         'sensory_road_noise',
         'sensory_human_activity',
+
+        // Retired unapproved Safety & Hazards leftovers.
+        'cliff_exposure',
+        'warning_motorized_recreation_traffic',
     ];
 }
 
