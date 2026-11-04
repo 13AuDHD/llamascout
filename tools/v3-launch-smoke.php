@@ -95,6 +95,60 @@ $check('Full inventory review shows approved questions across Place types', stat
         'conditional' => 'Recommended',
         'required' => 'Required',
     ], 'Snow Chains answers do not match the reviewed set');
+    $setting = (array) $groups['setting'][1];
+    $expectedSetting = [
+        'landscape_primary',
+        'environment_water_nearby',
+        'landscape_details',
+        'landscape_views',
+        'environment_wildlife_activity',
+        'critter_activity',
+        'environment_bug_nuisance',
+        'environment_open_sky',
+        'environment_sun_exposure',
+        'environment_shade',
+        'tree_cover',
+    ];
+    $assert($setting === $expectedSetting,
+        'Setting and Environment order does not match the reviewed inventory');
+
+    $settingFields = llama_report_questions();
+    $expectedSettingLabels = [
+        'landscape_primary' => 'Primary Setting',
+        'environment_water_nearby' => 'Water Nearby',
+        'landscape_details' => 'Setting Details',
+        'landscape_views' => 'Views',
+        'environment_wildlife_activity' => 'Wildlife Activity',
+        'critter_activity' => 'Critter Activity',
+        'environment_bug_nuisance' => 'Bug Nuisance',
+        'environment_open_sky' => 'Open Sky',
+        'environment_sun_exposure' => 'Sun Exposure',
+        'environment_shade' => 'Environmental Shade',
+        'tree_cover' => 'Tree Cover',
+    ];
+    foreach ($expectedSettingLabels as $key => $label) {
+        $assert(($settingFields[$key]['label'] ?? '') === $label,
+            'Unexpected Setting and Environment label for ' . $key);
+    }
+    foreach ([
+        'environment_wildlife_activity',
+        'critter_activity',
+        'environment_bug_nuisance',
+        'environment_open_sky',
+        'environment_sun_exposure',
+        'environment_shade',
+        'tree_cover',
+    ] as $key) {
+        $assert(($settingFields[$key]['type'] ?? '') === 'rating',
+            $key . ' must use the 1-5 rating scale');
+    }
+    $assert(!isset($settingFields['environment_wildlife']),
+        'Historical Wildlife Common Yes/No question is still approved');
+    $assert(!isset($settingFields['environment_bugs']),
+        'Historical Bugs Significant Yes/No question is still approved');
+    $assert(!isset($settingFields['environment_notes']),
+        'Environment Notes is still in the approved Setting and Environment section');
+
     $amenities = (array) $groups['amenities'][1];
     $pier = array_search('amenity_fishing_pier', $amenities, true);
     $assert($amenities[$pier - 2] === 'amenity_river_access'
