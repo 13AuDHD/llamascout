@@ -226,10 +226,6 @@ function llama_place_report_add_shared_amenity_fields(
             'Dishwashing station available?',
             'A designated shared sink or station intended for washing dishes.',
         ],
-        'accessible_showers' => [
-            'Accessible showers available?',
-            'Shared shower facilities identified or designed as accessible.',
-        ],
     ] as $key => [$label, $help]) {
         $add(
             'amenity_' . $key,
@@ -241,39 +237,4 @@ function llama_place_report_add_shared_amenity_fields(
         );
     }
 
-    $add(
-        'shared_accessible_facilities',
-        'Accessible shared facilities available?',
-        'amenities',
-        'tri',
-        'amenities.shared_accessible_facilities',
-        $common + [
-            'help' => 'This describes shared Place facilities only. Accessibility of an individual campsite is recorded under Site.',
-        ]
-    );
-
-    $add(
-        'shared_accessible_facility_types',
-        'Which shared facilities are accessible?',
-        'amenities',
-        'multiselect',
-        'amenities.shared_accessible_facility_types',
-        $common + [
-            'options' => [
-                'toilets' => 'Toilets',
-                'showers' => 'Showers',
-                'laundry' => 'Laundry',
-                'picnic_area' => 'Picnic area / pavilion',
-                'water' => 'Drinking water',
-                'camp_store' => 'Camp store',
-                'other' => 'Other',
-            ],
-            'summary' => 'Choose accessible shared facilities',
-            'applicable_if' => [[
-                'field' => 'shared_accessible_facilities',
-                'operator' => 'equals',
-                'value' => '1',
-            ]],
-        ]
-    );
 }
