@@ -960,6 +960,12 @@ $renderField =
                         ?? []
                     );
 
+                $exclusiveMultiOptions =
+                    array_map(
+                        'strval',
+                        (array) ($field['exclusive_options'] ?? [])
+                    );
+
                 ?>
 
                 <input type="hidden" name="_report_present[<?= $e($key) ?>]" value="1">
@@ -983,6 +989,13 @@ $renderField =
                                         type="checkbox"
                                         name="<?= $e($key) ?>[]"
                                         value="<?= $e($optionValue) ?>"
+                                        <?= in_array(
+                                            (string) $optionValue,
+                                            $exclusiveMultiOptions,
+                                            true
+                                        )
+                                            ? 'data-report-multiselect-exclusive'
+                                            : '' ?>
                                         <?= in_array(
                                             (string) $optionValue,
                                             $selectedValues,

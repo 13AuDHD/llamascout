@@ -1269,14 +1269,31 @@ if (!touched) { touched = document.createElement('input'); touched.type = 'hidde
 touched.value = '1';
 }
 const unknownOption = control.querySelector('[data-report-multiselect-unknown]');
-if (!unknownOption) return;
-if (event.target === unknownOption && unknownOption.checked) {
+const exclusiveOptions = [
+...control.querySelectorAll('[data-report-multiselect-exclusive]')
+];
+
+if (event.target === unknownOption && unknownOption?.checked) {
 for (const option of options) {
 const checkbox = option.querySelector('input[type="checkbox"]');
 if (checkbox) checkbox.checked = false;
 }
-} else if (event.target !== unknownOption && event.target.type === 'checkbox') {
-unknownOption.checked = false;
+return;
+}
+
+if (event.target !== unknownOption && event.target.type === 'checkbox') {
+if (unknownOption) unknownOption.checked = false;
+
+if (event.target.matches('[data-report-multiselect-exclusive]') && event.target.checked) {
+for (const option of options) {
+const checkbox = option.querySelector('input[type="checkbox"]');
+if (checkbox && checkbox !== event.target) checkbox.checked = false;
+}
+} else if (event.target.checked) {
+for (const exclusive of exclusiveOptions) {
+exclusive.checked = false;
+}
+}
 }
 });
 control.addEventListener(

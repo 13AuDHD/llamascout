@@ -322,6 +322,93 @@ $check('Getting There cleanup keeps only supported active questions', static fun
         'Nearest Services is not its own Place category');
 });
 
+$check('Place Fees and Reservations dependencies match owner review', static function () use ($assert): void {
+    $raw = [];
+    $add = static function (
+        string $key,
+        string $label,
+        string $section,
+        string $type,
+        string $storage,
+        array $extra = []
+    ) use (&$raw): void {
+        $raw[$key] = array_merge([
+            'key' => $key,
+            'label' => $label,
+            'section' => $section,
+            'type' => $type,
+            'storage' => $storage,
+            'applicable_if' => [],
+        ], $extra);
+    };
+    llama_place_report_add_rules_service_fields($add, ['0' => 'On site']);
+
+    foreach ([
+        'reservation_url' => 'reservation_required',
+        'reservation_fee' => 'reservation_required',
+        'membership_url' => 'membership_required',
+        'membership_fee' => 'membership_required',
+        'check_in_begins' => 'check_in_required',
+        'checkout_ends' => 'check_out_required',
+        'parking_entrance_fee' => 'parking_entrance_required',
+    ] as $child => $parent) {
+        $assert(($raw[$child]['applicable_if'][0] ?? []) === [
+            'field' => $parent,
+            'operator' => 'equals',
+            'value' => '1',
+        ], $child . ' is not a Yes-child of ' . $parent);
+    }
+
+    $discounts = $raw['discounts_available'] ?? [];
+    $assert(($discounts['type'] ?? '') === 'multiselect',
+        'Discounts Available is not a pill multiselect');
+    $assert(($discounts['exclusive_options'] ?? []) === ['none', 'unknown'],
+        'Discounts Available None/Unknown pills are not exclusive');
+    $assert(($discounts['options'] ?? []) === [
+        'senior' => 'Senior',
+        'military_veteran' => 'Military/Veteran',
+        'disability_access' => 'Disability/Access',
+        'interagency_pass' => 'Interagency Pass',
+        'annual_pass' => 'Annual Pass',
+        'resident_local' => 'Resident/Local',
+        'membership' => 'Membership',
+        'first_responder' => 'First Responder',
+        'other' => 'Other',
+        'none' => 'None',
+        'unknown' => 'Unknown',
+    ], 'Discounts Available pill inventory changed unexpectedly');
+});
+
+$check('Stay Limit is Basic Place info and Place accessibility is retired', static function () use ($assert): void {
+    $groups = llama_place_report_approved_question_groups();
+    $assert(in_array('stay_limit_days', (array) $groups['basic'][1], true),
+        'Stay Limit is missing from Basic Place info');
+    $assert(!in_array('stay_limit_days', (array) $groups['fees'][1], true),
+        'Stay Limit is still in Fees and Reservations');
+
+    $layouts = llama_place_report_layout_groups();
+    $assert(!isset($layouts['place']['place_accessibility']),
+        'Place-level Accessibility layout group still exists');
+
+    $fields = llama_place_report_fields();
+    foreach ([
+        'place_accessible',
+        'shared_accessible_facilities',
+        'shared_accessible_facility_types',
+        'amenity_accessible_showers',
+    ] as $key) {
+        $assert(!isset($fields[$key]),
+            'Retired Place accessibility question is still active: ' . $key);
+    }
+
+    $assert(isset($fields['accessible_toilet'], $fields['accessibility_notes']),
+        'Site accessibility questions were accidentally removed');
+    $assert(($fields['accessible_toilet']['report_scope_group'] ?? '') === 'site',
+        'Accessible Toilet is not Site-only');
+    $assert(($fields['accessibility_notes']['report_scope_group'] ?? '') === 'site',
+        'Accessibility Notes is not Site-only');
+});
+
 $check('Approved questions have shared layout metadata', static function () use ($assert): void {
     $layouts = llama_place_report_layout_groups();
     $missing = [];

@@ -103,8 +103,6 @@ function llama_place_report_scope_overrides(): array
             /*
              * Place-wide source/context facts.
              */
-            'place_accessible',
-            'accessibility_notes',
             'facility_map_url',
             'activities',
             'access_summary',
@@ -228,9 +226,6 @@ function llama_place_report_scope_overrides(): array
             'amenity_trailhead_parking',
             'amenity_camp_store',
             'amenity_campground_host',
-            'shared_accessible_facilities',
-            'shared_accessible_facility_types',
-            'accessible_toilet',
         ],
 
         'site' => [
@@ -275,6 +270,8 @@ function llama_place_report_scope_overrides(): array
             'mobility_device_friendly',
             'flat_walking_surface',
             'step_free_access',
+            'accessible_toilet',
+            'accessibility_notes',
             'site_shade',
             'site_open_sky',
 

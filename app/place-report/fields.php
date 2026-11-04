@@ -47,6 +47,13 @@ function llama_place_report_retired_question_keys(): array
         'approach_reopening_day',
         'approach_seasonal_restrictions',
         'approach_road_conditions_url',
+
+        // Obsolete Place-level accessibility questions. Accessibility now
+        // belongs only to Site questions in the approved questionnaire.
+        'place_accessible',
+        'shared_accessible_facilities',
+        'shared_accessible_facility_types',
+        'amenity_accessible_showers',
     ];
 }
 

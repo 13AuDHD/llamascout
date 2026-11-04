@@ -108,7 +108,6 @@ function llama_place_report_layout_groups(): array
             'overnight_stays' => 'Camping & Overnight Stays',
             'reservations_pricing' => 'Reservations & Pricing',
             'shared_amenities' => 'Facilities & Amenities',
-            'place_accessibility' => 'Accessibility',
             'activities_recreation' => 'Activities & Recreation',
             'seasonal_conditions' => 'Seasonal Conditions',
             'nearest_services' => 'Nearest Services',
@@ -171,7 +170,7 @@ function llama_place_report_layout_assignments(): array
         ],
 
         'place:information_location' => [
-            'name', 'type', 'description', 'latitude', 'longitude',
+            'name', 'type', 'description', 'stay_limit_days', 'latitude', 'longitude',
             'elevation_feet', 'road', 'city', 'county', 'state', 'land_type',
             'land_manager', 'region',
         ],
@@ -184,26 +183,26 @@ function llama_place_report_layout_assignments(): array
             'car_truck_camping',
             'dispersed_camping_allowed',
             'designated_sites_only',
-            'stay_limit_days',
             'overnight_restrictions',
             'camping_conditional_details',
         ],
 
         'place:reservations_pricing' => [
-            // Price is decision-critical. Show all fees before reference URLs.
             'fee',
-            'entrance_facility_fee',
-            'parking_fee',
+            'extra_vehicle_fee',
             'reservation_required',
             'reservation_fee',
+            'reservation_url',
             'membership_required',
             'membership_fee',
+            'membership_url',
+            'parking_entrance_required',
+            'parking_entrance_fee',
             'check_in_required',
             'check_in_begins',
             'check_out_required',
             'checkout_ends',
-            'reservation_url',
-            'membership_url',
+            'discounts_available',
         ],
 
         'place:shared_amenities' => [
@@ -231,15 +230,6 @@ function llama_place_report_layout_assignments(): array
             'amenity_trailhead_parking',
             'amenity_camp_store',
             'facility_map_url',
-        ],
-
-        'place:place_accessibility' => [
-            'place_accessible',
-            'shared_accessible_facilities',
-            'shared_accessible_facility_types',
-            'accessible_toilet',
-            'amenity_accessible_showers',
-            'accessibility_notes',
         ],
 
         'place:activities_recreation' => [
