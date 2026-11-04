@@ -10,11 +10,16 @@ function llama_place_report_add_road_condition_questions(callable $add): void
         'points_categories' => ['road_access'],
     ];
 
-    // One stored selection controls which of the existing severity fields appear.
-    // Existing severity answers remain in their original storage paths.
-    $add('approach_road_hazards', 'Road hazards present', 'road_access',
-        'multiselect', 'details.approach_road_hazards', $common + [
+    // One stored pill selection controls which existing severity fields appear.
+    // Unknown is intentionally an option pill here, so do not also render the
+    // generic multiselect Unknown checkbox.
+    $hazardCommon = $common;
+    $hazardCommon['allow_unknown'] = false;
+
+    $add('approach_road_hazards', 'Road Hazards Present', 'road_access',
+        'multiselect', 'details.approach_road_hazards', $hazardCommon + [
             'options' => [
+                'approach_deep_ruts' => 'Deep ruts',
                 'rocks' => 'Rocks',
                 'washboards' => 'Washboards',
                 'potholes' => 'Potholes',
@@ -22,8 +27,7 @@ function llama_place_report_add_road_condition_questions(callable $add): void
                 'steep_grades' => 'Steep grades',
                 'drop_off_exposure' => 'Drop-offs',
                 'water_crossings' => 'Water crossings',
-                'downed_tree_risk' => 'Downed trees',
-                'approach_deep_ruts' => 'Deep ruts',
+                'downed_tree_risk' => 'Downed Tree Risk',
                 'none' => 'None',
                 'unknown' => 'Unknown',
             ],
