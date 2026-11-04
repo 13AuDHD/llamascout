@@ -140,6 +140,8 @@ function llama_place_report_add_summary_fields(
             'Rate rodents and other small animals that are likely to get into vehicles, food, trash, or gear. This is separate from dangerous wildlife risk.',
         'hurricane_risk' =>
             'Rate how much hurricanes or hurricane-force tropical systems affect the normal seasonal usability or access risk at this Place.',
+        'tornado_risk' =>
+            'Rate how much tornadoes or severe tornadic storms affect the normal seasonal safety or access risk at this Place.',
         'heat_season_risk' =>
             'Rate how much extreme seasonal heat affects normal use or safety here. Consider dangerous daytime temperatures, lack of shade, vehicle or equipment stress, and seasonal closures caused by heat.',
         'seasonal_closure' =>
