@@ -369,8 +369,12 @@ function llama_place_report_scope_overrides(): array
             'landscape_details',
             'landscape_views',
             'environment_water_nearby',
+            // Historical Yes/No questions remain classified for old records.
             'environment_wildlife',
             'environment_bugs',
+            // Current reviewed 1-5 replacements.
+            'environment_wildlife_activity',
+            'environment_bug_nuisance',
             'environment_wind_exposure',
             'environment_sun_exposure',
             'environment_shade',
