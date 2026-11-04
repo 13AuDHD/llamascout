@@ -417,12 +417,10 @@ function llama_place_report_scope_overrides(): array
             'flash_flood_risk',
             'wildfire_risk',
             'fall_hazard',
-            'cliff_exposure',
             'rockfall_risk',
             'wildlife_risk',
             'traffic_hazard',
             'warning_possible_downed_trees',
-            'warning_motorized_recreation_traffic',
             'warning_blind_turn_traffic_nearby',
 
             /*
