@@ -101,6 +101,9 @@ function llama_place_report_retired_question_keys(): array
         'recommended_quiet_evening',
         'recommended_sensory_retreat',
         'recommended_stargazing',
+
+        // Retired unsupported Getting There restriction summary.
+        'approach_access_restrictions',
     ];
 }
 
