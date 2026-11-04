@@ -648,24 +648,45 @@ $check('Parking and Maneuvering keeps only approved independent questions', stat
 });
 
 $check('Site Amenities hookup dependencies match owner review', static function () use ($assert): void {
-    $fields = llama_place_report_fields();
+    $raw = [];
+    $add = static function (
+        string $key,
+        string $label,
+        string $section,
+        string $type,
+        string $storage,
+        array $extra = []
+    ) use (&$raw): void {
+        $raw[$key] = array_merge([
+            'key' => $key,
+            'label' => $label,
+            'section' => $section,
+            'type' => $type,
+            'storage' => $storage,
+            'applicable_if' => [],
+        ], $extra);
+    };
 
+    llama_place_report_add_site_fields($add);
+    llama_place_report_apply_site_equipment_metadata($raw);
+
+    $fields = llama_place_report_fields();
     $assert(!isset($fields['hookup_electric']),
         'Retired hidden electric hookup question is still active');
 
     foreach (['hookup_electric_service', 'hookup_water', 'hookup_sewer'] as $key) {
-        $assert(($fields[$key]['applicable_if'][0] ?? []) === [
+        $assert(($raw[$key]['applicable_if'][0] ?? []) === [
             'field' => 'site_hookups_available',
             'operator' => 'equals',
             'value' => '1',
         ], $key . ' is not a child of Hookups = Yes');
     }
 
-    $assert(($fields['hookup_electric_service']['options']['none'] ?? '') === 'None',
+    $assert(($raw['hookup_electric_service']['options']['none'] ?? '') === 'None',
         'Electrical Service is missing the None option');
 
     foreach (['tent_pad_width_feet', 'tent_pad_length_feet'] as $key) {
-        $assert(($fields[$key]['applicable_if'][0] ?? []) === [
+        $assert(($raw[$key]['applicable_if'][0] ?? []) === [
             'field' => 'tent_pad',
             'operator' => 'equals',
             'value' => '1',
