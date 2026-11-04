@@ -144,7 +144,6 @@ function llama_place_report_layout_assignments(): array
             'sedan_accessible', 'high_clearance_recommended',
             'four_wheel_drive_recommended', 'road_exposure',
             'approach_turnaround_available', 'approach_overhead_obstacles',
-            'approach_access_restrictions',
         ],
 
         'getting_there:seasonal_access' => [
@@ -427,7 +426,6 @@ function llama_place_report_layout_assignments(): array
             'visited_at',
             'visit_length_of_stay',
             'visit_setup_types',
-            'contributor_notes',
         ],
     ];
 }
