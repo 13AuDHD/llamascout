@@ -196,6 +196,7 @@ function llama_place_report_approved_pages(): array
                 'seasonal_access',
                 'gate_access',
                 'nearest_services',
+                'rules_public',
             ],
         ],
         'site' => [
@@ -213,7 +214,6 @@ function llama_place_report_approved_pages(): array
                 'nighttime',
                 'specific_sensory',
                 'safety_public',
-                'rules_public',
                 'experience_public',
                 'notes_public',
                 'history_public',
