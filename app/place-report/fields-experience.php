@@ -328,7 +328,7 @@ function llama_place_report_add_experience_fields(
         'counts_toward_completion' => false,
     ]);
 
-    $add('environment_notes', 'Environment notes', 'landscape_setting', 'textarea', 'details.environment_notes', [
+    $add('environment_notes', 'Environmental Notes', 'landscape_setting', 'textarea', 'details.environment_notes', [
         'wide' => true, 'rows' => 3, 'counts_toward_completion' => false,
         'points_categories' => ['environment'],
     ]);

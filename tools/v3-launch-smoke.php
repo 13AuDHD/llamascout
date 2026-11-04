@@ -108,6 +108,7 @@ $check('Full inventory review shows approved questions across Place types', stat
         'environment_sun_exposure',
         'environment_shade',
         'tree_cover',
+        'environment_notes',
     ];
     $assert($setting === $expectedSetting,
         'Setting and Environment order does not match the reviewed inventory');
@@ -125,6 +126,7 @@ $check('Full inventory review shows approved questions across Place types', stat
         'environment_sun_exposure' => 'Sun Exposure',
         'environment_shade' => 'Environmental Shade',
         'tree_cover' => 'Tree Cover',
+        'environment_notes' => 'Environmental Notes',
     ];
     foreach ($expectedSettingLabels as $key => $label) {
         $assert(($settingFields[$key]['label'] ?? '') === $label,
@@ -146,8 +148,8 @@ $check('Full inventory review shows approved questions across Place types', stat
         'Historical Wildlife Common Yes/No question is still approved');
     $assert(!isset($settingFields['environment_bugs']),
         'Historical Bugs Significant Yes/No question is still approved');
-    $assert(!isset($settingFields['environment_notes']),
-        'Environment Notes is still in the approved Setting and Environment section');
+    $assert(isset($settingFields['environment_notes']),
+        'Environmental Notes is missing from Setting and Environment');
 
     $amenities = (array) $groups['amenities'][1];
     $pier = array_search('amenity_fishing_pier', $amenities, true);
