@@ -43,5 +43,10 @@ function llama_place_report_apply_site_notes_metadata(
 
         $fields['contributor_notes']['help'] =
             'Private moderation context for anything uncertain, temporary, contradictory, unusual, or needing verification. This is not shown publicly.';
+
+        $fields['contributor_notes']['hide_public'] = true;
+        $fields['contributor_notes']['counts_toward_completion'] = false;
+        $fields['contributor_notes']['points_categories'] = [];
+        $fields['contributor_notes']['moderation_only'] = true;
     }
 }

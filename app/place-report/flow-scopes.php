@@ -78,7 +78,6 @@ function llama_place_report_scope_overrides(): array
             'approach_narrowest_width_feet',
             'approach_turnaround_available',
             'approach_overhead_obstacles',
-            'approach_access_restrictions',
             'approach_year_round',
             'approach_seasonal_closure',
             'approach_closure_month',
