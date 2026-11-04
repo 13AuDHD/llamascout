@@ -73,6 +73,12 @@ function llama_place_report_retired_question_keys(): array
         'amenity_electricity',
         'amenity_water_filling_station',
         'amenity_trailhead_parking',
+
+        // Retired unapproved Site parking leftovers.
+        'double_driveway',
+        'hike_in_distance_feet',
+        'site_access_difficulty',
+        'trailer_suitable',
     ];
 }
 
