@@ -138,7 +138,7 @@ function llama_place_report_layout_assignments(): array
             'approach_road_hazards', 'approach_deep_ruts',
             'road_overall_difficulty', 'road_stress', 'rocks',
             'washboards', 'potholes', 'mud_risk', 'steep_grades',
-            'drop_off_exposure', 'water_crossings', 'downed_tree_risk',
+            'drop_off_exposure',
         ],
 
         'getting_there:vehicle_access' => [
