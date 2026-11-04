@@ -873,6 +873,39 @@ $check('Experience and Recommendations keeps only approved independent questions
     }
 });
 
+$check('Scout Notes and Place History stay independent and moderator notes stay private', static function () use ($assert): void {
+    $fields = llama_place_report_fields();
+    $groups = llama_place_report_approved_question_groups();
+
+    foreach (['notes_public', 'history_public'] as $groupKey) {
+        foreach ((array) $groups[$groupKey][1] as $key) {
+            $assert(isset($fields[$key]), 'Approved notes/history question is missing: ' . $key);
+            $assert((array) ($fields[$key]['applicable_if'] ?? []) === [],
+                'Approved notes/history question unexpectedly became dependent: ' . $key);
+        }
+    }
+
+    $assert(isset($fields['contributor_notes']),
+        'Moderator contributor_notes helper was accidentally retired');
+    $assert(($fields['contributor_notes']['approved_question_group'] ?? null) === null,
+        'Moderator contributor_notes leaked into the approved public questionnaire');
+    $assert(($fields['contributor_notes']['layout_section'] ?? null) !== 'site',
+        'Moderator contributor_notes leaked into the public Site layout');
+});
+
+$check('Road Conditions approved inventory matches reviewed questions', static function () use ($assert): void {
+    $fields = llama_place_report_fields();
+    $groups = llama_place_report_approved_question_groups();
+    $road = (array) $groups['road_conditions'][1];
+
+    $assert(in_array('potholes', $road, true),
+        'Approved Road Conditions inventory is missing Potholes');
+    $assert(!in_array('approach_access_restrictions', $road, true),
+        'Retired Access Restrictions remains in the approved Road Conditions inventory');
+    $assert(!isset($fields['approach_access_restrictions']),
+        'Retired Access Restrictions remains active');
+});
+
 $check('Approved questions have shared layout metadata', static function () use ($assert): void {
     $layouts = llama_place_report_layout_groups();
     $missing = [];
