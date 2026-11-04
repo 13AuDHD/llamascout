@@ -788,6 +788,32 @@ $check('Connectivity stays provider-neutral and notes stay independent', static 
         'Satellite tested-service inventory lost Starlink or Amazon Leo support');
 });
 
+$check('Connectivity is Site-only and does not inherit from Place', static function () use ($assert): void {
+    $fields = llama_place_report_fields();
+
+    foreach ([
+        'connectivity_overall',
+        'connectivity_att',
+        'connectivity_t_mobile',
+        'connectivity_verizon',
+        'connectivity_other_cell',
+        'connectivity_satellite',
+        'connectivity_services_tested',
+        'connectivity_starlink_note',
+    ] as $key) {
+        $assert(($fields[$key]['report_scope_group'] ?? '') === 'site',
+            'Connectivity question is not Site-only: ' . $key);
+        $assert(($fields[$key]['layout_section'] ?? '') === 'site',
+            'Connectivity question is not laid out on the Site page: ' . $key);
+        $assert(($fields[$key]['layout_group'] ?? '') === 'connectivity_services',
+            'Connectivity question is not in the Site Connectivity group: ' . $key);
+    }
+
+    $groups = llama_place_report_approved_group_page_lookup();
+    $assert(($groups['connectivity_public']['page'] ?? '') === 'site',
+        'Approved Connectivity group is not assigned to the Site page');
+});
+
 $check('Approved questions have shared layout metadata', static function () use ($assert): void {
     $layouts = llama_place_report_layout_groups();
     $missing = [];
