@@ -187,6 +187,31 @@ function llama_place_report_flow_metadata(): array
             'flow_group' => 'site_layout',
             'flow_order' => 30,
         ],
+
+        'connectivity_satellite' => [
+            'label' => 'Satellite System',
+            'help' =>
+                'Record satellite connectivity generally. This is not limited to Starlink; current and future satellite systems can be represented separately as the service inventory expands.',
+        ],
+
+        'connectivity_other_cell' => [
+            'label' => 'Other Cellular',
+            'help' =>
+                'Use this for cellular service that is not represented by the named carrier questions. Keep this generic so new cellular providers can be added without redefining historical answers.',
+        ],
+
+        'connectivity_starlink_note' => [
+            'label' => 'Connectivity Notes',
+            'help' =>
+                'Add useful connectivity details that are not captured by the ratings or tested-service selections.',
+            'applicable_if' => [],
+            'flow_independent_of' => [
+                'connectivity_services_tested',
+                'connectivity_satellite',
+                'connectivity_starlink_tested',
+                'connectivity_amazon_leo_tested',
+            ],
+        ],
     ];
 }
 

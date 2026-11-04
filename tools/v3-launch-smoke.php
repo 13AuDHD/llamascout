@@ -745,6 +745,49 @@ $check('Site Accessibility dependencies match owner review', static function () 
     }
 });
 
+$check('Connectivity stays provider-neutral and notes stay independent', static function () use ($assert): void {
+    $raw = [
+        'connectivity_satellite' => [
+            'label' => 'Satellite',
+            'help' => '',
+            'applicable_if' => [],
+        ],
+        'connectivity_other_cell' => [
+            'label' => 'Other Cellular',
+            'help' => '',
+            'applicable_if' => [],
+        ],
+        'connectivity_starlink_note' => [
+            'label' => 'Starlink Note',
+            'help' => '',
+            'applicable_if' => [[
+                'field' => 'connectivity_services_tested',
+                'operator' => 'contains',
+                'value' => 'starlink',
+            ]],
+        ],
+    ];
+
+    llama_place_report_apply_flow_metadata($raw);
+
+    $assert(($raw['connectivity_satellite']['label'] ?? '') === 'Satellite System',
+        'Satellite question is not provider-neutral');
+    $assert(($raw['connectivity_other_cell']['label'] ?? '') === 'Other Cellular',
+        'Other Cellular label changed unexpectedly');
+    $assert(($raw['connectivity_starlink_note']['label'] ?? '') === 'Connectivity Notes',
+        'Starlink Note was not renamed to Connectivity Notes');
+    $assert((array) ($raw['connectivity_starlink_note']['applicable_if'] ?? []) === [],
+        'Connectivity Notes is still conditional');
+
+    $fields = llama_place_report_fields();
+    $assert(($fields['connectivity_starlink_note']['label'] ?? '') === 'Connectivity Notes',
+        'Final registry does not expose Connectivity Notes');
+    $assert(($fields['connectivity_satellite']['label'] ?? '') === 'Satellite System',
+        'Final registry does not expose Satellite System');
+    $assert(isset($fields['connectivity_starlink_tested'], $fields['connectivity_amazon_leo_tested']),
+        'Satellite tested-service inventory lost Starlink or Amazon Leo support');
+});
+
 $check('Approved questions have shared layout metadata', static function () use ($assert): void {
     $layouts = llama_place_report_layout_groups();
     $missing = [];
