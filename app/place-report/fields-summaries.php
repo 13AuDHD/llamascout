@@ -15,17 +15,6 @@ function llama_place_report_add_summary_fields(
      * summary group. `display_section` only controls where the questions are
      * rendered in the form and Scout Report.
      */
-    $add('access_summary', 'Access summary', 'summaries', 'textarea', 'access_summary', [
-        'wide' => true,
-        'rows' => 4,
-        'min_characters' =>
-            llama_place_report_requirement_int(
-                'place_report_access_summary_min_characters',
-                1500
-            ),
-        'display_section' => 'road_access',
-        'placeholder' => 'Summarize the road, vehicle requirements, turnaround, leveling, and mobility access.',
-    ]);
     $add('sensory_summary', 'Sensory summary', 'summaries', 'textarea', 'sensory_summary', [
         'wide' => true,
         'rows' => 4,
@@ -122,10 +111,6 @@ function llama_place_report_add_summary_fields(
             'Rate how open the sky is directly over and around the site. Heavy tree canopy, canyon walls, buildings, or other obstructions reduce open sky and may affect solar or satellite use.',
         'site_access_difficulty' =>
             'Rate the final entry into the actual parking or camping spot. A road can be easy while the last turn, slope, rut, or entrance into the site itself is difficult.',
-        'road_overall_difficulty' =>
-            'Rate the access road as a whole. Consider surface, rocks, ruts, grades, width, water crossings, and other obstacles from the normal road network to the Place.',
-        'road_stress' =>
-            'This is about how stressful the drive feels, not just technical difficulty. Narrow roads, exposure, blind corners, drop-offs, traffic, or nowhere to pass can make an otherwise easy road stressful.',
         'sensory_smoke_risk' =>
             'Rate the chance that smoke from nearby campsites or campfires will drift into this site. Closer neighboring campsites, frequent campfires, and normal wind direction can increase the risk; more separation generally lowers it.',
         'sensory_strong_odors' =>
