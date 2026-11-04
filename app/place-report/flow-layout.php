@@ -105,7 +105,6 @@ function llama_place_report_layout_groups(): array
         ],
         'place' => [
             'information_location' => 'Information & Location',
-            'overnight_stays' => 'Camping & Overnight Stays',
             'shared_amenities' => 'Facilities & Amenities',
             'activities_recreation' => 'Activities & Recreation',
             'seasonal_conditions' => 'Seasonal Conditions',
@@ -142,7 +141,7 @@ function llama_place_report_layout_assignments(): array
 
         'getting_there:vehicle_access' => [
             'sedan_accessible', 'high_clearance_recommended',
-            'four_wheel_drive_recommended', 'road_exposure',
+            'four_wheel_drive_recommended',
             'approach_turnaround_available', 'approach_overhead_obstacles',
         ],
 
@@ -172,13 +171,6 @@ function llama_place_report_layout_assignments(): array
             'name', 'type', 'description', 'stay_limit_days', 'latitude', 'longitude',
             'elevation_feet', 'road', 'city', 'county', 'state', 'land_type',
             'land_manager', 'region',
-        ],
-
-        'place:overnight_stays' => [
-            'campsite_count',
-            'overnight_camping_allowed',
-            'dispersed_camping_allowed',
-            'designated_sites_only',
         ],
 
         'site:reservations_pricing' => [

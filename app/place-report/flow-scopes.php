@@ -172,9 +172,6 @@ function llama_place_report_scope_overrides(): array
              * Rules whose meaning is inherently Place/Area-wide rather than a
              * physical attribute of one campsite.
              */
-            'dispersed_camping_allowed',
-            'designated_sites_only',
-            'stay_limit_days',
             'membership_required',
             'membership_url',
             'membership_fee',
@@ -184,15 +181,8 @@ function llama_place_report_scope_overrides(): array
             'discounts_available',
             'entrance_facility_fee',
             'parking_fee',
-            'collecting_firewood',
-            'drone_use_legal',
-            'target_shooting_allowed',
-            'food_storage_required',
             'existing_sites_encouraged',
-            'pack_it_in_pack_it_out',
             'residential_use_prohibited',
-            'current_fire_restrictions_url',
-            'fire_activity_permit_url',
             'overnight_vehicle_tent_permit_url',
 
             /*
@@ -394,6 +384,9 @@ function llama_place_report_scope_overrides(): array
              * explicit answer.
              */
             'overnight_camping_allowed',
+            'dispersed_camping_allowed',
+            'designated_sites_only',
+            'stay_limit_days',
             'tent_camping_allowed',
             'rv_camping_allowed',
             'car_truck_camping',
@@ -428,6 +421,13 @@ function llama_place_report_scope_overrides(): array
             'place_quiet_hours_end',
             'place_alcohol_permitted',
             'place_additional_rules',
+            'collecting_firewood',
+            'fire_activity_permit_url',
+            'current_fire_restrictions_url',
+            'food_storage_required',
+            'pack_it_in_pack_it_out',
+            'drone_use_legal',
+            'target_shooting_allowed',
 
             /*
              * Shared parking facts can describe an entire Place, a mapped Area,
