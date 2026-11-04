@@ -409,6 +409,32 @@ $check('Stay Limit is Basic Place info and Place accessibility is retired', stat
         'Accessibility Notes is not Site-only');
 });
 
+$check('Camping and Overnight Stays keeps only approved independent questions', static function () use ($assert): void {
+    $fields = llama_place_report_fields();
+    foreach ([
+        'tent_camping_allowed',
+        'rv_camping_allowed',
+        'car_truck_camping',
+        'overnight_restrictions',
+        'camping_conditional_details',
+        'overnight_vehicle_tent_permit_url',
+    ] as $key) {
+        $assert(!isset($fields[$key]),
+            'Retired overnight question is still active: ' . $key);
+    }
+
+    foreach ([
+        'overnight_camping_allowed',
+        'dispersed_camping_allowed',
+        'designated_sites_only',
+    ] as $key) {
+        $assert(isset($fields[$key]),
+            'Approved overnight question is missing: ' . $key);
+        $assert((array) ($fields[$key]['applicable_if'] ?? []) === [],
+            'Approved overnight question unexpectedly became dependent: ' . $key);
+    }
+});
+
 $check('Approved questions have shared layout metadata', static function () use ($assert): void {
     $layouts = llama_place_report_layout_groups();
     $missing = [];
