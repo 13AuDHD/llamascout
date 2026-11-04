@@ -696,26 +696,27 @@ $check('Site Amenities hookup dependencies match owner review', static function 
 
 $check('Site Accessibility dependencies match owner review', static function () use ($assert): void {
     $raw = [];
-    $add = static function (
-        string $key,
-        string $label,
-        string $section,
-        string $type,
-        string $storage,
-        array $extra = []
-    ) use (&$raw): void {
-        $raw[$key] = array_merge([
-            'key' => $key,
-            'label' => $label,
-            'section' => $section,
-            'type' => $type,
-            'storage' => $storage,
-            'applicable_if' => [],
-        ], $extra);
-    };
 
-    llama_place_report_add_site_fields($add);
-    llama_place_report_add_shared_amenity_fields($raw, $add);
+    foreach ([
+        'site_accessible',
+        'amenity_picnic_table',
+        'amenity_toilets',
+        'accessible_picnic_table',
+        'accessible_toilet',
+        'wheelchair_friendly',
+        'mobility_device_friendly',
+        'step_free_access',
+        'flat_walking_surface',
+        'walking_distance_from_vehicle',
+        'accessibility_notes',
+    ] as $key) {
+        $raw[$key] = [
+            'key' => $key,
+            'label' => $key,
+            'applicable_if' => [],
+        ];
+    }
+
     llama_place_report_apply_site_accessibility_metadata($raw);
 
     $assert(($raw['accessible_picnic_table']['applicable_if'][0] ?? []) === [
