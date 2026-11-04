@@ -238,9 +238,6 @@ function llama_place_report_apply_common_applicability(
             'double_driveway',
             'hike_in_distance_feet',
             'max_rv_length_feet',
-            'site_rating',
-            'condition_rating',
-            'location_rating',
             'capacity_size_rating',
         ],
         [[
@@ -301,16 +298,6 @@ function llama_place_report_apply_common_applicability(
             'field' => 'pets_allowed',
             'operator' => 'equals',
             'value' => '1',
-        ]]
-    );
-
-    llama_place_report_set_applicable(
-        $fields,
-        ['dispersed_camping_allowed'],
-        [[
-            'field' => 'type',
-            'operator' => 'in',
-            'value' => $types['dispersed_relevant'],
         ]]
     );
 
@@ -408,16 +395,6 @@ function llama_place_report_apply_common_applicability(
             'field' => 'generator_quiet_hours',
             'operator' => 'equals',
             'value' => '1',
-        ]]
-    );
-
-    llama_place_report_set_applicable(
-        $fields,
-        ['warning_possible_downed_trees'],
-        [[
-            'field' => 'type',
-            'operator' => 'in',
-            'value' => $types['camping'],
         ]]
     );
 
