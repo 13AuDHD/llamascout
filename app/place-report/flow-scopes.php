@@ -404,8 +404,6 @@ function llama_place_report_scope_overrides(): array
             'sensory_aircraft_noise',
             'sensory_train_noise',
             'sensory_dog_barking',
-            'sensory_road_noise',
-            'sensory_human_activity',
             'sensory_wildlife_noise',
             'sensory_wind_noise',
             'sensory_smoke_risk',
