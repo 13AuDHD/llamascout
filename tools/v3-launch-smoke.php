@@ -548,6 +548,67 @@ $check('Retired Rules helpers stay out of the active registry', static function 
         'Approved Fire / Activity Permit URL was accidentally removed');
 });
 
+$check('Operating Hours and Place amenities match owner review', static function () use ($assert): void {
+    $raw = [];
+    $add = static function (
+        string $key,
+        string $label,
+        string $section,
+        string $type,
+        string $storage,
+        array $extra = []
+    ) use (&$raw): void {
+        $raw[$key] = array_merge([
+            'key' => $key,
+            'label' => $label,
+            'section' => $section,
+            'type' => $type,
+            'storage' => $storage,
+            'applicable_if' => [],
+        ], $extra);
+    };
+    llama_place_report_add_operating_fields($add);
+
+    foreach (['place_opening_time', 'place_closing_time'] as $key) {
+        $assert(($raw[$key]['applicable_if'][0] ?? []) === [
+            'field' => 'place_open_24_hours',
+            'operator' => 'equals',
+            'value' => '0',
+        ], $key . ' is not a child of Normally open 24 hours? = No');
+    }
+
+    $assert(($raw['place_gate_access_type']['applicable_if'][0] ?? []) === [
+        'field' => 'place_entrance_gate',
+        'operator' => 'equals',
+        'value' => '1',
+    ], 'Place Gate Access Type is not a child of Place Gated');
+
+    foreach (['place_gate_opening_time', 'place_gate_closing_time'] as $key) {
+        $assert(($raw[$key]['applicable_if'] ?? []) === [
+            ['field' => 'place_entrance_gate', 'operator' => 'equals', 'value' => '1'],
+            ['field' => 'place_gate_access_type', 'operator' => 'equals', 'value' => 'scheduled'],
+        ], $key . ' is not restricted to a scheduled Place gate');
+    }
+
+    $fields = llama_place_report_fields();
+    foreach ([
+        'amenity_none',
+        'amenity_recycling',
+        'amenity_electricity',
+        'amenity_water_filling_station',
+        'amenity_trailhead_parking',
+    ] as $key) {
+        $assert(!isset($fields[$key]), 'Retired Place amenity is still active: ' . $key);
+    }
+
+    $groups = llama_place_report_approved_question_groups();
+    foreach ((array) $groups['amenities'][1] as $key) {
+        $assert(isset($fields[$key]), 'Approved Place amenity is missing: ' . $key);
+        $assert((array) ($fields[$key]['applicable_if'] ?? []) === [],
+            'Approved Place amenity unexpectedly became dependent: ' . $key);
+    }
+});
+
 $check('Approved questions have shared layout metadata', static function () use ($assert): void {
     $layouts = llama_place_report_layout_groups();
     $missing = [];

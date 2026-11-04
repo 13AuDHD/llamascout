@@ -201,7 +201,6 @@ function llama_place_report_layout_assignments(): array
         ],
 
         'place:shared_amenities' => [
-            'amenity_none',
             'amenity_toilets',
             'amenity_potable_water',
             'amenity_trash',
@@ -214,15 +213,11 @@ function llama_place_report_layout_assignments(): array
             'amenity_dog_park',
             'amenity_amphitheater',
             'amenity_campground_host',
-            'amenity_water_filling_station',
             'amenity_dishwashing_station',
-            'amenity_recycling',
-            'amenity_electricity',
             'amenity_river_access',
             'amenity_lake_access',
             'amenity_fishing_pier',
             'amenity_trailhead',
-            'amenity_trailhead_parking',
             'amenity_camp_store',
             'facility_map_url',
         ],
@@ -299,13 +294,6 @@ function llama_place_report_layout_assignments(): array
             'place_gate_access_type',
             'place_gate_opening_time',
             'place_gate_closing_time',
-            'place_reported_operating_status',
-            'place_closure_reason',
-            'place_closure_began',
-            'place_expected_reopening',
-            'place_closure_review_date',
-            'place_closure_notes',
-            'place_closure_source_url',
         ],
 
         'site:selection_type' => [
