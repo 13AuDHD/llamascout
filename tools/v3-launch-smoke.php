@@ -1028,6 +1028,42 @@ $check('Out-of-range rating rejected', static function () use ($fields, $assert)
     catch (InvalidArgumentException) { return; }
     $assert(false, 'Invalid rating was accepted');
 });
+$check('Reviewed observational groups are Site-only', static function () use ($assert): void {
+    $fields = llama_place_report_fields();
+    $groups = llama_place_report_approved_question_groups();
+
+    foreach ([
+        'setting',
+        'parking',
+        'daytime',
+        'nighttime',
+        'specific_sensory',
+        'safety_public',
+        'experience_public',
+        'notes_public',
+        'history_public',
+    ] as $groupKey) {
+        foreach ((array) $groups[$groupKey][1] as $key) {
+            $assert(($fields[$key]['report_scope_group'] ?? '') === 'site',
+                'Reviewed observational question is not Site-only: ' . $key);
+        }
+    }
+
+    foreach ([
+        'environment_notes',
+        'emergency_access',
+        'parking_surface',
+        'ground_condition',
+        'parking_grade',
+    ] as $key) {
+        $assert(($fields[$key]['report_scope_group'] ?? '') === 'site',
+            'Reviewed Site observation still inherits from Place/Area: ' . $key);
+    }
+
+    $assert(($fields['contributor_notes']['report_scope_group'] ?? '') === 'all',
+        'Private moderator notes unexpectedly lost multi-scope ownership');
+});
+
 $check('Place/Site field ownership enforced', static function () use ($assert): void {
     try { llama_scoped_report_field('site_length_feet', 'place'); }
     catch (InvalidArgumentException) { return; }

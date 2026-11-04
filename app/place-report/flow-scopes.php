@@ -105,7 +105,6 @@ function llama_place_report_scope_overrides(): array
             'facility_map_url',
             'activities',
             'access_summary',
-            'emergency_access',
 
             /*
              * Base/default pricing. Detailed mapped Area/Site nightly rates
@@ -183,7 +182,6 @@ function llama_place_report_scope_overrides(): array
             'parking_entrance_required',
             'parking_entrance_fee',
             'discounts_available',
-            'environment_notes',
             'entrance_facility_fee',
             'parking_fee',
             'collecting_firewood',
@@ -281,6 +279,89 @@ function llama_place_report_scope_overrides(): array
             'site_amenities_notes',
 
             /*
+             * Reviewed Site observations. These describe the selected physical
+             * Site and never inherit from the parent Place or Area.
+             */
+            'parking_surface',
+            'ground_condition',
+            'parking_grade',
+
+            'landscape_primary',
+            'environment_water_nearby',
+            'landscape_details',
+            'landscape_views',
+            'environment_wildlife_activity',
+            'critter_activity',
+            'environment_bug_nuisance',
+            'environment_open_sky',
+            'environment_sun_exposure',
+            'environment_shade',
+            'tree_cover',
+            'environment_notes',
+
+            'daytime_social_interaction',
+            'daytime_noise',
+            'daytime_traffic',
+            'daytime_crowds',
+            'daytime_privacy',
+            'daytime_light_pollution',
+            'daytime_sensory_comfort',
+            'felt_safe_daytime_rating',
+            'nighttime_social_interaction',
+            'nighttime_noise',
+            'nighttime_traffic',
+            'nighttime_crowds',
+            'nighttime_privacy',
+            'nighttime_light_pollution',
+            'nighttime_sensory_comfort',
+            'felt_safe_nighttime_rating',
+
+            'sensory_dust_from_traffic',
+            'sensory_generator_noise',
+            'sensory_aircraft_noise',
+            'sensory_train_noise',
+            'sensory_dog_barking',
+            'sensory_wildlife_noise',
+            'sensory_wind_noise',
+            'sensory_strong_odors',
+            'sensory_smoke_risk',
+            'road_exposure',
+            'sensory_visual_exposure',
+            'sensory_predictability',
+            'sensory_summary',
+
+            'warning_possible_downed_trees',
+            'fall_hazard',
+            'wildlife_risk',
+            'wildfire_risk',
+            'flash_flood_risk',
+            'rockfall_risk',
+            'traffic_hazard',
+            'warning_blind_turn_traffic_nearby',
+            'emergency_access',
+
+            'experience_sunrise_view',
+            'experience_sunset_view',
+            'experience_overall_scenery',
+            'experience_stargazing',
+            'experience_sensory_retreat',
+            'experience_quiet_evening',
+            'recommended_remote_work',
+            'recommended_overnight_stop',
+            'recommended_extended_stay',
+            'recommended_solo_travel',
+            'recommended_families',
+            'recommended_large_groups',
+            'not_recommended_for',
+
+            'scout_note_1',
+            'scout_note_2',
+            'scout_note_3',
+            'visited_at',
+            'visit_length_of_stay',
+            'visit_setup_types',
+
+            /*
              * Connectivity is Site-specific. Terrain, vegetation, structures,
              * and local obstructions can produce very different service between
              * two Sites inside the same Place, so these answers never inherit.
@@ -357,101 +438,30 @@ function llama_place_report_scope_overrides(): array
              * Site overhead clearance remain Site-only because those facts
              * identify one physical space.
              */
-            'parking_surface',
-            'ground_condition',
-            'parking_grade',
 
             /*
              * Environment, sensory, safety and experience can describe a
              * single-location Place, a mapped Area, or a selected Site.
              */
-            'tree_cover',
-            'landscape_primary',
-            'landscape_details',
-            'landscape_views',
-            'environment_water_nearby',
             // Historical Yes/No questions remain classified for old records.
             'environment_wildlife',
             'environment_bugs',
             // Current reviewed 1-5 replacements.
-            'environment_wildlife_activity',
-            'environment_bug_nuisance',
             'environment_wind_exposure',
-            'environment_sun_exposure',
-            'environment_shade',
-            'environment_open_sky',
-            'critter_activity',
-
-            'felt_safe_daytime_rating',
-            'felt_safe_nighttime_rating',
-            'daytime_noise',
-            'daytime_traffic',
-            'daytime_crowds',
-            'daytime_privacy',
-            'daytime_light_pollution',
-            'daytime_sensory_comfort',
-            'daytime_social_interaction',
-            'nighttime_noise',
-            'nighttime_traffic',
-            'nighttime_crowds',
-            'nighttime_privacy',
-            'nighttime_light_pollution',
-            'nighttime_sensory_comfort',
-            'nighttime_social_interaction',
-            'sensory_dust_from_traffic',
-            'sensory_generator_noise',
-            'sensory_aircraft_noise',
-            'sensory_train_noise',
-            'sensory_dog_barking',
-            'sensory_wildlife_noise',
-            'sensory_wind_noise',
-            'sensory_smoke_risk',
-            'sensory_strong_odors',
-            'sensory_visual_exposure',
-            'sensory_predictability',
-            'road_exposure',
 
             'felt_safe_daytime',
             'felt_safe_nighttime',
-            'flash_flood_risk',
-            'wildfire_risk',
-            'fall_hazard',
-            'rockfall_risk',
-            'wildlife_risk',
-            'traffic_hazard',
-            'warning_possible_downed_trees',
-            'warning_blind_turn_traffic_nearby',
 
             /*
              * Generic accessibility observations can legitimately narrow from
              * Place to Area to Site. Shared-facility accessibility above is
              * deliberately Place/Area-only.
              */
-            'experience_sunrise_view',
-            'experience_sunset_view',
-            'experience_overall_scenery',
-            'experience_stargazing',
-            'experience_quiet_evening',
-            'experience_sensory_retreat',
-            'recommended_overnight_stop',
-            'recommended_extended_stay',
-            'recommended_remote_work',
-            'recommended_solo_travel',
-            'recommended_families',
-            'recommended_large_groups',
-            'not_recommended_for',
 
             /*
              * Narrative summaries and reviewer notes may describe whichever
              * target is currently being reported.
              */
-            'sensory_summary',
-            'visited_at',
-            'scout_note_1',
-            'scout_note_2',
-            'scout_note_3',
-            'visit_length_of_stay',
-            'visit_setup_types',
             'contributor_notes',
         ],
     ];
