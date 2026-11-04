@@ -61,19 +61,4 @@ function llama_place_report_add_road_restriction_questions(callable $add): void
     $add('approach_gate_closes', 'Gate closing time', 'road_access',
         'select', 'details.approach_gate_closes', $common + $scheduled + ['options' => $hours]);
 
-    $add('approach_restriction_details', 'Access restrictions', 'road_access',
-        'textarea', 'details.approach_restriction_details', $common + [
-            'rows' => 3,
-            'wide' => true,
-            'counts_toward_completion' => false,
-            'applicable_if' => [['any' => [
-                ['field' => 'approach_permit_required', 'operator' => 'equals', 'value' => '1'],
-                ['field' => 'approach_fee_required', 'operator' => 'equals', 'value' => '1'],
-                ['field' => 'approach_gate_present', 'operator' => 'equals', 'value' => '1'],
-            ]]],
-        ]);
-    $add('approach_access_info_url', 'Official access information URL',
-        'road_access', 'url', 'details.approach_access_info_url', $common + [
-            'counts_toward_completion' => false,
-        ]);
 }
