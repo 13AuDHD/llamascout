@@ -417,14 +417,14 @@ function llama_place_report_approved_reconciliation(): array
             'approved_label' => 'Closure Ends',
             'approved_group' => 'seasonal_access',
             'current_keys' => ['season_begins'],
-            'status' => 'direct_question',
+            'status' => 'resolved_existing_key',
             'compatibility' => 'old approach month/day fields retained as inactive history',
         ],
         'seasonal_access_end' => [
             'approved_label' => 'Closure Begins',
             'approved_group' => 'seasonal_access',
             'current_keys' => ['season_ends'],
-            'status' => 'direct_question',
+            'status' => 'resolved_existing_key',
             'compatibility' => 'old approach month/day fields retained as inactive history',
         ],
         'site_overhead_clearance' => [
