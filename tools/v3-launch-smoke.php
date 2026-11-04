@@ -1106,6 +1106,143 @@ $check('Reviewed observational groups are Site-only', static function () use ($a
         'Private moderator notes unexpectedly lost multi-scope ownership');
 });
 
+$check('Final Place Area Site ownership model matches owner review', static function () use ($assert): void {
+    $fields = llama_place_report_fields();
+    $pages = llama_place_report_approved_group_page_lookup();
+
+    foreach ([
+        'name',
+        'type',
+        'description',
+        'latitude',
+        'longitude',
+        'elevation_feet',
+        'road',
+        'city',
+        'county',
+        'state',
+        'land_type',
+        'land_manager',
+        'region',
+        'place_open_year_round',
+        'place_open_24_hours',
+        'place_opening_time',
+        'place_closing_time',
+        'place_entrance_gate',
+        'place_gate_access_type',
+        'place_gate_opening_time',
+        'place_gate_closing_time',
+        'road_surface',
+        'road_width',
+        'approach_road_condition',
+        'approach_road_hazards',
+        'approach_road_type',
+        'approach_permit_required',
+        'approach_fee_required',
+        'approach_road_fee',
+        'approach_gate_present',
+        'approach_gate_access_type',
+        'approach_gate_opens',
+        'approach_gate_closes',
+        'nearest_town',
+        'nearest_fuel',
+        'nearest_ev_charging',
+        'nearest_propane',
+        'nearest_alcohol_sales',
+        'nearest_grocery',
+        'nearest_water',
+        'nearest_toilet',
+        'nearest_hospital',
+    ] as $key) {
+        $assert(($fields[$key]['report_scope_group'] ?? '') === 'place',
+            'Place-only question has wrong ownership: ' . $key);
+    }
+
+    foreach ([
+        'season_begins',
+        'season_ends',
+        'best_months',
+        'seasonal_closure',
+        'snow_risk',
+        'mud_season_risk',
+        'monsoon_risk',
+        'tornado_risk',
+        'hurricane_risk',
+        'heat_season_risk',
+        'amenity_toilets',
+        'amenity_potable_water',
+        'amenity_trash',
+        'amenity_dump_station',
+        'amenity_showers',
+        'amenity_picnic_shelter',
+        'amenity_wifi',
+        'amenity_laundry',
+        'amenity_dishwashing_station',
+        'amenity_playground',
+        'amenity_dog_park',
+        'amenity_amphitheater',
+        'amenity_campground_host',
+        'amenity_camp_store',
+        'amenity_trailhead',
+        'amenity_river_access',
+        'amenity_lake_access',
+        'amenity_fishing_pier',
+    ] as $key) {
+        $assert(($fields[$key]['report_scope_group'] ?? '') === 'place_area',
+            'Place/Area question has wrong ownership: ' . $key);
+    }
+
+    foreach ([
+        'overnight_camping_allowed',
+        'dispersed_camping_allowed',
+        'designated_sites_only',
+        'stay_limit_days',
+        'pets_allowed',
+        'dogs_required_to_be_leashed',
+        'generator_restrictions',
+        'generator_prohibited',
+        'generator_quiet_hours',
+        'generator_quiet_hours_begin',
+        'generator_quiet_hours_end',
+        'generator_run_restrictions',
+        'generator_max_run_hours',
+        'generator_restriction_details',
+        'place_quiet_hours',
+        'place_quiet_hours_begin',
+        'place_quiet_hours_end',
+        'campfire_allowed',
+        'collecting_firewood',
+        'place_charcoal_grills_allowed',
+        'place_propane_fire_pits_allowed',
+        'fire_activity_permit_url',
+        'current_fire_restrictions_url',
+        'food_storage_required',
+        'pack_it_in_pack_it_out',
+        'place_alcohol_permitted',
+        'drone_use_legal',
+        'target_shooting_allowed',
+        'place_additional_rules',
+    ] as $key) {
+        $assert(($fields[$key]['report_scope_group'] ?? '') === 'all',
+            'Place-first override-capable policy has wrong ownership: ' . $key);
+    }
+
+    $assert(($pages['rules_public']['page'] ?? '') === 'place',
+        'Rules & Restrictions is not Place-first in the approved page map');
+
+    foreach ((array) llama_place_report_approved_question_groups()['rules_public'][1] as $key) {
+        $assert(in_array('place', (array) ($fields[$key]['report_scopes'] ?? []), true),
+            'Rule cannot be recorded at Place scope: ' . $key);
+        $assert(in_array('site', (array) ($fields[$key]['report_scopes'] ?? []), true),
+            'Rule cannot provide a Site override: ' . $key);
+    }
+
+    $assert(($fields['road_exposure']['report_scope_group'] ?? '') === 'site',
+        'Road Exposure should remain a Site sensory observation');
+    $assert(($fields['road_exposure']['layout_section'] ?? '') === 'site',
+        'Road Exposure leaked back into Getting There presentation');
+});
+
 $check('Place/Site field ownership enforced', static function () use ($assert): void {
     try { llama_scoped_report_field('site_length_feet', 'place'); }
     catch (InvalidArgumentException) { return; }
