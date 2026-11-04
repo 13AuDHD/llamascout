@@ -151,6 +151,40 @@ $check('Full inventory review shows approved questions across Place types', stat
     $assert(isset($settingFields['environment_notes']),
         'Environmental Notes is missing from Setting and Environment');
 
+    $roadFields = llama_report_questions();
+    $roadTypeOptions = (array) ($roadFields['approach_road_type']['options'] ?? []);
+    $assert(($roadTypeOptions['tribal'] ?? '') === 'Native/Tribal road',
+        'Access Road Type is missing Native/Tribal road');
+
+    $hazardField = $roadFields['approach_road_hazards'] ?? [];
+    $expectedHazards = [
+        'approach_deep_ruts' => 'Deep ruts',
+        'rocks' => 'Rocks',
+        'washboards' => 'Washboards',
+        'potholes' => 'Potholes',
+        'mud_risk' => 'Mud',
+        'steep_grades' => 'Steep grades',
+        'drop_off_exposure' => 'Drop-offs',
+        'water_crossings' => 'Water crossings',
+        'downed_tree_risk' => 'Downed Tree Risk',
+        'none' => 'None',
+        'unknown' => 'Unknown',
+    ];
+    $assert(($hazardField['options'] ?? []) === $expectedHazards,
+        'Road Hazards Present pill order or wording does not match the reviewed set');
+    $assert(empty($hazardField['allow_unknown']),
+        'Road Hazards Present must use only the Unknown pill, not the extra Unknown checkbox');
+
+    $assert(!isset($roadFields['water_crossings']),
+        'Duplicate Water Crossings follow-up question is still approved');
+    $assert(!isset($roadFields['downed_tree_risk']),
+        'Duplicate Downed Tree Risk follow-up question is still approved');
+
+    $assert(($roadFields['approach_fee_required']['label'] ?? '') === 'Road access/Parking fee?',
+        'Road access/Parking fee question label does not match');
+    $assert(($roadFields['approach_road_fee']['label'] ?? '') === 'Road access/Parking fee ($)',
+        'Road access/Parking fee amount label does not match');
+
     $amenities = (array) $groups['amenities'][1];
     $pier = array_search('amenity_fishing_pier', $amenities, true);
     $assert($amenities[$pier - 2] === 'amenity_river_access'
