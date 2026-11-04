@@ -814,6 +814,25 @@ $check('Connectivity is Site-only and does not inherit from Place', static funct
         'Approved Connectivity group is not assigned to the Site page');
 });
 
+$check('Approved sensory questions stay independent and legacy overlaps stay retired', static function () use ($assert): void {
+    $fields = llama_place_report_fields();
+
+    foreach (['sensory_road_noise', 'sensory_human_activity'] as $key) {
+        $assert(!isset($fields[$key]),
+            'Retired sensory question is still active: ' . $key);
+    }
+
+    $groups = llama_place_report_approved_question_groups();
+    foreach (['daytime', 'nighttime', 'specific_sensory'] as $groupKey) {
+        foreach ((array) $groups[$groupKey][1] as $key) {
+            $assert(isset($fields[$key]),
+                'Approved sensory question is missing: ' . $key);
+            $assert((array) ($fields[$key]['applicable_if'] ?? []) === [],
+                'Approved sensory question unexpectedly became dependent: ' . $key);
+        }
+    }
+});
+
 $check('Approved questions have shared layout metadata', static function () use ($assert): void {
     $layouts = llama_place_report_layout_groups();
     $missing = [];

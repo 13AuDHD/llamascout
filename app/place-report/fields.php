@@ -83,6 +83,11 @@ function llama_place_report_retired_question_keys(): array
         // Retired hidden Site hookup parent. The approved Hookups question now
         // owns Electrical Service, Water Hookup, and Sewer Hookup directly.
         'hookup_electric',
+
+        // Retired unapproved sensory leftovers superseded by the approved
+        // Daytime, Nighttime, and Specific Sensory questions.
+        'sensory_road_noise',
+        'sensory_human_activity',
     ];
 }
 
