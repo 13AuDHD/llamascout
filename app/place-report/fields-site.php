@@ -54,9 +54,10 @@ function llama_place_report_add_site_fields(
         'points_categories' => [],
     ]);
 
-    $add('site_accessible', 'Site accessible?', 'site_vehicle', 'tri', 'details.site_accessible', [
+    $add('site_accessible', 'Officially marked accessible Site?', 'site_vehicle', 'tri', 'details.site_accessible', [
         'allow_unknown' => true,
-        'points_categories' => ['site_vehicle', 'accessibility'],
+        'points_categories' => ['accessibility'],
+        'help' => 'Choose Yes only when the Site is officially designated or marked as accessible. Physical accessibility details are recorded in the questions below.',
     ]);
 
     $add('vehicle_capacity', 'Maximum vehicles', 'site_vehicle', 'select', 'details.vehicle_capacity', [

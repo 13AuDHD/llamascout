@@ -609,6 +609,24 @@ $check('Operating Hours and Place amenities match owner review', static function
     }
 });
 
+$check('Official Site accessibility question is first in Accessibility', static function () use ($assert): void {
+    $groups = llama_place_report_approved_question_groups();
+    $assert(!in_array('site_accessible', (array) $groups['site_info'][1], true),
+        'Official Site accessibility question is still in Site Info');
+    $assert(((array) $groups['site_accessibility'][1])[0] === 'site_accessible',
+        'Official Site accessibility question is not first in Accessibility');
+
+    $fields = llama_place_report_fields();
+    $assert(($fields['site_accessible']['label'] ?? '') === 'Officially marked accessible Site?',
+        'Official Site accessibility label changed unexpectedly');
+    $assert(($fields['site_accessible']['approved_question_group'] ?? '') === 'site_accessibility',
+        'Official Site accessibility question is not assigned to Accessibility');
+    $assert(($fields['site_accessible']['layout_group'] ?? '') === 'site_accessibility',
+        'Official Site accessibility question is not in the Site Accessibility layout');
+    $assert(($fields['site_accessible']['report_scope_group'] ?? '') === 'site',
+        'Official Site accessibility question is not Site-scoped');
+});
+
 $check('Approved questions have shared layout metadata', static function () use ($assert): void {
     $layouts = llama_place_report_layout_groups();
     $missing = [];
