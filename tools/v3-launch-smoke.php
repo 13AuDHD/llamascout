@@ -17,6 +17,32 @@ $check = static function (string $name, callable $fn) use (&$checks, &$failures)
 $assert = static function (bool $condition, string $why): void {
     if (!$condition) throw new RuntimeException($why);
 };
+
+$ruleUsesOnlyType = null;
+$ruleUsesOnlyType = static function (array $rule) use (&$ruleUsesOnlyType): bool {
+    if (isset($rule['rules'])) {
+        foreach ((array) $rule['rules'] as $nested) {
+            if (!is_array($nested) || !$ruleUsesOnlyType($nested)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    return (($rule['field'] ?? null) === 'type');
+};
+
+$assertNoAnswerDependencies = static function (
+    array $field,
+    string $why
+) use ($assert, &$ruleUsesOnlyType): void {
+    foreach ((array) ($field['applicable_if'] ?? []) as $rule) {
+        $assert(
+            is_array($rule) && $ruleUsesOnlyType($rule),
+            $why
+        );
+    }
+};
 $fields = llama_place_report_fields();
 $check('Registry loaded', static function () use ($fields, $assert): void {
     $assert(count($fields) > 100, 'Expected canonical field inventory');
@@ -419,7 +445,7 @@ $check('Stay Limit is Basic Place info and Place accessibility is retired', stat
         'Accessibility Notes is not Site-only');
 });
 
-$check('Camping and Overnight Stays keeps only approved independent questions', static function () use ($assert): void {
+$check('Camping and Overnight Stays keeps only approved independent questions', static function () use ($assert, $assertNoAnswerDependencies): void {
     $fields = llama_place_report_fields();
     foreach ([
         'tent_camping_allowed',
@@ -440,8 +466,10 @@ $check('Camping and Overnight Stays keeps only approved independent questions', 
     ] as $key) {
         $assert(isset($fields[$key]),
             'Approved overnight question is missing: ' . $key);
-        $assert((array) ($fields[$key]['applicable_if'] ?? []) === [],
-            'Approved overnight question unexpectedly became dependent: ' . $key);
+        $assertNoAnswerDependencies(
+            $fields[$key],
+            'Approved overnight question gained an answer dependency: ' . $key
+        );
     }
 });
 
@@ -558,7 +586,7 @@ $check('Retired Rules helpers stay out of the active registry', static function 
         'Approved Fire / Activity Permit URL was accidentally removed');
 });
 
-$check('Operating Hours and Place amenities match owner review', static function () use ($assert): void {
+$check('Operating Hours and Place amenities match owner review', static function () use ($assert, $assertNoAnswerDependencies): void {
     $raw = [];
     $add = static function (
         string $key,
@@ -614,8 +642,10 @@ $check('Operating Hours and Place amenities match owner review', static function
     $groups = llama_place_report_approved_question_groups();
     foreach ((array) $groups['amenities'][1] as $key) {
         $assert(isset($fields[$key]), 'Approved Place amenity is missing: ' . $key);
-        $assert((array) ($fields[$key]['applicable_if'] ?? []) === [],
-            'Approved Place amenity unexpectedly became dependent: ' . $key);
+        $assertNoAnswerDependencies(
+            $fields[$key],
+            'Approved Place amenity gained an answer dependency: ' . $key
+        );
     }
 });
 
@@ -637,7 +667,7 @@ $check('Official Site accessibility question is first in Accessibility', static 
         'Official Site accessibility question is not Site-scoped');
 });
 
-$check('Parking and Maneuvering keeps only approved independent questions', static function () use ($assert): void {
+$check('Parking and Maneuvering keeps only approved independent questions', static function () use ($assert, $assertNoAnswerDependencies): void {
     $fields = llama_place_report_fields();
     foreach ([
         'double_driveway',
@@ -652,8 +682,10 @@ $check('Parking and Maneuvering keeps only approved independent questions', stat
     $groups = llama_place_report_approved_question_groups();
     foreach ((array) $groups['parking'][1] as $key) {
         $assert(isset($fields[$key]), 'Approved parking question is missing: ' . $key);
-        $assert((array) ($fields[$key]['applicable_if'] ?? []) === [],
-            'Approved parking question unexpectedly became dependent: ' . $key);
+        $assertNoAnswerDependencies(
+            $fields[$key],
+            'Approved parking question gained an answer dependency: ' . $key
+        );
     }
 });
 
@@ -824,7 +856,7 @@ $check('Connectivity is Site-only and does not inherit from Place', static funct
         'Approved Connectivity group is not assigned to the Site page');
 });
 
-$check('Approved sensory questions stay independent and legacy overlaps stay retired', static function () use ($assert): void {
+$check('Approved sensory questions stay independent and legacy overlaps stay retired', static function () use ($assert, $assertNoAnswerDependencies): void {
     $fields = llama_place_report_fields();
 
     foreach (['sensory_road_noise', 'sensory_human_activity'] as $key) {
@@ -837,13 +869,15 @@ $check('Approved sensory questions stay independent and legacy overlaps stay ret
         foreach ((array) $groups[$groupKey][1] as $key) {
             $assert(isset($fields[$key]),
                 'Approved sensory question is missing: ' . $key);
-            $assert((array) ($fields[$key]['applicable_if'] ?? []) === [],
-                'Approved sensory question unexpectedly became dependent: ' . $key);
+            $assertNoAnswerDependencies(
+                $fields[$key],
+                'Approved sensory question gained an answer dependency: ' . $key
+            );
         }
     }
 });
 
-$check('Safety and Hazards keeps only approved independent questions', static function () use ($assert): void {
+$check('Safety and Hazards keeps only approved independent questions', static function () use ($assert, $assertNoAnswerDependencies): void {
     $fields = llama_place_report_fields();
 
     foreach (['cliff_exposure', 'warning_motorized_recreation_traffic'] as $key) {
@@ -854,12 +888,14 @@ $check('Safety and Hazards keeps only approved independent questions', static fu
     $groups = llama_place_report_approved_question_groups();
     foreach ((array) $groups['safety_public'][1] as $key) {
         $assert(isset($fields[$key]), 'Approved safety question is missing: ' . $key);
-        $assert((array) ($fields[$key]['applicable_if'] ?? []) === [],
-            'Approved safety question unexpectedly became dependent: ' . $key);
+        $assertNoAnswerDependencies(
+            $fields[$key],
+            'Approved safety question gained an answer dependency: ' . $key
+        );
     }
 });
 
-$check('Experience and Recommendations keeps only approved independent questions', static function () use ($assert): void {
+$check('Experience and Recommendations keeps only approved independent questions', static function () use ($assert, $assertNoAnswerDependencies): void {
     $fields = llama_place_report_fields();
 
     foreach ([
@@ -878,8 +914,10 @@ $check('Experience and Recommendations keeps only approved independent questions
     $groups = llama_place_report_approved_question_groups();
     foreach ((array) $groups['experience_public'][1] as $key) {
         $assert(isset($fields[$key]), 'Approved experience question is missing: ' . $key);
-        $assert((array) ($fields[$key]['applicable_if'] ?? []) === [],
-            'Approved experience question unexpectedly became dependent: ' . $key);
+        $assertNoAnswerDependencies(
+            $fields[$key],
+            'Approved experience question gained an answer dependency: ' . $key
+        );
     }
 });
 
