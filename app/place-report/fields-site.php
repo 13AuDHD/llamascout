@@ -312,14 +312,10 @@ function llama_place_report_add_site_fields(
         'points_categories' => ['site_vehicle'],
     ]);
 
-    $add('hookup_electric', 'Electric hookup at site?', 'site_vehicle', 'tri', 'details.hookup_electric', [
-        'allow_unknown' => true,
-        'points_categories' => ['site_vehicle'],
-    ]);
-
     $add('hookup_electric_service', 'Electric hookup service', 'site_vehicle', 'select', 'details.hookup_electric_service', [
         'allow_unknown' => true,
         'options' => [
+            'none' => 'None',
             '20a' => '15 / 20 amp',
             '30a' => '30 amp',
             '50a' => '50 amp',
