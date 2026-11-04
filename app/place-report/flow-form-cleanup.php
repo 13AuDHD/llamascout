@@ -37,8 +37,8 @@ function llama_place_report_apply_form_cleanup_metadata(array &$fields): void
         if (!isset($fields[$key])) {
             continue;
         }
-        $fields[$key]['layout_section'] = 'place';
-        $fields[$key]['layout_group'] = 'operating_closures';
+        $fields[$key]['layout_section'] = 'getting_there';
+        $fields[$key]['layout_group'] = 'seasonal_access';
         $fields[$key]['derived'] = false;
         $fields[$key]['counts_toward_completion'] = true;
         $fields[$key]['points_categories'] = ['seasons_rules_services'];
@@ -47,9 +47,9 @@ function llama_place_report_apply_form_cleanup_metadata(array &$fields): void
     // A recurring closure of the entire Place is a direct reportable fact.
     // It is distinct from normal year-round operation and road closures.
     if (isset($fields['seasonal_closure'])) {
-        $fields['seasonal_closure']['label'] = 'Entire Place closes seasonally?';
-        $fields['seasonal_closure']['layout_section'] = 'place';
-        $fields['seasonal_closure']['layout_group'] = 'operating_closures';
+        $fields['seasonal_closure']['label'] = 'Seasonal Closure';
+        $fields['seasonal_closure']['layout_section'] = 'getting_there';
+        $fields['seasonal_closure']['layout_group'] = 'seasonal_access';
         $fields['seasonal_closure']['derived'] = false;
         $fields['seasonal_closure']['counts_toward_completion'] = true;
     }
