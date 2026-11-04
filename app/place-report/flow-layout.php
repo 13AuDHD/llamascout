@@ -280,7 +280,6 @@ function llama_place_report_layout_assignments(): array
             'collecting_firewood',
             'place_charcoal_grills_allowed',
             'place_propane_fire_pits_allowed',
-            'fire_activities_conditional_details',
             'current_fire_restrictions_url',
             'food_storage_required',
             'pack_it_in_pack_it_out',
@@ -289,7 +288,6 @@ function llama_place_report_layout_assignments(): array
             'target_shooting_allowed',
             'place_additional_rules',
             'fire_activity_permit_url',
-            'camping_permit_url',
         ],
 
         'place:operating_closures' => [

@@ -247,8 +247,4 @@ function llama_place_report_apply_place_rules_metadata(array &$fields): void
             'Link to the official current fire-restrictions page. Temporary restrictions can override the normal fire rules recorded above.';
     }
 
-    if (isset($fields['fire_activities_conditional_details'])) {
-        $fields['fire_activities_conditional_details']['label'] =
-            'Fire / activity rule conditions';
-    }
 }

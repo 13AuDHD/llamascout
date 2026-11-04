@@ -435,6 +435,119 @@ $check('Camping and Overnight Stays keeps only approved independent questions', 
     }
 });
 
+$check('Rules and Restrictions parent-child rules match owner review', static function () use ($assert): void {
+    $raw = [];
+    $add = static function (
+        string $key,
+        string $label,
+        string $section,
+        string $type,
+        string $storage,
+        array $extra = []
+    ) use (&$raw): void {
+        $raw[$key] = array_merge([
+            'key' => $key,
+            'label' => $label,
+            'section' => $section,
+            'type' => $type,
+            'storage' => $storage,
+            'applicable_if' => [],
+        ], $extra);
+    };
+
+    llama_place_report_add_rules_service_fields($add, ['0' => 'On site']);
+    llama_place_report_add_flow_condition_fields($raw, $add);
+    llama_place_report_add_permission_fields($raw, $add);
+    llama_place_report_add_place_rules_fields($add);
+
+    llama_place_report_apply_flow_conditions($raw);
+    llama_place_report_apply_place_rules_metadata($raw);
+
+    $assert(($raw['dogs_required_to_be_leashed']['applicable_if'][0] ?? []) === [
+        'field' => 'pets_allowed',
+        'operator' => 'equals',
+        'value' => '1',
+    ], 'Leash Required is not a child of Pets Allowed');
+
+    $equals = static fn (string $field, string $value): array => [
+        'field' => $field,
+        'operator' => 'equals',
+        'value' => $value,
+    ];
+
+    $assert(($raw['generator_prohibited']['applicable_if'] ?? []) === [
+        $equals('generator_restrictions', '1'),
+    ], 'Generators Prohibited is not a child of Generator Restrictions');
+
+    foreach (['generator_quiet_hours', 'generator_run_restrictions'] as $key) {
+        $assert(($raw[$key]['applicable_if'] ?? []) === [
+            $equals('generator_restrictions', '1'),
+            $equals('generator_prohibited', '0'),
+        ], $key . ' does not require restrictions Yes and prohibited No');
+    }
+
+    foreach (['generator_quiet_hours_begin', 'generator_quiet_hours_end'] as $key) {
+        $assert(($raw[$key]['applicable_if'] ?? []) === [
+            $equals('generator_restrictions', '1'),
+            $equals('generator_prohibited', '0'),
+            $equals('generator_quiet_hours', '1'),
+        ], $key . ' is not a child of Generator Quiet Hours');
+    }
+
+    $assert(($raw['generator_max_run_hours']['applicable_if'] ?? []) === [
+        $equals('generator_restrictions', '1'),
+        $equals('generator_prohibited', '0'),
+        $equals('generator_run_restrictions', '1'),
+    ], 'Run-Time Hours is not a child of Run-Time Restrictions');
+
+    $assert(($raw['generator_restriction_details']['applicable_if'] ?? []) === [
+        $equals('generator_restrictions', '1'),
+    ], 'Restriction Details is not a child of Generator Restrictions');
+
+    foreach (['place_quiet_hours_begin', 'place_quiet_hours_end'] as $key) {
+        $assert(($raw[$key]['applicable_if'][0] ?? []) === [
+            'field' => 'place_quiet_hours',
+            'operator' => 'equals',
+            'value' => '1',
+        ], $key . ' is not a child of Quiet Hours');
+    }
+
+    $permitRules = (array) ($raw['fire_activity_permit_url']['applicable_if'][0]['rules'] ?? []);
+    $permitParents = [];
+    foreach ($permitRules as $rule) {
+        $permitParents[(string) ($rule['field'] ?? '')] = $rule;
+    }
+    foreach ([
+        'campfire_allowed',
+        'collecting_firewood',
+        'place_charcoal_grills_allowed',
+        'place_propane_fire_pits_allowed',
+        'drone_use_legal',
+        'target_shooting_allowed',
+    ] as $key) {
+        $assert(($permitParents[$key]['operator'] ?? '') === 'equals'
+            && ($permitParents[$key]['value'] ?? '') === '2',
+            'Fire / Activity Permit URL is not tied to Permit Required for ' . $key);
+    }
+
+    $assert(($raw['current_fire_restrictions_url']['flow_independent_of'] ?? []) === [
+        'campfire_allowed',
+    ], 'Current Fire Restrictions URL is no longer independent of Campfires Allowed');
+});
+
+$check('Retired Rules helpers stay out of the active registry', static function () use ($assert): void {
+    $fields = llama_place_report_fields();
+    foreach ([
+        'fire_activities_conditional_details',
+        'camping_permit_url',
+    ] as $key) {
+        $assert(!isset($fields[$key]),
+            'Retired Rules helper is still active: ' . $key);
+    }
+    $assert(isset($fields['fire_activity_permit_url']),
+        'Approved Fire / Activity Permit URL was accidentally removed');
+});
+
 $check('Approved questions have shared layout metadata', static function () use ($assert): void {
     $layouts = llama_place_report_layout_groups();
     $missing = [];

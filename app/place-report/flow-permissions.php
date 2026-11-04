@@ -132,120 +132,41 @@ function llama_place_report_add_permission_fields(
         }
     }
 
-    $groups = [
-        'camping' => [
-            'label' =>
-                'Camping permit / conditions',
-
-            'fields' => [
-                'overnight_camping_allowed',
-                'dispersed_camping_allowed',
-            ],
-
-            'help' =>
-                'Explain documented permits, conditions, limitations, or exceptions affecting the overall overnight rule, dispersed camping, or sleeping inside a vehicle. Observed behavior is not a substitute for the rule.',
-        ],
-
-        'fire_activities' => [
-            'label' =>
-                'Fire and activity permit / conditions',
-
-            'fields' => [
-                'campfire_allowed',
-                'collecting_firewood',
-                'place_charcoal_grills_allowed',
-                'place_propane_fire_pits_allowed',
-                'drone_use_legal',
-                'target_shooting_allowed',
-            ],
-
-            'help' =>
-                'Explain documented permit requirements or conditions for campfires, collecting firewood, drones, or target shooting. Current temporary fire restrictions are recorded separately.',
-        ],
+    $fireActivityFields = [
+        'campfire_allowed',
+        'collecting_firewood',
+        'place_charcoal_grills_allowed',
+        'place_propane_fire_pits_allowed',
+        'drone_use_legal',
+        'target_shooting_allowed',
     ];
 
-    foreach ($groups as $suffix => $group) {
-        $key = $suffix . '_conditional_details';
-
-        $add(
-            $key,
-            $group['label'],
-            'rules',
-            'textarea',
-            'rules.' . $key,
-            [
-                'allow_unknown' => false,
-                'wide' => true,
-                'rows' => 3,
-                'counts_toward_completion' => true,
-                'points_categories' => ['seasons_rules_services'],
-                'help' => $group['help'],
-                'applicable_if' => [[
-                    'operator' => 'any',
-                    'rules' => array_map(
-                        static fn (string $fieldKey): array => [
-                            'field' => $fieldKey,
-                            'operator' => 'in',
-                            'value' => ['2', '3'],
-                        ],
-                        $group['fields']
-                    ),
-                ]],
-            ]
-        );
-    }
-
-    $permitGroups = [
-        'camping_permit_url' => [
-            'label' =>
-                'Camping permit URL',
-
-            'fields' =>
-                $groups['camping']['fields'],
-
-            'help' =>
-                'Link to the official permit application or permit-information page. This is not a reservation or booking URL.',
-        ],
-
-        'fire_activity_permit_url' => [
-            'label' =>
-                'Fire / activity permit URL',
-
-            'fields' =>
-                $groups['fire_activities']['fields'],
-
+    $add(
+        'fire_activity_permit_url',
+        'Fire / activity permit URL',
+        'rules',
+        'url',
+        'rules.fire_activity_permit_url',
+        [
+            'wide' => true,
+            'placeholder' => 'https://...',
+            'counts_toward_completion' => false,
+            'points_categories' => ['seasons_rules_services'],
             'help' =>
                 'Link to the official firewood, fire, drone, or target-shooting permit page that applies. Current fire restrictions are separate.',
-        ],
-    ];
-
-    foreach ($permitGroups as $key => $group) {
-        $add(
-            $key,
-            $group['label'],
-            'rules',
-            'url',
-            'rules.' . $key,
-            [
-                'wide' => true,
-                'placeholder' => 'https://...',
-                'counts_toward_completion' => false,
-                'points_categories' => ['seasons_rules_services'],
-                'help' => $group['help'],
-                'applicable_if' => [[
-                    'operator' => 'any',
-                    'rules' => array_map(
-                        static fn (string $fieldKey): array => [
-                            'field' => $fieldKey,
-                            'operator' => 'equals',
-                            'value' => '2',
-                        ],
-                        $group['fields']
-                    ),
-                ]],
-            ]
-        );
-    }
+            'applicable_if' => [[
+                'operator' => 'any',
+                'rules' => array_map(
+                    static fn (string $fieldKey): array => [
+                        'field' => $fieldKey,
+                        'operator' => 'equals',
+                        'value' => '2',
+                    ],
+                    $fireActivityFields
+                ),
+            ]],
+        ]
+    );
 }
 
 /**

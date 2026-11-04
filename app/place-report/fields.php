@@ -62,6 +62,10 @@ function llama_place_report_retired_question_keys(): array
         'overnight_restrictions',
         'camping_conditional_details',
         'overnight_vehicle_tent_permit_url',
+
+        // Retired unapproved Rules & Restrictions helpers.
+        'fire_activities_conditional_details',
+        'camping_permit_url',
     ];
 }
 
