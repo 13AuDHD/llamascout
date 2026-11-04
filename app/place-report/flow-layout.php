@@ -111,7 +111,6 @@ function llama_place_report_layout_groups(): array
             'activities_recreation' => 'Activities & Recreation',
             'seasonal_conditions' => 'Seasonal Conditions',
             'nearest_services' => 'Nearest Services',
-            'connectivity_services' => 'Connectivity & Services',
             'place_rules' => 'Rules & Restrictions',
             'operating_closures' => 'Operating Hours & Closures',
         ],
@@ -124,6 +123,7 @@ function llama_place_report_layout_groups(): array
             'sensory_environment' => 'Sensory & Environment',
             'safety_hazards' => 'Safety & Hazards',
             'site_accessibility' => 'Accessibility',
+            'connectivity_services' => 'Connectivity',
             'experience_recommendations' => 'Experience & Recommendations',
             'site_photos' => 'Scout Notes & Place History',
         ],
@@ -243,7 +243,7 @@ function llama_place_report_layout_assignments(): array
             'nearest_hospital',
         ],
 
-        'place:connectivity_services' => [
+        'site:connectivity_services' => [
             'connectivity_overall',
             'connectivity_t_mobile',
             'connectivity_verizon',
@@ -466,7 +466,7 @@ function llama_place_report_apply_layout_metadata(
         'rules' => ['place', 'place_rules'],
         'sensory' => ['site', 'sensory_environment'],
         'landscape_setting' => ['site', 'sensory_environment'],
-        'connectivity' => ['place', 'connectivity_services'],
+        'connectivity' => ['site', 'connectivity_services'],
         'accessibility' => ['site', 'site_accessibility'],
         'experience' => ['site', 'experience_recommendations'],
         'safety' => ['site', 'safety_hazards'],

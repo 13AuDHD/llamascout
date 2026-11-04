@@ -282,6 +282,22 @@ function llama_place_report_scope_overrides(): array
             'site_amenities_notes',
 
             /*
+             * Connectivity is Site-specific. Terrain, vegetation, structures,
+             * and local obstructions can produce very different service between
+             * two Sites inside the same Place, so these answers never inherit.
+             */
+            'connectivity_overall',
+            'connectivity_t_mobile',
+            'connectivity_verizon',
+            'connectivity_att',
+            'connectivity_other_cell',
+            'connectivity_satellite',
+            'connectivity_services_tested',
+            'connectivity_starlink_tested',
+            'connectivity_amazon_leo_tested',
+            'connectivity_starlink_note',
+
+            /*
              * Ratings whose labels explicitly refer to the individual Site.
              */
             'site_rating',
@@ -397,20 +413,6 @@ function llama_place_report_scope_overrides(): array
             'sensory_visual_exposure',
             'sensory_predictability',
             'road_exposure',
-
-            /*
-             * Connectivity can change materially between Areas and Sites.
-             */
-            'connectivity_overall',
-            'connectivity_t_mobile',
-            'connectivity_verizon',
-            'connectivity_att',
-            'connectivity_other_cell',
-            'connectivity_satellite',
-            'connectivity_services_tested',
-            'connectivity_starlink_tested',
-            'connectivity_amazon_leo_tested',
-            'connectivity_starlink_note',
 
             'felt_safe_daytime',
             'felt_safe_nighttime',
