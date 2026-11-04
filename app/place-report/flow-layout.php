@@ -329,7 +329,6 @@ function llama_place_report_layout_assignments(): array
             'parking_grade',
             'leveling_required',
             'parking_size',
-            'double_driveway',
             'pull_through',
             'back_in',
             'turnaround_space',
