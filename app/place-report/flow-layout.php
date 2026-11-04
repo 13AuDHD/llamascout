@@ -298,7 +298,6 @@ function llama_place_report_layout_assignments(): array
 
         'site:selection_type' => [
             'site_number',
-            'site_accessible',
             'tent_camping_suitable',
             'rv_suitable',
             'capacity_size_rating',
@@ -401,6 +400,7 @@ function llama_place_report_layout_assignments(): array
         ],
 
         'site:site_accessibility' => [
+            'site_accessible',
             'accessible_picnic_table',
             'accessible_toilet',
             'wheelchair_friendly',
