@@ -168,6 +168,7 @@ function llama_place_report_scope_overrides(): array
             'snow_risk',
             'mud_season_risk',
             'monsoon_risk',
+            'tornado_risk',
             'hurricane_risk',
             'heat_season_risk',
 
