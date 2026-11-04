@@ -104,7 +104,7 @@ function llama_place_report_add_experience_fields(
     }
 
     /* Landscape and setting */
-    $add('landscape_primary', 'Primary setting', 'landscape_setting', 'select', 'details.landscape_primary', [
+    $add('landscape_primary', 'Primary Setting', 'landscape_setting', 'select', 'details.landscape_primary', [
         'wide' => true,
         'options' => [
             'forest-woodland' => 'Forest / woodland',
@@ -128,7 +128,7 @@ function llama_place_report_add_experience_fields(
         'points_categories' => ['environment'],
     ]);
 
-    $add('landscape_details', 'Setting details', 'landscape_setting', 'multiselect', 'details.landscape_details', [
+    $add('landscape_details', 'Setting Details', 'landscape_setting', 'multiselect', 'details.landscape_details', [
         'wide' => true,
         'summary' => '+ Add setting detail',
         'search_placeholder' => 'Search setting details...',
@@ -171,7 +171,7 @@ function llama_place_report_add_experience_fields(
     ]);
 
     foreach ([
-        'environment_water_nearby' => ['Water nearby?', 'details.water_nearby'],
+        'environment_water_nearby' => ['Water Nearby', 'details.water_nearby'],
         'environment_wildlife' => ['Wildlife common?', 'details.wildlife'],
         'environment_bugs' => ['Bugs significant?', 'details.bugs'],
     ] as $key => [$label, $storage]) {
@@ -183,10 +183,12 @@ function llama_place_report_add_experience_fields(
 
     foreach ([
         'environment_wind_exposure' => ['Wind exposure', 'Protected', 'Very exposed', 'details.wind_exposure'],
-        'environment_sun_exposure' => ['Sun exposure', 'Low', 'Full sun', 'details.sun_exposure'],
-        'environment_shade' => ['Environment shade', 'None', 'Heavy', 'details.environment_shade'],
-        'environment_open_sky' => ['Open sky', 'Low', 'Wide open', 'details.environment_open_sky'],
-        'critter_activity' => ['Critter activity', 'None noticed', 'Heavy / persistent', 'details.critter_activity'],
+        'environment_wildlife_activity' => ['Wildlife Activity', 'Low', 'High', 'details.wildlife_activity'],
+        'critter_activity' => ['Critter Activity', 'None noticed', 'Heavy / persistent', 'details.critter_activity'],
+        'environment_bug_nuisance' => ['Bug Nuisance', 'Low', 'High', 'details.bug_nuisance'],
+        'environment_open_sky' => ['Open Sky', 'Low', 'Wide open', 'details.environment_open_sky'],
+        'environment_sun_exposure' => ['Sun Exposure', 'Low', 'Full sun', 'details.sun_exposure'],
+        'environment_shade' => ['Environmental Shade', 'None', 'Heavy', 'details.environment_shade'],
     ] as $key => [$label, $low, $high, $storage]) {
         $add($key, $label, 'landscape_setting', 'rating', $storage, [
             'allow_unknown' => true,

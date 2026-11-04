@@ -136,8 +136,12 @@ function llama_place_report_add_summary_fields(
             'Give an overall nighttime sensory rating using what you observed: noise, traffic, people, lighting, smells, movement, and unpredictability. Day and night can be very different.',
         'landscape_primary' =>
             'Choose the one setting that best describes the Place itself. Use Mixed / transitional when two major settings genuinely overlap.',
+        'environment_wildlife_activity' =>
+            'Rate how much wildlife activity is normally noticeable at or around the site, from very little activity to frequent or heavy activity.',
         'critter_activity' =>
             'Rate rodents and other small animals that are likely to get into vehicles, food, trash, or gear. This is separate from dangerous wildlife risk.',
+        'environment_bug_nuisance' =>
+            'Rate how much insects interfere with using the site, from little or no nuisance to severe or persistent nuisance.',
         'hurricane_risk' =>
             'Rate how much hurricanes or hurricane-force tropical systems affect the normal seasonal usability or access risk at this Place.',
         'tornado_risk' =>

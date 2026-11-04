@@ -370,7 +370,7 @@ function llama_place_report_add_site_fields(
     foreach ([
         'levelness' => ['Levelness', 'Very uneven', 'Very level'],
         'site_open_sky' => ['Open sky', 'Enclosed', 'Wide open'],
-        'tree_cover' => ['Tree cover', 'None', 'Heavy'],
+        'tree_cover' => ['Tree Cover', 'None', 'Heavy'],
         'site_shade' => ['Shade', 'None', 'Heavy'],
     ] as $key => [$label, $low, $high]) {
         $add($key, $label, 'site_vehicle', 'rating', 'details.' . $key, [

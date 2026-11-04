@@ -35,7 +35,7 @@ function llama_place_report_approved_question_groups(): array
     'nearest_services' => ['Nearest Services', ['nearest_town','nearest_fuel','nearest_ev_charging','nearest_propane','nearest_alcohol_sales','nearest_grocery','nearest_water','nearest_toilet','nearest_hospital']],
     'site_info' => ['Site Info', ['site_number','site_accessible','tent_camping_suitable','rv_suitable','capacity_size_rating','max_people','vehicle_capacity','site_length_feet','site_width_feet','overhead_clearance_feet','ground_condition','levelness','parking_grade']],
     'fees' => ['Fees and Reservations', ['stay_limit_days','fee','extra_vehicle_fee','reservation_required','reservation_fee','reservation_url','membership_required','membership_fee','membership_url','parking_entrance_required','parking_entrance_fee','check_in_required','check_in_begins','check_out_required','checkout_ends','discounts_available']],
-    'setting' => ['Setting and Environment', ['landscape_primary','landscape_details','landscape_views','environment_water_nearby','environment_wildlife','critter_activity','environment_bugs','environment_sun_exposure','environment_shade','tree_cover','environment_open_sky','environment_notes']],
+    'setting' => ['Setting and Environment', ['landscape_primary','environment_water_nearby','landscape_details','landscape_views','environment_wildlife_activity','critter_activity','environment_bug_nuisance','environment_open_sky','environment_sun_exposure','environment_shade','tree_cover']],
     'parking' => ['Parking and Maneuvering', ['parking_surface','back_in','pull_through','turnaround_space','parking_size','parking_length_feet','max_vehicle_length_feet','max_rv_length_feet','parking_clearance_feet','leveling_required','parking_notes']],
     'site_accessibility' => ['Accessibility', ['accessible_picnic_table','accessible_toilet','wheelchair_friendly','mobility_device_friendly','step_free_access','flat_walking_surface','walking_distance_from_vehicle','accessibility_notes']],
     'site_amenities' => ['Site Amenities', ['amenity_fire_ring','amenity_grill','amenity_picnic_table','amenity_lantern_post','site_potable_water','site_hookups_available','hookup_electric_service','hookup_water','hookup_sewer','tent_pad','tent_pad_width_feet','tent_pad_length_feet','amenity_bear_box','site_lake_access','site_river_access','site_trail_access','site_wifi_rating','site_amenities_notes']],
@@ -561,11 +561,11 @@ function llama_place_report_approved_registry_issues(): array
         }
     }
 
-    if ($count !== 262) {
+    if ($count !== 261) {
         $issues[] =
             'Current approved-question projection contains '
             . $count
-            . ' slots; expected 262 after consolidating seasonal access into one reviewed question set.';
+            . ' slots; expected 261 after the Setting and Environment review removed Environment Notes from the approved section.';
     }
 
     $assignedGroups = [];
