@@ -21,8 +21,18 @@ function llama_place_report_add_season_fields(array &$fields, callable $add): vo
     $closureBegins = $extra;
     $closureBegins['help'] = 'Enter the recurring month and day (MM-DD) when the seasonal closure normally begins. Example: 10-31.';
 
-    $add('season_begins', 'Closure Ends', 'rules', 'text', 'rules.season_begins', $closureEnds);
-    $add('season_ends', 'Closure Begins', 'rules', 'text', 'rules.season_ends', $closureBegins);
+    $whenSeasonallyClosed = [
+        'applicable_if' => [[
+            'field' => 'seasonal_closure',
+            'operator' => 'equals',
+            'value' => '1',
+        ]],
+    ];
+
+    $add('season_begins', 'Closure Ends', 'rules', 'text', 'rules.season_begins',
+        $closureEnds + $whenSeasonallyClosed);
+    $add('season_ends', 'Closure Begins', 'rules', 'text', 'rules.season_ends',
+        $closureBegins + $whenSeasonallyClosed);
 
     $begins = $fields['season_begins'];
     $ends = $fields['season_ends'];

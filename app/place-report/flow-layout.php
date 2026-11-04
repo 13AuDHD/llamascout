@@ -111,6 +111,7 @@ function llama_place_report_layout_groups(): array
             'place_accessibility' => 'Accessibility',
             'activities_recreation' => 'Activities & Recreation',
             'seasonal_conditions' => 'Seasonal Conditions',
+            'nearest_services' => 'Nearest Services',
             'connectivity_services' => 'Connectivity & Services',
             'place_rules' => 'Rules & Restrictions',
             'operating_closures' => 'Operating Hours & Closures',
@@ -136,18 +137,15 @@ function llama_place_report_layout_assignments(): array
         'getting_there:road_conditions' => [
             'road_surface', 'road_width', 'approach_road_condition',
             'approach_road_hazards', 'approach_deep_ruts',
-            'road_overall_difficulty', 'road_stress', 'rocks',
-            'washboards', 'potholes', 'mud_risk', 'steep_grades',
-            'drop_off_exposure',
+            'rocks', 'washboards', 'potholes', 'mud_risk',
+            'steep_grades', 'drop_off_exposure',
         ],
 
         'getting_there:vehicle_access' => [
             'sedan_accessible', 'high_clearance_recommended',
             'four_wheel_drive_recommended', 'road_exposure',
-            'approach_width_restricted', 'approach_narrowest_width_feet',
             'approach_turnaround_available', 'approach_overhead_obstacles',
             'approach_access_restrictions',
-            'access_summary',
         ],
 
         'getting_there:seasonal_access' => [
@@ -169,8 +167,7 @@ function llama_place_report_layout_assignments(): array
             'approach_road_type', 'approach_permit_required',
             'approach_fee_required', 'approach_road_fee', 'approach_gate_present',
             'approach_gate_access_type', 'approach_gate_opens',
-            'approach_gate_closes', 'approach_restriction_details',
-            'approach_access_info_url',
+            'approach_gate_closes',
         ],
 
         'place:information_location' => [
@@ -254,15 +251,7 @@ function llama_place_report_layout_assignments(): array
             // Getting There while the owner reviews the full inventory.
         ],
 
-        'place:connectivity_services' => [
-            'connectivity_overall',
-            'connectivity_t_mobile',
-            'connectivity_verizon',
-            'connectivity_att',
-            'connectivity_other_cell',
-            'connectivity_satellite',
-            'connectivity_services_tested',
-            'connectivity_starlink_note',
+        'place:nearest_services' => [
             'nearest_town',
             'nearest_fuel',
             'nearest_ev_charging',
@@ -272,6 +261,17 @@ function llama_place_report_layout_assignments(): array
             'nearest_water',
             'nearest_toilet',
             'nearest_hospital',
+        ],
+
+        'place:connectivity_services' => [
+            'connectivity_overall',
+            'connectivity_t_mobile',
+            'connectivity_verizon',
+            'connectivity_att',
+            'connectivity_other_cell',
+            'connectivity_satellite',
+            'connectivity_services_tested',
+            'connectivity_starlink_note',
         ],
 
         'place:place_rules' => [
