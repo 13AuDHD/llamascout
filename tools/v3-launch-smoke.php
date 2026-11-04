@@ -40,21 +40,31 @@ $check('Only approved questions appear in the shared catalog', static function (
         }
     }
 });
-$check('Full inventory review shows approved questions across Place types', static function () use ($assert): void {
-    $assert(llama_place_report_full_inventory_review_enabled(), 'Inventory review is not enabled');
+$check('Normal reviewed applicability is active', static function () use ($assert): void {
+    $assert(!llama_place_report_full_inventory_review_enabled(),
+        'Temporary inventory review bypass is still enabled');
+
     $catalog = llama_report_questions();
     foreach (['heat_season_risk', 'tornado_risk', 'amenity_river_access', 'amenity_lake_access',
         'amenity_campground_host', 'site_hookups_available', 'hookup_electric_service'] as $key) {
-        $assert(isset($catalog[$key]), 'Missing approved inventory question: ' . $key);
+        $assert(isset($catalog[$key]), 'Missing approved question after review mode: ' . $key);
     }
-    foreach ($catalog as $key => $field) {
-        $assert((array) ($field['applicable_if'] ?? []) === [],
-            'Condition still hides a question: ' . $key);
-        $assert(llama_place_report_question_applicable(['type' => 'dispersed-camping'], $key),
-            'Dispersed Place hides question: ' . $key);
-        $assert(llama_place_report_question_applicable(['type' => 'campground'], $key),
-            'Campground hides question: ' . $key);
-    }
+
+    $assert(($catalog['hookup_electric_service']['applicable_if'][0] ?? []) === [
+        'field' => 'site_hookups_available',
+        'operator' => 'equals',
+        'value' => '1',
+    ], 'Electrical Service dependency is not active');
+
+    $assert(($catalog['tent_pad_width_feet']['applicable_if'][0] ?? []) === [
+        'field' => 'tent_pad',
+        'operator' => 'equals',
+        'value' => '1',
+    ], 'Tent Pad Width dependency is not active');
+
+    $assert((array) ($catalog['max_rv_length_feet']['applicable_if'] ?? []) === [],
+        'Maximum RV / trailer length should remain independent');
+
     $groups = llama_place_report_approved_question_groups();
     $seasonal = (array) $groups['seasonal_access'][1];
     $expectedSeasonal = [
