@@ -694,6 +694,57 @@ $check('Site Amenities hookup dependencies match owner review', static function 
     }
 });
 
+$check('Site Accessibility dependencies match owner review', static function () use ($assert): void {
+    $raw = [];
+
+    foreach ([
+        'site_accessible',
+        'amenity_picnic_table',
+        'amenity_toilets',
+        'accessible_picnic_table',
+        'accessible_toilet',
+        'wheelchair_friendly',
+        'mobility_device_friendly',
+        'step_free_access',
+        'flat_walking_surface',
+        'walking_distance_from_vehicle',
+        'accessibility_notes',
+    ] as $key) {
+        $raw[$key] = [
+            'key' => $key,
+            'label' => $key,
+            'applicable_if' => [],
+        ];
+    }
+
+    llama_place_report_apply_site_accessibility_metadata($raw);
+
+    $assert(($raw['accessible_picnic_table']['applicable_if'][0] ?? []) === [
+        'field' => 'amenity_picnic_table',
+        'operator' => 'equals',
+        'value' => '1',
+    ], 'Accessible picnic table is not a child of Picnic Table = Yes');
+
+    $assert(($raw['accessible_toilet']['applicable_if'][0] ?? []) === [
+        'field' => 'amenity_toilets',
+        'operator' => 'in',
+        'value' => ['pit', 'flush', 'portable', 'present_unknown_type'],
+    ], 'Accessible Toilet is not limited to Places with toilets');
+
+    foreach ([
+        'site_accessible',
+        'wheelchair_friendly',
+        'mobility_device_friendly',
+        'step_free_access',
+        'flat_walking_surface',
+        'walking_distance_from_vehicle',
+        'accessibility_notes',
+    ] as $key) {
+        $assert((array) ($raw[$key]['applicable_if'] ?? []) === [],
+            'Independent accessibility question unexpectedly became dependent: ' . $key);
+    }
+});
+
 $check('Approved questions have shared layout metadata', static function () use ($assert): void {
     $layouts = llama_place_report_layout_groups();
     $missing = [];

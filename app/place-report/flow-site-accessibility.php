@@ -78,4 +78,25 @@ function llama_place_report_apply_site_accessibility_metadata(
                 $text;
         }
     }
+
+    if (isset($fields['accessible_picnic_table'])) {
+        $fields['accessible_picnic_table']['applicable_if'] = [[
+            'field' => 'amenity_picnic_table',
+            'operator' => 'equals',
+            'value' => '1',
+        ]];
+    }
+
+    if (isset($fields['accessible_toilet'])) {
+        $fields['accessible_toilet']['applicable_if'] = [[
+            'field' => 'amenity_toilets',
+            'operator' => 'in',
+            'value' => [
+                'pit',
+                'flush',
+                'portable',
+                'present_unknown_type',
+            ],
+        ]];
+    }
 }
