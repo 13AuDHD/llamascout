@@ -245,7 +245,6 @@ function llama_place_report_scope_overrides(): array
             'parking_size',
             'capacity_size_rating',
             'site_hookups_available',
-            'hookup_electric',
             'hookup_electric_service',
             'hookup_water',
             'hookup_sewer',

@@ -336,7 +336,6 @@ function llama_place_report_layout_assignments(): array
 
         'site:camping_equipment' => [
             'site_hookups_available',
-            'hookup_electric',
             'hookup_electric_service',
             'hookup_water',
             'hookup_sewer',

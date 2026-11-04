@@ -79,6 +79,10 @@ function llama_place_report_retired_question_keys(): array
         'hike_in_distance_feet',
         'site_access_difficulty',
         'trailer_suitable',
+
+        // Retired hidden Site hookup parent. The approved Hookups question now
+        // owns Electrical Service, Water Hookup, and Sewer Hookup directly.
+        'hookup_electric',
     ];
 }
 
