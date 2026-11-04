@@ -12,7 +12,7 @@ function llama_place_report_add_rules_service_fields(
     callable $add,
     array $distance
 ): void {
-    $add('best_months', 'Best months', 'rules', 'select', 'rules.best_months', [
+    $add('best_months', 'Best Seasons', 'rules', 'select', 'rules.best_months', [
         'allow_unknown' => true,
         'options' => [
             'year-round' => 'Year-round',
@@ -33,17 +33,18 @@ function llama_place_report_add_rules_service_fields(
         'points_categories' => ['seasons_rules_services'],
     ]);
 
-    $add('seasonal_closure', 'Seasonal closure?', 'rules', 'tri', 'details.seasonal_closure', [
+    $add('seasonal_closure', 'Seasonal Closure', 'rules', 'tri', 'details.seasonal_closure', [
         'allow_unknown' => true,
         'points_categories' => ['seasons_rules_services'],
     ]);
 
     foreach ([
-        'snow_risk' => ['Snow risk', 'Low', 'High'],
-        'mud_season_risk' => ['Mud-season risk', 'Low', 'High'],
-        'monsoon_risk' => ['Monsoon risk', 'Low', 'High'],
-        'hurricane_risk' => ['Hurricane risk', 'Low', 'High'],
-        'heat_season_risk' => ['Heat-season risk', 'Low', 'High'],
+        'snow_risk' => ['Snow Risk', 'Low', 'High'],
+        'mud_season_risk' => ['Mud Season Risk', 'Low', 'High'],
+        'monsoon_risk' => ['Monsoon Season Risk', 'Low', 'High'],
+        'tornado_risk' => ['Tornado Risk', 'Low', 'High'],
+        'hurricane_risk' => ['Hurricane Risk', 'Low', 'High'],
+        'heat_season_risk' => ['Heat Season Risk', 'Low', 'High'],
     ] as $key => [$label, $low, $high]) {
         $add($key, $label, 'rules', 'rating', 'rules.' . $key, [
             'allow_unknown' => true,

@@ -43,7 +43,7 @@ $check('Only approved questions appear in the shared catalog', static function (
 $check('Full inventory review shows approved questions across Place types', static function () use ($assert): void {
     $assert(llama_place_report_full_inventory_review_enabled(), 'Inventory review is not enabled');
     $catalog = llama_report_questions();
-    foreach (['heat_season_risk', 'amenity_river_access', 'amenity_lake_access',
+    foreach (['heat_season_risk', 'tornado_risk', 'amenity_river_access', 'amenity_lake_access',
         'amenity_campground_host', 'site_hookups_available', 'hookup_electric_service'] as $key) {
         $assert(isset($catalog[$key]), 'Missing approved inventory question: ' . $key);
     }
@@ -57,11 +57,44 @@ $check('Full inventory review shows approved questions across Place types', stat
     }
     $groups = llama_place_report_approved_question_groups();
     $seasonal = (array) $groups['seasonal_access'][1];
-    $hot = array_search('heat_season_risk', $seasonal, true);
-    $hurricane = array_search('hurricane_risk', $seasonal, true);
-    $seasonEnd = array_search('approach_reopening_day', $seasonal, true);
-    $assert($hot === $seasonEnd + 1 && $hurricane === $hot + 1,
-        'Heat Season Risk is not immediately before Hurricane Risk after Season Ends');
+    $expectedSeasonal = [
+        'best_months',
+        'seasonal_closure',
+        'season_begins',
+        'season_ends',
+        'heat_season_risk',
+        'hurricane_risk',
+        'monsoon_risk',
+        'tornado_risk',
+        'mud_season_risk',
+        'snow_risk',
+        'approach_winter_maintenance',
+        'approach_snow_chains',
+    ];
+    $assert($seasonal === $expectedSeasonal,
+        'Seasonal Access order does not match the reviewed inventory');
+
+    $seasonFields = llama_report_questions();
+    $assert(($seasonFields['best_months']['label'] ?? '') === 'Best Seasons',
+        'Best Months was not renamed to Best Seasons');
+    $assert(($seasonFields['season_begins']['label'] ?? '') === 'Closure Ends',
+        'Season Begins was not renamed to Closure Ends');
+    $assert(($seasonFields['season_ends']['label'] ?? '') === 'Closure Begins',
+        'Season Ends was not renamed to Closure Begins');
+    $assert(($seasonFields['monsoon_risk']['label'] ?? '') === 'Monsoon Season Risk',
+        'Monsoon Risk was not renamed');
+    $assert(($seasonFields['approach_winter_maintenance']['options'] ?? []) === [
+        'not_applicable' => 'Not Applicable',
+        'occasional' => 'Occasionally Plowed',
+        'regular' => 'Frequently Plowed',
+        'none' => 'Not Maintained',
+    ], 'Winter Road Maintenance answers do not match the reviewed set');
+    $assert(($seasonFields['approach_snow_chains']['options'] ?? []) === [
+        'not_applicable' => 'Not Applicable',
+        'no' => 'No',
+        'conditional' => 'Recommended',
+        'required' => 'Required',
+    ], 'Snow Chains answers do not match the reviewed set');
     $amenities = (array) $groups['amenities'][1];
     $pier = array_search('amenity_fishing_pier', $amenities, true);
     $assert($amenities[$pier - 2] === 'amenity_river_access'

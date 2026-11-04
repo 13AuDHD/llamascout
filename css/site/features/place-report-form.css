@@ -239,6 +239,10 @@
     align-items: end;
 }
 
+.scout-report-completeness {
+    margin-top: 6px;
+}
+
 .scout-report-history-link {
     min-height: 38px;
 

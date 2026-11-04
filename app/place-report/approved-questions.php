@@ -27,10 +27,10 @@ function llama_place_report_approved_question_groups(): array
     'basic' => ['Basic', ['name','type','description']],
     'location' => ['Location', ['latitude','longitude','elevation_feet','road','city','county','state','land_type','land_manager','region','activities']],
     'amenities' => ['Amenities', ['amenity_toilets','amenity_potable_water','amenity_trash','amenity_dump_station','amenity_showers','amenity_picnic_shelter','amenity_wifi','amenity_laundry','amenity_dishwashing_station','amenity_playground','amenity_dog_park','amenity_amphitheater','amenity_campground_host','amenity_camp_store','amenity_trailhead','amenity_river_access','amenity_lake_access','amenity_fishing_pier']],
-    'operating' => ['Operating Hours', ['place_open_year_round','seasonal_closure','season_begins','season_ends','place_open_24_hours','place_opening_time','place_closing_time']],
+    'operating' => ['Operating Hours', ['place_open_year_round','place_open_24_hours','place_opening_time','place_closing_time']],
     'road_conditions' => ['Road Conditions', ['approach_road_type','approach_permit_required','approach_fee_required','approach_road_fee','road_surface','road_width','approach_road_condition','approach_road_hazards','approach_deep_ruts','rocks','washboards','mud_risk','steep_grades','drop_off_exposure','water_crossings','downed_tree_risk','approach_access_restrictions']],
     'vehicle_access' => ['Vehicle Access', ['approach_overhead_obstacles','sedan_accessible','high_clearance_recommended','four_wheel_drive_recommended','approach_turnaround_available']],
-    'seasonal_access' => ['Seasonal Access', ['best_months','approach_seasonal_closure','approach_closure_month','approach_closure_day','approach_reopening_month','approach_reopening_day','heat_season_risk','hurricane_risk','monsoon_risk','mud_season_risk','snow_risk','approach_winter_maintenance','approach_snow_chains','approach_seasonal_restrictions']],
+    'seasonal_access' => ['Seasonal Access', ['best_months','seasonal_closure','season_begins','season_ends','heat_season_risk','hurricane_risk','monsoon_risk','tornado_risk','mud_season_risk','snow_risk','approach_winter_maintenance','approach_snow_chains']],
     'gate_access' => ['Gate Access', ['approach_gate_present','approach_gate_access_type','approach_gate_opens','approach_gate_closes','place_entrance_gate','place_gate_access_type','place_gate_opening_time','place_gate_closing_time']],
     'nearest_services' => ['Nearest Services', ['nearest_town','nearest_fuel','nearest_ev_charging','nearest_propane','nearest_alcohol_sales','nearest_grocery','nearest_water','nearest_toilet','nearest_hospital']],
     'site_info' => ['Site Info', ['site_number','site_accessible','tent_camping_suitable','rv_suitable','capacity_size_rating','max_people','vehicle_capacity','site_length_feet','site_width_feet','overhead_clearance_feet','ground_condition','levelness','parking_grade']],
@@ -344,46 +344,9 @@ function llama_place_report_approved_source_fields(): array
  */
 function llama_place_report_approved_compound_questions(): array
 {
-    return [
-        'season_begins' => [
-            'label' => 'Season Begins',
-            'group' => 'seasonal_access',
-            'page' => 'place',
-            'page_label' => 'Place details',
-            'accent_role' => 'place',
-            'display_format' => 'month_day',
-            'components' => [
-                'approach_closure_month' => [
-                    'role' => 'month',
-                    'label' => 'Month',
-                ],
-                'approach_closure_day' => [
-                    'role' => 'day',
-                    'label' => 'Day',
-                ],
-            ],
-            'status' => 'active',
-        ],
-        'season_ends' => [
-            'label' => 'Season Ends',
-            'group' => 'seasonal_access',
-            'page' => 'place',
-            'page_label' => 'Place details',
-            'accent_role' => 'place',
-            'display_format' => 'month_day',
-            'components' => [
-                'approach_reopening_month' => [
-                    'role' => 'month',
-                    'label' => 'Month',
-                ],
-                'approach_reopening_day' => [
-                    'role' => 'day',
-                    'label' => 'Day',
-                ],
-            ],
-            'status' => 'active',
-        ],
-    ];
+    // Seasonal dates are direct recurring MM-DD questions now. The old
+    // approach_* month/day fields remain registered only for historical data.
+    return [];
 }
 
 /**
@@ -451,24 +414,18 @@ function llama_place_report_approved_reconciliation(): array
             'compatibility' => 'facility_public_projection',
         ],
         'seasonal_access_begin' => [
-            'approved_label' => 'Season Begins',
+            'approved_label' => 'Closure Ends',
             'approved_group' => 'seasonal_access',
-            'current_keys' => [
-                'approach_closure_month',
-                'approach_closure_day',
-            ],
-            'status' => 'canonical_compound_question',
-            'compatibility' => 'preserve_existing_month_day_storage',
+            'current_keys' => ['season_begins'],
+            'status' => 'resolved_existing_key',
+            'compatibility' => 'old approach month/day fields retained as inactive history',
         ],
         'seasonal_access_end' => [
-            'approved_label' => 'Season Ends',
+            'approved_label' => 'Closure Begins',
             'approved_group' => 'seasonal_access',
-            'current_keys' => [
-                'approach_reopening_month',
-                'approach_reopening_day',
-            ],
-            'status' => 'canonical_compound_question',
-            'compatibility' => 'preserve_existing_month_day_storage',
+            'current_keys' => ['season_ends'],
+            'status' => 'resolved_existing_key',
+            'compatibility' => 'old approach month/day fields retained as inactive history',
         ],
         'site_overhead_clearance' => [
             'approved_label' => 'Site Overhead Clearance',
@@ -604,11 +561,11 @@ function llama_place_report_approved_registry_issues(): array
         }
     }
 
-    if ($count !== 267) {
+    if ($count !== 262) {
         $issues[] =
             'Current approved-question projection contains '
             . $count
-            . ' slots; expected 267 after the November 2026 heat, river, and lake access restorations.';
+            . ' slots; expected 262 after consolidating seasonal access into one reviewed question set.';
     }
 
     $assignedGroups = [];

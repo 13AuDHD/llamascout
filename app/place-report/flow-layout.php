@@ -151,14 +151,18 @@ function llama_place_report_layout_assignments(): array
         ],
 
         'getting_there:seasonal_access' => [
-            'approach_year_round', 'approach_seasonal_closure',
-            'approach_closure_month', 'approach_closure_day',
-            'approach_reopening_month', 'approach_reopening_day',
-            'approach_winter_maintenance', 'approach_snow_chains',
-            'approach_seasonal_restrictions',
-            'winter_access', 'seasonal_closure', 'seasonal_access_note',
-            'snow_risk', 'mud_season_risk', 'monsoon_risk',
-            'approach_road_conditions_url',
+            'best_months',
+            'seasonal_closure',
+            'season_begins',
+            'season_ends',
+            'heat_season_risk',
+            'hurricane_risk',
+            'monsoon_risk',
+            'tornado_risk',
+            'mud_season_risk',
+            'snow_risk',
+            'approach_winter_maintenance',
+            'approach_snow_chains',
         ],
 
         'getting_there:access_restrictions' => [
@@ -246,9 +250,8 @@ function llama_place_report_layout_assignments(): array
         ],
 
         'place:seasonal_conditions' => [
-            'best_months',
-            'heat_season_risk',
-            'hurricane_risk',
+            // Seasonal questions are temporarily consolidated under
+            // Getting There while the owner reviews the full inventory.
         ],
 
         'place:connectivity_services' => [
@@ -307,9 +310,6 @@ function llama_place_report_layout_assignments(): array
 
         'place:operating_closures' => [
             'place_open_year_round',
-            'seasonal_closure',
-            'season_begins',
-            'season_ends',
             'place_open_24_hours',
             'place_opening_time',
             'place_closing_time',
