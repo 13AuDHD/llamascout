@@ -67,27 +67,6 @@
 }
 
 
-/* Inventory totals shown immediately on dashboard login */
-
-.admin-inventory h2 {
-    margin: 0 0 10px;
-    font-size: 1rem;
-}
-
-.admin-inventory-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.admin-inventory-grid .admin-stat-card strong {
-    font-size: 1.8rem;
-}
-
-@media (max-width: 600px) {
-    .admin-inventory-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
 /* Work queue summary cards */
 
 .admin-stat-grid {
