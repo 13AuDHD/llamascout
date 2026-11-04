@@ -2,9 +2,8 @@
   'use strict';
 
   const HAZARDS = [
-    'rocks', 'washboards', 'potholes', 'mud_risk',
-    'steep_grades', 'drop_off_exposure', 'water_crossings',
-    'downed_tree_risk', 'approach_deep_ruts'
+    'approach_deep_ruts', 'rocks', 'washboards', 'potholes',
+    'mud_risk', 'steep_grades', 'drop_off_exposure'
   ];
   const SPECIAL = new Set(['none', 'unknown']);
   const query = (root, selector) => root.querySelector(selector);
