@@ -130,6 +130,19 @@ function admin_dashboard_stats(PDO $db): array
 
 
     return [
+        // Entire inventory, including unpublished and restricted records.
+        'total_places' => admin_safe_count(
+            $db,
+            "SELECT COUNT(*) FROM places"
+        ),
+        'total_sites' => admin_safe_count(
+            $db,
+            "SELECT COUNT(*) FROM place_campsites"
+        ),
+        'total_resources' => admin_safe_count(
+            $db,
+            "SELECT COUNT(*) FROM resources"
+        ),
         'new_places' => admin_safe_count(
             $db,
             "SELECT COUNT(*)
