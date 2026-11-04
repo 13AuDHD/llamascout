@@ -627,6 +627,26 @@ $check('Official Site accessibility question is first in Accessibility', static 
         'Official Site accessibility question is not Site-scoped');
 });
 
+$check('Parking and Maneuvering keeps only approved independent questions', static function () use ($assert): void {
+    $fields = llama_place_report_fields();
+    foreach ([
+        'double_driveway',
+        'hike_in_distance_feet',
+        'site_access_difficulty',
+        'trailer_suitable',
+    ] as $key) {
+        $assert(!isset($fields[$key]),
+            'Retired Site parking question is still active: ' . $key);
+    }
+
+    $groups = llama_place_report_approved_question_groups();
+    foreach ((array) $groups['parking'][1] as $key) {
+        $assert(isset($fields[$key]), 'Approved parking question is missing: ' . $key);
+        $assert((array) ($fields[$key]['applicable_if'] ?? []) === [],
+            'Approved parking question unexpectedly became dependent: ' . $key);
+    }
+});
+
 $check('Approved questions have shared layout metadata', static function () use ($assert): void {
     $layouts = llama_place_report_layout_groups();
     $missing = [];
