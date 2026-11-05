@@ -308,7 +308,6 @@ try {
                     'place_verified_closed' => (bool) ($site['place_verified_closed'] ?? false),
                     'operating_status' => $site['operating_status'] ?? null,
                     'seasonal_operating_status' => $site['seasonal_operating_status'] ?? null,
-                'reservation_method' => $site['reservation_method'] ?? null,
                     'reservation_method' => $site['reservation_method'] ?? null,
                     'official_details' =>
                         array_map(
@@ -340,6 +339,7 @@ try {
                 'place_verified_closed' => (bool) ($site['place_verified_closed'] ?? false),
                 'operating_status' => $site['operating_status'] ?? null,
                 'seasonal_operating_status' => $site['seasonal_operating_status'] ?? null,
+                'reservation_method' => $site['reservation_method'] ?? null,
                 'closure_reason' => $site['closure_reason'] ?? null,
                 'expected_reopening' => $site['expected_reopening'] ?? null,
                 'closure_verified_at' => $site['closure_verified_at'] ?? null,
