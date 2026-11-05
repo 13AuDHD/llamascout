@@ -1562,7 +1562,7 @@ $check('Public seasonal answers preserve Site-specific rules and Unknown', stati
     $unchanged = llama_public_season_overlay_answer_layers(
         $normal, [$placeSeason], $site
     );
-    $assert($unchanged['answers']['campfire_allowed']['value'] === 1,
+    $assert($unchanged['answers']['campfire_allowed'] === $normal['campfire_allowed'],
         'Place season incorrectly erased a Site-specific normal rule');
     $assert(!isset($unchanged['sources']['campfire_allowed']),
         'Skipped override must not claim seasonal attribution');
