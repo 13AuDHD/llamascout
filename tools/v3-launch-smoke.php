@@ -1576,8 +1576,12 @@ $check('Public seasonal answers preserve Site-specific rules and Unknown', stati
     $changed = llama_public_season_overlay_answer_layers(
         $normal, [$placeSeason, $siteSeason], $site
     );
-    $assert($changed['answers']['campfire_allowed']['value'] === 0,
-        'Site season failed to override its own normal rule');
+    $assert(
+        ($changed['answers']['campfire_allowed']['origin']['origin_type'] ?? '') === 'seasonal_override'
+        && ($changed['answers']['campfire_allowed']['origin']['scope'] ?? '') === 'site'
+        && $changed['answers']['campfire_allowed']['value'] !== $normal['campfire_allowed']['value'],
+        'Site season failed to override its own normal rule'
+    );
     $assert(($changed['sources']['campfire_allowed']['label'] ?? '') === 'Seasonal conditions',
         'Seasonal attribution missing');
 
