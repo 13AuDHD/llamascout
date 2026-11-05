@@ -914,6 +914,444 @@
             };
         };
 
+    const currentSite =
+        () => {
+            const id =
+                Number(
+                    siteTarget?.value
+                    || 0
+                );
+
+            return campsites.find(
+                (site) =>
+                    Number(site.id)
+                    === id
+            )
+            || null;
+        };
+
+    const clearSitePreview =
+        () => {
+            if (sitePreviewMarker) {
+                map.removeLayer(
+                    sitePreviewMarker
+                );
+
+                sitePreviewMarker =
+                    null;
+            }
+        };
+
+    const setSitePoint =
+        (
+            lat,
+            lng,
+            pan = false
+        ) => {
+            const nextLat =
+                Number(lat);
+
+            const nextLng =
+                Number(lng);
+
+            if (
+                !Number.isFinite(nextLat)
+                || !Number.isFinite(nextLng)
+            ) {
+                return;
+            }
+
+            if (siteLatitude) {
+                siteLatitude.value =
+                    nextLat.toFixed(7);
+            }
+
+            if (siteLongitude) {
+                siteLongitude.value =
+                    nextLng.toFixed(7);
+            }
+
+            clearSitePreview();
+
+            sitePreviewMarker =
+                L.circleMarker(
+                    [nextLat, nextLng],
+                    {
+                        radius:
+                            8,
+
+                        color:
+                            '#f59e0b',
+
+                        weight:
+                            3,
+
+                        fillColor:
+                            '#f59e0b',
+
+                        fillOpacity:
+                            .88
+                    }
+                ).addTo(
+                    map
+                );
+
+            if (pan) {
+                map.setView(
+                    [nextLat, nextLng],
+                    Math.max(
+                        17,
+                        map.getZoom()
+                    )
+                );
+            }
+
+            if (saveSitePointButton) {
+                saveSitePointButton.disabled =
+                    false;
+            }
+        };
+
+    const syncSiteTarget =
+        () => {
+            const creating =
+                !siteTarget
+                || siteTarget.value
+                    === 'new';
+
+            if (siteNameField) {
+                siteNameField.hidden =
+                    !creating;
+            }
+
+            if (siteName) {
+                siteName.disabled =
+                    !creating;
+            }
+
+            clearSitePreview();
+
+            if (creating) {
+                if (siteLatitude) {
+                    siteLatitude.value =
+                        '';
+                }
+
+                if (siteLongitude) {
+                    siteLongitude.value =
+                        '';
+                }
+
+                if (sitePointStatus) {
+                    sitePointStatus.textContent =
+                        'Name the new Site, then place its exact point on the map or use Device GPS.';
+                }
+
+                if (saveSitePointButton) {
+                    saveSitePointButton.disabled =
+                        true;
+                }
+
+                return;
+            }
+
+            const site =
+                currentSite();
+
+            if (
+                site
+                && Number.isFinite(
+                    Number(site.latitude)
+                )
+                && Number.isFinite(
+                    Number(site.longitude)
+                )
+            ) {
+                setSitePoint(
+                    Number(site.latitude),
+                    Number(site.longitude),
+                    true
+                );
+
+                if (sitePointStatus) {
+                    sitePointStatus.textContent =
+                        'Existing Site location loaded. Move the point only if this Site needs a correction.';
+                }
+            } else {
+                if (siteLatitude) {
+                    siteLatitude.value =
+                        '';
+                }
+
+                if (siteLongitude) {
+                    siteLongitude.value =
+                        '';
+                }
+
+                if (sitePointStatus) {
+                    sitePointStatus.textContent =
+                        'This Site has no exact point yet. Place it on the map or use Device GPS.';
+                }
+
+                if (saveSitePointButton) {
+                    saveSitePointButton.disabled =
+                        true;
+                }
+            }
+        };
+
+    const syncSiteOptions =
+        (
+            selectedId = null
+        ) => {
+            if (!siteTarget) {
+                return;
+            }
+
+            const desired =
+                selectedId === null
+                    ? siteTarget.value
+                    : String(
+                        selectedId
+                    );
+
+            siteTarget.replaceChildren();
+
+            const createOption =
+                document.createElement(
+                    'option'
+                );
+
+            createOption.value =
+                'new';
+
+            createOption.textContent =
+                'New Site';
+
+            siteTarget.append(
+                createOption
+            );
+
+            campsites.forEach(
+                (site) => {
+                    const option =
+                        document.createElement(
+                            'option'
+                        );
+
+                    option.value =
+                        String(
+                            site.id
+                        );
+
+                    option.textContent =
+                        String(
+                            site.display_name
+                            || site.site_code
+                            || site.site_name
+                            || `Site ${site.id}`
+                        );
+
+                    siteTarget.append(
+                        option
+                    );
+                }
+            );
+
+            siteTarget.value =
+                Array.from(
+                    siteTarget.options
+                ).some(
+                    (option) =>
+                        option.value
+                        === desired
+                )
+                    ? desired
+                    : 'new';
+
+            syncSiteTarget();
+        };
+
+    const setMode =
+        (
+            mode,
+            options = {}
+        ) => {
+            const nextMode =
+                ['place', 'area', 'site']
+                    .includes(mode)
+                    ? mode
+                    : 'place';
+
+            editorMode =
+                nextMode;
+
+            editor.dataset.mapMode =
+                nextMode;
+
+            modeButtons.forEach(
+                (button) => {
+                    const active =
+                        button.dataset.mapModeButton
+                        === nextMode;
+
+                    button.classList.toggle(
+                        'is-active',
+                        active
+                    );
+
+                    button.setAttribute(
+                        'aria-pressed',
+                        active
+                            ? 'true'
+                            : 'false'
+                    );
+                }
+            );
+
+            const siteMode =
+                nextMode === 'site';
+
+            if (polygonEditor) {
+                polygonEditor.hidden =
+                    siteMode;
+            }
+
+            if (sitePointPanel) {
+                sitePointPanel.hidden =
+                    !siteMode;
+            }
+
+            if (shapeTools) {
+                shapeTools.hidden =
+                    siteMode;
+            }
+
+            if (sitePickButton) {
+                sitePickButton.hidden =
+                    !siteMode;
+            }
+
+            if (drawButton) {
+                drawButton.hidden =
+                    siteMode;
+            }
+
+            if (finishButton) {
+                finishButton.hidden =
+                    siteMode;
+            }
+
+            if (undoButton) {
+                undoButton.hidden =
+                    siteMode;
+            }
+
+            if (saveButton) {
+                saveButton.hidden =
+                    siteMode;
+            }
+
+            if (saveSitePointButton) {
+                saveSitePointButton.hidden =
+                    !siteMode;
+            }
+
+            if (deleteButton) {
+                deleteButton.hidden =
+                    siteMode;
+            }
+
+            if (newButton) {
+                newButton.hidden =
+                    siteMode;
+            }
+
+            if (areaTypeField) {
+                areaTypeField.hidden =
+                    nextMode !== 'area';
+            }
+
+            if (placeBoundaryNote) {
+                placeBoundaryNote.hidden =
+                    nextMode !== 'place';
+            }
+
+            if (objectKind) {
+                objectKind.textContent =
+                    nextMode === 'place'
+                        ? 'Place'
+                        : 'Area';
+            }
+
+            if (objectExplanation) {
+                objectExplanation.textContent =
+                    nextMode === 'place'
+                        ? 'The green boundary represents this Place.'
+                        : 'Areas organize sections inside the Place, such as a campground loop or parking area.';
+            }
+
+            if (siteMode) {
+                geometry?.clearGeometry();
+                selectedFeatureId =
+                    0;
+
+                sitePicking =
+                    false;
+
+                sitePickButton?.classList
+                    .remove(
+                        'is-active'
+                    );
+
+                syncSiteOptions(
+                    options.siteId
+                    ?? null
+                );
+
+                setHelp(
+                    'Select a Site, then place its exact point on the map or use Device GPS.'
+                );
+
+                renderExistingLayers();
+
+                return;
+            }
+
+            clearSitePreview();
+
+            featureType.value =
+                nextMode === 'place'
+                    ? 'place_boundary'
+                    : (
+                        areaFeatureType?.value
+                        || 'camping_area'
+                    );
+
+            syncAreaDetailFields(
+                options.areaDetails
+                || {}
+            );
+
+            if (
+                nextMode === 'place'
+                && !options.keepLabel
+                && featureLabel
+            ) {
+                featureLabel.value =
+                    placeName;
+            }
+
+            setHelp(
+                nextMode === 'place'
+                    ? 'Draw the Place boundary on the map, or use Device GPS to collect its points.'
+                    : 'Draw the Area boundary inside the Place, or use Device GPS to collect its points.'
+            );
+
+            geometry?.renderEditableShape();
+            renderExistingLayers();
+        };
+
     const clearExistingLayers =
         () => {
             existingLayers.forEach(
