@@ -239,6 +239,10 @@ try {
                     }
                 }
 
+                if (!empty($site['reservation_method'])) {
+                    $publicReportKeys[] = 'site_reservation_method';
+                }
+
                 $publicReportKeys =
                     array_values(
                         array_unique(
@@ -330,6 +334,9 @@ try {
                     'seasonal_operating_status' => $site['seasonal_operating_status'] ?? null,
                     'reservation_method' => $site['reservation_method'] ?? null,
                     'accessible_pill' => (bool) ($site['accessible_pill'] ?? false),
+                    'report_effective_values' => !empty($site['reservation_method'])
+                        ? ['site_reservation_method' => (string) $site['reservation_method']]
+                        : [],
                     'official_details' =>
                         array_map(
                             static fn (array $detail): array => [
