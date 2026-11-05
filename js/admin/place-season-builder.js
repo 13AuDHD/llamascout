@@ -64,7 +64,8 @@
         const opts = q && q.options && typeof q.options === 'object'
             ? Object.entries(q.options) : [];
         let control;
-        if (opts.length) {
+        const usesChoices = q && ['select', 'tri', 'checkbox', 'permission', 'rating'].includes(q.type);
+        if (usesChoices && opts.length) {
             control = document.createElement('select');
             control.append(option('', mixed ? 'Mixed values; choose an answer' : 'Choose an answer'));
             for (const [key, label] of opts) {
@@ -74,13 +75,15 @@
         } else if (q && q.type === 'textarea') {
             control = document.createElement('textarea');
             control.rows = 2;
-            control.placeholder = mixed ? 'Mixed values; enter a shared answer' : 'Seasonal answer';
+            control.placeholder = mixed ? 'Mixed values; enter a shared answer'
+                : (q?.options?.__UNKNOWN__ ? 'Seasonal answer, or type Unknown' : 'Seasonal answer');
             control.value = mixed ? '' : textValue(value) === '__UNKNOWN__'
                 ? 'Unknown' : textValue(value);
         } else {
             control = document.createElement('input');
             control.type = q?.type === 'number' ? 'number' : 'text';
-            control.placeholder = mixed ? 'Mixed values; enter a shared answer' : 'Seasonal answer';
+            control.placeholder = mixed ? 'Mixed values; enter a shared answer'
+                : (q?.options?.__UNKNOWN__ ? 'Seasonal answer, or type Unknown' : 'Seasonal answer');
             control.value = mixed ? '' : textValue(value) === '__UNKNOWN__'
                 ? 'Unknown' : textValue(value);
         }
