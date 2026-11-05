@@ -210,12 +210,3 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
-
-
-/* Imported equipment permission is different from verified Site suitability. */
-.place-campsite-equipment-context {
-    margin: 0;
-    color: var(--text-muted);
-    font-size: .73rem;
-    line-height: 1.45;
-}
