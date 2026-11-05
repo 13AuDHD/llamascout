@@ -117,3 +117,39 @@ function llama_public_site_booking_methods(
     }
     return $methods;
 }
+
+
+/**
+ * Only use community-submitted accessibility designations where the caller
+ * already has Complete Place access. Public catalog badges use the official
+ * imported accessible_status field, preserving existing data-access rules.
+ */
+function llama_authorized_site_accessibility_overrides(
+    PDO $db,
+    int $placeId,
+    array $authorizedSiteIds
+): array {
+    $ids = array_values(array_unique(array_filter(
+        array_map('intval', $authorizedSiteIds),
+        static fn (int $id): bool => $id > 0
+    )));
+    $out = [];
+    foreach (array_chunk($ids, 400) as $batch) {
+        $marks = implode(',', array_fill(0, count($batch), '?'));
+        $stmt = $db->prepare(
+            'SELECT target_id, answer_state, value_json
+             FROM place_report_current_answers
+             WHERE place_id = ? AND target_scope = ? AND target_source = ?
+               AND question_key = ? AND target_id IN (' . $marks . ')'
+        );
+        $stmt->execute([
+            $placeId, 'site', 'campsite_record', 'site_accessible', ...$batch,
+        ]);
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+            $id = (int) $row['target_id'];
+            $out[$id] = (string) $row['answer_state'] === 'answered'
+                && json_decode((string) $row['value_json'], true, 512, JSON_THROW_ON_ERROR) === true;
+        }
+    }
+    return $out;
+}
