@@ -300,3 +300,46 @@ function llama_place_report_campsite_answers(array $site, array $overrides = [])
     if ($number !== '') { $answers['site_number'] = $number; }
     return array_replace($answers, $overrides);
 }
+
+/**
+ * Report inconsistencies without replacing any approved Scout/Admin answer.
+ *
+ * "Tent" in RIDB PermittedEquipment and a Site's actual suitability are
+ * separate facts. A photograph of a pad is never treated as verified
+ * permission. If the published Site answer explicitly says No despite
+ * evidence of tent equipment, surface the contradiction for review.
+ */
+function llama_place_report_campsite_consistency_notices(
+    array $site,
+    array $answers
+): array {
+    $tentAllowed = false;
+    foreach ((array) ($site['features'] ?? []) as $feature) {
+        if ((string) ($feature['feature_key'] ?? '') !== 'permitted_equipment') {
+            continue;
+        }
+        $name = strtolower(trim((string) ($feature['feature_value'] ?? '')));
+        if (preg_match('/^tents?(?:\s+.*)?$/D', $name) === 1) {
+            $tentAllowed = true;
+            break;
+        }
+    }
+
+    $tentPad = in_array(
+        strtolower(trim((string) ($site['tent_pad'] ?? ''))),
+        ['1', 'true', 'yes', 'y'],
+        true
+    );
+    $answer = (array) ($answers['tent_camping_suitable'] ?? []);
+    if ((string) ($answer['state'] ?? '') !== 'answered'
+        || ($answer['value'] ?? null) !== false
+        || (!$tentAllowed && !$tentPad)) {
+        return [];
+    }
+    return [
+        'tent_camping_suitable' =>
+            'Conflicting Site information: tents or a tent pad are listed '
+            . 'elsewhere, but this answer says No. Confirm the Site rules '
+            . 'and actual layout with the campground.',
+    ];
+}
