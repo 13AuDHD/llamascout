@@ -24,8 +24,6 @@
     }
 
     const requiredFactories = [
-        'createSiteFields',
-        'createPricing',
         'createFeatureState',
         'createGeometryEditor',
         'createGps',
@@ -56,6 +54,111 @@
             editor.dataset.csrfToken
             || ''
         );
+
+    const placeName =
+        String(
+            editor.dataset.placeName
+            || 'Place'
+        );
+
+    const modeButtons =
+        Array.from(
+            editor.querySelectorAll(
+                '[data-map-mode-button]'
+            )
+        );
+
+    const polygonEditor =
+        editor.querySelector(
+            '[data-polygon-editor]'
+        );
+
+    const sitePointPanel =
+        editor.querySelector(
+            '[data-site-point-panel]'
+        );
+
+    const shapeTools =
+        editor.querySelector(
+            '[data-shape-tools]'
+        );
+
+    const areaTypeField =
+        editor.querySelector(
+            '[data-area-type-field]'
+        );
+
+    const areaFeatureType =
+        editor.querySelector(
+            '[data-area-feature-type]'
+        );
+
+    const placeBoundaryNote =
+        editor.querySelector(
+            '[data-place-boundary-note]'
+        );
+
+    const objectKind =
+        editor.querySelector(
+            '[data-object-kind]'
+        );
+
+    const objectExplanation =
+        editor.querySelector(
+            '[data-object-explanation]'
+        );
+
+    const siteTarget =
+        editor.querySelector(
+            '[data-site-point-target]'
+        );
+
+    const siteNameField =
+        editor.querySelector(
+            '[data-site-point-new-name]'
+        );
+
+    const siteName =
+        editor.querySelector(
+            '[data-site-point-name]'
+        );
+
+    const siteLatitude =
+        editor.querySelector(
+            '[data-site-point-latitude]'
+        );
+
+    const siteLongitude =
+        editor.querySelector(
+            '[data-site-point-longitude]'
+        );
+
+    const sitePointStatus =
+        editor.querySelector(
+            '[data-site-point-status]'
+        );
+
+    const sitePickButton =
+        editor.querySelector(
+            '[data-site-map-pick]'
+        );
+
+    const saveSitePointButton =
+        editor.querySelector(
+            '[data-save-site-point]'
+        );
+
+    let editorMode =
+        'place';
+
+    let sitePicking =
+        false;
+
+    let sitePreviewMarker =
+        null;
+
+    let siteLayers =
+        [];
 
     const latitude =
         Number(
