@@ -1890,7 +1890,9 @@
             }
 
             setStatus(
-                'Saving mapped area...'
+                editorMode === 'place'
+                    ? 'Saving Place boundary...'
+                    : 'Saving Area...'
             );
 
             try {
@@ -1916,18 +1918,6 @@
 
                         area_details:
                             areaDetailsPayload(),
-
-                        site_details:
-                            siteFields
-                                .payload(),
-
-                        rates:
-                            pricing
-                                .ratesPayload(),
-
-                        site_classes:
-                            pricing
-                                .siteClassesPayload(),
 
                         geometry:
                             geometryPayload,
@@ -1958,7 +1948,9 @@
                 }
 
                 setStatus(
-                    'Mapped area saved.'
+                    editorMode === 'place'
+                        ? 'Place boundary saved.'
+                        : 'Area saved.'
                 );
 
             } catch (error) {
@@ -1970,6 +1962,144 @@
                 setStatus(
                     error.message
                     || 'The mapped area could not be saved.',
+                    true
+                );
+            }
+        };
+
+    const saveSitePoint =
+        async () => {
+            const latText =
+                String(
+                    siteLatitude?.value
+                    || ''
+                ).trim();
+
+            const lngText =
+                String(
+                    siteLongitude?.value
+                    || ''
+                ).trim();
+
+            const lat =
+                Number(
+                    latText
+                );
+
+            const lng =
+                Number(
+                    lngText
+                );
+
+            if (
+                latText === ''
+                || lngText === ''
+                || !Number.isFinite(lat)
+                || !Number.isFinite(lng)
+            ) {
+                setStatus(
+                    'Place the Site point first.',
+                    true
+                );
+
+                return;
+            }
+
+            const targetValue =
+                String(
+                    siteTarget?.value
+                    || 'new'
+                );
+
+            const creating =
+                targetValue === 'new';
+
+            const nextName =
+                String(
+                    siteName?.value
+                    || ''
+                ).trim();
+
+            if (
+                creating
+                && nextName === ''
+            ) {
+                setStatus(
+                    'Enter a name for the new Site.',
+                    true
+                );
+
+                siteName?.focus();
+
+                return;
+            }
+
+            saveSitePointButton.disabled =
+                true;
+
+            setStatus(
+                'Saving Site point...'
+            );
+
+            try {
+                const data =
+                    await request({
+                        action:
+                            'save_site_point',
+
+                        site_id:
+                            creating
+                                ? 0
+                                : Number(
+                                    targetValue
+                                ),
+
+                        site_name:
+                            creating
+                                ? nextName
+                                : '',
+
+                        latitude:
+                            latText,
+
+                        longitude:
+                            lngText
+                    });
+
+                applyApiState(
+                    data
+                );
+
+                const savedId =
+                    Number(
+                        data.site_id
+                        || 0
+                    );
+
+                syncSiteOptions(
+                    savedId > 0
+                        ? savedId
+                        : null
+                );
+
+                renderExistingLayers();
+
+                setStatus(
+                    'Site point saved.'
+                );
+
+                if (sitePointStatus) {
+                    sitePointStatus.textContent =
+                        'This Site now has an exact map location.';
+                }
+
+            } catch (error) {
+                saveSitePointButton.disabled =
+                    false;
+
+                setStatus(
+                    error.message
+                    || 'The Site point could not be saved.',
                     true
                 );
             }
