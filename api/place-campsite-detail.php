@@ -11,6 +11,7 @@ require_once dirname(__DIR__) . '/app/campsite-closure-display.php';
 require_once dirname(__DIR__) . '/app/place-report.php';
 require_once dirname(__DIR__) . '/app/place-report/scoped-warnings.php';
 require_once dirname(__DIR__) . '/app/place-report/season-public.php';
+require_once dirname(__DIR__) . '/app/place-report/site-booking.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -196,6 +197,41 @@ try {
             $currentModel['answers']
             ?? []
         );
+
+    // Positive official RIDB reservability is a Site baseline fact.
+    // Keep its source provenance and never overwrite a canonical Site answer.
+    if (empty($currentAnswers['site_reservation_method']['recorded'])) {
+        $normalBooking = llama_public_site_booking_methods(
+            $db, $placeId, null, [$campsiteId]
+        );
+        if (($normalBooking[$campsiteId] ?? null) === 'reservable') {
+            $field = llama_report_question('site_reservation_method');
+            if (is_array($field)) {
+                $currentAnswers['site_reservation_method'] =
+                    llama_place_report_current_answer_envelope(
+                        $field,
+                        true,
+                        'reservable',
+                        [
+                            'scope' => 'site',
+                            'source' => 'campsite_record',
+                            'id' => $campsiteId,
+                        ],
+                        [
+                            'scope' => 'site',
+                            'source' => 'campsite_record',
+                            'id' => $campsiteId,
+                            'origin_type' => 'campsite_baseline',
+                            'imported' => true,
+                            'provider' => 'Recreation.gov / RIDB',
+                            'source_updated_at' => $site['source_updated_at'] ?? null,
+                        ]
+                    );
+            }
+        }
+    }
+
+
 
     $seasonSpecificSources = [];
     $seasonState = llama_public_season_selection(
