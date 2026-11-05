@@ -694,3 +694,123 @@
         grid-template-columns: 1fr;
     }
 }
+
+
+/* M4: Place seasons live alongside, not inside, the normal report form. */
+.admin-place-seasons {
+    display: grid;
+    gap: 16px;
+    padding: 20px 22px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+}
+.admin-place-seasons .admin-place-report-header {
+    margin-bottom: 0;
+}
+.admin-place-seasons-message,
+.admin-place-seasons-help {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: .75rem;
+    line-height: 1.5;
+}
+.admin-place-seasons-message.is-error {
+    color: #d86a6a;
+}
+.admin-place-seasons-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+    gap: 10px;
+}
+.admin-place-season-entry {
+    display: grid;
+    align-content: start;
+    gap: 5px;
+    padding: 13px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    color: var(--text);
+    background: var(--background);
+    text-decoration: none;
+}
+.admin-place-season-entry.is-selected,
+.admin-place-season-entry:hover,
+.admin-place-season-entry:focus-visible {
+    border-color: #559c6f;
+}
+.admin-place-season-entry strong {
+    font-size: .85rem;
+}
+.admin-place-season-entry span,
+.admin-place-season-entry small {
+    color: var(--text-muted);
+    font-size: .7rem;
+}
+.admin-place-seasons-form {
+    display: grid;
+    gap: 14px;
+    border-top: 1px solid var(--border);
+    padding-top: 16px;
+}
+.admin-place-seasons-form-heading,
+.admin-place-seasons-footer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+.admin-place-seasons-form-heading h3 {
+    margin: 0;
+}
+.admin-place-seasons-form-heading a {
+    color: var(--text-muted);
+    font-size: .75rem;
+}
+.admin-place-seasons-inputs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+.admin-place-seasons-inputs label {
+    display: grid;
+    align-content: start;
+    gap: 6px;
+    font-size: .75rem;
+    font-weight: 700;
+    min-width: 0;
+}
+.admin-place-seasons-inputs .admin-place-seasons-name,
+.admin-place-seasons-inputs .admin-place-seasons-wide {
+    grid-column: 1 / -1;
+}
+.admin-place-seasons-inputs input,
+.admin-place-seasons-inputs textarea {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--background);
+    color: var(--text);
+    font: inherit;
+}
+.admin-place-season-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: .75rem;
+}
+.admin-place-seasons-footer .admin-button {
+    margin-left: auto;
+}
+@media (max-width: 560px) {
+    .admin-place-seasons {
+        padding: 16px;
+    }
+    .admin-place-seasons-inputs {
+        grid-template-columns: 1fr;
+    }
+}
