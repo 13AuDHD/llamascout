@@ -1477,7 +1477,10 @@
                                     '#f59e0b',
 
                                 fillOpacity:
-                                    .9
+                                    .9,
+
+                                bubblingMouseEvents:
+                                    false
                             }
                         ).addTo(
                             map
@@ -1498,11 +1501,7 @@
 
                     marker.on(
                         'click',
-                        (event) => {
-                            L.DomEvent.stopPropagation(
-                                event
-                            );
-
+                        () => {
                             if (
                                 dirty
                                 && !window.confirm(
