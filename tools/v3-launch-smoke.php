@@ -1493,6 +1493,52 @@ $check('Season definition editor is isolated from normal Scout Report save', sta
         'Season save action is not routed through the validated season service');
 });
 
+$check('Named seasons edit only approved canonical amenities and fire rules', static function () use ($assert): void {
+    require_once dirname(__DIR__) . '/app/place-report/season-answer-contract.php';
+    $groups = llama_season_question_groups('place');
+    foreach (['campfire_allowed', 'place_charcoal_grills_allowed',
+              'place_propane_fire_pits_allowed'] as $key) {
+        $assert(isset($groups['Fire & cooking rules'][$key]),
+            'Fire/cooking seasonal answer missing: ' . $key);
+    }
+    $assert(isset($groups['Services & amenities']['amenity_toilets'])
+        && isset($groups['Services & amenities']['amenity_showers']),
+        'Normal seasonal facilities missing');
+    foreach (['site_length_feet', 'parking_surface',
+              'amenity_fire_ring', 'amenity_grill', 'current_fire_restrictions_url'] as $key) {
+        $assert(!in_array($key, llama_season_allowed_question_keys(), true),
+            'Physical Site fact or live fire-restrictions URL cannot be seasonal: ' . $key);
+    }
+    $siteFields = llama_season_question_groups('site');
+    $assert(isset($siteFields['Site services']['hookup_water']),
+        'Individual Site seasonal water service missing');
+});
+
+$check('Seasonal Admin form saves without overwriting normal Scout Reports', static function () use ($assert): void {
+    $panel = file_get_contents(dirname(__DIR__) . '/admin/partials/place-report-seasons.php');
+    $form = file_get_contents(dirname(__DIR__) . '/admin/partials/place-report-season-answers.php');
+    $handler = file_get_contents(dirname(__DIR__) . '/app/admin-place-actions.php');
+    $service = file_get_contents(dirname(__DIR__) . '/app/place-report/season-answers.php');
+    $sql = file_get_contents(dirname(__DIR__) . '/tools/migrations/20261105_m4_002_season_site_status.sql');
+    $assert(is_string($panel) && is_string($form) && is_string($handler)
+        && is_string($service) && is_string($sql), 'M4-002 implementation incomplete');
+    $assert(strpos($panel, "require __DIR__ . '/place-report-season-answers.php'") !== false,
+        'Saved seasons are not connected to their answer editor');
+    $assert(strpos($form, 'name="season_view"') !== false
+        && strpos($form, 'name="season_target"') !== false,
+        'Season or reporting target dropdown missing');
+    $assert(strpos($form, 'name="place_admin_action" value="save-season-answers"') !== false
+        && strpos($form, 'name="csrf_token"') !== false,
+        'Season answers must have their own authenticated save action');
+    $assert(strpos($handler, "if (\$action === 'save-season-answers')") !== false
+        && strpos($handler, 'llama_season_save_target_answers(') !== false,
+        'Season answers do not use the validated seasonal writer');
+    $assert(strpos($service, "llama_place_report_submission_answer(\$field, \$raw)") !== false,
+        'Season answers do not use the canonical answer parser');
+    $assert(strpos($sql, 'CREATE TABLE IF NOT EXISTS place_season_site_status') !== false,
+        'Site operating schedule table missing');
+});
+
 $check('Canonical field contract', static function () use ($assert): void {
     $issues = llama_place_report_contract_issues();
     $assert(!$issues, 'Contract issues: ' . implode(' | ', array_slice($issues, 0, 12)) . ' (total ' . count($issues) . ')');
