@@ -173,6 +173,7 @@ try {
 
     $enriched = llama_campsite_closure_enrich($db, $placeId, [$site]);
     $site = $enriched[0] ?? $site;
+    $site['place_verified_closed'] = llama_public_place_verified_closed($db, $placeId);
 
     $currentModel =
         llama_place_report_current_answer_model_with_history(
