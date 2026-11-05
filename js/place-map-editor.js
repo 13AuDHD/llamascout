@@ -389,10 +389,10 @@
 
         camping_area: {
             color:
-                '#d97706',
+                '#a855f7',
 
             fillColor:
-                '#d97706'
+                '#a855f7'
         },
 
         parking_area: {
