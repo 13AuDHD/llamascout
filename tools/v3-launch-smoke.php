@@ -1582,6 +1582,10 @@ $check('Compact seasonal builder uses one canonical editor for Place and Sites',
     $assert(strpos($script, 'data-season-add-row') !== false
         && strpos($script, 'season_removals[]') !== false,
         'Compact seasonal row add/delete behavior missing');
+    // Admin runs on admin.llamascout.com; a root-relative /js URL points
+    // to the Admin host rather than the canonical asset host.
+    $assert(strpos($view, 'src="https://llamascout.com/js/admin/place-season-builder.js"') !== false,
+        'Admin seasonal builder must load its JavaScript from the canonical main-site asset host');
 });
 
 $check('Public seasonal answers preserve Site-specific rules and Unknown', static function () use ($assert): void {
