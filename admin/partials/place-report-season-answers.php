@@ -271,7 +271,11 @@ $availableSeasons = array_values(array_filter(
                     | JSON_HEX_QUOT | JSON_THROW_ON_ERROR
                 ) ?></script>
             </form>
-            <script defer src="https://llamascout.com/js/admin/place-season-builder.js"></script>
+            <?php
+            $builderAsset = dirname(__DIR__, 2) . '/js/admin/place-season-builder.js';
+            $builderVersion = is_file($builderAsset) ? (int) filemtime($builderAsset) : 1;
+            ?>
+            <script defer src="https://llamascout.com/js/admin/place-season-builder.js?v=<?= $builderVersion ?>"></script>
         <?php endif; ?>
     <?php endif; ?>
 </section>
