@@ -116,6 +116,33 @@ function llama_place_report_campsite_electric_service_form_value(mixed $value): 
     };
 }
 
+/**
+ * RIDB lists officially permitted camping equipment per Site. A named Tent
+ * entry is affirmative evidence for canonical tent suitability. Never infer
+ * an RV/Trailer permission from Tent (the inverse requires its own evidence).
+ *
+ * This is the same feature collection used for the public equipment pills.
+ */
+function llama_place_report_campsite_permits_tent(array $site): bool
+{
+    foreach ((array) ($site['features'] ?? []) as $feature) {
+        if ((string) ($feature['feature_key'] ?? '') !== 'permitted_equipment'
+            || (int) ($feature['is_active'] ?? 1) !== 1) {
+            continue;
+        }
+        $provider = strtolower(trim((string) ($feature['source_provider'] ?? '')));
+        if (!str_contains($provider, 'ridb')
+            && !str_contains($provider, 'recreation.gov')) {
+            continue;
+        }
+        $name = strtolower(trim((string) ($feature['feature_value'] ?? '')));
+        if (preg_match('/^tents?(?:\s+.*)?$/D', $name) === 1) {
+            return true;
+        }
+    }
+    return false;
+}
+
 function llama_place_report_campsite_imported_form_values(array $site): array
 {
     $unknown = llama_place_report_unknown_token();
@@ -237,22 +264,33 @@ function llama_place_report_campsite_imported_form_values(array $site): array
         $siteType === 'rv_site'
         || str_contains($rawSiteType, 'RV ONLY');
 
+    // RIDB's explicit Tent permission (and its recorded tent-pad flag) are
+    // positive Site-level evidence, even when the broad type says RV Site.
+    // Keep raw source facts; manual Scout/Admin exceptions still override
+    // this baseline through the existing canonical winner selection.
+    $hasTentPermission = llama_place_report_campsite_permits_tent($site);
+    $hasTentPad = llama_place_report_campsite_bool_form_value(
+        $site['tent_pad'] ?? null
+    ) === '1';
+
     if ($isTentOnly) {
+        // "Tent Only" and "Walk-in Tent" do not permit an RV or trailer.
         $values['tent_camping_suitable'] = '1';
         $values['rv_suitable'] = '0';
         $values['trailer_suitable'] = '0';
     } elseif ($isStandard) {
+        // Standard, including "Standard Nonelectric", allows the usual
+        // combination of tent, RV, trailer and vehicle camping.
         $values['tent_camping_suitable'] = '1';
         $values['rv_suitable'] = '1';
         $values['trailer_suitable'] = '1';
     } elseif ($isRvOnly) {
-        // RIDB's broad "RV Site" category does not prove tents are
-        // prohibited or physically unsuitable. Some RV Sites list Tent
-        // under PermittedEquipment and have a tent pad. Leave tent
-        // suitability unanswered until a real Site-level fact confirms it.
-        // An explicit verified No from Scout/Admin remains authoritative.
         $values['rv_suitable'] = '1';
         $values['trailer_suitable'] = '1';
+    }
+
+    if ($hasTentPermission || $hasTentPad) {
+        $values['tent_camping_suitable'] = '1';
     }
 
     foreach (
@@ -301,45 +339,3 @@ function llama_place_report_campsite_answers(array $site, array $overrides = [])
     return array_replace($answers, $overrides);
 }
 
-/**
- * Report inconsistencies without replacing any approved Scout/Admin answer.
- *
- * "Tent" in RIDB PermittedEquipment and a Site's actual suitability are
- * separate facts. A photograph of a pad is never treated as verified
- * permission. If the published Site answer explicitly says No despite
- * evidence of tent equipment, surface the contradiction for review.
- */
-function llama_place_report_campsite_consistency_notices(
-    array $site,
-    array $answers
-): array {
-    $tentAllowed = false;
-    foreach ((array) ($site['features'] ?? []) as $feature) {
-        if ((string) ($feature['feature_key'] ?? '') !== 'permitted_equipment') {
-            continue;
-        }
-        $name = strtolower(trim((string) ($feature['feature_value'] ?? '')));
-        if (preg_match('/^tents?(?:\s+.*)?$/D', $name) === 1) {
-            $tentAllowed = true;
-            break;
-        }
-    }
-
-    $tentPad = in_array(
-        strtolower(trim((string) ($site['tent_pad'] ?? ''))),
-        ['1', 'true', 'yes', 'y'],
-        true
-    );
-    $answer = (array) ($answers['tent_camping_suitable'] ?? []);
-    if ((string) ($answer['state'] ?? '') !== 'answered'
-        || ($answer['value'] ?? null) !== false
-        || (!$tentAllowed && !$tentPad)) {
-        return [];
-    }
-    return [
-        'tent_camping_suitable' =>
-            'Conflicting Site information: tents or a tent pad are listed '
-            . 'elsewhere, but this answer says No. Confirm the Site rules '
-            . 'and actual layout with the campground.',
-    ];
-}
