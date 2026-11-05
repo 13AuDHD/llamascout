@@ -50,6 +50,7 @@ declare(strict_types=1);
 
 <nav class="admin-place-section-nav">
     <a href="#place-report">Place Report</a>
+    <a href="#place-seasons">Seasons</a>
     <a href="#photos">Photos</a>
     <a href="#notes">Notes</a>
     <a href="#verification">Verification</a>
@@ -58,6 +59,8 @@ declare(strict_types=1);
 </nav>
 
 <?php require __DIR__ . '/place-map.php'; ?>
+
+<?php require __DIR__ . '/place-report-seasons.php'; ?>
 
 <form method="post" class="admin-place-report-form place-report-form" id="place-report">
     <input type="hidden" name="csrf_token" value="<?= $e(moderation_csrf_token()) ?>">
