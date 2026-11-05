@@ -289,6 +289,8 @@ function llama_place_report_layout_assignments(): array
 
         'site:selection_type' => [
             'site_number',
+            'site_loop',
+            'site_type_of_use',
             'tent_camping_suitable',
             'rv_suitable',
             'capacity_size_rating',
