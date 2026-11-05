@@ -21,6 +21,8 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
             $notice = 'Place Report saved.';
         } elseif ((string) ($_GET['saved'] ?? '') === 'site-location') {
             $notice = 'Site GPS location saved.';
+        } elseif ((string) ($_GET['saved'] ?? '') === 'season') {
+            $notice = 'Operating season saved.';
         }
         return ['notice' => $notice, 'error' => $error, 'action' => $action];
     }
@@ -41,6 +43,36 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
     }
 
     try {
+        if ($action === 'save-season') {
+            require_once __DIR__ . '/place-report/season-definitions.php';
+
+            $savedSeasonId = llama_season_save(
+                $db,
+                $placeId,
+                $actorUserId,
+                [
+                    'id' => (int) ($_POST['season_id'] ?? 0),
+                    'name' => (string) ($_POST['season_name'] ?? ''),
+                    'start_mmdd' => (string) ($_POST['start_mmdd'] ?? ''),
+                    'end_mmdd' => (string) ($_POST['end_mmdd'] ?? ''),
+                    'is_default' => (string) ($_POST['is_default'] ?? '0'),
+                    'is_active' => (string) ($_POST['is_active'] ?? '0'),
+                    'sort_order' => (int) ($_POST['sort_order'] ?? 0),
+                    'notes' => (string) ($_POST['season_notes'] ?? ''),
+                    'source_url' => (string) ($_POST['season_source_url'] ?? ''),
+                ]
+            );
+
+            header(
+                'Location: /place.php?id=' . $placeId
+                . '&saved=season&season_edit=' . $savedSeasonId
+                . '#place-seasons',
+                true,
+                303
+            );
+            exit;
+        }
+
         if ($action === 'save-report') {
             // Save staged photos without rewriting unrelated report answers.
             // This uses the same existing staging and publication functions.
