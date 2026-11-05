@@ -70,6 +70,9 @@ function llama_place_report_add_site_fields(
             'management_only' => 'Managed / held by facility',
         ],
         'allow_unknown' => true,
+        'report_group' => 'site_info',
+        'report_visibility' => 'public',
+        'counts_toward_completion' => false,
         'points_categories' => ['seasons_rules_services'],
         'help' => 'Select First-come, first-served only when confirmed. Not reservable does not by itself mean first-come, first-served.',
     ]);
