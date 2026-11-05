@@ -161,7 +161,42 @@ try {
                         true
                     );
 
+                // Whitelisted official RIDB Site facts now live inside the
+                // canonical Site Info cards. Never publish community-only
+                // features here or bypass the existing Site visibility check.
+                $officialSiteInfo = [];
+                $officialSiteSources = [];
+                $officialFeatureMap = [
+                    'ridb_loop' => 'site_loop',
+                    'ridb_type_of_use' => 'site_type_of_use',
+                ];
+                foreach ((array) ($site['features'] ?? []) as $feature) {
+                    $ridbKey = (string) ($feature['feature_key'] ?? '');
+                    $canonicalKey = $officialFeatureMap[$ridbKey] ?? null;
+                    if ($canonicalKey === null || isset($officialSiteInfo[$canonicalKey])) {
+                        continue;
+                    }
+                    $provider = trim((string) ($feature['source_provider'] ?? ''));
+                    $lowerProvider = strtolower($provider);
+                    if (!str_contains($lowerProvider, 'ridb')
+                        && !str_contains($lowerProvider, 'recreation.gov')) {
+                        continue;
+                    }
+                    $value = trim((string) ($feature['feature_value'] ?? ''));
+                    if ($value === '') {
+                        continue;
+                    }
+                    $officialSiteInfo[$canonicalKey] = $value;
+                    $officialSiteSources[$canonicalKey] = [
+                        'label' => $provider,
+                        'dateLabel' => (string) ($feature['source_updated_at'] ?? ''),
+                    ];
+                }
+
                 $publicReportKeys = ['site_number'];
+                foreach (array_keys($officialSiteInfo) as $key) {
+                    $publicReportKeys[] = $key;
+                }
 
                 $siteType =
                     strtolower(
@@ -334,9 +369,12 @@ try {
                     'seasonal_operating_status' => $site['seasonal_operating_status'] ?? null,
                     'reservation_method' => $site['reservation_method'] ?? null,
                     'accessible_pill' => (bool) ($site['accessible_pill'] ?? false),
-                    'report_effective_values' => !empty($site['reservation_method'])
-                        ? ['site_reservation_method' => (string) $site['reservation_method']]
-                        : [],
+                    'report_effective_values' => array_replace(
+                        $officialSiteInfo,
+                        !empty($site['reservation_method'])
+                            ? ['site_reservation_method' => (string) $site['reservation_method']]
+                            : []
+                    ),
                     'official_details' =>
                         array_map(
                             static fn (array $detail): array => [
@@ -348,7 +386,7 @@ try {
                     'public_report_keys' =>
                         $publicReportKeys,
                     'public_report_sources' =>
-                        $publicReportSources,
+                        array_replace($publicReportSources, $officialSiteSources),
                 ];
                 continue;
             }
