@@ -60,6 +60,20 @@ function llama_place_report_add_site_fields(
         'help' => 'Choose Yes only when the Site is officially designated or marked as accessible. Physical accessibility details are recorded in the questions below.',
     ]);
 
+    // Site booking rules can vary by season; this describes the booking
+    // method, NOT real-time vacancies or a verified closure.
+    $add('site_reservation_method', 'Site reservation method', 'site_vehicle', 'select', 'details.site_reservation_method', [
+        'options' => [
+            'reservable' => 'Reservable',
+            'first_come' => 'First-come, first-served',
+            'not_reservable' => 'Not reservable (method unconfirmed)',
+            'management_only' => 'Managed / held by facility',
+        ],
+        'allow_unknown' => true,
+        'points_categories' => ['seasons_rules_services'],
+        'help' => 'Select First-come, first-served only when confirmed. Not reservable does not by itself mean first-come, first-served.',
+    ]);
+
     $add('vehicle_capacity', 'Maximum vehicles', 'site_vehicle', 'select', 'details.vehicle_capacity', [
         'options' => [
             '1' => '1 vehicle', '2' => '2 vehicles', '3' => '3 vehicles',
