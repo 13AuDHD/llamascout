@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/v3-reporting-smoke.yml'
       - 'tools/v3-launch-smoke.php'
+      - 'tools/tests/season-builder-ui.cjs'
       - 'app/place-report/**'
       - 'app/admin-place-actions.php'
       - 'admin/place.php'
@@ -68,3 +69,11 @@ jobs:
           node --check js/admin/place-map.js
       - name: Run V3 reporting smoke tests
         run: php tools/v3-launch-smoke.php
+      - name: Install isolated DOM test dependency
+        run: |
+          mkdir -p "$RUNNER_TEMP/llama-season-ui-tests"
+          npm install --prefix "$RUNNER_TEMP/llama-season-ui-tests" --no-save --no-package-lock jsdom@26
+      - name: Exercise seasonal Add Change and Save in a browser DOM
+        env:
+          NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules
+        run: node tools/tests/season-builder-ui.cjs
