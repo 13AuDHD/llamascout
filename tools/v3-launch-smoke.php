@@ -1539,6 +1539,91 @@ $check('Seasonal Admin form saves without overwriting normal Scout Reports', sta
         'Site operating schedule table missing');
 });
 
+$check('Public seasonal answers preserve Site-specific rules and Unknown', static function () use ($assert): void {
+    require_once dirname(__DIR__) . '/app/place-report/season-public.php';
+
+    $site = ['scope' => 'site', 'source' => 'campsite_record', 'id' => 25];
+    $place = ['scope' => 'place', 'source' => 'place', 'id' => 12];
+    $fire = llama_report_question('campfire_allowed');
+    $assert(is_array($fire), 'Canonical campfire rule missing');
+    $normal = [
+        'campfire_allowed' => llama_place_report_current_answer_envelope(
+            $fire, true, 1, $site,
+            ['scope' => 'site', 'source' => 'campsite_record',
+             'id' => 25, 'origin_type' => 'scoped_override']
+        ),
+    ];
+    $placeSeason = [
+        'scope' => 'place', 'target' => $place, 'answers' => [
+            'campfire_allowed' => ['state' => 'answered', 'value' => 0,
+                                   'approved_at' => '2026-11-05'],
+        ],
+    ];
+    $unchanged = llama_public_season_overlay_answer_layers(
+        $normal, [$placeSeason], $site
+    );
+    $assert($unchanged['answers']['campfire_allowed']['value'] === 1,
+        'Place season incorrectly erased a Site-specific normal rule');
+    $assert(!isset($unchanged['sources']['campfire_allowed']),
+        'Skipped override must not claim seasonal attribution');
+
+    $siteSeason = [
+        'scope' => 'site', 'target' => $site, 'answers' => [
+            'campfire_allowed' => ['state' => 'answered', 'value' => 0,
+                                   'approved_at' => '2026-11-05'],
+        ],
+    ];
+    $changed = llama_public_season_overlay_answer_layers(
+        $normal, [$placeSeason, $siteSeason], $site
+    );
+    $assert($changed['answers']['campfire_allowed']['value'] === 0,
+        'Site season failed to override its own normal rule');
+    $assert(($changed['sources']['campfire_allowed']['label'] ?? '') === 'Seasonal conditions',
+        'Seasonal attribution missing');
+
+    $placeData = [
+        'amenities' => ['showers' => true, 'toilet_type' => 'flush'],
+        '_answer_state' => [],
+    ];
+    $winter = llama_public_season_project_place($placeData, [
+        'amenity_showers' => ['state' => 'answered', 'value' => false],
+        'amenity_toilets' => ['state' => 'answered', 'value' => 'pit'],
+    ]);
+    $assert(llama_place_report_get_path($winter, 'amenities.showers') === false,
+        'Showers should be unavailable in winter');
+    $assert(llama_place_report_get_path($winter, 'amenities.toilet_type') === 'pit',
+        'Pit toilet override missing');
+    $unknown = llama_public_season_project_place($winter, [
+        'amenity_showers' => ['state' => 'unknown', 'value' => null],
+    ]);
+    $assert(in_array('amenity_showers', $unknown['_answer_state'], true),
+        'Explicit seasonal Unknown not preserved');
+});
+
+$check('Season selector uses authorized existing Place and Site APIs', static function () use ($assert): void {
+    $index = file_get_contents(dirname(__DIR__) . '/partials/place/scout-report/index.php');
+    $catalog = file_get_contents(dirname(__DIR__) . '/api/place-campsites.php');
+    $detail = file_get_contents(dirname(__DIR__) . '/api/place-campsite-detail.php');
+    $browser = file_get_contents(dirname(__DIR__) . '/js/place-campsites.js');
+    $assert(is_string($index) && is_string($catalog)
+        && is_string($detail) && is_string($browser), 'Public season files missing');
+    $assert(strpos($index, 'data-scout-season-form') !== false
+        && strpos($index, 'llama_public_season_project_place(') !== false,
+        'Place report season dropdown or projection missing');
+    $assert(strpos($catalog, 'llama_site_can_read(') !== false
+        && strpos($catalog, 'llama_public_season_site_statuses(') !== false,
+        'Site catalog must apply visibility before seasonal status');
+    $assert(strpos($detail, 'if (!$canRead)') !== false
+        && strpos($detail, 'llama_public_season_site_answers(') !== false,
+        'Site detail must remain Complete Access protected');
+    $assert(strpos($browser, 'mode=report') !== false
+        && strpos($browser, 'mode=catalog') !== false
+        && strpos($browser, 'seasonQuery') !== false,
+        'Site browser missing selected-season requests');
+    $assert(strpos($browser, 'site?.is_closed !== true') !== false,
+        'Verified Site closure precedence missing');
+});
+
 $check('Canonical field contract', static function () use ($assert): void {
     $issues = llama_place_report_contract_issues();
     $assert(!$issues, 'Contract issues: ' . implode(' | ', array_slice($issues, 0, 12)) . ' (total ' . count($issues) . ')');
