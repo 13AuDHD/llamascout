@@ -165,17 +165,20 @@ function llama_seasons_validate_schedule(array $seasons): void
     }
 }
 
-function llama_seasons_for_place(PDO $db, int $placeId): array
-{
+function llama_seasons_for_place(
+    PDO $db,
+    int $placeId,
+    bool $includeInactive = false
+): array {
     if ($placeId < 1) {
         throw new InvalidArgumentException('A Place is required.');
     }
     $query = $db->prepare(
         'SELECT id, place_id, name, start_mmdd, end_mmdd,
                 is_default, is_active, sort_order, notes, source_url
-         FROM place_seasons
-         WHERE place_id = ? AND is_active = 1
-         ORDER BY sort_order, id'
+         FROM place_seasons WHERE place_id = ?'
+        . ($includeInactive ? '' : ' AND is_active = 1')
+        . ' ORDER BY sort_order, id'
     );
     $query->execute([$placeId]);
     return $query->fetchAll(PDO::FETCH_ASSOC) ?: [];
