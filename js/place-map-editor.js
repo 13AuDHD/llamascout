@@ -1428,6 +1428,111 @@
                     );
                 }
             );
+
+            siteLayers.forEach(
+                (layer) => {
+                    map.removeLayer(
+                        layer
+                    );
+                }
+            );
+
+            siteLayers =
+                [];
+
+            campsites.forEach(
+                (site) => {
+                    const lat =
+                        Number(
+                            site.latitude
+                        );
+
+                    const lng =
+                        Number(
+                            site.longitude
+                        );
+
+                    if (
+                        !Number.isFinite(lat)
+                        || !Number.isFinite(lng)
+                        || (lat === 0 && lng === 0)
+                    ) {
+                        return;
+                    }
+
+                    const marker =
+                        L.circleMarker(
+                            [lat, lng],
+                            {
+                                radius:
+                                    7,
+
+                                color:
+                                    '#f59e0b',
+
+                                weight:
+                                    3,
+
+                                fillColor:
+                                    '#f59e0b',
+
+                                fillOpacity:
+                                    .9
+                            }
+                        ).addTo(
+                            map
+                        );
+
+                    marker.bindTooltip(
+                        String(
+                            site.display_name
+                            || site.site_code
+                            || site.site_name
+                            || `Site ${site.id}`
+                        ),
+                        {
+                            direction:
+                                'top'
+                        }
+                    );
+
+                    marker.on(
+                        'click',
+                        (event) => {
+                            L.DomEvent.stopPropagation(
+                                event
+                            );
+
+                            if (
+                                dirty
+                                && !window.confirm(
+                                    'Discard the unsaved map changes?'
+                                )
+                            ) {
+                                return;
+                            }
+
+                            setDirty(
+                                false
+                            );
+
+                            setMode(
+                                'site',
+                                {
+                                    siteId:
+                                        Number(
+                                            site.id
+                                        )
+                                }
+                            );
+                        }
+                    );
+
+                    siteLayers.push(
+                        marker
+                    );
+                }
+            );
         };
 
     /*
