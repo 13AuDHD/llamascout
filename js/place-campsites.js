@@ -1851,11 +1851,18 @@
                                         )}
                                     </span>
 
-                                    ${
-                                        closureStatus(site)
-                                            ? '<span class="place-campsite-closed-badge">🚫 Closed</span>'
-                                            : ''
-                                    }
+                                    <span class="place-campsite-row-badges">
+                                        ${closureStatus(site)
+                                            ? '<span class="place-campsite-closed-badge">Closed</span>'
+                                            : site.reservation_method === 'first_come'
+                                                ? '<span class="place-campsite-status-badge is-first-come" title="First-come, first-served. Not a vacancy guarantee.">FCFS</span>'
+                                                : site.reservation_method === 'reservable'
+                                                    ? '<span class="place-campsite-status-badge is-reservable" title="This Site can normally be reserved; current availability is not confirmed.">Reservable</span>'
+                                                    : ''}
+                                        ${clean(site.accessible_status).toLowerCase() === 'yes'
+                                            ? '<span class="place-campsite-status-badge is-accessible">Accessible</span>'
+                                            : ''}
+                                    </span>
 
                                     <span class="place-campsite-row-summary">
                                         ${summary
