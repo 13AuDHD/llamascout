@@ -381,18 +381,18 @@
     const featureStyles = {
         place_boundary: {
             color:
-                '#8b5cf6',
+                '#22c55e',
 
             fillColor:
-                '#8b5cf6'
+                '#22c55e'
         },
 
         camping_area: {
             color:
-                '#1f8f4e',
+                '#d97706',
 
             fillColor:
-                '#1f8f4e'
+                '#d97706'
         },
 
         parking_area: {
@@ -878,24 +878,41 @@
         };
 
     const areaDetailsPayload =
-        () => ({
-            area_use:
-                areaUse?.value
-                || '',
+        () => {
+            const currentFeature =
+                features.find(
+                    (feature) =>
+                        Number(feature.id)
+                        === selectedFeatureId
+                )
+                || null;
 
-            fee_status:
-                feeStatus?.value
-                || '',
+            return {
+                area_use:
+                    areaUse?.value
+                    || '',
 
-            overnight_status:
-                featureType?.value
-                === 'parking_area'
-                    ? (
-                        overnightStatus?.value
+                // Pricing/cost controls were intentionally removed from this
+                // editor. Preserve any existing cost-status metadata verbatim.
+                fee_status:
+                    feeStatus?.value
+                    || String(
+                        currentFeature
+                            ?.area_details
+                            ?.fee_status
                         || ''
-                    )
-                    : ''
-        });
+                    ),
+
+                overnight_status:
+                    featureType?.value
+                    === 'parking_area'
+                        ? (
+                            overnightStatus?.value
+                            || ''
+                        )
+                        : ''
+            };
+        };
 
     const clearExistingLayers =
         () => {
@@ -975,71 +992,13 @@
             );
         };
 
-    siteFields =
-        modules.createSiteFields({
-            editor,
-
-            getFeatureType:
-                () =>
-                    featureType?.value
-                    || '',
-
-            getFeatures:
-                () =>
-                    features,
-
-            getCampsites:
-                () =>
-                    campsites,
-
-            getSelectedFeatureId:
-                () =>
-                    selectedFeatureId,
-
-            markDirty:
-                setDirty,
-
-            renderFeatureList:
-                () =>
-                    featureState
-                        ?.renderFeatureList(),
-
-            renderRates:
-                () =>
-                    pricing
-                        ?.renderRates()
-        });
-
-    pricing =
-        modules.createPricing({
-            editor,
-
-            getFeatureType:
-                () =>
-                    featureType?.value
-                    || '',
-
-            getFeatures:
-                () =>
-                    features,
-
-            getSelectedFeatureId:
-                () =>
-                    selectedFeatureId,
-
-            getSiteParentId:
-                () =>
-                    siteParent?.value
-                    || '',
-
-            getSiteClassId:
-                () =>
-                    siteClass?.value
-                    || '',
-
-            markDirty:
-                setDirty
-        });
+    /*
+     * The unified editor no longer creates Site polygons or edits pricing.
+     * Site locations use canonical campsite coordinates, while pricing remains
+     * owned by the pricing/reporting workflows.
+     */
+    siteFields = null;
+    pricing = null;
 
     geometry =
         modules.createGeometryEditor({
