@@ -21,6 +21,16 @@
     const save = form.querySelector('[data-season-builder-save]');
     const counter = form.querySelector('[data-season-builder-change-count]');
     const add = form.querySelector('[data-season-add-row]');
+    const hint = form.querySelector('[data-season-builder-hint]');
+    const normalHint = hint?.textContent || '';
+    const loadedTargets = Array.from(form.querySelectorAll('input[name="season_targets[]"]'))
+        .map(node => node.value).sort().join('|');
+    const selectedTargetsChanged = () => {
+        if (!load) return false;
+        const checked = Array.from(load.querySelectorAll('input[name="season_targets[]"]:checked'))
+            .map(node => node.value).sort().join('|');
+        return checked !== loadedTargets;
+    };
     const removed = new Set();
     let sequence = 0;
 
@@ -197,12 +207,23 @@
         const {changes, deletions} = pending();
         const total = changes.length + deletions.size;
         counter.textContent = total + (total === 1 ? ' change' : ' changes');
-        save.disabled = total === 0;
+        const selectionChanged = selectedTargetsChanged();
+        save.disabled = total === 0 || selectionChanged;
+        if (hint) {
+            hint.textContent = selectionChanged
+                ? 'Your Report for selection changed. Click Load conditions before saving so these are applied to the correct Sites.'
+                : normalHint;
+        }
     }
 
     add?.addEventListener('click', () => makeRow());
 
     form.addEventListener('submit', event => {
+        if (selectedTargetsChanged()) {
+            event.preventDefault();
+            window.alert('Click Load conditions to apply your new Place/Area/Site selection before saving.');
+            return;
+        }
         form.querySelectorAll('[data-season-builder-payload]').forEach(el => el.remove());
         const {changes, deletions} = pending();
         if (changes.some(c => c.missing)) {
@@ -276,6 +297,7 @@
                 window.alert('Select no more than 250 Sites at once.');
             }
             updateTargets();
+            refresh();
         }));
         search?.addEventListener('input', () => {
             const q = search.value.toLowerCase().trim();
@@ -290,7 +312,8 @@
                 targetPanel.open = true;
                 return;
             }
-            if (!save.disabled && !window.confirm(
+            const draft = pending();
+            if ((draft.changes.length || draft.deletions.size) && !window.confirm(
                 'Discard unsaved seasonal changes and load another selection?'
             )) {
                 event.preventDefault();
