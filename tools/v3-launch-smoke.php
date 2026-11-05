@@ -1125,6 +1125,28 @@ $check('Reviewed observational groups are Site-only', static function () use ($a
         'Private moderator notes unexpectedly lost multi-scope ownership');
 });
 
+$check('Quick Warnings render only in Site Safety and Hazards', static function () use ($assert): void {
+    $source = file_get_contents(dirname(__DIR__) . '/partials/place-report/read-only.php');
+    $assert(is_string($source), 'Unable to inspect Scout Report read-only renderer');
+
+    $warningPos = strpos($source, 'data-report-warnings');
+    $safetyGatePos = strpos($source, "(string) \\$sectionKey === 'safety_public'");
+    $placeWarningText = 'Important conditions reported for this Place.';
+    $siteWarningText = 'Important conditions reported for this Site.';
+
+    $assert($warningPos !== false, 'Quick Warnings container is missing');
+    $assert($safetyGatePos !== false && $safetyGatePos < $warningPos,
+        'Quick Warnings is not gated to Site Safety & Hazards');
+    $assert(strpos($source, 'data-report-page="site"') !== false,
+        'Quick Warnings is not marked as Site presentation');
+    $assert(strpos($source, 'data-report-scopes="site"') !== false,
+        'Quick Warnings is not marked Site-only');
+    $assert(strpos($source, $placeWarningText) === false,
+        'Place-level Quick Warnings summary is still present');
+    $assert(strpos($source, $siteWarningText) !== false,
+        'Site-level Quick Warnings summary is missing');
+});
+
 $check('Final Place Area Site ownership model matches owner review', static function () use ($assert): void {
     $fields = llama_place_report_fields();
     $pages = llama_place_report_approved_group_page_lookup();
