@@ -165,5 +165,7 @@ if (
             cross New Year's Day but cannot overlap another active season.
             Seasonal amenity and Site-status editing will use these definitions.
         </p>
+        <div class="admin-place-seasons-divider"></div>
+        <?php require __DIR__ . '/place-report-season-answers.php'; ?>
     <?php endif; ?>
 </section>
