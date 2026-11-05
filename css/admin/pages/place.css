@@ -634,68 +634,6 @@
     }
 }
 
-/* Canonical individual-Site coordinate editor, beneath the existing map. */
-.admin-place-site-location {
-    display: grid;
-    gap: 10px;
-    padding: 14px;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    background: var(--background);
-}
-.admin-place-site-location-header h3,
-.admin-place-site-location-header p {
-    margin: 0;
-}
-.admin-place-site-location-header p,
-.admin-place-site-location-status {
-    color: var(--text-muted);
-    font-size: .78rem;
-}
-.admin-place-site-location label {
-    font-weight: 750;
-    font-size: .78rem;
-}
-.admin-place-site-location select,
-.admin-place-site-location input {
-    width: 100%;
-    min-width: 0;
-    min-height: 42px;
-    padding: 9px 12px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--background);
-    color: inherit;
-    font: inherit;
-}
-.admin-place-site-location-coordinates {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-}
-.admin-place-site-location-coordinates label {
-    display: grid;
-    gap: 5px;
-}
-.admin-place-site-location-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-.admin-place-site-location-status {
-    margin: 0;
-}
-.admin-place-site-location [data-site-location-pick].is-active {
-    border-color: #d97706;
-    box-shadow: inset 0 0 0 1px #d97706;
-}
-@media (max-width: 520px) {
-    .admin-place-site-location-coordinates {
-        grid-template-columns: 1fr;
-    }
-}
-
-
 /* M4: Place seasons live alongside, not inside, the normal report form. */
 .admin-place-seasons {
     display: grid;
@@ -816,82 +754,205 @@
 }
 
 
-/* M4 seasonal answer editor uses canonical field labels, but only seasonal keys. */
+
+/* Compact season builder and multi-target selector. */
 .admin-place-seasons-divider {
     border-top: 1px solid var(--border);
     margin: 4px 0;
 }
-.admin-place-season-answers {
+.admin-place-season-answers,
+.admin-place-season-builder-form {
     display: grid;
-    gap: 16px;
+    gap: 15px;
+}
+.admin-place-season-answers .admin-place-report-header {
+    margin-bottom: 0;
 }
 .admin-place-season-switch {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
+    display: grid;
+    grid-template-columns: minmax(160px, 1fr) minmax(230px, 1.5fr) auto;
+    gap: 12px;
     align-items: end;
 }
-.admin-place-season-switch label {
+.admin-place-season-picker-label,
+.admin-place-season-target-selector {
     display: grid;
-    flex: 1 1 180px;
-    gap: 5px;
+    gap: 6px;
     min-width: 0;
-    font-size: .75rem;
+    font-size: .76rem;
     font-weight: 750;
 }
 .admin-place-season-switch select,
-.admin-place-season-answer-row select,
-.admin-place-season-answer-row input,
-.admin-place-season-answer-row textarea,
-.admin-place-season-source input {
+.admin-place-season-source input,
+.admin-place-season-question,
+.admin-place-season-value {
     width: 100%;
     min-width: 0;
+    min-height: 42px;
     box-sizing: border-box;
     border: 1px solid var(--border);
     border-radius: 8px;
     background: var(--background);
     color: var(--text);
-    padding: 9px 10px;
     font: inherit;
+    padding: 10px 12px;
+}
+.admin-place-season-target-dropdown {
+    position: relative;
+    min-width: 0;
+}
+.admin-place-season-target-dropdown > summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    box-sizing: border-box;
     min-height: 42px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--background);
+    cursor: pointer;
+    list-style: none;
 }
-.admin-place-season-answer-form {
-    display: grid;
-    gap: 14px;
+.admin-place-season-target-dropdown > summary::-webkit-details-marker {
+    display: none;
 }
-.admin-place-season-group {
+.admin-place-season-target-dropdown > summary span:first-child {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+.admin-place-season-target-popover {
+    position: absolute;
+    z-index: 500;
+    top: calc(100% + 5px);
+    right: 0;
+    left: 0;
+    min-width: min(92vw, 310px);
+    max-height: min(490px, 65vh);
+    overflow: auto;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    box-shadow: 0 14px 30px #0007;
+}
+.admin-place-season-target-popover p,
+.admin-place-season-target-popover small {
+    margin: 0 0 10px;
+    font-size: .72rem;
+    color: var(--text-muted);
+}
+.admin-place-season-target-popover > input {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 38px;
+    margin-bottom: 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--background);
+    color: var(--text);
+    padding: 8px 10px;
+    font: inherit;
+}
+.admin-place-season-target-popover fieldset {
     display: grid;
-    gap: 8px;
+    gap: 3px;
+    min-width: 0;
+    margin: 7px 0;
+    padding: 7px 0;
+    border: 0;
+    border-top: 1px solid var(--border);
+}
+.admin-place-season-target-popover legend {
+    padding: 2px 4px;
+    color: var(--text-muted);
+    font-weight: 800;
+    font-size: .72rem;
+}
+.admin-place-season-target-popover label {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 7px;
+    border-radius: 7px;
+    cursor: pointer;
+    font-size: .76rem;
+}
+.admin-place-season-target-popover label:has(input:checked) {
+    background: color-mix(in srgb, #559c6f 17%, var(--surface));
+}
+.admin-place-season-target-popover label[hidden] {
+    display: none;
+}
+.admin-place-season-target-popover input[type="checkbox"] {
+    flex: 0 0 auto;
+}
+.admin-place-season-builder-form {
     padding: 14px;
     border: 1px solid var(--border);
     border-radius: 10px;
     background: var(--background);
 }
-.admin-place-season-group h4 {
-    margin: 0 0 4px;
-    font-size: .88rem;
-}
-.admin-place-season-answer-row {
-    display: grid;
-    grid-template-columns: minmax(120px, 1fr) minmax(160px, .85fr) minmax(160px, .85fr);
-    gap: 8px 12px;
+.admin-place-season-builder-heading,
+.admin-place-season-builder-footer {
+    display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    padding: 10px 0;
-    border-top: 1px solid var(--border);
+    justify-content: space-between;
+    gap: 12px;
 }
-.admin-place-season-answer-label {
-    display: grid;
-    min-width: 0;
-    gap: 4px;
-    font-size: .75rem;
+.admin-place-season-builder-heading h4 {
+    margin: 0 0 4px;
+    font-size: .91rem;
 }
-.admin-place-season-answer-label strong {
-    font-weight: 700;
-}
-.admin-place-season-answer-label small {
+.admin-place-season-builder-heading p,
+.admin-place-season-builder-footer span {
+    margin: 0;
     color: var(--text-muted);
-    font-size: .69rem;
-    line-height: 1.45;
+    font-size: .75rem;
+    line-height: 1.4;
+}
+.admin-place-season-builder-rows {
+    display: grid;
+    gap: 9px;
+}
+.admin-place-season-builder-row {
+    display: grid;
+    grid-template-columns: minmax(190px, 1.1fr) minmax(150px, 1fr) auto;
+    align-items: start;
+    gap: 10px;
+}
+.admin-place-season-answer-slot {
+    min-width: 0;
+}
+.admin-place-season-value {
+    display: block;
+}
+.admin-place-season-row-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.admin-place-season-row-action {
+    width: 42px;
+    height: 42px;
+    flex: 0 0 auto;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 1.3rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+.admin-place-season-row-action.is-remove {
+    color: #d38f8f;
+}
+.admin-place-season-row-action:hover,
+.admin-place-season-row-action:focus-visible {
+    border-color: var(--text-muted);
 }
 .admin-place-season-source {
     display: grid;
@@ -899,133 +960,34 @@
     font-size: .75rem;
     font-weight: 700;
 }
-.admin-place-season-answer-form > .admin-button {
-    justify-self: start;
-}
-@media (max-width: 850px) {
-    .admin-place-season-answer-row {
+@media (max-width: 800px) {
+    .admin-place-season-switch {
         grid-template-columns: 1fr 1fr;
     }
-    .admin-place-season-answer-label {
+    .admin-place-season-switch > .admin-button {
         grid-column: 1 / -1;
+        justify-self: start;
     }
 }
-@media (max-width: 520px) {
-    .admin-place-season-answer-row {
+@media (max-width: 600px) {
+    .admin-place-season-switch,
+    .admin-place-season-builder-row {
         grid-template-columns: 1fr;
     }
-    .admin-place-season-answer-label {
-        grid-column: auto;
+    .admin-place-season-target-popover {
+        min-width: 0;
     }
-}
-
-
-/* M4: bulk seasonal Site operations, kept separate from single-Site facts. */
-.admin-place-season-bulk {
-    display: grid;
-    gap: 14px;
-    padding-top: 18px;
-    border-top: 1px solid var(--border);
-}
-.admin-place-season-bulk .admin-place-report-header {
-    margin-bottom: 0;
-}
-.admin-place-season-bulk-form {
-    display: grid;
-    gap: 12px;
-}
-.admin-place-season-bulk-toolbar {
-    display: grid;
-    grid-template-columns: minmax(200px, 1fr) minmax(200px, 1fr);
-    gap: 12px;
-}
-.admin-place-season-bulk-toolbar label {
-    display: grid;
-    gap: 5px;
-    min-width: 0;
-    font-size: .75rem;
-    font-weight: 700;
-}
-.admin-place-season-bulk-toolbar select,
-.admin-place-season-bulk-toolbar input {
-    width: 100%;
-    min-width: 0;
-    box-sizing: border-box;
-    padding: 10px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--background);
-    color: var(--text);
-    font: inherit;
-}
-.admin-place-season-bulk-select-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    align-items: center;
-}
-.admin-place-season-bulk-select-actions button {
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    color: var(--text);
-    background: var(--background);
-    padding: 8px 12px;
-    font: inherit;
-    font-size: .74rem;
-    cursor: pointer;
-}
-.admin-place-season-bulk-select-actions strong {
-    margin-left: auto;
-    font-size: .75rem;
-    color: var(--text-muted);
-}
-.admin-place-season-bulk-sites {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr));
-    gap: 8px;
-    max-height: 340px;
-    overflow-y: auto;
-    padding: 8px;
-    border: 1px solid var(--border);
-    border-radius: 9px;
-    background: var(--background);
-}
-.admin-place-season-bulk-site {
-    display: grid;
-    grid-template-columns: 18px minmax(0, 1fr);
-    align-items: start;
-    gap: 3px 9px;
-    min-width: 0;
-    padding: 9px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    cursor: pointer;
-}
-.admin-place-season-bulk-site input {
-    grid-row: 1 / 3;
-    margin: 2px 0 0;
-}
-.admin-place-season-bulk-site span {
-    overflow-wrap: anywhere;
-    font-size: .75rem;
-    font-weight: 700;
-}
-.admin-place-season-bulk-site small {
-    color: var(--text-muted);
-    font-size: .68rem;
-}
-.admin-place-season-bulk-site:has(input:checked) {
-    border-color: #559c6f;
-    background: color-mix(in srgb, #559c6f 10%, var(--background));
-}
-.admin-place-season-bulk-site[hidden] {
-    display: none !important;
-}
-.admin-place-season-bulk-form > .admin-button {
-    justify-self: start;
-}
-@media (max-width: 650px) {
-    .admin-place-season-bulk-toolbar {
-        grid-template-columns: 1fr;
+    .admin-place-season-builder-row {
+        position: relative;
+        gap: 7px;
+        padding: 10px;
+        border: 1px solid var(--border);
+        border-radius: 9px;
+    }
+    .admin-place-season-row-actions {
+        justify-content: flex-end;
+    }
+    .admin-place-season-builder-form {
+        padding: 12px;
     }
 }
