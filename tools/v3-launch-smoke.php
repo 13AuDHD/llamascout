@@ -1379,6 +1379,66 @@ $check('Public map Place and Area colors match unified editor', static function 
     );
 });
 
+$check('M4-001 recurring Place seasons and overlap protection', static function () use ($assert): void {
+    require_once dirname(__DIR__) . '/app/place-report/season-definitions.php';
+    $regular = llama_season_definition([
+        'name' => 'Regular Season',
+        'start_mmdd' => '03-20',
+        'end_mmdd' => '11-15',
+        'is_default' => 1,
+    ]);
+    $winter = llama_season_definition([
+        'name' => 'Winter Season',
+        'start_mmdd' => '11-16',
+        'end_mmdd' => '03-19',
+    ]);
+    llama_seasons_validate_schedule([$regular, $winter]);
+    $assert(!llama_seasons_overlap($regular, $winter), 'Adjacent seasons must not overlap');
+    $assert(llama_season_contains($winter, '12-25'), 'Winter must cross New Year');
+    $assert(llama_season_contains($winter, '01-01'), 'January must remain in winter');
+    $assert(!llama_season_contains($winter, '03-20'), 'Winter must end before March 20');
+    $assert(llama_season_for_date([$regular, $winter], '2027-01-01')['name'] === 'Winter Season', 'Wrong January season');
+    $assert(llama_season_for_date([$regular, $winter], '2027-07-10')['name'] === 'Regular Season', 'Wrong July season');
+
+    $manual = llama_season_definition(['name' => 'Weather dependent', 'is_active' => 1]);
+    $assert(!llama_season_contains($manual, '12-01'), 'Undated seasons must be manual-only');
+    llama_seasons_validate_schedule([$regular, $winter, $manual]);
+
+    $rejectedOverlap = false;
+    try {
+        llama_seasons_validate_schedule([$regular, llama_season_definition([
+            'name' => 'Conflicting winter', 'start_mmdd' => '11-10', 'end_mmdd' => '02-01',
+        ])]);
+    } catch (InvalidArgumentException) {
+        $rejectedOverlap = true;
+    }
+    $assert($rejectedOverlap, 'Overlapping seasons must be rejected');
+
+    $rejectedOneSided = false;
+    try {
+        llama_season_definition(['name' => 'Partial', 'start_mmdd' => '10-01']);
+    } catch (InvalidArgumentException) {
+        $rejectedOneSided = true;
+    }
+    $assert($rejectedOneSided, 'One-sided season dates must be rejected');
+
+    $rejectedInvalidDate = false;
+    try {
+        llama_season_definition(['name' => 'Invalid', 'start_mmdd' => '02-30', 'end_mmdd' => '05-01']);
+    } catch (InvalidArgumentException) {
+        $rejectedInvalidDate = true;
+    }
+    $assert($rejectedInvalidDate, 'Impossible season dates must be rejected');
+
+    $rejectedDuplicate = false;
+    try {
+        llama_seasons_validate_schedule([$regular, llama_season_definition(['name' => 'regular season'])]);
+    } catch (InvalidArgumentException) {
+        $rejectedDuplicate = true;
+    }
+    $assert($rejectedDuplicate, 'Duplicate names must be rejected');
+});
+
 $check('Canonical field contract', static function () use ($assert): void {
     $issues = llama_place_report_contract_issues();
     $assert(!$issues, 'Contract issues: ' . implode(' | ', array_slice($issues, 0, 12)) . ' (total ' . count($issues) . ')');
