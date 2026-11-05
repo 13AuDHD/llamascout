@@ -260,6 +260,11 @@
                 <div class="place-campsite-equipment-pills">
                     ${pills}
                 </div>
+                <p class="place-campsite-equipment-context">
+                    These are equipment types listed as permitted by the source.
+                    They do not, by themselves, establish physical Site suitability.
+                    Check the Site Info answers for verified suitability.
+                </p>
             </section>
         `;
     };
