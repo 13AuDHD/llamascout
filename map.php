@@ -18,7 +18,7 @@ $hasMapMemberAccess =
     );
 
 $pageTitle = 'Llama Scout | Know the Place Before You Go';
-$pageDescription = 'Explore Llama Scout Places and standalone Resources on the interactive map by location, type, services, land manager, elevation, and public amenities.';
+$pageDescription = 'Find campgrounds, RV-friendly stops, overnight parking, and useful resources like water and dump stations. Explore real places and practical details before you go with Llama Scout.';
 $canonicalUrl = 'https://llamascout.com/';
 
 require __DIR__ . '/partials/header.php';
@@ -43,16 +43,26 @@ require __DIR__ . '/partials/cell-coverage-update-banner.php';
         <div class="map-shell map-hero-grid<?= $hasMapMemberAccess ? ' map-hero-grid-single' : '' ?>">
 
             <div>
-                <p class="map-eyebrow">Explore Llama Scout</p>
+                <p class="map-eyebrow">Welcome to Llama Scout</p>
 
-                <h1>Find a Place that works for you.</h1>
+                <h1>Know the place before you go.</h1>
 
                 <p class="map-hero-lede">
-                    Search visible Places by location, land management, type,
-                    elevation, and public amenities. Standalone Resources add
-                    practical service points such as water, dump stations, and
-                    propane. Complete Access also reveals restricted locations
-                    and detailed map layers.
+                    Looking for your next campsite, an RV-friendly stop, or
+                    simply somewhere to spend the night? Explore campgrounds,
+                    places to park, and helpful stops along the way. Find
+                    practical details like amenities, elevation, and land
+                    management so you can pick a place that fits your plans.
+                    Need water, a dump station, or propane? Look for Resources
+                    on the map, too.
+                </p>
+
+                <p class="map-hero-lede">
+                    Start exploring below. Search for a town or destination,
+                    use the filters to narrow things down, or move the map to
+                    see what's nearby. No location sharing required. Members
+                    with Complete Access can also explore additional locations
+                    and map layers.
                 </p>
             </div>
 
@@ -73,7 +83,7 @@ require __DIR__ . '/partials/cell-coverage-update-banner.php';
                     <input
                         id="map-search"
                         type="search"
-                        placeholder="Search Places, Resources, towns..."
+                        placeholder="Search for a town, Place, or Resource..."
                         autocomplete="off"
                     >
                 </label>
@@ -399,8 +409,8 @@ require __DIR__ . '/partials/cell-coverage-update-banner.php';
 
                     <div class="map-results-heading">
                         <div>
-                            <p class="map-eyebrow">Results</p>
-                            <h2 id="map-results-heading">Places &amp; Resources</h2>
+                            <p class="map-eyebrow">Explore the map</p>
+                            <h2 id="map-results-heading">Places &amp; helpful stops</h2>
                         </div>
 
                         <button
@@ -458,8 +468,8 @@ require __DIR__ . '/partials/cell-coverage-update-banner.php';
                         hidden
                     >
                         <i aria-hidden="true"><?= llama_icon('map-pin') ?></i>
-                        <h3>No Places or Resources match.</h3>
-                        <p>Try clearing filters or moving the map.</p>
+                        <h3>Nothing here just yet.</h3>
+                        <p>Try another area, or clear your filters to explore more.</p>
                     </div>
 
                 </aside>
