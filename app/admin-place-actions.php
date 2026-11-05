@@ -25,6 +25,8 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
             $notice = 'Operating season saved.';
         } elseif ((string) ($_GET['saved'] ?? '') === 'season-answers') {
             $notice = 'Seasonal answers saved.';
+        } elseif ((string) ($_GET['saved'] ?? '') === 'season-builder') {
+            $notice = 'Seasonal changes saved for selected reporting targets.';
         } elseif ((string) ($_GET['saved'] ?? '') === 'season-bulk-sites') {
             $changedSites = max(0, (int) ($_GET['changed'] ?? 0));
             $notice = $changedSites > 0
@@ -50,6 +52,34 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
     }
 
     try {
+        if ($action === 'save-season-builder') {
+            require_once __DIR__ . '/place-report/season-builder.php';
+            $seasonId = (int) ($_POST['season_id'] ?? 0);
+            $selected = $_POST['season_targets'] ?? null;
+            llama_season_builder_save(
+                $db,
+                $placeId,
+                $seasonId,
+                $actorUserId,
+                $selected,
+                $_POST['season_changes'] ?? [],
+                $_POST['season_removals'] ?? [],
+                $_POST['season_answer_source_url'] ?? null
+            );
+            $query = [
+                'id' => $placeId,
+                'saved' => 'season-builder',
+                'season_view' => $seasonId,
+            ];
+            // Avoid enormous redirects for very large Site batches.
+            if (is_array($selected) && count($selected) <= 50) {
+                $query['season_targets'] = $selected;
+            }
+            header('Location: /place.php?' . http_build_query($query)
+                . '#place-seasons', true, 303);
+            exit;
+        }
+
         if ($action === 'save-season-bulk-sites') {
             require_once __DIR__ . '/place-report/season-answers.php';
 
