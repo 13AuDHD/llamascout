@@ -19,6 +19,10 @@ on:
       - 'partials/place-report/read-only.php'
       - 'js/place-campsites.js'
       - 'js/place-report-seasons.js'
+      - 'js/admin/place-map.js'
+      - 'js/admin/place-season-builder.js'
+      - 'admin/partials/place-map.php'
+      - 'css/admin/pages/place.css'
   pull_request:
     branches: [main]
     paths:
@@ -48,6 +52,9 @@ jobs:
           php -l admin/partials/place-report-season-answers.php
           php -l admin/partials/place-season-bulk-status.php
           php -l app/place-report/season-public.php
+          php -l app/place-report/season-builder.php
+          php -l app/place-report/site-booking.php
+          php -l admin/partials/place-map.php
           php -l api/place-campsites.php
           php -l api/place-campsite-detail.php
           php -l partials/place/scout-report/index.php
@@ -57,5 +64,7 @@ jobs:
           node --check js/place-campsites.js
           node --check js/place-report-seasons.js
           node --check js/admin/place-season-bulk-status.js
+          node --check js/admin/place-season-builder.js
+          node --check js/admin/place-map.js
       - name: Run V3 reporting smoke tests
         run: php tools/v3-launch-smoke.php
