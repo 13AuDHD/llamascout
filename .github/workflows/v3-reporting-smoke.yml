@@ -11,6 +11,8 @@ on:
       - 'admin/place.php'
       - 'admin/partials/place-report-seasons.php'
       - 'admin/partials/place-report-season-answers.php'
+      - 'admin/partials/place-season-bulk-status.php'
+      - 'js/admin/place-season-bulk-status.js'
       - 'api/place-campsites.php'
       - 'api/place-campsite-detail.php'
       - 'partials/place/scout-report/index.php'
@@ -44,6 +46,7 @@ jobs:
           php -l admin/place.php
           php -l admin/partials/place-report-seasons.php
           php -l admin/partials/place-report-season-answers.php
+          php -l admin/partials/place-season-bulk-status.php
           php -l app/place-report/season-public.php
           php -l api/place-campsites.php
           php -l api/place-campsite-detail.php
@@ -53,5 +56,6 @@ jobs:
         run: |
           node --check js/place-campsites.js
           node --check js/place-report-seasons.js
+          node --check js/admin/place-season-bulk-status.js
       - name: Run V3 reporting smoke tests
         run: php tools/v3-launch-smoke.php
