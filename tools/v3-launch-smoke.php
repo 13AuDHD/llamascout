@@ -1786,32 +1786,54 @@ $check('RIDB Site Info uses one canonical Loop and Type of Use group', static fu
         'Loop and Type of Use must come from existing RIDB feature rows');
     $assert(($values['rv_suitable'] ?? '') === '1',
         'Imported RV suitability should not be lost');
-    $assert(!array_key_exists('tent_camping_suitable', $values),
-        'RV-only category alone must not assert tent camping is prohibited');
+    $assert(($values['tent_camping_suitable'] ?? '') === '1',
+        'RIDB permitted Tent must mark tent suitability Yes even on an RV-classified Site');
+    $withoutTent = $imported;
+    $withoutTent['features'] = array_values(array_filter(
+        $imported['features'],
+        static fn (array $f): bool => (string) $f['feature_key'] !== 'permitted_equipment'
+    ));
+    $withoutTentValues = llama_place_report_campsite_imported_form_values($withoutTent);
+    $assert(!array_key_exists('tent_camping_suitable', $withoutTentValues),
+        'RV-only classification alone must not invent Tent suitability');
 
-    $tentField = llama_report_question('tent_camping_suitable');
-    $assert(is_array($tentField), 'Tent suitability canonical question is missing');
-    $target = ['scope' => 'site', 'source' => 'campsite_record', 'id' => 2];
-    $explicitNo = llama_place_report_current_answer_envelope(
-        $tentField, true, false, $target, [
-            'scope' => 'site', 'source' => 'campsite_record', 'id' => 2,
-            'origin_type' => 'scoped_override',
-        ]
+    $tentPadSite = $withoutTent;
+    $tentPadSite['tent_pad'] = 'Yes';
+    $assert(
+        (llama_place_report_campsite_imported_form_values($tentPadSite)['tent_camping_suitable'] ?? '') === '1',
+        'Officially recorded Tent pad must set Tent suitability Yes'
     );
-    $conflicts = llama_place_report_campsite_consistency_notices(
-        $imported, ['tent_camping_suitable' => $explicitNo]
-    );
-    $assert(isset($conflicts['tent_camping_suitable']),
-        'Explicit No conflicting with permitted Tent must be flagged, not rewritten');
-    $explicitYes = llama_place_report_current_answer_envelope(
-        $tentField, true, true, $target, [
-            'scope' => 'site', 'source' => 'campsite_record', 'id' => 2,
-            'origin_type' => 'scoped_override',
-        ]
-    );
-    $assert(llama_place_report_campsite_consistency_notices(
-        $imported, ['tent_camping_suitable' => $explicitYes]
-    ) === [], 'Verified Yes must not raise a false tent conflict');
+    $standard = [
+        'site_type' => 'rv_site',
+        'raw_site_type' => 'STANDARD NONELECTRIC',
+        'features' => [],
+    ];
+    $standardValues = llama_place_report_campsite_imported_form_values($standard);
+    $assert(($standardValues['tent_camping_suitable'] ?? '') === '1'
+        && ($standardValues['rv_suitable'] ?? '') === '1'
+        && ($standardValues['trailer_suitable'] ?? '') === '1',
+        'Standard Nonelectric must support Tent, RV and Trailer');
+    $tentOnly = [
+        'site_type' => 'tent_site',
+        'raw_site_type' => 'TENT ONLY - WALK IN',
+        'features' => [],
+    ];
+    $tentValues = llama_place_report_campsite_imported_form_values($tentOnly);
+    $assert(($tentValues['tent_camping_suitable'] ?? '') === '1'
+        && ($tentValues['rv_suitable'] ?? '') === '0'
+        && ($tentValues['trailer_suitable'] ?? '') === '0',
+        'Tent Only walk-in Site must not approve RV or Trailer');
+    $assert(llama_place_report_campsite_answers(
+        $imported, ['tent_camping_suitable' => '0']
+    )['tent_camping_suitable'] === '0',
+        'Explicit Site-specific Admin/Scout exception must override imported Yes');
+    $unofficial = $withoutTent;
+    $unofficial['features'][] = [
+        'feature_key' => 'permitted_equipment', 'feature_value' => 'Tent',
+        'source_provider' => 'Llama Scout',
+    ];
+    $assert(!llama_place_report_campsite_permits_tent($unofficial),
+        'Only official RIDB Tent equipment should establish imported permission');
 });
 
 $check('Site preview has no duplicate official RIDB cards', static function () use ($assert): void {
@@ -1829,9 +1851,8 @@ $check('Site preview has no duplicate official RIDB cards', static function () u
             'Duplicated upper RIDB detail card remains: ' . $old);
     }
     $assert(strpos($preview, 'equipmentMarkup(') !== false
-        && strpos($preview, 'galleryMarkup(') !== false
-        && strpos($preview, 'They do not, by themselves, establish physical Site suitability.') !== false,
-        'Site photos, permitted equipment or suitability explanation missing');
+        && strpos($preview, 'galleryMarkup(') !== false,
+        'Site photos or permitted equipment display missing');
     $assert(strpos($catalog, "'ridb_loop' => 'site_loop'") !== false
         && strpos($catalog, "'ridb_type_of_use' => 'site_type_of_use'") !== false
         && strpos($catalog, "llama_site_can_read(") !== false,
@@ -1839,9 +1860,12 @@ $check('Site preview has no duplicate official RIDB cards', static function () u
     $assert(strpos($model, "'site_loop' => 'ridb_loop'") !== false
         && strpos($model, "'site_type_of_use' => 'ridb_type_of_use'") !== false,
         'RIDB feature provenance must follow canonical Site questions');
-    $assert(strpos($detail, 'llama_place_report_campsite_consistency_notices(') !== false
-        && strpos($browser, '.scout-report-answer-conflict') !== false,
-        'Explicit source contradictions must remain visible to authorized users');
+    $assert(strpos($detail, 'llama_place_report_campsite_consistency_notices(') === false
+        && strpos($browser, '.scout-report-answer-conflict') === false,
+        'Retired Tent permission disclaimer and conflict notice must not remain');
+    $assert(strpos($catalog, 'llama_place_report_campsite_permits_tent($site)') !== false
+        && strpos($catalog, "'tent_camping_suitable'] = 'Yes'") !== false,
+        'Public Site catalog must use official RIDB Tent permission as Yes');
 });
 
 $check('Canonical field contract', static function () use ($assert): void {
