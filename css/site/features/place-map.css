@@ -223,8 +223,8 @@
 }
 
 .place-map-feature--camping-area {
-    stroke: #d97706;
-    fill: #d97706;
+    stroke: #a855f7;
+    fill: #a855f7;
 }
 
 .place-map-feature--parking-area {
@@ -322,7 +322,7 @@
 }
 
 .place-map-area-legend-item.is-camping-area i {
-    color: #f59e0b;
+    color: #a855f7;
 }
 
 .place-map-area-legend-item.is-parking-area i {
