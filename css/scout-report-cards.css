@@ -650,14 +650,3 @@
 .scout-report .scout-report-section[hidden] {
     display: none !important;
 }
-
-
-/* A source conflict is not a new Scout Report answer or a hidden override. */
-.scout-report-answer-conflict {
-    display: block;
-    margin-top: 6px;
-    color: #e2ab6f;
-    font-size: .74rem;
-    font-weight: 500;
-    line-height: 1.45;
-}
