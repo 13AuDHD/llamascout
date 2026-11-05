@@ -92,11 +92,15 @@ function llama_season_definition(array $input): array
 
     $start = llama_season_mmdd($input['start_mmdd'] ?? null);
     $end = llama_season_mmdd($input['end_mmdd'] ?? null);
-    $active = (int) ($input['is_active'] ?? 1);
-    $default = (int) ($input['is_default'] ?? 0);
-    if (!in_array($active, [0, 1], true) || !in_array($default, [0, 1], true)) {
+    $activeRaw = $input['is_active'] ?? 1;
+    $defaultRaw = $input['is_default'] ?? 0;
+    $allowedFlags = [0, 1, '0', '1', false, true];
+    if (!in_array($activeRaw, $allowedFlags, true)
+        || !in_array($defaultRaw, $allowedFlags, true)) {
         throw new InvalidArgumentException('Invalid season status.');
     }
+    $active = (int) $activeRaw;
+    $default = (int) $defaultRaw;
     if ($active === 0) {
         $default = 0;
     }
