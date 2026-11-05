@@ -205,8 +205,19 @@ try {
                         )
                     );
 
-                if (in_array($siteType, ['tent_site', 'mixed_site'], true)) {
+                // RIDB's official permitted-equipment Tent entry is a
+                // public, affirmative Site suitability answer even if the
+                // broad RIDB category is RV Site.
+                $importedTentAllowed = llama_place_report_campsite_permits_tent($site);
+                $importedTentPad = llama_place_report_campsite_bool_form_value(
+                    $site['tent_pad'] ?? null
+                ) === '1';
+                if (in_array($siteType, ['tent_site', 'mixed_site'], true)
+                    || $importedTentAllowed || $importedTentPad) {
                     $publicReportKeys[] = 'tent_camping_suitable';
+                }
+                if ($importedTentAllowed || $importedTentPad) {
+                    $officialSiteInfo['tent_camping_suitable'] = 'Yes';
                 }
 
                 if (in_array(
@@ -285,7 +296,26 @@ try {
                         )
                     );
 
-                $publicReportSources = [];
+                $publicReportSources = $officialSiteSources;
+                if ($importedTentAllowed) {
+                    foreach ((array) ($site['features'] ?? []) as $feature) {
+                        if ((string) ($feature['feature_key'] ?? '') !== 'permitted_equipment') {
+                            continue;
+                        }
+                        $name = strtolower(trim((string) ($feature['feature_value'] ?? '')));
+                        $provider = trim((string) ($feature['source_provider'] ?? ''));
+                        if (preg_match('/^tents?(?:\\s+.*)?$/D', $name) !== 1
+                            || (!str_contains(strtolower($provider), 'ridb')
+                                && !str_contains(strtolower($provider), 'recreation.gov'))) {
+                            continue;
+                        }
+                        $publicReportSources['tent_camping_suitable'] = [
+                            'label' => $provider,
+                            'dateLabel' => (string) ($feature['source_updated_at'] ?? ''),
+                        ];
+                        break;
+                    }
+                }
                 $officialSourceLabel =
                     trim(
                         (string) ($site['source_provider'] ?? '')
