@@ -1439,6 +1439,42 @@ $check('M4-001 recurring Place seasons and overlap protection', static function 
     $assert($rejectedDuplicate, 'Duplicate names must be rejected');
 });
 
+$check('Seasonal overrides cannot change permanent Site facts', static function () use ($assert): void {
+    require_once dirname(__DIR__) . '/app/place-report/season-answer-contract.php';
+
+    $assert(
+        (llama_season_question_for_scope('amenity_toilets', 'place')['key'] ?? '') === 'amenity_toilets',
+        'Shared toilets must support seasonal changes'
+    );
+    $assert(
+        (llama_season_question_for_scope('amenity_showers', 'place')['key'] ?? '') === 'amenity_showers',
+        'Shared showers must support seasonal changes'
+    );
+    $permanent = [
+        'site_length_feet', 'site_width_feet', 'tent_pad_length_feet',
+        'parking_surface', 'elevation_feet', 'latitude', 'longitude',
+        'max_rv_length_feet', 'site_number', 'site_type',
+        'place_reported_operating_status', 'place_closure_began',
+    ];
+    foreach ($permanent as $key) {
+        foreach (['place', 'area', 'site'] as $scope) {
+            $blocked = false;
+            try {
+                llama_season_question_for_scope($key, $scope);
+            } catch (InvalidArgumentException) {
+                $blocked = true;
+            }
+            $assert($blocked, $key . ' cannot change in season ' . $scope);
+        }
+    }
+    foreach (llama_season_allowed_question_keys() as $key) {
+        $assert(
+            isset(llama_report_questions()[$key]),
+            'Seasonal contract refers to missing canonical question: ' . $key
+        );
+    }
+});
+
 $check('Canonical field contract', static function () use ($assert): void {
     $issues = llama_place_report_contract_issues();
     $assert(!$issues, 'Contract issues: ' . implode(' | ', array_slice($issues, 0, 12)) . ' (total ' . count($issues) . ')');
