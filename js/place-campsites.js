@@ -1859,7 +1859,7 @@
                                                 : site.reservation_method === 'reservable'
                                                     ? '<span class="place-campsite-status-badge is-reservable" title="This Site can normally be reserved; current availability is not confirmed.">Reservable</span>'
                                                     : ''}
-                                        ${clean(site.accessible_status).toLowerCase() === 'yes'
+                                        ${site.accessible_pill === true
                                             ? '<span class="place-campsite-status-badge is-accessible">Accessible</span>'
                                             : ''}
                                     </span>
