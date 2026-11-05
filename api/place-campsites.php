@@ -95,6 +95,26 @@ try {
     }
     unset($site);
 
+    $authorizedAccessible = $canRead
+        ? llama_authorized_site_accessibility_overrides(
+            $db, $placeId, array_column($sites, 'id')
+        )
+        : [];
+    foreach ($sites as &$site) {
+        $siteId = (int) ($site['id'] ?? 0);
+        $officialAccessible = in_array(
+            strtolower(trim((string) ($site['accessible_status'] ?? ''))),
+            ['yes', 'true', '1'],
+            true
+        );
+        $site['accessible_pill'] =
+            $canRead && array_key_exists($siteId, $authorizedAccessible)
+                ? $authorizedAccessible[$siteId]
+                : $officialAccessible;
+    }
+    unset($site);
+
+
 
 
     // The default/full response includes member-only Site facts and reports.
@@ -309,6 +329,7 @@ try {
                     'operating_status' => $site['operating_status'] ?? null,
                     'seasonal_operating_status' => $site['seasonal_operating_status'] ?? null,
                     'reservation_method' => $site['reservation_method'] ?? null,
+                    'accessible_pill' => (bool) ($site['accessible_pill'] ?? false),
                     'official_details' =>
                         array_map(
                             static fn (array $detail): array => [
@@ -340,6 +361,7 @@ try {
                 'operating_status' => $site['operating_status'] ?? null,
                 'seasonal_operating_status' => $site['seasonal_operating_status'] ?? null,
                 'reservation_method' => $site['reservation_method'] ?? null,
+                'accessible_pill' => (bool) ($site['accessible_pill'] ?? false),
                 'closure_reason' => $site['closure_reason'] ?? null,
                 'expected_reopening' => $site['expected_reopening'] ?? null,
                 'closure_verified_at' => $site['closure_verified_at'] ?? null,
