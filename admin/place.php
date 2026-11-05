@@ -382,6 +382,7 @@ $placeReportPhotoHelp = 'Add photos to the currently selected Place, Area, or Si
 <script src="https://llamascout.com/js/add-place-name.js"></script>
 <script src="https://llamascout.com/js/place-report-form.js"></script>
 <script src="https://llamascout.com/js/admin/place-report-save.js"></script>
+<script src="https://llamascout.com/js/admin/place-report-seasons.js"></script>
 <script src="https://llamascout.com/js/admin/place-report-area.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://llamascout.com/js/admin/place-map.js"></script>
