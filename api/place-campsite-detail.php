@@ -256,6 +256,11 @@ try {
 
 
 
+    // Surface source disagreements; never turn a tentative/photo-based
+    // inference into a verified Site suitability answer.
+    $site['report_answer_conflicts'] =
+        llama_place_report_campsite_consistency_notices($site, $currentAnswers);
+
     $inheritedValues =
         llama_place_report_current_answer_values(
             $currentAnswers,
