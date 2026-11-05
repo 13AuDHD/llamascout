@@ -139,11 +139,14 @@ function llama_place_report_add_site_fields(
         'points_categories' => ['site_vehicle'],
     ]);
 
+    $overheadClearanceOptions = $feetOptions([
+        ...$range(8, 20),
+        22, 24, 25, 30,
+    ]);
+    $overheadClearanceOptions['unlimited'] = 'Unlimited';
+
     $add('overhead_clearance_feet', 'Site overhead clearance (ft)', 'site_vehicle', 'select', 'details.overhead_clearance_feet', [
-        'options' => $feetOptions([
-            ...$range(8, 20),
-            22, 24, 25, 30,
-        ]),
+        'options' => $overheadClearanceOptions,
         'allow_unknown' => true,
         'points_categories' => ['site_vehicle'],
     ]);
