@@ -286,7 +286,6 @@ try {
                             : null,
                     'is_closed' => (bool) ($site['is_closed'] ?? false),
                     'operating_status' => $site['operating_status'] ?? null,
-                'seasonal_operating_status' => $site['seasonal_operating_status'] ?? null,
                     'seasonal_operating_status' => $site['seasonal_operating_status'] ?? null,
                     'official_details' =>
                         array_map(
@@ -316,6 +315,7 @@ try {
                 'electric_hookup' => $site['electric_hookup'] ?? null,
                 'is_closed' => (bool) ($site['is_closed'] ?? false),
                 'operating_status' => $site['operating_status'] ?? null,
+                'seasonal_operating_status' => $site['seasonal_operating_status'] ?? null,
                 'closure_reason' => $site['closure_reason'] ?? null,
                 'expected_reopening' => $site['expected_reopening'] ?? null,
                 'closure_verified_at' => $site['closure_verified_at'] ?? null,
