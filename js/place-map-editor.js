@@ -2186,7 +2186,7 @@
     const loadFeatures =
         async () => {
             setStatus(
-                'Loading mapped areas...'
+                'Loading map records...'
             );
 
             try {
@@ -2214,13 +2214,15 @@
                 ) {
                     throw new Error(
                         data.error
-                        || 'Mapped areas could not be loaded.'
+                        || 'Map records could not be loaded.'
                     );
                 }
 
                 applyApiState(
                     data
                 );
+
+                syncSiteOptions();
 
                 featureState
                     .resetEditor(
@@ -2245,21 +2247,42 @@
                         );
 
                     setStatus(
-                        'Mapped area loaded from the Place page.'
+                        'Map record loaded.'
                     );
 
                     return;
                 }
 
-                setStatus('');
+                const placeBoundary =
+                    features.find(
+                        (feature) =>
+                            feature.feature_type
+                            === 'place_boundary'
+                    )
+                    || null;
+
+                if (placeBoundary) {
+                    featureState
+                        .selectFeature(
+                            Number(
+                                placeBoundary.id
+                            )
+                        );
+                } else {
+                    setMode(
+                        'place'
+                    );
+                }
 
                 featureState
                     .fitAllAreas();
 
+                setStatus('');
+
             } catch (error) {
                 setStatus(
                     error.message
-                    || 'Mapped areas could not be loaded.',
+                    || 'Map records could not be loaded.',
                     true
                 );
             }
@@ -2268,6 +2291,35 @@
     map.on(
         'click',
         (event) => {
+            if (
+                editorMode === 'site'
+            ) {
+                if (!sitePicking) {
+                    return;
+                }
+
+                sitePicking =
+                    false;
+
+                sitePickButton
+                    ?.classList
+                    .remove(
+                        'is-active'
+                    );
+
+                setSitePoint(
+                    event.latlng.lat,
+                    event.latlng.lng
+                );
+
+                if (sitePointStatus) {
+                    sitePointStatus.textContent =
+                        'Site point selected. Save the Site point when it is correct.';
+                }
+
+                return;
+            }
+
             geometry
                 .addManualPoint(
                     event.latlng
@@ -2279,6 +2331,12 @@
         ?.addEventListener(
             'click',
             saveFeature
+        );
+
+    saveSitePointButton
+        ?.addEventListener(
+            'click',
+            saveSitePoint
         );
 
     deleteButton
@@ -2294,7 +2352,7 @@
                 if (
                     dirty
                     && !window.confirm(
-                        'Discard the unsaved mapped-area changes?'
+                        'Discard the unsaved map changes?'
                     )
                 ) {
                     return;
@@ -2302,38 +2360,81 @@
 
                 featureState
                     .resetEditor();
+
+                setMode(
+                    editorMode
+                );
             }
         );
 
-    featureType
+    modeButtons.forEach(
+        (button) => {
+            button.addEventListener(
+                'click',
+                () => {
+                    const nextMode =
+                        String(
+                            button.dataset
+                                .mapModeButton
+                            || ''
+                        );
+
+                    if (
+                        nextMode === editorMode
+                    ) {
+                        return;
+                    }
+
+                    if (
+                        dirty
+                        && !window.confirm(
+                            'Discard the unsaved map changes?'
+                        )
+                    ) {
+                        return;
+                    }
+
+                    setDirty(
+                        false
+                    );
+
+                    if (
+                        nextMode === 'site'
+                    ) {
+                        setMode(
+                            'site'
+                        );
+
+                        return;
+                    }
+
+                    featureState
+                        .resetEditor(
+                            true
+                        );
+
+                    setMode(
+                        nextMode
+                    );
+                }
+            );
+        }
+    );
+
+    areaFeatureType
         ?.addEventListener(
             'change',
             () => {
+                if (
+                    editorMode !== 'area'
+                ) {
+                    return;
+                }
+
+                featureType.value =
+                    areaFeatureType.value;
+
                 syncAreaDetailFields();
-                siteFields.sync();
-
-                if (
-                    featureType.value
-                    !== 'camping_area'
-                ) {
-                    pricing
-                        .clearSiteClasses();
-                } else {
-                    pricing
-                        .renderSiteClasses();
-                }
-
-                if (
-                    !pricing
-                        .rateFeatureSupported()
-                ) {
-                    pricing
-                        .clearRates();
-                } else {
-                    pricing
-                        .renderRates();
-                }
-
                 setDirty(
                     true
                 );
@@ -2346,9 +2447,85 @@
             }
         );
 
+    sitePickButton
+        ?.addEventListener(
+            'click',
+            () => {
+                if (
+                    editorMode !== 'site'
+                ) {
+                    return;
+                }
+
+                sitePicking =
+                    !sitePicking;
+
+                sitePickButton.classList
+                    .toggle(
+                        'is-active',
+                        sitePicking
+                    );
+
+                if (sitePointStatus) {
+                    sitePointStatus.textContent =
+                        sitePicking
+                            ? 'Tap the exact Site location on the map.'
+                            : 'Site pin placement canceled.';
+                }
+            }
+        );
+
+    siteTarget
+        ?.addEventListener(
+            'change',
+            syncSiteTarget
+        );
+
+    const previewTypedSitePoint =
+        () => {
+            const lat =
+                Number(
+                    siteLatitude?.value
+                );
+
+            const lng =
+                Number(
+                    siteLongitude?.value
+                );
+
+            if (
+                String(
+                    siteLatitude?.value
+                    || ''
+                ).trim() !== ''
+                && String(
+                    siteLongitude?.value
+                    || ''
+                ).trim() !== ''
+                && Number.isFinite(lat)
+                && Number.isFinite(lng)
+            ) {
+                setSitePoint(
+                    lat,
+                    lng
+                );
+            }
+        };
+
+    siteLatitude
+        ?.addEventListener(
+            'change',
+            previewTypedSitePoint
+        );
+
+    siteLongitude
+        ?.addEventListener(
+            'change',
+            previewTypedSitePoint
+        );
+
     [
         areaUse,
-        feeStatus,
         overnightStatus
     ].forEach(
         (control) => {
@@ -2362,9 +2539,6 @@
 
                         featureState
                             .renderFeatureList();
-
-                        pricing
-                            .renderRates();
                     }
                 );
         }
