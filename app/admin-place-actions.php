@@ -23,6 +23,8 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
             $notice = 'Site GPS location saved.';
         } elseif ((string) ($_GET['saved'] ?? '') === 'season') {
             $notice = 'Operating season saved.';
+        } elseif ((string) ($_GET['saved'] ?? '') === 'season-answers') {
+            $notice = 'Seasonal answers saved.';
         }
         return ['notice' => $notice, 'error' => $error, 'action' => $action];
     }
@@ -43,6 +45,45 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
     }
 
     try {
+        if ($action === 'save-season-answers') {
+            require_once __DIR__ . '/place-report/season-answers.php';
+
+            $seasonId = (int) ($_POST['season_id'] ?? 0);
+            $rawTarget = trim((string) ($_POST['season_target'] ?? ''));
+            $parts = explode(':', $rawTarget);
+            if (count($parts) !== 3 || !ctype_digit($parts[2]) || (int) $parts[2] < 1) {
+                throw new InvalidArgumentException('Choose a valid Place, Area, or Site.');
+            }
+            $target = [
+                'scope' => $parts[0],
+                'source' => $parts[1],
+                'id' => (int) $parts[2],
+            ];
+            $modes = $_POST['season_modes'] ?? null;
+            $values = $_POST['season_values'] ?? [];
+            if (!is_array($modes) || !is_array($values)) {
+                throw new InvalidArgumentException('Seasonal answers were not submitted correctly.');
+            }
+
+            llama_season_save_target_answers(
+                $db, $placeId, $seasonId, $target, $actorUserId,
+                $modes, $values,
+                $parts[0] === 'site'
+                    ? (string) ($_POST['season_site_status'] ?? 'inherit')
+                    : null,
+                $_POST['season_answer_source_url'] ?? ''
+            );
+            header(
+                'Location: /place.php?id=' . $placeId
+                . '&saved=season-answers&season_view=' . $seasonId
+                . '&season_target=' . rawurlencode($rawTarget)
+                . '#place-seasons',
+                true,
+                303
+            );
+            exit;
+        }
+
         if ($action === 'save-season') {
             require_once __DIR__ . '/place-report/season-definitions.php';
 
