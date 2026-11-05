@@ -63,7 +63,12 @@ function llama_place_report_with_campsite_baseline(array $resolved, array $site)
             // The remaining imported baseline questions use the Site facts
             // record and its source_updated_at value.
             foreach ((array) ($site['features'] ?? []) as $feature) {
-                if ((string) ($feature['feature_key'] ?? '') !== (string) $key
+                $sourceKey = match ((string) $key) {
+                    'site_loop' => 'ridb_loop',
+                    'site_type_of_use' => 'ridb_type_of_use',
+                    default => (string) $key,
+                };
+                if ((string) ($feature['feature_key'] ?? '') !== $sourceKey
                     || (string) ($feature['feature_value'] ?? '') !== (string) $_value) {
                     continue;
                 }
