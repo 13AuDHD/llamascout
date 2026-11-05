@@ -1475,6 +1475,24 @@ $check('Seasonal overrides cannot change permanent Site facts', static function 
     }
 });
 
+$check('Season definition editor is isolated from normal Scout Report save', static function () use ($assert): void {
+    $page = file_get_contents(dirname(__DIR__) . '/admin/partials/place-summary-report.php');
+    $panel = file_get_contents(dirname(__DIR__) . '/admin/partials/place-report-seasons.php');
+    $actions = file_get_contents(dirname(__DIR__) . '/app/admin-place-actions.php');
+    $assert(is_string($page) && is_string($panel) && is_string($actions), 'Admin season files missing');
+    $seasonInclude = strpos($page, "require __DIR__ . '/place-report-seasons.php'");
+    $normalForm = strpos($page, '<form method="post" class="admin-place-report-form');
+    $assert($seasonInclude !== false && $normalForm !== false
+        && $seasonInclude < $normalForm, 'Season editor must be outside the normal Scout Report form');
+    $assert(strpos($panel, 'name="place_admin_action" value="save-season"') !== false,
+        'Missing season-only save action');
+    $assert(strpos($panel, 'name="csrf_token"') !== false,
+        'Season editor must include CSRF');
+    $assert(strpos($actions, "if (\$action === 'save-season')") !== false
+        && strpos($actions, 'llama_season_save(') !== false,
+        'Season save action is not routed through the validated season service');
+});
+
 $check('Canonical field contract', static function () use ($assert): void {
     $issues = llama_place_report_contract_issues();
     $assert(!$issues, 'Contract issues: ' . implode(' | ', array_slice($issues, 0, 12)) . ' (total ' . count($issues) . ')');
