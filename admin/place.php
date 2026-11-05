@@ -12,6 +12,7 @@ require_once dirname(__DIR__) . '/app/admin-place-actions.php';
 require_once dirname(__DIR__) . '/app/place-verifications.php';
 require_once dirname(__DIR__) . '/app/place-map-features.php';
 require_once dirname(__DIR__) . '/app/place-site-identity.php';
+require_once dirname(__DIR__) . '/app/place-report/season-definitions.php';
 require_once __DIR__ . '/_dashboard.php';
 
 $adminUser = moderation_require_admin();
@@ -69,6 +70,20 @@ if (
 ) {
     $error =
         'One or more Sites could not be prepared for editing. Review the Site layout before making changes.';
+}
+
+// Seasonal definitions are optional until M4-001 is installed. Missing
+// season tables must not make the normal Admin Place Report unavailable.
+$adminPlaceSeasons = [];
+$adminPlaceSeasonsError = '';
+try {
+    $adminPlaceSeasons = llama_seasons_for_place($db, $placeId, true);
+} catch (PDOException $seasonException) {
+    $adminPlaceSeasonsError =
+        'Seasons could not be loaded. Verify that the M4-001 migration has been installed.';
+    if (function_exists('llama_log_caught_exception')) {
+        llama_log_caught_exception($seasonException, 'admin.place.seasons');
+    }
 }
 
 $reportData = admin_place_shared_report_data($db, $placeId);
