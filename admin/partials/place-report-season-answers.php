@@ -30,9 +30,11 @@ else:
 
     $seasonEditingAnswers = ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST'
         && ($action ?? '') === 'save-season-answers' && ($error ?? '') !== '';
+    $seasonBulkEditing = ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST'
+        && ($action ?? '') === 'save-season-bulk-sites' && ($error ?? '') !== '';
 
     $requestedSeason = (int) (
-        $seasonEditingAnswers
+        ($seasonEditingAnswers || $seasonBulkEditing)
             ? ($_POST['season_id'] ?? 0)
             : ($_GET['season_view'] ?? 0)
     );
@@ -287,6 +289,8 @@ else:
                         Save <?= $e($chosenSeason['name']) ?> answers
                     </button>
                 </form>
+
+                <?php require __DIR__ . '/place-season-bulk-status.php'; ?>
             <?php endif; ?>
         <?php endif; ?>
     </section>
