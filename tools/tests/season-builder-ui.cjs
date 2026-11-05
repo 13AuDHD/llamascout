@@ -91,7 +91,7 @@ const change = (window, node, value) => {
     node.dispatchEvent(new window.Event('change', {bubbles: true}));
 };
 
-const values = form => new Map(new form.ownerDocument.defaultView.FormData(form).entries());
+const values = form => new form.ownerDocument.defaultView.FormData(form);
 
 {
     const {window, form, alerts} = startFixture();
