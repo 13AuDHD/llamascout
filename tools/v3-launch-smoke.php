@@ -1130,7 +1130,7 @@ $check('Quick Warnings render only in Site Safety and Hazards', static function 
     $assert(is_string($source), 'Unable to inspect Scout Report read-only renderer');
 
     $warningPos = strpos($source, 'data-report-warnings');
-    $safetyGatePos = strpos($source, "(string) \\$sectionKey === 'safety_public'");
+    $safetyGatePos = strpos($source, '(string) $sectionKey === \'safety_public\'');
     $placeWarningText = 'Important conditions reported for this Place.';
     $siteWarningText = 'Important conditions reported for this Site.';
 
