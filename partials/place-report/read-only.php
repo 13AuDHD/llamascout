@@ -53,6 +53,15 @@ if (
     }
 }
 
+// Only public, viewable cards will render these labels. Season-specific
+// attribution replaces the normal source only for the questions it changes.
+if ($placeReportReadMode === 'scout-report'
+    && is_array($publicSeasonAttribution ?? null)) {
+    foreach ($publicSeasonAttribution as $key => $source) {
+        $publicPlaceReportAttribution[(string) $key] = $source;
+    }
+}
+
 $placeReportSections =
     llama_place_report_sections();
 
