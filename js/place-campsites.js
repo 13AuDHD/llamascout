@@ -1126,6 +1126,10 @@
                                 .campsiteReportField
                         );
 
+                    // A selected Site may have a source disagreement.
+                    // Clear the previous Site's note before any access checks.
+                    card.querySelector('.scout-report-answer-conflict')?.remove();
+
                     const isStructurallyLocked =
                         card.dataset
                             .reportAccessLocked
@@ -1298,6 +1302,17 @@
                     } else if (sourceLine) {
                         sourceLine.textContent = '';
                         sourceLine.hidden = true;
+                    }
+
+                    const conflict = clean(
+                        site.report_answer_conflicts?.[key]
+                    );
+                    if (conflict && !isUnanswered) {
+                        const note = document.createElement('small');
+                        note.className = 'scout-report-answer-conflict';
+                        note.textContent = conflict;
+                        card.querySelector('.scout-report-value-content, .scout-rating-content')
+                            ?.append(note);
                     }
 
                     card.hidden =
