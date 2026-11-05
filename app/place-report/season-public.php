@@ -20,6 +20,11 @@ function llama_public_season_selection(
     $selected = null;
 
     $requested = trim((string) ($requestedSeason ?? ''));
+    // A deliberate "Normal report" selection must not be replaced by
+    // automatic date matching on the next page load.
+    if ($requested === '0') {
+        return ['seasons' => $seasons, 'selected' => null];
+    }
     if (preg_match('/^[1-9][0-9]*$/D', $requested) === 1) {
         foreach ($seasons as $season) {
             if ((int) $season['id'] === (int) $requested) {
