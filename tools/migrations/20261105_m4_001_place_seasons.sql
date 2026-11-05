@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS place_seasons (
                  THEN place_id ELSE NULL END) PERSISTENT,
 
     PRIMARY KEY (id),
+    UNIQUE KEY uq_place_seasons_place_id (place_id, id),
     KEY ix_place_seasons_place (place_id, is_active, sort_order, id),
     UNIQUE KEY uq_place_seasons_active_default (active_default_place_id),
     CONSTRAINT chk_place_seasons_date_pair CHECK (
@@ -68,8 +69,9 @@ CREATE TABLE IF NOT EXISTS place_season_answers (
     KEY ix_place_season_answer_target (
         place_id, target_scope, target_source, target_id, season_id
     ),
+    -- Composite FK guarantees the selected season belongs to the target Place.
     CONSTRAINT fk_place_season_answer_season
-        FOREIGN KEY (season_id) REFERENCES place_seasons(id)
+        FOREIGN KEY (place_id, season_id) REFERENCES place_seasons(place_id, id)
         ON DELETE RESTRICT,
     CONSTRAINT chk_place_season_answer_scope
         CHECK (target_scope IN ('place', 'area', 'site')),
