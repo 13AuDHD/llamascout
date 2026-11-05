@@ -41,6 +41,51 @@ if (empty($isDemoScoutReport) && !empty($placeReportSource['id'])) {
     }
 }
 
+/*
+ * M4: select one of this Place's approved named seasons. These are a view
+ * over canonical answers, not additional reports. Any database migration
+ * error should leave the normal Scout Report working.
+ */
+$publicReportSeasons = [];
+$publicReportSeason = null;
+$publicSeasonAttribution = [];
+if (empty($isDemoScoutReport) && !empty($placeReportSource['id'])) {
+    try {
+        require_once dirname(__DIR__, 3) . '/app/place-report/season-public.php';
+        $seasonState = llama_public_season_selection(
+            db(),
+            (int) $placeReportSource['id'],
+            $_GET['season'] ?? null
+        );
+        $publicReportSeasons = (array) ($seasonState['seasons'] ?? []);
+        $publicReportSeason = $seasonState['selected'] ?? null;
+        if (is_array($publicReportSeason)) {
+            $seasonAnswers = llama_season_answers_for_target(
+                db(),
+                (int) $placeReportSource['id'],
+                (int) $publicReportSeason['id'],
+                [
+                    'scope' => 'place',
+                    'source' => 'place',
+                    'id' => (int) $placeReportSource['id'],
+                ]
+            );
+            $placeReportData = llama_public_season_project_place(
+                $placeReportData, $seasonAnswers
+            );
+            foreach ($seasonAnswers as $key => $answer) {
+                $publicSeasonAttribution[(string) $key] =
+                    llama_public_season_source($answer);
+            }
+        }
+    } catch (Throwable $exception) {
+        llama_log_caught_exception($exception, 'scout-report.public-season');
+        $publicReportSeason = null;
+        $publicReportSeasons = [];
+        $publicSeasonAttribution = [];
+    }
+}
+
 $placeReportReadMode =
     'scout-report';
 
@@ -106,6 +151,46 @@ $compareReportHistoryUrl =
             </a>
         <?php endif; ?>
     </header>
+
+    <?php if ($publicReportSeasons): ?>
+        <form class="scout-report-season-picker" method="get"
+              action="/place.php" data-scout-season-form>
+            <input type="hidden" name="slug"
+                   value="<?= htmlspecialchars((string) $placeReportSource['slug'], ENT_QUOTES, 'UTF-8') ?>">
+            <input type="hidden" name="site" data-season-selected-site
+                   value="<?= (int) ($_GET['site'] ?? 0) ?: '' ?>">
+            <label for="scout-report-season">
+                <strong>Viewing season</strong>
+                <span>See which services and rules change through the year.</span>
+            </label>
+            <div class="scout-report-season-inputs">
+                <select id="scout-report-season" name="season">
+                    <option value="0" <?= !is_array($publicReportSeason) ? 'selected' : '' ?>>
+                        Normal report
+                    </option>
+                    <?php foreach ($publicReportSeasons as $season): ?>
+                        <?php
+                        $from = (string) ($season['start_mmdd'] ?? '');
+                        $to = (string) ($season['end_mmdd'] ?? '');
+                        $dates = $from !== '' && $to !== ''
+                            ? ' (' . $from . ' to ' . $to . ')' : '';
+                        ?>
+                        <option value="<?= (int) $season['id'] ?>"
+                            <?= (int) ($publicReportSeason['id'] ?? 0) === (int) $season['id'] ? 'selected' : '' ?>>
+                            <?= htmlspecialchars((string) $season['name'] . $dates, ENT_QUOTES, 'UTF-8') ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <button type="submit">View season</button>
+            </div>
+            <small>
+                Seasonal details describe normal operations, not real-time availability.
+                Verified closures and current fire restrictions still apply.
+                Staying across seasons? Check both.
+            </small>
+        </form>
+        <script defer src="/js/place-report-seasons.js"></script>
+    <?php endif; ?>
 
     <?php
     require dirname(__DIR__, 2)
