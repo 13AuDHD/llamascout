@@ -1627,11 +1627,31 @@
                         .syncSelectedPointPanel(),
 
             addGpsPoint:
-                (position) =>
+                (position) => {
+                    if (
+                        editorMode === 'site'
+                    ) {
+                        setSitePoint(
+                            position.lat,
+                            position.lng,
+                            true
+                        );
+
+                        if (sitePointStatus) {
+                            sitePointStatus.textContent =
+                                position.accuracy === null
+                                    ? 'Device GPS point captured.'
+                                    : `Device GPS point captured at ±${Math.round(position.accuracy)} m accuracy.`;
+                        }
+
+                        return;
+                    }
+
                     geometry
                         .addGpsPoint(
                             position
-                        )
+                        );
+                }
         });
 
     featureState =
@@ -1671,36 +1691,16 @@
 
             setDirty,
             syncAreaDetailFields,
-
             syncSiteFields:
-                (details) =>
-                    siteFields.sync(
-                        details
-                    ),
-
+                () => {},
             syncSiteClasses:
-                (classes) =>
-                    pricing
-                        .syncSiteClasses(
-                            classes
-                        ),
-
+                () => {},
             syncRates:
-                (rates) =>
-                    pricing
-                        .syncRates(
-                            rates
-                        ),
-
+                () => {},
             clearSiteClasses:
-                () =>
-                    pricing
-                        .clearSiteClasses(),
-
+                () => {},
             clearRates:
-                () =>
-                    pricing
-                        .clearRates(),
+                () => {},
 
             setGeometry:
                 (
@@ -1732,18 +1732,66 @@
             overnightStatusLabels,
 
             getSiteDetailLabels:
-                (details) =>
-                    siteFields
-                        .detailLabels(
-                            details
-                        ),
+                () => [],
 
             rateMoney:
-                (amount) =>
-                    pricing
-                        .rateMoney(
-                            amount
-                        )
+                () => '',
+
+            onFeatureSelected:
+                (feature) => {
+                    const type =
+                        String(
+                            feature?.feature_type
+                            || ''
+                        );
+
+                    if (
+                        type === 'place_boundary'
+                    ) {
+                        setMode(
+                            'place',
+                            {
+                                keepLabel:
+                                    true
+                            }
+                        );
+
+                        return;
+                    }
+
+                    if (
+                        type === 'camping_area'
+                        || type === 'parking_area'
+                    ) {
+                        if (areaFeatureType) {
+                            areaFeatureType.value =
+                                type;
+                        }
+
+                        setMode(
+                            'area',
+                            {
+                                keepLabel:
+                                    true,
+
+                                areaDetails:
+                                    feature?.area_details
+                                    || {}
+                            }
+                        );
+                    }
+                },
+
+            onEditorReset:
+                () => {
+                    if (
+                        editorMode !== 'site'
+                    ) {
+                        setMode(
+                            editorMode
+                        );
+                    }
+                }
         });
 
     modules.createMapStyles({
