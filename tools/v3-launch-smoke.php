@@ -1352,6 +1352,11 @@ $check('Unified Place map editor contract', static function () use ($assert): vo
         && strpos($script, "action:\n                            'save_site_point'") !== false,
         'Site mode is not wired to point persistence'
     );
+
+    $assert(
+        strpos($script, "editorMode === 'place'\n                                ? 'place_boundary'") !== false,
+        'Place mode must save a Place boundary, never fallback to a Camping Area'
+    );
 });
 
 $check('Public map Place and Area colors match unified editor', static function () use ($assert): void {
@@ -1369,8 +1374,8 @@ $check('Public map Place and Area colors match unified editor', static function 
     );
 
     $assert(
-        preg_match('/\\.place-map-feature--camping-area\\s*\\{[^}]*stroke:\\s*#d97706;[^}]*fill:\\s*#d97706;/s', $css) === 1,
-        'Public Camping Area is not using the secondary amber treatment'
+        preg_match('/\\.place-map-feature--camping-area\\s*\\{[^}]*stroke:\\s*#a855f7;[^}]*fill:\\s*#a855f7;/s', $css) === 1,
+        'Public Camping Area is not purple'
     );
 });
 
