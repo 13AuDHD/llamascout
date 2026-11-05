@@ -12,6 +12,7 @@ require_once dirname(__DIR__) . '/app/place-report/target-model.php';
 require_once dirname(__DIR__) . '/app/place-report/report-targets.php';
 require_once dirname(__DIR__) . '/app/place-report/scoped-warnings.php';
 require_once dirname(__DIR__) . '/app/place-report/season-public.php';
+require_once dirname(__DIR__) . '/app/place-report/site-booking.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -81,6 +82,19 @@ try {
         }
         unset($site);
     }
+
+    $bookingMethods = llama_public_site_booking_methods(
+        $db,
+        $placeId,
+        is_array($season) ? (int) $season['id'] : null,
+        array_column($sites, 'id')
+    );
+    foreach ($sites as &$site) {
+        $site['reservation_method'] =
+            $bookingMethods[(int) ($site['id'] ?? 0)] ?? null;
+    }
+    unset($site);
+
 
 
     // The default/full response includes member-only Site facts and reports.
@@ -294,6 +308,8 @@ try {
                     'place_verified_closed' => (bool) ($site['place_verified_closed'] ?? false),
                     'operating_status' => $site['operating_status'] ?? null,
                     'seasonal_operating_status' => $site['seasonal_operating_status'] ?? null,
+                'reservation_method' => $site['reservation_method'] ?? null,
+                    'reservation_method' => $site['reservation_method'] ?? null,
                     'official_details' =>
                         array_map(
                             static fn (array $detail): array => [
