@@ -11,6 +11,7 @@ require_once dirname(__DIR__) . '/app/place-report.php';
 require_once dirname(__DIR__) . '/app/place-report/target-model.php';
 require_once dirname(__DIR__) . '/app/place-report/report-targets.php';
 require_once dirname(__DIR__) . '/app/place-report/scoped-warnings.php';
+require_once dirname(__DIR__) . '/app/place-report/season-public.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -55,6 +56,26 @@ try {
             llama_site_can_read($place, $site, $canRead, $restrictedSiteIds)
     ));
     $sites = llama_campsite_closure_enrich($db, $placeId, $sites);
+
+    // Only use IDs that survived the existing visibility restrictions.
+    // Seasonal open/closed describes the normal schedule; verified closures
+    // remain on the original is_closed / operating_status fields.
+    $seasonSelection = llama_public_season_selection(
+        $db, $placeId, $_GET['season'] ?? null
+    );
+    $season = $seasonSelection['selected'] ?? null;
+    if (is_array($season)) {
+        $siteStatuses = llama_public_season_site_statuses(
+            $db, $placeId, (int) $season['id'],
+            array_column($sites, 'id')
+        );
+        foreach ($sites as &$site) {
+            $site['seasonal_operating_status'] =
+                $siteStatuses[(int) ($site['id'] ?? 0)] ?? null;
+        }
+        unset($site);
+    }
+
 
     // The default/full response includes member-only Site facts and reports.
     // Public developed Site access is limited to the reviewed catalog.
@@ -265,6 +286,8 @@ try {
                             : null,
                     'is_closed' => (bool) ($site['is_closed'] ?? false),
                     'operating_status' => $site['operating_status'] ?? null,
+                'seasonal_operating_status' => $site['seasonal_operating_status'] ?? null,
+                    'seasonal_operating_status' => $site['seasonal_operating_status'] ?? null,
                     'official_details' =>
                         array_map(
                             static fn (array $detail): array => [
