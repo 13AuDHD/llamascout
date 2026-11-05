@@ -156,25 +156,6 @@
         );
     };
 
-    const infoCard = (
-        label,
-        value
-    ) => {
-        const text =
-            clean(value);
-
-        if (!text) {
-            return '';
-        }
-
-        return `
-            <div class="place-campsite-source-card">
-                <span>${escapeHtml(label)}</span>
-                <strong>${escapeHtml(text)}</strong>
-            </div>
-        `;
-    };
-
     const equipmentMaximumLength = (
         site,
         rows
@@ -416,65 +397,6 @@
         `;
     };
 
-    const sourceMarkup = (
-        site
-    ) => {
-        const cards = [
-            infoCard(
-                'Loop',
-                firstFeature(
-                    site,
-                    'ridb_loop'
-                )
-            ),
-            infoCard(
-                'Type of use',
-                smartCase(
-                    firstFeature(
-                        site,
-                        'ridb_type_of_use'
-                    )
-                )
-            ),
-            infoCard(
-                'Reservable',
-                yesNo(
-                    firstFeature(
-                        site,
-                        'ridb_reservable'
-                    )
-                )
-            ),
-            infoCard(
-                'RIDB updated',
-                firstFeature(
-                    site,
-                    'ridb_last_updated'
-                )
-            )
-        ]
-            .filter(Boolean)
-            .join('');
-
-        if (!cards) {
-            return '';
-        }
-
-        return `
-            <section class="place-campsite-rich-section">
-                <div class="place-campsite-rich-heading">
-                    <h4>Official site information</h4>
-
-                    <span>Recreation.gov / RIDB</span>
-                </div>
-
-                <div class="place-campsite-source-grid">
-                    ${cards}
-                </div>
-            </section>
-        `;
-    };
-
     const polishCoreDetail = (
         detail
     ) => {
@@ -560,15 +482,12 @@
                 payload.site
             );
 
-        const source =
-            sourceMarkup(
-                payload.site
-            );
-
+        // RIDB Loop and Type of Use are now canonical Site Info cards.
+        // Reservable already has a Site pill/question, and RIDB refresh
+        // metadata is not relevant to the visitor-facing summary.
         const markup =
             gallery
-            + equipment
-            + source;
+            + equipment;
 
         if (!markup) {
             return;
@@ -602,8 +521,9 @@
 
             /*
              * Canonical campsite facts belong in the Scout Report below.
-             * Keep this upper area only for site photos, permitted equipment,
-             * and genuinely source-specific RIDB metadata.
+             * Keep this upper area only for Site photos and original
+             * permitted-equipment records. Other official facts belong to
+             * the single canonical Scout Report below.
              */
             grid.remove();
         } else {
