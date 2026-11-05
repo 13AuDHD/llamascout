@@ -54,6 +54,25 @@ function llama_place_report_add_site_fields(
         'points_categories' => [],
     ]);
 
+    // Imported RIDB Loop and Type of Use belong to the same canonical
+    // Site Info inventory as the Site identifier, not a second detail panel.
+    $add('site_loop', 'Loop', 'site_vehicle', 'text', 'details.site_loop', [
+        'maxlength' => 120,
+        'allow_unknown' => true,
+        'report_group' => 'site_info',
+        'report_visibility' => 'public',
+        'counts_toward_completion' => false,
+        'points_categories' => [],
+    ]);
+    $add('site_type_of_use', 'Type of use', 'site_vehicle', 'text', 'details.site_type_of_use', [
+        'maxlength' => 120,
+        'allow_unknown' => true,
+        'report_group' => 'site_info',
+        'report_visibility' => 'public',
+        'counts_toward_completion' => false,
+        'points_categories' => [],
+    ]);
+
     $add('site_accessible', 'Officially marked accessible Site?', 'site_vehicle', 'tri', 'details.site_accessible', [
         'allow_unknown' => true,
         'points_categories' => ['accessibility'],
