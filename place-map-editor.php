@@ -66,7 +66,7 @@ if (
 }
 
 $pageTitle =
-    'Edit Mapped Areas | '
+    'Edit Map | '
     . (string) $place['name']
     . ' | Llama Scout';
 
@@ -85,203 +85,136 @@ require __DIR__ . '/partials/header.php';
 <section
     class="mapped-area-editor"
     data-mapped-area-editor
-    data-place-slug="<?= htmlspecialchars(
-        (string) $place['slug'],
-        ENT_QUOTES,
-        'UTF-8'
-    ) ?>"
-    data-place-latitude="<?= htmlspecialchars(
-        (string) $latitude,
-        ENT_QUOTES,
-        'UTF-8'
-    ) ?>"
-    data-place-longitude="<?= htmlspecialchars(
-        (string) $longitude,
-        ENT_QUOTES,
-        'UTF-8'
-    ) ?>"
-    data-csrf-token="<?= htmlspecialchars(
-        community_csrf_token(),
-        ENT_QUOTES,
-        'UTF-8'
-    ) ?>"
+    data-place-slug="<?= htmlspecialchars((string) $place['slug'], ENT_QUOTES, 'UTF-8') ?>"
+    data-place-name="<?= htmlspecialchars((string) $place['name'], ENT_QUOTES, 'UTF-8') ?>"
+    data-place-latitude="<?= htmlspecialchars((string) $latitude, ENT_QUOTES, 'UTF-8') ?>"
+    data-place-longitude="<?= htmlspecialchars((string) $longitude, ENT_QUOTES, 'UTF-8') ?>"
+    data-csrf-token="<?= htmlspecialchars(community_csrf_token(), ENT_QUOTES, 'UTF-8') ?>"
+    data-map-mode="place"
 >
     <header class="mapped-area-editor-header">
         <div>
-            <p class="eyebrow">
-                Mapped Areas
-            </p>
-
-            <h1>
-                <?= htmlspecialchars(
-                    (string) $place['name'],
-                    ENT_QUOTES,
-                    'UTF-8'
-                ) ?>
-            </h1>
-
+            <p class="eyebrow">Edit Map</p>
+            <h1>Place layout</h1>
             <p>
-                Draw against satellite imagery or collect each boundary point
-                from your device GPS. All geometry is stored as WGS 84
-                coordinates.
+                Draw the Place boundary, define Areas, and place Site markers
+                from one unified editor.
             </p>
         </div>
 
         <a
             class="mapped-area-editor-back"
-            href="/place.php?slug=<?= rawurlencode(
-                (string) $place['slug']
-            ) ?>"
+            href="/place.php?slug=<?= rawurlencode((string) $place['slug']) ?>"
         >
             Back to Place
         </a>
     </header>
 
     <div class="mapped-area-editor-map-card">
-
         <div
-            class="mapped-area-map-toolbar
-                   mapped-area-map-toolbar--draw"
-            aria-label="Drawing controls"
+            class="mapped-area-map-toolbar mapped-area-map-toolbar--draw"
+            aria-label="Map editing controls"
         >
-            <button
-                type="button"
-                data-start-drawing
-            >
-                Draw
-            </button>
-
-            <button
-                type="button"
-                data-finish-drawing
-                disabled
-            >
-                Finish
-            </button>
-
-            <button
-                type="button"
-                data-undo-point
-                disabled
-            >
-                Undo
-            </button>
+            <button type="button" data-start-drawing>Draw boundary</button>
+            <button type="button" data-finish-drawing disabled>Finish</button>
+            <button type="button" data-undo-point disabled>Undo</button>
+            <button type="button" data-site-map-pick hidden>Place Site pin</button>
         </div>
 
         <div
-            class="mapped-area-map-toolbar
-                   mapped-area-map-toolbar--style"
+            class="mapped-area-map-toolbar mapped-area-map-toolbar--style"
             role="group"
             aria-label="Map style"
         >
-            <button
-                type="button"
-                data-map-style="street"
-            >
-                Street
-            </button>
-
-            <button
-                type="button"
-                data-map-style="satellite"
-                class="is-active"
-            >
-                Satellite
-            </button>
-
-            <button
-                type="button"
-                data-map-style="terrain"
-            >
-                Terrain
-            </button>
+            <button type="button" data-map-style="street">Street</button>
+            <button type="button" data-map-style="satellite" class="is-active">Satellite</button>
+            <button type="button" data-map-style="terrain">Terrain</button>
         </div>
 
         <div
             id="mapped-area-editor-map"
             class="mapped-area-editor-map"
-            aria-label="Mapped area editor"
+            aria-label="Place layout editor"
         ></div>
 
-        <div
-            class="mapped-area-editor-point-count"
-            data-point-count
-            hidden
-        >
+        <div class="mapped-area-editor-point-count" data-point-count hidden>
             0 points
         </div>
+
+        <button
+            type="button"
+            class="mapped-area-fit-all"
+            data-fit-all-areas
+            disabled
+        >
+            Fit all
+        </button>
     </div>
 
-    <div class="mapped-area-editor-content">
-
-        <section class="mapped-area-editor-card mapped-area-editor-area-card">
-            <div class="mapped-area-editor-card-heading">
-                <h2>Area details</h2>
-
-                <div class="mapped-area-editor-card-heading-actions">
-                    <span
-                        class="mapped-area-editor-unsaved"
-                        data-unsaved-state
-                        hidden
-                    >
-                        Unsaved
-                    </span>
-
-                    <button
-                        type="button"
-                        data-new-feature
-                    >
-                        New area
-                    </button>
-                </div>
+    <section class="mapped-area-editor-card mapped-area-editor-unified-card">
+        <div class="mapped-area-editor-selection-header">
+            <div>
+                <h2>Edit selection</h2>
+                <p>
+                    Choose what you are editing. Place and Area use boundaries;
+                    Sites use one exact GPS point.
+                </p>
             </div>
 
-            <div class="mapped-area-editor-area-fields">
-                <label>
-                    <span>Type</span>
+            <div class="mapped-area-editor-mode-tabs" role="group" aria-label="Map object type">
+                <button type="button" class="is-active" data-map-mode-button="place">
+                    Place
+                </button>
+                <button type="button" data-map-mode-button="area">
+                    Area
+                </button>
+                <button type="button" data-map-mode-button="site">
+                    Site
+                </button>
+            </div>
+        </div>
 
-                    <select data-feature-type>
-                        <?php foreach (
-                            llama_place_map_feature_types()
-                            as $value => $label
-                        ): ?>
-                            <option
-                                value="<?= htmlspecialchars(
-                                    $value,
-                                    ENT_QUOTES,
-                                    'UTF-8'
-                                ) ?>"
-                            >
-                                <?= htmlspecialchars(
-                                    $label,
-                                    ENT_QUOTES,
-                                    'UTF-8'
-                                ) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </label>
+        <div class="mapped-area-editor-object-panel" data-polygon-editor>
+            <input type="hidden" data-feature-type value="place_boundary">
+
+            <div class="mapped-area-editor-object-fields">
+                <div class="mapped-area-editor-object-identity">
+                    <strong data-object-kind>Place</strong>
+                    <p data-object-explanation>
+                        The green boundary represents this Place.
+                    </p>
+                </div>
 
                 <label>
                     <span>Label</span>
-
                     <input
                         type="text"
                         maxlength="120"
-                        placeholder="Optional, e.g. Main camping area"
                         data-feature-label
+                        value="<?= htmlspecialchars((string) $place['name'], ENT_QUOTES, 'UTF-8') ?>"
                     >
+                </label>
+
+                <label data-area-type-field hidden>
+                    <span>Area type</span>
+                    <select data-area-feature-type>
+                        <option value="camping_area">Camping area</option>
+                        <option value="parking_area">Parking area</option>
+                    </select>
                 </label>
             </div>
 
-            <div
-                class="mapped-area-editor-stay-fields"
-                data-area-details
-                hidden
-            >
+            <div class="mapped-area-editor-place-boundary-note" data-place-boundary-note>
+                <strong>Place boundary</strong>
+                <span>
+                    Every green boundary saved here belongs directly to
+                    <?= htmlspecialchars((string) $place['name'], ENT_QUOTES, 'UTF-8') ?>.
+                </span>
+            </div>
+
+            <div class="mapped-area-editor-stay-fields" data-area-details hidden>
                 <label>
                     <span>Area use</span>
-
                     <select data-area-use>
                         <option value="">Not specified</option>
                     </select>
@@ -289,542 +222,192 @@ require __DIR__ . '/partials/header.php';
 
                 <label data-overnight-status-field hidden>
                     <span>Overnight vehicle stay</span>
-
                     <select data-overnight-status>
                         <option value="">Not specified</option>
-
-                        <?php foreach (
-                            llama_place_map_overnight_status_options()
-                            as $value => $label
-                        ): ?>
-                            <option
-                                value="<?= htmlspecialchars(
-                                    $value,
-                                    ENT_QUOTES,
-                                    'UTF-8'
-                                ) ?>"
-                            >
-                                <?= htmlspecialchars(
-                                    $label,
-                                    ENT_QUOTES,
-                                    'UTF-8'
-                                ) ?>
+                        <?php foreach (llama_place_map_overnight_status_options() as $value => $label): ?>
+                            <option value="<?= htmlspecialchars($value, ENT_QUOTES, 'UTF-8') ?>">
+                                <?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
                 </label>
 
-                <label data-fee-status-field>
-                    <span>Parking cost status</span>
-
-                    <select data-fee-status>
-                        <option value="">Not specified</option>
-
-                        <?php foreach (
-                            llama_place_map_fee_status_options()
-                            as $value => $label
-                        ): ?>
-                            <option
-                                value="<?= htmlspecialchars(
-                                    $value,
-                                    ENT_QUOTES,
-                                    'UTF-8'
-                                ) ?>"
-                            >
-                                <?= htmlspecialchars(
-                                    $label,
-                                    ENT_QUOTES,
-                                    'UTF-8'
-                                ) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </label>
-
-                <p
-                    class="mapped-area-editor-area-note"
-                    data-area-details-note
-                ></p>
+                <p class="mapped-area-editor-area-note" data-area-details-note></p>
             </div>
 
-            <div
-                class="mapped-area-editor-site-fields"
-                data-site-details
-                hidden
-            >
-                <label>
-                    <span>Parent Area</span>
-
-                    <select data-site-parent>
-                        <option value="">Choose an Area</option>
-                    </select>
-                </label>
-
-                <label>
-                    <span>Site pricing class</span>
-
-                    <select data-site-class>
-                        <option value="">No pricing class</option>
-                    </select>
-                </label>
-
-                <label>
-                    <span>Site number / name</span>
-
-                    <input
-                        type="text"
-                        maxlength="60"
-                        placeholder="e.g. 12, A14, Pull-through 3"
-                        data-site-code
-                    >
-                </label>
-
-                <label>
-                    <span>Site type</span>
-
-                    <select data-site-type>
-                        <option value="">Not specified</option>
-
-                        <?php foreach (
-                            llama_place_map_camping_site_type_options()
-                            as $value => $label
-                        ): ?>
-                            <option
-                                value="<?= htmlspecialchars(
-                                    $value,
-                                    ENT_QUOTES,
-                                    'UTF-8'
-                                ) ?>"
-                            >
-                                <?= htmlspecialchars(
-                                    $label,
-                                    ENT_QUOTES,
-                                    'UTF-8'
-                                ) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </label>
-
-                <label>
-                    <span>Parking style</span>
-
-                    <select data-site-parking-style>
-                        <option value="">Not specified</option>
-
-                        <?php foreach (
-                            llama_place_map_camping_site_parking_style_options()
-                            as $value => $label
-                        ): ?>
-                            <option
-                                value="<?= htmlspecialchars(
-                                    $value,
-                                    ENT_QUOTES,
-                                    'UTF-8'
-                                ) ?>"
-                            >
-                                <?= htmlspecialchars(
-                                    $label,
-                                    ENT_QUOTES,
-                                    'UTF-8'
-                                ) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </label>
-
-                <label>
-                    <span>Hookups</span>
-
-                    <select data-site-hookups>
-                        <option value="">Not specified</option>
-
-                        <?php foreach (
-                            llama_place_map_camping_site_hookup_options()
-                            as $value => $label
-                        ): ?>
-                            <option
-                                value="<?= htmlspecialchars(
-                                    $value,
-                                    ENT_QUOTES,
-                                    'UTF-8'
-                                ) ?>"
-                            >
-                                <?= htmlspecialchars(
-                                    $label,
-                                    ENT_QUOTES,
-                                    'UTF-8'
-                                ) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </label>
-
-                <label>
-                    <span>Accessible site</span>
-
-                    <select data-site-accessible>
-                        <option value="">Not specified</option>
-
-                        <?php foreach (
-                            llama_place_map_camping_site_accessible_options()
-                            as $value => $label
-                        ): ?>
-                            <option
-                                value="<?= htmlspecialchars(
-                                    $value,
-                                    ENT_QUOTES,
-                                    'UTF-8'
-                                ) ?>"
-                            >
-                                <?= htmlspecialchars(
-                                    $label,
-                                    ENT_QUOTES,
-                                    'UTF-8'
-                                ) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </label>
-
-                <p class="mapped-area-editor-area-note">
-                    Individual Sites belong to an Area. Put objective Site facts
-                    here. Sensory observations can be added later through Site
-                    reports.
-                </p>
-            </div>
-
-            <div
-                class="mapped-area-editor-summary"
-                data-feature-summary
-                hidden
-            >
+            <div class="mapped-area-editor-summary" data-feature-summary hidden>
                 <div>
                     <span>Points</span>
                     <strong data-summary-points>0</strong>
                 </div>
-
                 <div>
                     <span>Source</span>
                     <strong data-summary-source>Manual</strong>
                 </div>
-
                 <div>
                     <span>GPS accuracy</span>
                     <strong data-summary-accuracy>--</strong>
                 </div>
-
                 <div>
                     <span>Updated</span>
                     <strong data-summary-updated>--</strong>
                 </div>
             </div>
+        </div>
 
-            <p
-                class="mapped-area-editor-help"
-                data-editor-help
-            >
-                Choose Draw on the map and tap around the outside edge, or use
-                device GPS below to collect points while in the field.
+        <div class="mapped-area-editor-site-point-panel" data-site-point-panel hidden>
+            <div class="mapped-area-editor-object-fields">
+                <div class="mapped-area-editor-object-identity">
+                    <strong>Site</strong>
+                    <p>
+                        A Site is one exact location. It does not need its own boundary.
+                    </p>
+                </div>
+
+                <label>
+                    <span>Site</span>
+                    <select data-site-point-target>
+                        <option value="new">New Site</option>
+                    </select>
+                </label>
+
+                <label data-site-point-new-name>
+                    <span>New Site name</span>
+                    <input
+                        type="text"
+                        maxlength="120"
+                        placeholder="e.g. G014, Riverside pullout"
+                        data-site-point-name
+                    >
+                </label>
+            </div>
+
+            <div class="mapped-area-editor-site-coordinates">
+                <label>
+                    <span>Latitude</span>
+                    <input type="text" inputmode="decimal" data-site-point-latitude>
+                </label>
+                <label>
+                    <span>Longitude</span>
+                    <input type="text" inputmode="decimal" data-site-point-longitude>
+                </label>
+            </div>
+
+            <p class="mapped-area-editor-help" data-site-point-status>
+                Select an existing Site or create a new one, then place its exact point.
             </p>
+        </div>
+
+        <div class="mapped-area-editor-tool-grid">
+            <section class="mapped-area-editor-tool-panel">
+                <div class="mapped-area-editor-tool-heading">
+                    <div>
+                        <h3>Device GPS</h3>
+                        <p>Collect boundary points or set the selected Site location.</p>
+                    </div>
+                    <span class="mapped-area-gps-state" data-gps-state>Off</span>
+                </div>
+
+                <div class="mapped-area-gps-reading" data-gps-reading hidden>
+                    <div>
+                        <span>Latitude</span>
+                        <strong data-gps-latitude>--</strong>
+                    </div>
+                    <div>
+                        <span>Longitude</span>
+                        <strong data-gps-longitude>--</strong>
+                    </div>
+                    <div>
+                        <span>Accuracy</span>
+                        <strong data-gps-accuracy>--</strong>
+                    </div>
+                </div>
+
+                <div class="mapped-area-gps-actions">
+                    <button type="button" data-start-gps>Start GPS</button>
+                    <button type="button" data-stop-gps disabled>Stop GPS</button>
+                    <button type="button" data-add-gps-point disabled>Add GPS point</button>
+                    <button type="button" data-center-gps disabled>Center on me</button>
+                </div>
+            </section>
+
+            <section class="mapped-area-editor-tool-panel" data-shape-tools>
+                <div class="mapped-area-editor-tool-heading">
+                    <div>
+                        <h3>Edit shape</h3>
+                        <p>Modify the selected Place boundary or Area.</p>
+                    </div>
+                </div>
+
+                <div class="mapped-area-selected-point" data-selected-point hidden>
+                    <div>
+                        <span>Point</span>
+                        <strong data-selected-point-number>--</strong>
+                    </div>
+                    <div>
+                        <span>Latitude</span>
+                        <strong data-selected-point-latitude>--</strong>
+                    </div>
+                    <div>
+                        <span>Longitude</span>
+                        <strong data-selected-point-longitude>--</strong>
+                    </div>
+                    <div>
+                        <span>Source</span>
+                        <strong data-selected-point-source>--</strong>
+                    </div>
+                </div>
+
+                <div class="mapped-area-shape-actions">
+                    <button type="button" data-remove-point disabled>Remove point</button>
+                    <button type="button" data-use-gps-point disabled>Replace with GPS</button>
+                    <button type="button" data-move-area disabled>Move shape</button>
+                    <button type="button" data-revert-feature disabled>Revert changes</button>
+                </div>
+            </section>
+        </div>
+
+        <div class="mapped-area-editor-records">
+            <div class="mapped-area-editor-card-heading">
+                <div>
+                    <h3>Mapped records</h3>
+                    <p class="mapped-area-editor-card-subtitle">
+                        Select a Place boundary or Area to edit it. Site markers are selected in Site mode.
+                    </p>
+                </div>
+
+                <button type="button" data-new-feature>New boundary / Area</button>
+            </div>
+
+            <div class="mapped-area-editor-list" data-feature-list>
+                <p>Loading map records...</p>
+            </div>
+        </div>
+
+        <p class="mapped-area-editor-help" data-editor-help>
+            Draw the Place boundary on the map, or use Device GPS to collect its points.
+        </p>
+
+        <div class="mapped-area-editor-footer">
+            <div>
+                <span class="mapped-area-editor-unsaved" data-unsaved-state hidden>Unsaved</span>
+                <p class="mapped-area-editor-status" data-editor-status role="status" aria-live="polite"></p>
+            </div>
 
             <div class="mapped-area-editor-save-actions">
-                <button
-                    type="button"
-                    class="is-primary"
-                    data-save-feature
-                    disabled
-                >
-                    Save area
-                </button>
-
-                <button
-                    type="button"
-                    class="is-danger"
-                    data-delete-feature
-                    disabled
-                >
-                    Delete
-                </button>
+                <button type="button" class="is-danger" data-delete-feature disabled>Delete</button>
+                <button type="button" class="is-primary" data-save-feature disabled>Save changes</button>
+                <button type="button" class="is-primary" data-save-site-point hidden>Save Site point</button>
             </div>
-
-            <p
-                class="mapped-area-editor-status"
-                data-editor-status
-                role="status"
-                aria-live="polite"
-            ></p>
-        </section>
-
-        <section
-            class="mapped-area-editor-card mapped-area-editor-site-class-card"
-            data-site-classes-section
-            hidden
-        >
-            <div class="mapped-area-editor-card-heading">
-                <div>
-                    <h2>Site pricing classes</h2>
-
-                    <p class="mapped-area-editor-card-subtitle">
-                        Create reusable campground pricing groups such as
-                        Standard Back-In or Large Pull-Through.
-                    </p>
-                </div>
-
-                <button
-                    type="button"
-                    data-add-site-class
-                >
-                    Add class
-                </button>
-            </div>
-
-            <div
-                class="mapped-area-editor-site-class-list"
-                data-site-class-list
-            ></div>
-
-            <p
-                class="mapped-area-editor-help"
-                data-site-class-empty
-            >
-                No site pricing classes have been entered for this Area yet.
-            </p>
-
-            <p class="mapped-area-editor-help">
-                Individual Sites can inherit a pricing class, then override
-                any rate that is genuinely different for that specific Site.
-            </p>
-        </section>
-
-        <section
-            class="mapped-area-editor-card mapped-area-editor-rate-card"
-            data-rate-section
-            hidden
-        >
-            <div class="mapped-area-editor-card-heading">
-                <div>
-                    <h2>Rates</h2>
-                    <p class="mapped-area-editor-card-subtitle">
-                        General nightly pricing for this Area, or Site-specific overrides for an individual Site.
-                    </p>
-                </div>
-
-                <button
-                    type="button"
-                    data-add-rate
-                >
-                    Add rate
-                </button>
-            </div>
-
-            <div
-                class="mapped-area-editor-rate-inheritance"
-                data-rate-inheritance
-                hidden
-            ></div>
-
-            <div
-                class="mapped-area-editor-rate-list"
-                data-rate-list
-            ></div>
-
-            <p
-                class="mapped-area-editor-help"
-                data-rate-empty
-            >
-                No rates have been entered for this area yet.
-            </p>
-
-            <p class="mapped-area-editor-help">
-                Standard, weekday, weekend, holiday, and recurring seasonal
-                nightly rates can be stored here. Seasonal dates use MM-DD so
-                the same season can apply every year.
-            </p>
-        </section>
-
-        <section class="mapped-area-editor-card">
-            <div class="mapped-area-editor-card-heading">
-                <h2>Edit shape</h2>
-            </div>
-
-            <div
-                class="mapped-area-selected-point"
-                data-selected-point
-                hidden
-            >
-                <div>
-                    <span>Selected point</span>
-                    <strong data-selected-point-number>--</strong>
-                </div>
-
-                <div>
-                    <span>Latitude</span>
-                    <strong data-selected-point-latitude>--</strong>
-                </div>
-
-                <div>
-                    <span>Longitude</span>
-                    <strong data-selected-point-longitude>--</strong>
-                </div>
-
-                <div>
-                    <span>Source</span>
-                    <strong data-selected-point-source>--</strong>
-                </div>
-            </div>
-
-            <div class="mapped-area-shape-actions">
-                <button
-                    type="button"
-                    data-remove-point
-                    disabled
-                >
-                    Remove point
-                </button>
-
-                <button
-                    type="button"
-                    data-use-gps-point
-                    disabled
-                >
-                    Replace with GPS
-                </button>
-
-                <button
-                    type="button"
-                    data-move-area
-                    disabled
-                >
-                    Move whole area
-                </button>
-
-                <button
-                    type="button"
-                    data-revert-feature
-                    disabled
-                >
-                    Revert changes
-                </button>
-            </div>
-
-            <p class="mapped-area-editor-help">
-                Tap a corner to select it. Drag corners to adjust them.
-                Tap a small + between corners to insert another point.
-                Move whole area repositions the polygon without changing
-                its shape.
-            </p>
-        </section>
-
-        <section class="mapped-area-editor-card">
-            <div class="mapped-area-editor-card-heading">
-                <h2>Device GPS</h2>
-
-                <span
-                    class="mapped-area-gps-state"
-                    data-gps-state
-                >
-                    Off
-                </span>
-            </div>
-
-            <div
-                class="mapped-area-gps-reading"
-                data-gps-reading
-                hidden
-            >
-                <div>
-                    <span>Latitude</span>
-                    <strong data-gps-latitude>--</strong>
-                </div>
-
-                <div>
-                    <span>Longitude</span>
-                    <strong data-gps-longitude>--</strong>
-                </div>
-
-                <div>
-                    <span>Accuracy</span>
-                    <strong data-gps-accuracy>--</strong>
-                </div>
-            </div>
-
-            <div class="mapped-area-gps-actions">
-                <button
-                    type="button"
-                    data-start-gps
-                >
-                    Start GPS
-                </button>
-
-                <button
-                    type="button"
-                    data-stop-gps
-                    disabled
-                >
-                    Stop GPS
-                </button>
-
-                <button
-                    type="button"
-                    class="is-primary"
-                    data-add-gps-point
-                    disabled
-                >
-                    Add GPS point
-                </button>
-
-                <button
-                    type="button"
-                    data-center-gps
-                    disabled
-                >
-                    Center on me
-                </button>
-            </div>
-
-            <p class="mapped-area-editor-help">
-                Keep GPS running while walking the boundary. At each corner
-                or meaningful bend, stop and choose Add GPS point. The
-                reported accuracy is saved with the point.
-            </p>
-        </section>
-
-        <section class="mapped-area-editor-card mapped-area-editor-existing">
-            <div class="mapped-area-editor-card-heading">
-                <h2>Existing areas</h2>
-
-                <button
-                    type="button"
-                    data-fit-all-areas
-                    disabled
-                >
-                    Fit all
-                </button>
-            </div>
-
-            <div
-                class="mapped-area-editor-list"
-                data-feature-list
-            >
-                <p>Loading mapped areas...</p>
-            </div>
-        </section>
-
-    </div>
+        </div>
+    </section>
 </section>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="/js/place-map-editor/site-fields.js"></script>
-<script src="/js/place-map-editor/pricing-site-classes.js"></script>
-<script src="/js/place-map-editor/pricing-rates.js"></script>
-<script src="/js/place-map-editor/pricing.js"></script>
-<script src="/js/place-map-editor/pricing-inheritance.js"></script>
 <script src="/js/place-map-editor/feature-state.js"></script>
 <script src="/js/place-map-editor/geometry.js"></script>
 <script src="/js/place-map-editor/gps.js"></script>
 <script src="/js/place-map-editor/map-styles.js"></script>
-<script src="/js/place-map-editor/cost-status.js"></script>
 <script src="/js/place-map-editor.js"></script>
 
 <?php require __DIR__ . '/partials/footer.php'; ?>
