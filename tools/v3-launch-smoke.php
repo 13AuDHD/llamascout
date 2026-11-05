@@ -1628,6 +1628,58 @@ $check('Season selector uses authorized existing Place and Site APIs', static fu
         'Verified Site closure precedence missing');
 });
 
+$check('Bulk Site season status accepts only selected canonical Site IDs', static function () use ($assert): void {
+    require_once dirname(__DIR__) . '/app/place-report/season-answers.php';
+
+    $valid = llama_season_bulk_site_ids(['26', '14', '26', '15']);
+    $assert($valid === [14, 15, 26],
+        'Site status selection must sort and deduplicate real database IDs');
+    foreach ([
+        [], ['0'], ['-1'], ['1 OR 1=1'], [['1']], [1.2],
+        array_fill(0, 251, '42'),
+    ] as $bad) {
+        $rejected = false;
+        try {
+            llama_season_bulk_site_ids($bad);
+        } catch (InvalidArgumentException) {
+            $rejected = true;
+        }
+        $assert($rejected, 'Invalid or oversized seasonal Site batch was accepted');
+    }
+    $source = file_get_contents(dirname(__DIR__) . '/app/place-report/season-answers.php');
+    $assert(is_string($source)
+        && strpos($source, 'function llama_season_bulk_site_statuses(') !== false,
+        'Bulk Site status writer missing');
+    $assert(strpos($source, 'FROM place_campsites') !== false
+        && strpos($source, 'WHERE place_id = ? AND is_active = 1') !== false,
+        'Bulk Site writer must verify active Place ownership');
+    $assert(strpos($source, 'target_source = ? AND target_id IN (') !== false,
+        'Bulk Site writer must target canonical Site records');
+    $assert(strpos($source, "if (!in_array(\$status, ['open', 'closed', 'inherit'], true))") !== false,
+        'Bulk status must reject arbitrary values');
+});
+
+$check('Admin bulk Site form is separate from normal and seasonal question saves', static function () use ($assert): void {
+    $report = file_get_contents(dirname(__DIR__) . '/admin/partials/place-report-season-answers.php');
+    $bulk = file_get_contents(dirname(__DIR__) . '/admin/partials/place-season-bulk-status.php');
+    $handler = file_get_contents(dirname(__DIR__) . '/app/admin-place-actions.php');
+    $script = file_get_contents(dirname(__DIR__) . '/js/admin/place-season-bulk-status.js');
+    $assert(is_string($report) && is_string($bulk) && is_string($handler) && is_string($script),
+        'Bulk seasonal Site controls missing');
+    $assert(strpos($report, "require __DIR__ . '/place-season-bulk-status.php'") !== false,
+        'Bulk Site editor not included in the saved-season flow');
+    $assert(strpos($bulk, 'value="save-season-bulk-sites"') !== false
+        && strpos($bulk, 'name="csrf_token"') !== false
+        && strpos($bulk, 'name="season_site_ids[]"') !== false,
+        'Bulk Site editor must use an independent CSRF-protected form');
+    $assert(strpos($handler, "if (\$action === 'save-season-bulk-sites')") !== false
+        && strpos($handler, 'llama_season_bulk_site_statuses(') !== false,
+        'Bulk seasonal Site requests must use the validated writer');
+    $assert(strpos($script, 'const limit = 250;') !== false
+        && strpos($script, 'data-season-bulk-select-visible') !== false,
+        'Bulk Site selector must enforce a batch limit');
+});
+
 $check('Canonical field contract', static function () use ($assert): void {
     $issues = llama_place_report_contract_issues();
     $assert(!$issues, 'Contract issues: ' . implode(' | ', array_slice($issues, 0, 12)) . ' (total ' . count($issues) . ')');
