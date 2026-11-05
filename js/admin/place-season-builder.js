@@ -17,6 +17,7 @@
     const questions = Array.isArray(config.questions) ? config.questions : [];
     const definitions = new Map(questions.map(q => [String(q.key), q]));
     const initialRows = Array.isArray(config.rows) ? config.rows : [];
+    const initialRemovals = Array.isArray(config.removals) ? config.removals : [];
     const list = form.querySelector('[data-season-builder-rows]');
     const save = form.querySelector('[data-season-builder-save]');
     const counter = form.querySelector('[data-season-builder-change-count]');
@@ -31,7 +32,7 @@
             .map(node => node.value).sort().join('|');
         return checked !== loadedTargets;
     };
-    const removed = new Set();
+    const removed = new Set(initialRemovals.filter(key => definitions.has(String(key))));
     let sequence = 0;
 
     const textValue = value => {
@@ -112,7 +113,7 @@
         row._originalKey = initialKey;
         row._originalValue = textValue(initialValue);
         row._mixed = !!data.mixed;
-        row._dirty = false;
+        row._dirty = data.dirty === true;
 
         const question = buildQuestionSelect(initialKey);
         const answerSlot = document.createElement('div');
@@ -206,8 +207,12 @@
     function refresh() {
         const {changes, deletions} = pending();
         const total = changes.length + deletions.size;
-        counter.textContent = total + (total === 1 ? ' change' : ' changes');
         const selectionChanged = selectedTargetsChanged();
+        counter.textContent = selectionChanged
+            ? 'Selection changed: load conditions before saving'
+            : total === 0
+                ? 'No unsaved changes. Choose a question and answer to enable Save.'
+                : total + (total === 1 ? ' unsaved change' : ' unsaved changes');
         save.disabled = total === 0 || selectionChanged;
         if (hint) {
             hint.textContent = selectionChanged
