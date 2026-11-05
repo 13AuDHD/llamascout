@@ -929,78 +929,6 @@ $renderContributionPrompt =
         <?php
     };
 
-/*
- * Warning rules come from the shared Scout Report runtime. Keep a stable
- * container in the page even when the Place itself has no warnings so an Area
- * or Site selection can reveal its own warning set without rebuilding layout.
- */
-$warnings =
-    $placeReportCanViewCommunity
-        ? llama_place_report_quick_warnings(
-            $placeReportData
-        )
-        : [];
-?>
-    <section
-        class="scout-report-section scout-report-warning-section"
-        data-report-warnings
-        <?= $warnings ? '' : 'hidden' ?>
-    >
-        <h3>
-            <?= llama_icon('alert-triangle') ?>
-            Quick warnings
-        </h3>
-
-        <p
-            class="scout-report-summary"
-            data-report-warning-summary
-        >
-            Important conditions reported for this Place.
-        </p>
-
-        <div
-            class="scout-report-grid"
-            data-report-warning-grid
-        >
-            <?php foreach ($warnings as $key => $warning): ?>
-                <?php
-                $warningIcon =
-                    $localIcon(
-                        (string) (
-                            $warning['icon']
-                            ?? 'alert-triangle'
-                        ),
-                        $key
-                    );
-                ?>
-
-                <div
-                    class="scout-report-item scout-report-value-item scout-report-warning-item"
-                >
-                    <div class="scout-report-value-content">
-                        <span>
-                            <?= $e(
-                                (string) (
-                                    $warning['label']
-                                    ?? 'Warning'
-                                )
-                            ) ?>
-                        </span>
-
-                        <strong>Warning</strong>
-                    </div>
-
-                    <?= llama_icon(
-                        $warningIcon,
-                        [
-                            'class' => 'scout-report-value-icon',
-                        ]
-                    ) ?>
-                </div>
-            <?php endforeach; ?>
-        </div>
-    </section>
-
 <script
     src="/js/place-report-warnings.js"
     defer
@@ -1211,6 +1139,36 @@ foreach (
         }
     }
     ?>
+    <?php if (
+        $placeReportReadMode === 'scout-report'
+        && (string) $sectionKey === 'safety_public'
+    ): ?>
+        <section
+            class="scout-report-section scout-report-warning-section scout-report-scope-site"
+            data-report-warnings
+            data-report-page="site"
+            data-report-scopes="site"
+            hidden
+        >
+            <h3>
+                <?= llama_icon('alert-triangle') ?>
+                Quick warnings
+            </h3>
+
+            <p
+                class="scout-report-summary"
+                data-report-warning-summary
+            >
+                Important conditions reported for this Site.
+            </p>
+
+            <div
+                class="scout-report-grid"
+                data-report-warning-grid
+            ></div>
+        </section>
+    <?php endif; ?>
+
     <section
         class="scout-report-section<?= $placeReportReadMode === 'scout-report' ? ' ' . $reportScopeClass : '' ?>"
         <?php if (
