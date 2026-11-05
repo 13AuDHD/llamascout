@@ -21,6 +21,19 @@ $availableSeasons = array_values(array_filter(
         </span>
     </header>
 
+    <?php if (($action ?? '') === 'save-season-builder' && ($error ?? '') !== ''): ?>
+        <div class="admin-place-seasons-message is-error" role="alert"
+             id="season-save-feedback">
+            <strong>Seasonal changes were not saved.</strong>
+            <?= $e((string) $error) ?>
+        </div>
+    <?php elseif ((string) ($_GET['saved'] ?? '') === 'season-builder'): ?>
+        <div class="admin-place-seasons-message is-success" role="status"
+             id="season-save-feedback">
+            Seasonal changes saved for the selected reporting targets.
+        </div>
+    <?php endif; ?>
+
     <?php if (!$availableSeasons): ?>
         <p class="admin-place-seasons-message">
             Save an active season above before editing seasonal conditions.
@@ -73,6 +86,47 @@ $availableSeasons = array_values(array_filter(
             $seasonRows = llama_season_builder_existing(
                 $db, $placeId, $selectedSeasonId, $selectedTargets, $seasonQuestions
             );
+            // A rejected POST remains on this page. Restore the submitted
+            // changes so the editor never silently discards someone's work.
+            $seasonPendingRemovals = [];
+            if ($buildingFailedPost) {
+                $draft = [];
+                foreach ($seasonRows as $row) {
+                    if (isset($seasonQuestions[(string) ($row['key'] ?? '')])) {
+                        $draft[(string) $row['key']] = $row;
+                    }
+                }
+                $requestedRemoval = $_POST['season_removals'] ?? [];
+                if (is_array($requestedRemoval)) {
+                    foreach ($requestedRemoval as $key) {
+                        if (is_string($key) && isset($seasonQuestions[$key])) {
+                            unset($draft[$key]);
+                            $seasonPendingRemovals[$key] = $key;
+                        }
+                    }
+                }
+                $submitted = $_POST['season_changes'] ?? [];
+                if (is_array($submitted)) {
+                    foreach (array_slice($submitted, 0, 100) as $row) {
+                        if (!is_array($row)) {
+                            continue;
+                        }
+                        $key = (string) ($row['key'] ?? '');
+                        $raw = $row['value'] ?? null;
+                        if (!isset($seasonQuestions[$key]) || !is_scalar($raw)) {
+                            continue;
+                        }
+                        $draft[$key] = [
+                            'key' => $key,
+                            'value' => (string) $raw,
+                            'mixed' => false,
+                            'dirty' => true,
+                        ];
+                        unset($seasonPendingRemovals[$key]);
+                    }
+                }
+                $seasonRows = array_values($draft);
+            }
         } catch (Throwable $exception) {
             $loadError = $exception instanceof InvalidArgumentException
                 ? $exception->getMessage()
@@ -201,7 +255,7 @@ $availableSeasons = array_values(array_filter(
                 </label>
 
                 <div class="admin-place-season-builder-footer">
-                    <span data-season-builder-change-count>0 changes</span>
+                    <span data-season-builder-change-count role="status">Loading seasonal editor…</span>
                     <button type="submit" class="admin-button" data-season-builder-save
                             disabled>Save seasonal changes</button>
                 </div>
@@ -209,6 +263,7 @@ $availableSeasons = array_values(array_filter(
                     [
                         'questions' => array_values($seasonQuestions),
                         'rows' => $seasonRows,
+                        'removals' => array_values($seasonPendingRemovals ?? []),
                         'targets' => $selectedCount,
                     ],
                     JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
