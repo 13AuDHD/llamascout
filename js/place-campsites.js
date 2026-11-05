@@ -603,6 +603,9 @@
 
     const closureStatus = (site) => {
         if (site?.is_closed !== true) {
+            if (site?.place_verified_closed === true) {
+                return 'Place closed (verified)';
+            }
             return site?.seasonal_operating_status === 'closed'
                 ? 'Normally closed this season'
                 : '';
@@ -686,7 +689,7 @@
             data-campsite-detail-id="${escapeHtml(site.feature_id)}"
         >
             ${closureDetails(site)}
-            ${!site.is_closed && site.seasonal_operating_status === 'open'
+            ${!site.is_closed && !site.place_verified_closed && site.seasonal_operating_status === 'open'
                 ? '<aside class="place-campsite-seasonal-open" role="status">Normally open during this season. Check current conditions before traveling.</aside>'
                 : ''}
         </article>
