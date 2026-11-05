@@ -11,6 +11,12 @@ on:
       - 'admin/place.php'
       - 'admin/partials/place-report-seasons.php'
       - 'admin/partials/place-report-season-answers.php'
+      - 'api/place-campsites.php'
+      - 'api/place-campsite-detail.php'
+      - 'partials/place/scout-report/index.php'
+      - 'partials/place-report/read-only.php'
+      - 'js/place-campsites.js'
+      - 'js/place-report-seasons.js'
   pull_request:
     branches: [main]
     paths:
@@ -38,5 +44,14 @@ jobs:
           php -l admin/place.php
           php -l admin/partials/place-report-seasons.php
           php -l admin/partials/place-report-season-answers.php
+          php -l app/place-report/season-public.php
+          php -l api/place-campsites.php
+          php -l api/place-campsite-detail.php
+          php -l partials/place/scout-report/index.php
+          php -l partials/place-report/read-only.php
+      - name: JavaScript syntax check
+        run: |
+          node --check js/place-campsites.js
+          node --check js/place-report-seasons.js
       - name: Run V3 reporting smoke tests
         run: php tools/v3-launch-smoke.php
