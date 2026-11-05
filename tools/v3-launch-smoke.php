@@ -1299,6 +1299,61 @@ $check('Invalid scoped source rejected', static function () use ($assert): void 
     catch (InvalidArgumentException) { return; }
     $assert(false, 'Unknown source accepted');
 });
+$check('Unified Place map editor contract', static function () use ($assert): void {
+    $page = file_get_contents(dirname(__DIR__) . '/place-map-editor.php');
+    $endpoint = file_get_contents(dirname(__DIR__) . '/app/place-map-features-endpoint.php');
+    $script = file_get_contents(dirname(__DIR__) . '/js/place-map-editor.js');
+
+    $assert(is_string($page), 'Unable to inspect unified map editor page');
+    $assert(is_string($endpoint), 'Unable to inspect map feature endpoint');
+    $assert(is_string($script), 'Unable to inspect unified map editor script');
+
+    foreach (['place', 'area', 'site'] as $mode) {
+        $assert(
+            strpos($page, 'data-map-mode-button="' . $mode . '"') !== false,
+            'Unified map editor is missing mode: ' . $mode
+        );
+    }
+
+    $assert(
+        strpos($page, 'data-site-point-panel') !== false
+        && strpos($page, 'data-save-site-point') !== false,
+        'Unified map editor is missing canonical Site point controls'
+    );
+
+    $assert(
+        strpos($page, 'Site pricing classes') === false
+        && strpos($page, '<h2>Rates</h2>') === false
+        && strpos($page, 'pricing-rates.js') === false
+        && strpos($page, 'pricing-site-classes.js') === false,
+        'Pricing controls are still exposed in the map editor'
+    );
+
+    $assert(
+        strpos($endpoint, "if (\$action === 'save_site_point')") !== false
+        && strpos($endpoint, 'llama_place_map_api_sites') !== false,
+        'Map endpoint does not support canonical Site point persistence'
+    );
+
+    $assert(
+        strpos($endpoint, "!array_key_exists('rates', \$input)") !== false
+        && strpos($endpoint, "!array_key_exists('site_classes', \$input)") !== false,
+        'Map save no longer preserves pricing that this editor does not control'
+    );
+
+    $assert(
+        strpos($script, "'createPricing'") === false
+        && strpos($script, "'createSiteFields'") === false,
+        'Unified map editor still requires retired pricing/Site-polygon modules'
+    );
+
+    $assert(
+        strpos($script, "editorMode === 'site'") !== false
+        && strpos($script, "action:\n                            'save_site_point'") !== false,
+        'Site mode is not wired to point persistence'
+    );
+});
+
 $check('Canonical field contract', static function () use ($assert): void {
     $issues = llama_place_report_contract_issues();
     $assert(!$issues, 'Contract issues: ' . implode(' | ', array_slice($issues, 0, 12)) . ' (total ' . count($issues) . ')');

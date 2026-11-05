@@ -46,6 +46,30 @@ function llama_place_map_api_features(
     );
 }
 
+function llama_place_map_api_sites(
+    PDO $db,
+    int $placeId
+): array {
+    return array_values(array_map(
+        static fn (array $site): array => [
+            'id' => (int) ($site['id'] ?? 0),
+            'display_name' => (string) ($site['display_name'] ?? 'Site'),
+            'site_code' => (string) ($site['site_code'] ?? ''),
+            'site_name' => (string) ($site['site_name'] ?? ''),
+            'latitude' => isset($site['latitude']) && is_numeric($site['latitude'])
+                ? (float) $site['latitude']
+                : null,
+            'longitude' => isset($site['longitude']) && is_numeric($site['longitude'])
+                ? (float) $site['longitude']
+                : null,
+            'map_feature_id' => isset($site['map_feature_id']) && is_numeric($site['map_feature_id'])
+                ? (int) $site['map_feature_id']
+                : null,
+        ],
+        llama_place_campsites($db, $placeId)
+    ));
+}
+
 function llama_place_map_api_stats(
     PDO $db,
     int $placeId
@@ -500,6 +524,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 $db,
                 $placeId
             ),
+
+        'campsites' =>
+            llama_place_map_api_sites(
+                $db,
+                $placeId
+            ),
     ]);
 }
 
@@ -559,6 +589,129 @@ $action =
     );
 
 try {
+    if ($action === 'save_site_point') {
+        $siteId = (int) ($input['site_id'] ?? 0);
+        $siteName = trim((string) ($input['site_name'] ?? ''));
+        $latitudeText = trim((string) ($input['latitude'] ?? ''));
+        $longitudeText = trim((string) ($input['longitude'] ?? ''));
+        $decimal = '/^-?[0-9]{1,3}(?:\\.[0-9]{1,8})?$/D';
+
+        if (
+            preg_match($decimal, $latitudeText) !== 1
+            || preg_match($decimal, $longitudeText) !== 1
+        ) {
+            throw new InvalidArgumentException(
+                'Enter a valid decimal latitude and longitude for the Site.'
+            );
+        }
+
+        $siteLatitude = (float) $latitudeText;
+        $siteLongitude = (float) $longitudeText;
+
+        if (
+            $siteLatitude < -90 || $siteLatitude > 90
+            || $siteLongitude < -180 || $siteLongitude > 180
+            || ($siteLatitude === 0.0 && $siteLongitude === 0.0)
+        ) {
+            throw new InvalidArgumentException(
+                'The Site GPS point is outside the valid coordinate range.'
+            );
+        }
+
+        $ownsTransaction = !$db->inTransaction();
+        if ($ownsTransaction) {
+            $db->beginTransaction();
+        }
+
+        try {
+            if ($siteId > 0) {
+                $siteStmt = $db->prepare(
+                    'SELECT id FROM place_campsites
+                     WHERE id = ? AND place_id = ? AND is_active = 1
+                     FOR UPDATE'
+                );
+                $siteStmt->execute([$siteId, $placeId]);
+
+                if (!$siteStmt->fetchColumn()) {
+                    throw new InvalidArgumentException(
+                        'The selected Site is not available for this Place.'
+                    );
+                }
+
+                $update = $db->prepare(
+                    'UPDATE place_campsites
+                     SET latitude = ?, longitude = ?
+                     WHERE id = ? AND place_id = ? AND is_active = 1'
+                );
+                $update->execute([
+                    $siteLatitude,
+                    $siteLongitude,
+                    $siteId,
+                    $placeId,
+                ]);
+            } else {
+                if ($siteName === '' || mb_strlen($siteName) > 120) {
+                    throw new InvalidArgumentException(
+                        'Enter a Site name of 120 characters or fewer.'
+                    );
+                }
+
+                $duplicate = $db->prepare(
+                    'SELECT id FROM place_campsites
+                     WHERE place_id = ? AND is_active = 1
+                       AND (site_name = ? OR site_code = ?)
+                     LIMIT 1'
+                );
+                $duplicate->execute([$placeId, $siteName, $siteName]);
+
+                if ($duplicate->fetchColumn()) {
+                    throw new InvalidArgumentException(
+                        'A Site with this name already exists. Select that Site instead.'
+                    );
+                }
+
+                $insert = $db->prepare(
+                    'INSERT INTO place_campsites
+                     (place_id, site_name, latitude, longitude,
+                      source_provider, source_external_id, is_active)
+                     VALUES (?, ?, ?, ?, ?, ?, 1)'
+                );
+                $insert->execute([
+                    $placeId,
+                    $siteName,
+                    $siteLatitude,
+                    $siteLongitude,
+                    'Llama Scout',
+                    'manual-gps:' . bin2hex(random_bytes(8)),
+                ]);
+
+                $siteId = (int) $db->lastInsertId();
+
+                if ($siteId < 1) {
+                    throw new RuntimeException(
+                        'The new Site could not be created.'
+                    );
+                }
+            }
+
+            if ($ownsTransaction) {
+                $db->commit();
+            }
+        } catch (Throwable $exception) {
+            if ($ownsTransaction && $db->inTransaction()) {
+                $db->rollBack();
+            }
+            throw $exception;
+        }
+
+        llama_place_map_api_json([
+            'ok' => true,
+            'site_id' => $siteId,
+            'features' => llama_place_map_api_features($db, $placeId),
+            'campsites' => llama_place_map_api_sites($db, $placeId),
+        ]);
+    }
+
     if ($action === 'delete') {
         $featureId =
             (int) (
@@ -665,6 +818,36 @@ try {
                 )
             );
 
+        $existingFeatureId = (int) ($input['feature_id'] ?? 0);
+        $existingFeature = null;
+
+        if (
+            $existingFeatureId > 0
+            && (
+                !array_key_exists('rates', $input)
+                || !array_key_exists('site_classes', $input)
+            )
+        ) {
+            foreach (llama_place_map_api_features($db, $placeId) as $candidate) {
+                if ((int) ($candidate['id'] ?? 0) === $existingFeatureId) {
+                    $existingFeature = $candidate;
+                    break;
+                }
+            }
+        }
+
+        $ratesInput = array_key_exists('rates', $input)
+            ? $input['rates']
+            : (is_array($existingFeature['rates'] ?? null)
+                ? $existingFeature['rates']
+                : []);
+
+        $siteClassesInput = array_key_exists('site_classes', $input)
+            ? $input['site_classes']
+            : (is_array($existingFeature['site_classes'] ?? null)
+                ? $existingFeature['site_classes']
+                : []);
+
         $featureId =
             llama_place_map_feature_save(
                 $db,
@@ -673,10 +856,7 @@ try {
                 $featureType,
                 $featureLabel,
                 $geometry,
-                (int) (
-                    $input['feature_id']
-                    ?? 0
-                ),
+                $existingFeatureId,
                 (string) (
                     $input['source_type']
                     ?? 'manual'
@@ -687,10 +867,8 @@ try {
                     ?? [],
                 $areaDetails,
                 $siteDetails,
-                $input['rates']
-                    ?? [],
-                $input['site_classes']
-                    ?? []
+                $ratesInput,
+                $siteClassesInput
             );
 
         if ($featureType === 'camping_site') {
@@ -742,6 +920,12 @@ try {
 
         'features' =>
             llama_place_map_api_features(
+                $db,
+                $placeId
+            ),
+
+        'campsites' =>
+            llama_place_map_api_sites(
                 $db,
                 $placeId
             ),

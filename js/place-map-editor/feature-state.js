@@ -48,7 +48,9 @@
             feeStatusLabels,
             overnightStatusLabels,
             getSiteDetailLabels,
-            rateMoney
+            rateMoney,
+            onFeatureSelected,
+            onEditorReset
         }) => {
             const currentFeatures =
                 () =>
@@ -872,6 +874,7 @@
 
                     renderExistingLayers?.();
                     renderFeatureList();
+                    onEditorReset?.();
                 };
 
             const selectFeature =
@@ -980,6 +983,7 @@
                         true
                     );
 
+                    onFeatureSelected?.(feature);
                     setStatus?.('');
 
                     renderExistingLayers?.();
