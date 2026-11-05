@@ -1907,9 +1907,16 @@
                         feature_id:
                             selectedFeatureId,
 
+                        // A Place perimeter must never silently become an
+                        // Area because the hidden feature type is unset.
                         feature_type:
-                            featureType?.value
-                            || 'camping_area',
+                            editorMode === 'place'
+                                ? 'place_boundary'
+                                : (
+                                    areaFeatureType?.value === 'parking_area'
+                                        ? 'parking_area'
+                                        : 'camping_area'
+                                ),
 
                         label:
                             featureLabel?.value
