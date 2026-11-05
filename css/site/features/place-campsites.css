@@ -253,3 +253,39 @@
     font-size: .78rem;
     line-height: 1.45;
 }
+
+
+/* Status pills are information, not live reservation availability. */
+.place-campsite-row-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    align-items: center;
+    width: 100%;
+}
+.place-campsite-status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 9px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: .72rem;
+    font-weight: 800;
+    line-height: 1.3;
+    white-space: nowrap;
+}
+.place-campsite-status-badge.is-first-come {
+    color: #f0c36b;
+    border-color: color-mix(in srgb, #c78922 65%, var(--border));
+    background: color-mix(in srgb, #c78922 13%, var(--background));
+}
+.place-campsite-status-badge.is-reservable {
+    color: #76cda0;
+    border-color: color-mix(in srgb, #27905d 65%, var(--border));
+    background: color-mix(in srgb, #27905d 13%, var(--background));
+}
+.place-campsite-status-badge.is-accessible {
+    color: #94baff;
+    border-color: color-mix(in srgb, #387ec6 65%, var(--border));
+    background: color-mix(in srgb, #387ec6 13%, var(--background));
+}
