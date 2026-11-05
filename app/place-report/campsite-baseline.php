@@ -131,6 +131,21 @@ function llama_place_report_campsite_imported_form_values(array $site): array
         $values['site_accessible'] = $unknown;
     }
 
+    // RIDB facility-specific details are Site facts, not independent cards.
+    // Do not add these as persisted duplicate answers; direct Scout/Admin
+    // answers continue to override imported values in the canonical model.
+    foreach ([
+        'site_loop' => 'ridb_loop',
+        'site_type_of_use' => 'ridb_type_of_use',
+    ] as $canonicalKey => $ridbFeatureKey) {
+        $value = trim((string) (
+            llama_place_report_campsite_feature_value($site, $ridbFeatureKey) ?? ''
+        ));
+        if ($value !== '') {
+            $values[$canonicalKey] = $value;
+        }
+    }
+
     $simple = [
         'max_people' => 'max_people',
         'site_length_feet' => 'site_length_ft',
@@ -231,7 +246,11 @@ function llama_place_report_campsite_imported_form_values(array $site): array
         $values['rv_suitable'] = '1';
         $values['trailer_suitable'] = '1';
     } elseif ($isRvOnly) {
-        $values['tent_camping_suitable'] = '0';
+        // RIDB's broad "RV Site" category does not prove tents are
+        // prohibited or physically unsuitable. Some RV Sites list Tent
+        // under PermittedEquipment and have a tent pad. Leave tent
+        // suitability unanswered until a real Site-level fact confirms it.
+        // An explicit verified No from Scout/Admin remains authoritative.
         $values['rv_suitable'] = '1';
         $values['trailer_suitable'] = '1';
     }
