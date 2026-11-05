@@ -45,6 +45,7 @@ function llama_season_allowed_question_keys(): array
         'stay_limit_days',
 
         // Services at an individual Site (not permanent equipment dimensions).
+        'site_reservation_method',
         'site_hookups_available',
         'hookup_electric_service',
         'hookup_water',
@@ -119,8 +120,8 @@ function llama_season_question_groups(string $scope): array
             'place_quiet_hours_end', 'place_additional_rules',
             'reservation_required', 'stay_limit_days',
         ],
-        'Site services' => [
-            'site_hookups_available', 'hookup_electric_service',
+        'Site reservations & services' => [
+            'site_reservation_method', 'site_hookups_available', 'hookup_electric_service',
             'hookup_water', 'hookup_sewer', 'site_potable_water',
         ],
     ];
