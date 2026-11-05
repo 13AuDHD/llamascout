@@ -4,8 +4,12 @@
 --
 -- Recurring MM-DD ranges are inclusive and may cross December/January.
 -- A NULL start/end pair means a manually selectable season with no automatic date.
--- Only one ACTIVE season can be the default for a Place.
--- The application also rejects overlapping active dated seasons and name collisions.
+-- The season service enforces one active default per Place, non-overlapping
+-- date ranges, and unique names under a Place row lock.
+--
+-- Compatible with shared-host phpMyAdmin: no INFORMATION_SCHEMA queries,
+-- generated columns, or CHECK syntax required. CREATE IF NOT EXISTS makes
+-- a retry safe even if the first statement succeeded on an earlier attempt.
 
 CREATE TABLE IF NOT EXISTS place_seasons (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -23,22 +27,10 @@ CREATE TABLE IF NOT EXISTS place_seasons (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-    -- NULL values may repeat; an active default Place ID may not.
-    active_default_place_id BIGINT UNSIGNED
-        AS (CASE WHEN is_default = 1 AND is_active = 1
-                 THEN place_id ELSE NULL END) PERSISTENT,
-
     PRIMARY KEY (id),
     UNIQUE KEY uq_place_seasons_place_id (place_id, id),
     KEY ix_place_seasons_place (place_id, is_active, sort_order, id),
-    UNIQUE KEY uq_place_seasons_active_default (active_default_place_id),
-    CONSTRAINT chk_place_seasons_date_pair CHECK (
-        (start_mmdd IS NULL AND end_mmdd IS NULL) OR
-        (start_mmdd IS NOT NULL AND end_mmdd IS NOT NULL)
-    ),
-    CONSTRAINT chk_place_seasons_default CHECK (
-        is_default IN (0, 1) AND is_active IN (0, 1)
-    )
+    KEY ix_place_seasons_default (place_id, is_default, is_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Reserved for M4-002. Season answers use ORIGINAL canonical question keys,
@@ -72,16 +64,10 @@ CREATE TABLE IF NOT EXISTS place_season_answers (
     -- Composite FK guarantees the selected season belongs to the target Place.
     CONSTRAINT fk_place_season_answer_season
         FOREIGN KEY (place_id, season_id) REFERENCES place_seasons(place_id, id)
-        ON DELETE RESTRICT,
-    CONSTRAINT chk_place_season_answer_scope
-        CHECK (target_scope IN ('place', 'area', 'site')),
-    CONSTRAINT chk_place_season_answer_state
-        CHECK (answer_state IN ('answered', 'unknown'))
+        ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Installation verification (should return two rows):
-SELECT TABLE_NAME
-FROM information_schema.TABLES
-WHERE TABLE_SCHEMA = DATABASE()
-  AND TABLE_NAME IN ('place_seasons', 'place_season_answers')
-ORDER BY TABLE_NAME;
+-- Installation verification (each statement returns the matching table):
+-- These only inspect the currently selected database.
+SHOW TABLES LIKE 'place_seasons';
+SHOW TABLES LIKE 'place_season_answers';
