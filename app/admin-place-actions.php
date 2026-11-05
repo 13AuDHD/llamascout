@@ -25,6 +25,11 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
             $notice = 'Operating season saved.';
         } elseif ((string) ($_GET['saved'] ?? '') === 'season-answers') {
             $notice = 'Seasonal answers saved.';
+        } elseif ((string) ($_GET['saved'] ?? '') === 'season-bulk-sites') {
+            $changedSites = max(0, (int) ($_GET['changed'] ?? 0));
+            $notice = $changedSites > 0
+                ? 'Seasonal status updated for ' . $changedSites . ' Sites.'
+                : 'Selected Sites already had the requested seasonal status.';
         }
         return ['notice' => $notice, 'error' => $error, 'action' => $action];
     }
@@ -45,6 +50,32 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
     }
 
     try {
+        if ($action === 'save-season-bulk-sites') {
+            require_once __DIR__ . '/place-report/season-answers.php';
+
+            $seasonId = (int) ($_POST['season_id'] ?? 0);
+            $result = llama_season_bulk_site_statuses(
+                $db,
+                $placeId,
+                $seasonId,
+                $actorUserId,
+                $_POST['season_site_ids'] ?? null,
+                (string) ($_POST['season_bulk_status'] ?? ''),
+                $_POST['season_bulk_source_url'] ?? null
+            );
+
+            header(
+                'Location: /place.php?id=' . $placeId
+                . '&saved=season-bulk-sites'
+                . '&changed=' . (int) $result['changed']
+                . '&season_view=' . $seasonId
+                . '#place-seasons',
+                true,
+                303
+            );
+            exit;
+        }
+
         if ($action === 'save-season-answers') {
             require_once __DIR__ . '/place-report/season-answers.php';
 
