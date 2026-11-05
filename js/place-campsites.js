@@ -232,6 +232,13 @@
     const hasCompleteAccess =
         mount.dataset.completeAccess === '1';
 
+    // Public season selection is a viewing preference, never proof of
+    // availability or a bypass for Complete Access permissions.
+    const seasonId = new URLSearchParams(window.location.search).get('season') || '';
+    const seasonQuery = /^(0|[1-9][0-9]*)$/.test(seasonId)
+        ? `&season=${encodeURIComponent(seasonId)}`
+        : '';
+
     const escapeHtml = (value) => {
         const node =
             document.createElement(
@@ -596,7 +603,9 @@
 
     const closureStatus = (site) => {
         if (site?.is_closed !== true) {
-            return '';
+            return site?.seasonal_operating_status === 'closed'
+                ? 'Normally closed this season'
+                : '';
         }
 
         const status =
@@ -622,22 +631,19 @@
         }
 
         const reason =
-            clean(
-                site.closure_reason
-                || ''
-            ).replaceAll('_', ' ');
+            site?.is_closed === true
+                ? clean(site.closure_reason || '').replaceAll('_', ' ')
+                : '';
 
         const reopening =
-            clean(
-                site.expected_reopening
-                || ''
-            );
+            site?.is_closed === true
+                ? clean(site.expected_reopening || '')
+                : '';
 
         const verified =
-            clean(
-                site.closure_verified_at
-                || ''
-            );
+            site?.is_closed === true
+                ? clean(site.closure_verified_at || '')
+                : '';
 
         return `
             <aside
@@ -680,6 +686,9 @@
             data-campsite-detail-id="${escapeHtml(site.feature_id)}"
         >
             ${closureDetails(site)}
+            ${!site.is_closed && site.seasonal_operating_status === 'open'
+                ? '<aside class="place-campsite-seasonal-open" role="status">Normally open during this season. Check current conditions before traveling.</aside>'
+                : ''}
         </article>
     `;
 
@@ -1585,7 +1594,7 @@
                 });
                 const activeId = selectedId;
                 fetch(
-                    `/api/place-campsite-detail.php?slug=${encodeURIComponent(slug)}&site=${encodeURIComponent(activeId)}&mode=report`,
+                    `/api/place-campsite-detail.php?slug=${encodeURIComponent(slug)}&site=${encodeURIComponent(activeId)}&mode=report${seasonQuery}`,
                     { cache: 'no-store', credentials: 'same-origin' }
                 )
                     .then((response) => {
@@ -1970,7 +1979,7 @@
         try {
             const response =
                 await fetch(
-                    `/api/place-campsites.php?slug=${encodeURIComponent(slug)}&mode=catalog`,
+                    `/api/place-campsites.php?slug=${encodeURIComponent(slug)}&mode=catalog${seasonQuery}`,
                     {
                         cache:
                             'no-store',
