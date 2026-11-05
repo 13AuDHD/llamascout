@@ -667,6 +667,25 @@ $check('Official Site accessibility question is first in Accessibility', static 
         'Official Site accessibility question is not Site-scoped');
 });
 
+$check('Site overhead clearance supports Unlimited', static function () use ($assert): void {
+    $fields = llama_place_report_fields();
+    $field = $fields['overhead_clearance_feet'] ?? null;
+
+    $assert(is_array($field), 'Overhead Clearance question is missing');
+    $options = (array) ($field['options'] ?? []);
+    $assert(($options['30'] ?? '') === '30 ft',
+        '30 ft option changed unexpectedly');
+    $assert(($options['unlimited'] ?? '') === 'Unlimited',
+        'Unlimited is not the final overhead clearance option');
+    $assert(array_key_last($options) === 'unlimited',
+        'Unlimited is not the last overhead clearance option');
+
+    $parsed = llama_place_report_parse_answer($field, 'unlimited');
+    $assert(($parsed['state'] ?? '') === 'answered'
+        && ($parsed['value'] ?? null) === 'unlimited',
+        'Unlimited overhead clearance does not persist distinctly');
+});
+
 $check('Parking and Maneuvering keeps only approved independent questions', static function () use ($assert, $assertNoAnswerDependencies): void {
     $fields = llama_place_report_fields();
     foreach ([
