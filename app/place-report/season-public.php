@@ -195,3 +195,20 @@ function llama_public_season_site_statuses(
     }
     return $statuses;
 }
+
+
+/** A verified closure of the whole Place outranks every normal Site season. */
+function llama_public_place_verified_closed(PDO $db, int $placeId): bool
+{
+    if ($placeId < 1) {
+        return false;
+    }
+    $stmt = $db->prepare(
+        'SELECT 1 FROM place_operating_closures
+         WHERE place_id = ? AND campsite_id IS NULL
+           AND status IN (\'temporary\', \'seasonal\', \'permanent\')
+         LIMIT 1'
+    );
+    $stmt->execute([$placeId]);
+    return (bool) $stmt->fetchColumn();
+}
