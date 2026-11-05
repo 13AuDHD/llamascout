@@ -1751,6 +1751,99 @@ $check('Site pills show only grounded booking evidence', static function () use 
         'Superseded individual Site GPS editor still on Admin Place page');
 });
 
+$check('RIDB Site Info uses one canonical Loop and Type of Use group', static function () use ($assert): void {
+    $groups = llama_place_report_effective_report_groups(llama_report_questions());
+    $siteInfo = (array) ($groups['site_info'][1] ?? []);
+    $assert(array_slice($siteInfo, 0, 3) === [
+        'site_number', 'site_loop', 'site_type_of_use',
+    ], 'Site Info must begin with number, Loop and Type of Use');
+    foreach (['site_loop', 'site_type_of_use'] as $key) {
+        $field = llama_report_question($key);
+        $assert(is_array($field)
+            && in_array('site', (array) ($field['report_scopes'] ?? []), true)
+            && !in_array('place', (array) ($field['report_scopes'] ?? []), true)
+            && (string) ($field['approved_question_group'] ?? '') === 'site_info',
+            $key . ' must be an approved Site-owned canonical question');
+    }
+
+    require_once dirname(__DIR__) . '/app/place-report/campsite-baseline.php';
+    $imported = [
+        'site_type' => 'rv_site',
+        'raw_site_type' => 'RV ONLY',
+        'tent_pad' => 'No',
+        'features' => [
+            ['feature_key' => 'ridb_loop', 'feature_value' => 'NORT',
+                'source_provider' => 'Recreation.gov / RIDB'],
+            ['feature_key' => 'ridb_type_of_use', 'feature_value' => 'OVERNIGHT',
+                'source_provider' => 'Recreation.gov / RIDB'],
+            ['feature_key' => 'permitted_equipment', 'feature_value' => 'Tent',
+                'source_provider' => 'Recreation.gov / RIDB'],
+        ],
+    ];
+    $values = llama_place_report_campsite_imported_form_values($imported);
+    $assert(($values['site_loop'] ?? '') === 'NORT'
+        && ($values['site_type_of_use'] ?? '') === 'OVERNIGHT',
+        'Loop and Type of Use must come from existing RIDB feature rows');
+    $assert(($values['rv_suitable'] ?? '') === '1',
+        'Imported RV suitability should not be lost');
+    $assert(!array_key_exists('tent_camping_suitable', $values),
+        'RV-only category alone must not assert tent camping is prohibited');
+
+    $tentField = llama_report_question('tent_camping_suitable');
+    $assert(is_array($tentField), 'Tent suitability canonical question is missing');
+    $target = ['scope' => 'site', 'source' => 'campsite_record', 'id' => 2];
+    $explicitNo = llama_place_report_current_answer_envelope(
+        $tentField, true, false, $target, [
+            'scope' => 'site', 'source' => 'campsite_record', 'id' => 2,
+            'origin_type' => 'scoped_override',
+        ]
+    );
+    $conflicts = llama_place_report_campsite_consistency_notices(
+        $imported, ['tent_camping_suitable' => $explicitNo]
+    );
+    $assert(isset($conflicts['tent_camping_suitable']),
+        'Explicit No conflicting with permitted Tent must be flagged, not rewritten');
+    $explicitYes = llama_place_report_current_answer_envelope(
+        $tentField, true, true, $target, [
+            'scope' => 'site', 'source' => 'campsite_record', 'id' => 2,
+            'origin_type' => 'scoped_override',
+        ]
+    );
+    $assert(llama_place_report_campsite_consistency_notices(
+        $imported, ['tent_camping_suitable' => $explicitYes]
+    ) === [], 'Verified Yes must not raise a false tent conflict');
+});
+
+$check('Site preview has no duplicate official RIDB cards', static function () use ($assert): void {
+    $preview = file_get_contents(dirname(__DIR__) . '/js/place-campsite-detail-media.js');
+    $catalog = file_get_contents(dirname(__DIR__) . '/api/place-campsites.php');
+    $detail = file_get_contents(dirname(__DIR__) . '/api/place-campsite-detail.php');
+    $browser = file_get_contents(dirname(__DIR__) . '/js/place-campsites.js');
+    $model = file_get_contents(dirname(__DIR__) . '/app/place-report/target-model.php');
+    $assert(is_string($preview) && is_string($catalog)
+        && is_string($detail) && is_string($browser) && is_string($model),
+        'Site preview/report integration files missing');
+    foreach (['Official site information', 'RIDB updated', 'sourceMarkup(',
+              "'ridb_reservable'"] as $old) {
+        $assert(strpos($preview, $old) === false,
+            'Duplicated upper RIDB detail card remains: ' . $old);
+    }
+    $assert(strpos($preview, 'equipmentMarkup(') !== false
+        && strpos($preview, 'galleryMarkup(') !== false
+        && strpos($preview, 'They do not, by themselves, establish physical Site suitability.') !== false,
+        'Site photos, permitted equipment or suitability explanation missing');
+    $assert(strpos($catalog, "'ridb_loop' => 'site_loop'") !== false
+        && strpos($catalog, "'ridb_type_of_use' => 'site_type_of_use'") !== false
+        && strpos($catalog, "llama_site_can_read(") !== false,
+        'Public Loop and Type of Use must use only visible Sites and official facts');
+    $assert(strpos($model, "'site_loop' => 'ridb_loop'") !== false
+        && strpos($model, "'site_type_of_use' => 'ridb_type_of_use'") !== false,
+        'RIDB feature provenance must follow canonical Site questions');
+    $assert(strpos($detail, 'llama_place_report_campsite_consistency_notices(') !== false
+        && strpos($browser, '.scout-report-answer-conflict') !== false,
+        'Explicit source contradictions must remain visible to authorized users');
+});
+
 $check('Canonical field contract', static function () use ($assert): void {
     $issues = llama_place_report_contract_issues();
     $assert(!$issues, 'Contract issues: ' . implode(' | ', array_slice($issues, 0, 12)) . ' (total ' . count($issues) . ')');
