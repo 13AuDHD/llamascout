@@ -1354,6 +1354,26 @@ $check('Unified Place map editor contract', static function () use ($assert): vo
     );
 });
 
+$check('Public map Place and Area colors match unified editor', static function () use ($assert): void {
+    $css = file_get_contents(dirname(__DIR__) . '/css/site/features/place-map.css');
+    $assert(is_string($css), 'Unable to inspect public Place map CSS');
+
+    $assert(
+        preg_match('/\\.place-map-feature--place-boundary\\s*\\{[^}]*stroke:\\s*#22c55e;[^}]*fill:\\s*#22c55e;/s', $css) === 1,
+        'Public Place boundary is not green'
+    );
+
+    $assert(
+        preg_match('/\\.place-map-feature--place-boundary\\s*\\{[^}]*stroke-dasharray:/s', $css) !== 1,
+        'Public Place boundary still uses the old dashed treatment'
+    );
+
+    $assert(
+        preg_match('/\\.place-map-feature--camping-area\\s*\\{[^}]*stroke:\\s*#d97706;[^}]*fill:\\s*#d97706;/s', $css) === 1,
+        'Public Camping Area is not using the secondary amber treatment'
+    );
+});
+
 $check('Canonical field contract', static function () use ($assert): void {
     $issues = llama_place_report_contract_issues();
     $assert(!$issues, 'Contract issues: ' . implode(' | ', array_slice($issues, 0, 12)) . ' (total ' . count($issues) . ')');
