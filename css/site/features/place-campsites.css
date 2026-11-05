@@ -240,3 +240,16 @@
 
 .place-campsite-closure-notice strong { color: #b42318; }
 .place-campsite-closure-notice small { color: var(--text-muted); }
+
+
+/* Normal seasonal operation, not a verified closure or live availability. */
+.place-campsite-seasonal-open {
+    display: block;
+    margin: 12px 0;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    color: var(--text-muted);
+    font-size: .78rem;
+    line-height: 1.45;
+}
