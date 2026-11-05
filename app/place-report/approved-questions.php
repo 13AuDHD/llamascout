@@ -561,11 +561,11 @@ function llama_place_report_approved_registry_issues(): array
         }
     }
 
-    if ($count !== 260) {
+    if ($count !== 262) {
         $issues[] =
             'Current approved-question projection contains '
             . $count
-            . ' slots; expected 260 after removing duplicate Water Crossings and Downed Tree Risk follow-up questions.';
+            . ' slots; expected 262 (260 reviewed questions plus RIDB Loop and Type of Use).';
     }
 
     $assignedGroups = [];
