@@ -928,7 +928,7 @@ $renderContributionPrompt =
         </div>
         <?php
     };
-
+?>
 <script
     src="/js/place-report-warnings.js"
     defer
