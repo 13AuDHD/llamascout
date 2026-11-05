@@ -23,7 +23,6 @@ function llama_season_allowed_question_keys(): array
         'amenity_laundry',
         'amenity_wifi',
         'amenity_campground_host',
-        'water_filling_station',
 
         // Fire and cooking permissions (never physical equipment).
         'campfire_allowed',
@@ -107,8 +106,7 @@ function llama_season_question_groups(string $scope): array
             'amenity_toilets', 'amenity_potable_water', 'amenity_showers',
             'amenity_trash', 'amenity_dump_station', 'amenity_laundry',
             'amenity_wifi', 'amenity_campground_host',
-            'water_filling_station',
-        ],
+            ],
         'Fire & cooking rules' => [
             'campfire_allowed', 'place_charcoal_grills_allowed',
             'place_propane_fire_pits_allowed', 'collecting_firewood',
