@@ -10,6 +10,7 @@ require_once dirname(__DIR__) . '/app/place-map-features.php';
 require_once dirname(__DIR__) . '/app/campsite-closure-display.php';
 require_once dirname(__DIR__) . '/app/place-report.php';
 require_once dirname(__DIR__) . '/app/place-report/scoped-warnings.php';
+require_once dirname(__DIR__) . '/app/place-report/season-public.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -195,6 +196,29 @@ try {
             ?? []
         );
 
+    $seasonSpecificSources = [];
+    $seasonState = llama_public_season_selection(
+        $db, $placeId, $_GET['season'] ?? null
+    );
+    $activeSeason = $seasonState['selected'] ?? null;
+    if (is_array($activeSeason)) {
+        $seasonId = (int) $activeSeason['id'];
+        $seasonalSite = llama_public_season_site_answers(
+            $db, $placeId, $seasonId,
+            (array) ($currentModel['target'] ?? []),
+            $currentAnswers
+        );
+        $currentAnswers = $seasonalSite['answers'];
+        $seasonSpecificSources = (array) ($seasonalSite['sources'] ?? []);
+        $seasonSiteStatuses = llama_public_season_site_statuses(
+            $db, $placeId, $seasonId, [$campsiteId]
+        );
+        $site['seasonal_operating_status'] =
+            $seasonSiteStatuses[$campsiteId] ?? null;
+    }
+
+
+
     $inheritedValues =
         llama_place_report_current_answer_values(
             $currentAnswers,
@@ -220,7 +244,10 @@ try {
 
     // Same attribution service as the Place report. Only sources matched
     // to the currently published observation are eligible for display.
-    $site['report_answer_sources'] = llama_report_answer_sources($db, $currentAnswers);
+    $site['report_answer_sources'] = array_replace(
+        llama_report_answer_sources($db, $currentAnswers),
+        $seasonSpecificSources
+    );
 
     // Final published projection is authoritative over legacy campsite
     // columns. The browser uses the same winners as answer attribution.
