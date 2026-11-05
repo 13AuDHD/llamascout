@@ -217,6 +217,7 @@ function llama_place_report_scope_overrides(): array
              */
             'site_number',
             'site_accessible',
+            'site_reservation_method',
             'max_people',
             'vehicle_capacity',
             'max_vehicle_length_feet',
