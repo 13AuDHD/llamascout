@@ -1088,6 +1088,12 @@
             site.report_effective_values
         );
 
+        // Presentation-only casing for RIDB's often-uppercase use labels.
+        // Keep the raw imported answer and provenance unchanged.
+        if (values.site_type_of_use) {
+            values.site_type_of_use = smartCase(values.site_type_of_use);
+        }
+
         // The selected Site identifier is the first Scout Report answer.
         // Use the catalog's displayed name, not an optional report field.
         if (!values.site_number) set('site_number', smartCase(site.display_name));
