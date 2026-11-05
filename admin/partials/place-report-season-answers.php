@@ -216,7 +216,7 @@ $availableSeasons = array_values(array_filter(
                     | JSON_HEX_QUOT | JSON_THROW_ON_ERROR
                 ) ?></script>
             </form>
-            <script defer src="/js/admin/place-season-builder.js"></script>
+            <script defer src="https://llamascout.com/js/admin/place-season-builder.js"></script>
         <?php endif; ?>
     <?php endif; ?>
 </section>
