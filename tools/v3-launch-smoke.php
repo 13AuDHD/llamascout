@@ -1510,33 +1510,78 @@ $check('Named seasons edit only approved canonical amenities and fire rules', st
             'Physical Site fact or live fire-restrictions URL cannot be seasonal: ' . $key);
     }
     $siteFields = llama_season_question_groups('site');
-    $assert(isset($siteFields['Site services']['hookup_water']),
+    $assert(isset($siteFields['Site reservations & services']['hookup_water']),
         'Individual Site seasonal water service missing');
 });
 
-$check('Seasonal Admin form saves without overwriting normal Scout Reports', static function () use ($assert): void {
-    $panel = file_get_contents(dirname(__DIR__) . '/admin/partials/place-report-seasons.php');
-    $form = file_get_contents(dirname(__DIR__) . '/admin/partials/place-report-season-answers.php');
-    $handler = file_get_contents(dirname(__DIR__) . '/app/admin-place-actions.php');
-    $service = file_get_contents(dirname(__DIR__) . '/app/place-report/season-answers.php');
-    $sql = file_get_contents(dirname(__DIR__) . '/tools/migrations/20261105_m4_002_season_site_status.sql');
-    $assert(is_string($panel) && is_string($form) && is_string($handler)
-        && is_string($service) && is_string($sql), 'M4-002 implementation incomplete');
-    $assert(strpos($panel, "require __DIR__ . '/place-report-season-answers.php'") !== false,
-        'Saved seasons are not connected to their answer editor');
-    $assert(strpos($form, 'name="season_view"') !== false
-        && strpos($form, 'name="season_target"') !== false,
-        'Season or reporting target dropdown missing');
-    $assert(strpos($form, 'name="place_admin_action" value="save-season-answers"') !== false
-        && strpos($form, 'name="csrf_token"') !== false,
-        'Season answers must have their own authenticated save action');
-    $assert(strpos($handler, "if (\$action === 'save-season-answers')") !== false
-        && strpos($handler, 'llama_season_save_target_answers(') !== false,
-        'Season answers do not use the validated seasonal writer');
-    $assert(strpos($service, "llama_place_report_submission_answer(\$field, \$raw)") !== false,
-        'Season answers do not use the canonical answer parser');
-    $assert(strpos($sql, 'CREATE TABLE IF NOT EXISTS place_season_site_status') !== false,
-        'Site operating schedule table missing');
+$check('Compact seasonal builder uses one canonical editor for Place and Sites', static function () use ($assert): void {
+    require_once dirname(__DIR__) . '/app/place-report/season-builder.php';
+
+    $available = [
+        ['scope' => 'place', 'source' => 'place', 'id' => 8, 'label' => 'Entire Place'],
+        ['scope' => 'area', 'source' => 'map_feature', 'id' => 20, 'label' => 'Camp area'],
+        ['scope' => 'site', 'source' => 'campsite_record', 'id' => 101, 'label' => '001'],
+        ['scope' => 'site', 'source' => 'campsite_record', 'id' => 102, 'label' => '002'],
+    ];
+    $sites = llama_season_builder_targets($available, [
+        'site:campsite_record:101', 'site:campsite_record:102'
+    ], 8);
+    $assert(count($sites) === 2, 'Multi Site selection failed');
+    foreach ([
+        ['site:campsite_record:101', 'place:place:8'],
+        ['site:campsite_record:101', 'area:map_feature:20'],
+        ['site:campsite_record:999'],
+        ['place:place:99'],
+    ] as $bad) {
+        $rejected = false;
+        try {
+            llama_season_builder_targets($available, $bad, 8);
+        } catch (InvalidArgumentException) {
+            $rejected = true;
+        }
+        $assert($rejected, 'Invalid Site/Place selection was accepted');
+    }
+    $siteQuestions = llama_season_builder_questions('site');
+    $placeQuestions = llama_season_builder_questions('place');
+    $assert(isset($siteQuestions['seasonal_site_closed']),
+        'Normally Closed must be a Site seasonal question');
+    $assert(isset($siteQuestions['site_reservation_method']),
+        'First-come/reservable must be a Site seasonal question');
+    $assert(!isset($placeQuestions['seasonal_site_closed'])
+        && !isset($placeQuestions['site_reservation_method']),
+        'Site-only questions leaked to Place');
+    $assert(isset($placeQuestions['amenity_showers'])
+        && isset($placeQuestions['amenity_toilets']),
+        'Seasonal Place services missing');
+    $assert(!isset($siteQuestions['site_length_feet'])
+        && !isset($siteQuestions['parking_surface']),
+        'Physical Site details cannot change seasonally');
+
+    $view = file_get_contents(dirname(__DIR__) . '/admin/partials/place-report-season-answers.php');
+    $script = file_get_contents(dirname(__DIR__) . '/js/admin/place-season-builder.js');
+    $actions = file_get_contents(dirname(__DIR__) . '/app/admin-place-actions.php');
+    $service = file_get_contents(dirname(__DIR__) . '/app/place-report/season-builder.php');
+    $assert(is_string($view) && is_string($script) && is_string($actions)
+        && is_string($service), 'Seasonal builder components missing');
+    $assert(strpos($view, 'name="season_targets[]"') !== false
+        && strpos($view, 'data-season-builder-rows') !== false
+        && strpos($view, 'data-season-builder-config') !== false,
+        'Grouped Site selector or compact answer rows missing');
+    $assert(strpos($view, 'place-season-bulk-status.php') === false
+        && strpos($view, 'admin-place-season-answer-row') === false,
+        'Obsolete giant seasonal form or separate bulk panel still renders');
+    $assert(strpos($view, 'value="save-season-builder"') !== false
+        && strpos($view, 'name="csrf_token"') !== false,
+        'Seasonal builder must submit separately with CSRF');
+    $assert(strpos($actions, "if (\$action === 'save-season-builder')") !== false
+        && strpos($actions, 'llama_season_builder_save(') !== false,
+        'Seasonal builder not wired to its transactional save service');
+    $assert(strpos($service, 'llama_place_report_submission_answer(') !== false
+        && strpos($service, 'llama_report_targets($db, $placeId)') !== false,
+        'Seasonal builder must use canonical question and target validation');
+    $assert(strpos($script, 'data-season-add-row') !== false
+        && strpos($script, 'season_removals[]') !== false,
+        'Compact seasonal row add/delete behavior missing');
 });
 
 $check('Public seasonal answers preserve Site-specific rules and Unknown', static function () use ($assert): void {
@@ -1659,25 +1704,42 @@ $check('Bulk Site season status accepts only selected canonical Site IDs', stati
         'Bulk status must reject arbitrary values');
 });
 
-$check('Admin bulk Site form is separate from normal and seasonal question saves', static function () use ($assert): void {
-    $report = file_get_contents(dirname(__DIR__) . '/admin/partials/place-report-season-answers.php');
-    $bulk = file_get_contents(dirname(__DIR__) . '/admin/partials/place-season-bulk-status.php');
-    $handler = file_get_contents(dirname(__DIR__) . '/app/admin-place-actions.php');
-    $script = file_get_contents(dirname(__DIR__) . '/js/admin/place-season-bulk-status.js');
-    $assert(is_string($report) && is_string($bulk) && is_string($handler) && is_string($script),
-        'Bulk seasonal Site controls missing');
-    $assert(strpos($report, "require __DIR__ . '/place-season-bulk-status.php'") !== false,
-        'Bulk Site editor not included in the saved-season flow');
-    $assert(strpos($bulk, 'value="save-season-bulk-sites"') !== false
-        && strpos($bulk, 'name="csrf_token"') !== false
-        && strpos($bulk, 'name="season_site_ids[]"') !== false,
-        'Bulk Site editor must use an independent CSRF-protected form');
-    $assert(strpos($handler, "if (\$action === 'save-season-bulk-sites')") !== false
-        && strpos($handler, 'llama_season_bulk_site_statuses(') !== false,
-        'Bulk seasonal Site requests must use the validated writer');
-    $assert(strpos($script, 'const limit = 250;') !== false
-        && strpos($script, 'data-season-bulk-select-visible') !== false,
-        'Bulk Site selector must enforce a batch limit');
+$check('Site pills show only grounded booking evidence', static function () use ($assert): void {
+    require_once dirname(__DIR__) . '/app/place-report/site-booking.php';
+    $assert(llama_site_booking_ridb_reservable('TRUE')
+        && llama_site_booking_ridb_reservable('Yes'),
+        'Positive RIDB CampsiteReservable must support a Reservable pill');
+    $assert(!llama_site_booking_ridb_reservable('False')
+        && !llama_site_booking_ridb_reservable('No'),
+        'Negative RIDB reservations do not prove first-come-first-served');
+    $assert(llama_site_booking_method_label('reservable') === 'reservable'
+        && llama_site_booking_method_label('first_come') === 'first_come',
+        'Explicit Site booking methods missing');
+    $assert(llama_site_booking_method_label('not_reservable') === null
+        && llama_site_booking_method_label('management_only') === null,
+        'Unconfirmed booking method must not create an FCFS badge');
+
+    $api = file_get_contents(dirname(__DIR__) . '/api/place-campsites.php');
+    $browser = file_get_contents(dirname(__DIR__) . '/js/place-campsites.js');
+    $assert(is_string($api) && is_string($browser)
+        && strpos($api, 'llama_public_site_booking_methods(') !== false
+        && strpos($api, 'llama_site_can_read(') !== false,
+        'Booking pills must respect filtered visible Sites');
+    foreach (['place-campsite-closed-badge', 'is-first-come',
+              'is-reservable', 'is-accessible'] as $badge) {
+        $assert(strpos($browser, $badge) !== false,
+            'Missing Site selection pill: ' . $badge);
+    }
+
+    $map = file_get_contents(dirname(__DIR__) . '/js/admin/place-map.js');
+    $mapPanel = file_get_contents(dirname(__DIR__) . '/admin/partials/place-map.php');
+    $assert(is_string($map) && is_string($mapPanel), 'Admin map files missing');
+    $assert(strpos($map, "place_boundary:\n                    '#22c55e'") !== false
+        && strpos($map, "camping_area:\n                    '#a855f7'") !== false,
+        'Admin Place/Area colors are inverted');
+    $assert(strpos($mapPanel, 'data-admin-site-location-form') === false
+        && strpos($map, 'pickSiteLocation') === false,
+        'Superseded individual Site GPS editor still on Admin Place page');
 });
 
 $check('Canonical field contract', static function () use ($assert): void {
