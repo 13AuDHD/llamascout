@@ -56,6 +56,12 @@ try {
             llama_site_can_read($place, $site, $canRead, $restrictedSiteIds)
     ));
     $sites = llama_campsite_closure_enrich($db, $placeId, $sites);
+    $placeVerifiedClosed = llama_public_place_verified_closed($db, $placeId);
+    foreach ($sites as &$site) {
+        $site['place_verified_closed'] = $placeVerifiedClosed;
+    }
+    unset($site);
+
 
     // Only use IDs that survived the existing visibility restrictions.
     // Seasonal open/closed describes the normal schedule; verified closures
@@ -285,6 +291,7 @@ try {
                             ? ($site['sewer_hookup'] ?? null)
                             : null,
                     'is_closed' => (bool) ($site['is_closed'] ?? false),
+                    'place_verified_closed' => (bool) ($site['place_verified_closed'] ?? false),
                     'operating_status' => $site['operating_status'] ?? null,
                     'seasonal_operating_status' => $site['seasonal_operating_status'] ?? null,
                     'official_details' =>
@@ -314,6 +321,7 @@ try {
                 'accessible_status' => (string) ($site['accessible_status'] ?? ''),
                 'electric_hookup' => $site['electric_hookup'] ?? null,
                 'is_closed' => (bool) ($site['is_closed'] ?? false),
+                'place_verified_closed' => (bool) ($site['place_verified_closed'] ?? false),
                 'operating_status' => $site['operating_status'] ?? null,
                 'seasonal_operating_status' => $site['seasonal_operating_status'] ?? null,
                 'closure_reason' => $site['closure_reason'] ?? null,
