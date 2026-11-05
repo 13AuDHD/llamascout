@@ -18,17 +18,31 @@ function llama_season_allowed_question_keys(): array
         'amenity_toilets',
         'amenity_potable_water',
         'amenity_showers',
-        'amenity_accessible_showers',
-        'amenity_electricity',
         'amenity_trash',
-        'amenity_recycling',
         'amenity_dump_station',
         'amenity_laundry',
         'amenity_wifi',
         'amenity_campground_host',
         'water_filling_station',
 
-        // Seasonal campground rules.
+        // Fire and cooking permissions (never physical equipment).
+        'campfire_allowed',
+        'place_charcoal_grills_allowed',
+        'place_propane_fire_pits_allowed',
+        'collecting_firewood',
+
+        // Additional seasonal operating rules.
+        'generator_restrictions',
+        'generator_prohibited',
+        'generator_quiet_hours',
+        'generator_quiet_hours_begin',
+        'generator_quiet_hours_end',
+        'generator_run_restrictions',
+        'generator_restriction_details',
+        'place_quiet_hours',
+        'place_quiet_hours_begin',
+        'place_quiet_hours_end',
+        'place_additional_rules',
         'reservation_required',
         'stay_limit_days',
 
@@ -80,4 +94,52 @@ function llama_season_questions_for_scope(string $scope): array
         }
     }
     return $allowed;
+}
+
+/**
+ * Seasonal editor groups use the shared canonical question catalog.
+ * A group never changes question definitions, ownership, or answer parsing.
+ */
+function llama_season_question_groups(string $scope): array
+{
+    $available = llama_season_questions_for_scope($scope);
+    $definitions = [
+        'Services & amenities' => [
+            'amenity_toilets', 'amenity_potable_water', 'amenity_showers',
+            'amenity_trash', 'amenity_dump_station', 'amenity_laundry',
+            'amenity_wifi', 'amenity_campground_host',
+            'water_filling_station',
+        ],
+        'Fire & cooking rules' => [
+            'campfire_allowed', 'place_charcoal_grills_allowed',
+            'place_propane_fire_pits_allowed', 'collecting_firewood',
+        ],
+        'Other seasonal rules' => [
+            'generator_restrictions', 'generator_prohibited',
+            'generator_quiet_hours', 'generator_quiet_hours_begin',
+            'generator_quiet_hours_end', 'generator_run_restrictions',
+            'generator_restriction_details',
+            'place_quiet_hours', 'place_quiet_hours_begin',
+            'place_quiet_hours_end', 'place_additional_rules',
+            'reservation_required', 'stay_limit_days',
+        ],
+        'Site services' => [
+            'site_hookups_available', 'hookup_electric_service',
+            'hookup_water', 'hookup_sewer', 'site_potable_water',
+        ],
+    ];
+    $groups = [];
+    foreach ($definitions as $heading => $keys) {
+        $items = array_intersect_key($available, array_flip($keys));
+        if ($items) {
+            // Display in approved group order, independent of catalog internals.
+            $groups[$heading] = [];
+            foreach ($keys as $key) {
+                if (isset($items[$key])) {
+                    $groups[$heading][$key] = $items[$key];
+                }
+            }
+        }
+    }
+    return $groups;
 }
