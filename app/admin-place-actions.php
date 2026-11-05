@@ -107,6 +107,7 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
             header(
                 'Location: /place.php?id=' . $placeId
                 . '&saved=season&season_edit=' . $savedSeasonId
+                . '&season_view=' . $savedSeasonId
                 . '#place-seasons',
                 true,
                 303
