@@ -987,3 +987,280 @@
         flex-direction: column;
     }
 }
+
+
+/* =========================================================
+   UNIFIED PLACE / AREA / SITE EDITOR
+   ========================================================= */
+
+.mapped-area-editor-unified-card {
+    gap: 18px;
+    padding: 20px;
+}
+
+.mapped-area-editor-selection-header,
+.mapped-area-editor-tool-heading,
+.mapped-area-editor-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.mapped-area-editor-selection-header > div:first-child,
+.mapped-area-editor-tool-heading > div:first-child {
+    min-width: 0;
+}
+
+.mapped-area-editor-selection-header h2,
+.mapped-area-editor-tool-heading h3,
+.mapped-area-editor-records h3 {
+    margin: 0;
+}
+
+.mapped-area-editor-selection-header p,
+.mapped-area-editor-tool-heading p {
+    margin: 4px 0 0;
+    color: var(--text-muted);
+    font-size: .72rem;
+    line-height: 1.45;
+}
+
+.mapped-area-editor-mode-tabs {
+    min-width: min(100%, 420px);
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    background: var(--background);
+}
+
+.mapped-area-editor-mode-tabs button {
+    border-color: transparent;
+    background: transparent;
+}
+
+.mapped-area-editor-mode-tabs button.is-active {
+    border-color:
+        color-mix(
+            in srgb,
+            #22c55e 75%,
+            var(--border)
+        );
+    background:
+        color-mix(
+            in srgb,
+            #22c55e 18%,
+            var(--background)
+        );
+    color: var(--text);
+}
+
+.mapped-area-editor-object-panel,
+.mapped-area-editor-site-point-panel,
+.mapped-area-editor-records {
+    display: grid;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    background:
+        color-mix(
+            in srgb,
+            var(--surface) 82%,
+            var(--background)
+        );
+}
+
+.mapped-area-editor-object-panel[hidden],
+.mapped-area-editor-site-point-panel[hidden],
+.mapped-area-editor-tool-panel[hidden] {
+    display: none;
+}
+
+.mapped-area-editor-object-fields {
+    display: grid;
+    grid-template-columns: minmax(220px, .9fr) minmax(220px, 1fr) minmax(180px, .7fr);
+    gap: 12px;
+    align-items: end;
+}
+
+.mapped-area-editor-object-identity {
+    min-width: 0;
+    align-self: center;
+}
+
+.mapped-area-editor-object-identity strong {
+    display: block;
+    font-size: 1rem;
+}
+
+.mapped-area-editor-object-identity p {
+    margin: 4px 0 0;
+    color: var(--text-muted);
+    font-size: .72rem;
+    line-height: 1.45;
+}
+
+.mapped-area-editor-place-boundary-note {
+    display: grid;
+    gap: 3px;
+    padding: 11px 12px;
+    border: 1px solid
+        color-mix(
+            in srgb,
+            #22c55e 55%,
+            var(--border)
+        );
+    border-radius: 9px;
+    background:
+        color-mix(
+            in srgb,
+            #22c55e 13%,
+            var(--surface)
+        );
+}
+
+.mapped-area-editor-place-boundary-note[hidden] {
+    display: none;
+}
+
+.mapped-area-editor-place-boundary-note strong {
+    font-size: .78rem;
+}
+
+.mapped-area-editor-place-boundary-note span {
+    color: var(--text-muted);
+    font-size: .68rem;
+    line-height: 1.4;
+}
+
+.mapped-area-editor-site-coordinates {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.mapped-area-editor-tool-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.mapped-area-editor-tool-panel {
+    min-width: 0;
+    display: grid;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    background: var(--background);
+}
+
+.mapped-area-editor-tool-panel h3 {
+    font-size: .92rem;
+}
+
+.mapped-area-editor-footer {
+    align-items: flex-end;
+    padding-top: 4px;
+}
+
+.mapped-area-editor-footer > div:first-child {
+    min-width: 0;
+    display: grid;
+    gap: 6px;
+}
+
+.mapped-area-editor-footer .mapped-area-editor-save-actions {
+    display: flex;
+    grid-template-columns: none;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+
+.mapped-area-fit-all {
+    position: absolute;
+    right: 12px;
+    bottom: 54px;
+    z-index: 850;
+    background: rgba(18, 18, 18, .82) !important;
+    color: #fff !important;
+    border-color: rgba(255, 255, 255, .32) !important;
+    backdrop-filter: blur(10px);
+}
+
+.mapped-area-map-toolbar--draw button.is-active {
+    border-color: #f59e0b;
+    background: rgba(245, 158, 11, .2);
+}
+
+.mapped-area-editor-map .leaflet-interactive {
+    transition:
+        stroke-width .12s ease,
+        fill-opacity .12s ease;
+}
+
+@media (max-width: 900px) {
+    .mapped-area-editor-selection-header,
+    .mapped-area-editor-footer {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .mapped-area-editor-mode-tabs {
+        min-width: 0;
+        width: 100%;
+    }
+
+    .mapped-area-editor-object-fields {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .mapped-area-editor-object-identity {
+        grid-column: 1 / -1;
+    }
+
+    .mapped-area-editor-tool-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .mapped-area-editor-footer .mapped-area-editor-save-actions {
+        justify-content: stretch;
+    }
+
+    .mapped-area-editor-footer .mapped-area-editor-save-actions button {
+        flex: 1 1 180px;
+    }
+}
+
+@media (max-width: 620px) {
+    .mapped-area-editor-unified-card {
+        padding: 14px;
+    }
+
+    .mapped-area-editor-object-fields,
+    .mapped-area-editor-site-coordinates {
+        grid-template-columns: 1fr;
+    }
+
+    .mapped-area-editor-object-identity {
+        grid-column: auto;
+    }
+
+    .mapped-area-editor-selection-header p {
+        max-width: none;
+    }
+
+    .mapped-area-editor-mode-tabs button {
+        min-height: 38px;
+        padding-inline: 6px;
+    }
+
+    .mapped-area-fit-all {
+        right: 8px;
+        bottom: 46px;
+    }
+}
