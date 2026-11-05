@@ -216,6 +216,8 @@ function llama_place_report_scope_overrides(): array
              * These never inherit from the Place.
              */
             'site_number',
+            'site_loop',
+            'site_type_of_use',
             'site_accessible',
             'site_reservation_method',
             'max_people',
