@@ -313,3 +313,159 @@ function llama_season_save_target_answers(
         throw $error;
     }
 }
+
+
+/**
+ * Validate selected canonical Site IDs before constructing any SQL.
+ * Never infer IDs from displayed Site numbers or accept another Place's IDs.
+ */
+function llama_season_bulk_site_ids(mixed $submitted): array
+{
+    if (!is_array($submitted) || !$submitted || count($submitted) > 250) {
+        throw new InvalidArgumentException('Select 1 to 250 Sites to update.');
+    }
+    $ids = [];
+    foreach ($submitted as $raw) {
+        if (!is_string($raw) && !is_int($raw)) {
+            throw new InvalidArgumentException('Invalid Site selection.');
+        }
+        $value = (string) $raw;
+        if (!preg_match('/^[1-9][0-9]*$/D', $value)
+            || filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) === false) {
+            throw new InvalidArgumentException('Invalid Site ID in selection.');
+        }
+        $id = (int) $value;
+        $ids[$id] = $id;
+    }
+    $ids = array_values($ids);
+    sort($ids, SORT_NUMERIC);
+    return $ids;
+}
+
+/**
+ * Save one operating status for explicitly selected canonical Site records.
+ * "inherit" deletes only selected Site-season rows, never any normal facts.
+ * Verified closures, canonical answers and other seasons remain untouched.
+ *
+ * Caller must enforce Admin/Owner access and CSRF.
+ */
+function llama_season_bulk_site_statuses(
+    PDO $db,
+    int $placeId,
+    int $seasonId,
+    int $actorId,
+    mixed $submittedSiteIds,
+    string $status,
+    mixed $sourceInput = null
+): array {
+    if ($placeId < 1 || $actorId < 1 || $seasonId < 1) {
+        throw new InvalidArgumentException('A valid Place, season and administrator are required.');
+    }
+    if (!in_array($status, ['open', 'closed', 'inherit'], true)) {
+        throw new InvalidArgumentException('Choose a valid seasonal Site status.');
+    }
+    $siteIds = llama_season_bulk_site_ids($submittedSiteIds);
+    $owned = !$db->inTransaction();
+    if ($owned) {
+        $db->beginTransaction();
+    }
+    try {
+        // The Place lock serializes this batch with individual seasonal edits.
+        $lock = $db->prepare('SELECT id FROM places WHERE id = ? FOR UPDATE');
+        $lock->execute([$placeId]);
+        if (!$lock->fetchColumn()) {
+            throw new InvalidArgumentException('Place not found.');
+        }
+
+        $season = llama_season_verified_place($db, $placeId, $seasonId, true);
+        $source = llama_season_source_url($sourceInput)
+            ?? llama_season_source_url($season['source_url'] ?? null);
+
+        $marks = implode(',', array_fill(0, count($siteIds), '?'));
+        $verify = $db->prepare(
+            'SELECT id FROM place_campsites
+             WHERE place_id = ? AND is_active = 1
+               AND id IN (' . $marks . ') FOR UPDATE'
+        );
+        $verify->execute([$placeId, ...$siteIds]);
+        $validIds = array_map('intval', $verify->fetchAll(PDO::FETCH_COLUMN) ?: []);
+        sort($validIds, SORT_NUMERIC);
+        if ($validIds !== $siteIds) {
+            throw new InvalidArgumentException(
+                'One or more selected Sites are not active Sites belonging to this Place.'
+            );
+        }
+
+        $read = $db->prepare(
+            'SELECT target_id, operating_status FROM place_season_site_status
+             WHERE place_id = ? AND season_id = ?
+               AND target_source = ? AND target_id IN (' . $marks . ')
+             FOR UPDATE'
+        );
+        $read->execute([$placeId, $seasonId, 'campsite_record', ...$siteIds]);
+        $previous = [];
+        foreach ($read->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+            $previous[(int) $row['target_id']] = (string) $row['operating_status'];
+        }
+
+        $upsert = $db->prepare(
+            'INSERT INTO place_season_site_status
+                (place_id, season_id, target_source, target_id,
+                 operating_status, source_url, approved_by)
+             VALUES (?, ?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE
+                operating_status = VALUES(operating_status),
+                source_url = VALUES(source_url),
+                approved_by = VALUES(approved_by),
+                approved_at = CURRENT_TIMESTAMP'
+        );
+        $delete = $db->prepare(
+            'DELETE FROM place_season_site_status
+             WHERE place_id = ? AND season_id = ?
+               AND target_source = ? AND target_id = ?'
+        );
+        $changes = [];
+        $newStatus = $status === 'inherit' ? null : $status;
+        foreach ($siteIds as $siteId) {
+            $oldStatus = $previous[$siteId] ?? null;
+            if ($newStatus === $oldStatus) {
+                continue;
+            }
+            if ($newStatus === null) {
+                $delete->execute([$placeId, $seasonId, 'campsite_record', $siteId]);
+            } else {
+                $upsert->execute([
+                    $placeId, $seasonId, 'campsite_record', $siteId,
+                    $newStatus, $source, $actorId,
+                ]);
+            }
+            $changes[$siteId] = ['before' => $oldStatus, 'after' => $newStatus];
+        }
+
+        if ($changes) {
+            require_once dirname(__DIR__) . '/admin-users.php';
+            admin_users_audit(
+                $db, $actorId, null, 'place.season_bulk_sites_updated',
+                'Updated normal seasonal operating status for selected Sites.',
+                [
+                    'place_id' => $placeId,
+                    'season_id' => $seasonId,
+                    'target_source' => 'campsite_record',
+                    'changes' => $changes,
+                ]
+            );
+        }
+        if ($owned) {
+            $db->commit();
+        }
+        return [
+            'selected' => count($siteIds),
+            'changed' => count($changes),
+        ];
+    } catch (Throwable $error) {
+        if ($owned && $db->inTransaction()) {
+            $db->rollBack();
+        }
+        throw $error;
+    }
+}
