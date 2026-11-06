@@ -7,6 +7,7 @@ require_once dirname(__DIR__) . '/app/nps.php';
 require_once dirname(__DIR__) . '/app/nps-place-fill.php';
 require_once dirname(__DIR__) . '/app/nps-batch-fill.php';
 require_once dirname(__DIR__) . '/app/nps-publication-readiness.php';
+require_once dirname(__DIR__) . '/app/nps-reviewed-publication-plan.php';
 
 $adminUser = moderation_require_admin();
 $adminPageTitle = 'NPS Place Enrichment';
@@ -267,6 +268,18 @@ require __DIR__ . '/_header.php';
             <?php elseif (!$publicationCoverage['field_reviews']): ?>
                 <p>No field decisions are recorded for these confirmed identities.</p>
             <?php else: ?>
+                <?php $reviewSummary = llama_nps_review_publication_summary($publicationCoverage['field_reviews']); ?>
+                <p>
+                    <strong><?= (int) $reviewSummary['ready_to_compare'] ?></strong>
+                    reviewed decisions ready for destination checks ·
+                    <strong><?= (int) $reviewSummary['stale'] ?></strong>
+                    stale source decisions ·
+                    <strong><?= (int) $reviewSummary['waiting_for_place'] ?></strong>
+                    waiting for an existing Place
+                </p>
+                <p>This is a publication preflight, not an Apply action. It keeps
+                    Site counts, rate cards, coordinates, and reservation inventories
+                    separate so reviewed decisions cannot overwrite approved Scout data.</p>
                 <div class="admin-table-scroll">
                     <table class="admin-table">
                         <thead>
@@ -275,11 +288,13 @@ require __DIR__ . '/_header.php';
                                 <th>Field</th>
                                 <th>Reviewed choice</th>
                                 <th>Publication state</th>
+                                <th>Destination and next check</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach ($publicationCoverage['field_reviews'] as $review): ?>
                                 <?php
+                                $plan = llama_nps_review_publication_preflight($review);
                                 $reviewState = match ((string) $review['status']) {
                                     'reviewed_not_published' => 'Current review, not published',
                                     'waiting_for_place' => 'Awaiting the existing RIDB Place',
@@ -300,6 +315,14 @@ require __DIR__ . '/_header.php';
                                             <a href="/place.php?id=<?= (int) $review['place_id'] ?>">
                                                 Inspect Place
                                             </a>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <strong><?= moderation_e($plan['name']) ?></strong>
+                                        <small><?= moderation_e($plan['reason']) ?></small>
+                                        <small><?= moderation_e($plan['note']) ?></small>
+                                        <?php if ($plan['question_key'] !== null): ?>
+                                            <small>Canonical key: <code><?= moderation_e($plan['question_key']) ?></code></small>
                                         <?php endif; ?>
                                     </td>
                                 </tr>
