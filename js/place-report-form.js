@@ -718,7 +718,8 @@ return String(value).trim() !== '';
 const completionRuleMatches = (
 form,
 rule,
-config
+config,
+visited = new Set()
 ) => {
 if (
 !rule
@@ -755,7 +756,8 @@ return operator === 'any'
 completionRuleMatches(
 form,
 nested,
-config
+config,
+visited
 )
 )
 : nestedRules.every(
@@ -763,7 +765,8 @@ config
 completionRuleMatches(
 form,
 nested,
-config
+config,
+visited
 )
 );
 }
@@ -780,7 +783,9 @@ const dependency = Array.isArray(config.fields)
 ? config.fields.find((item) => String(item.key) === fieldKey)
 : null;
 
-if (dependency && !fieldContextuallyApplicable(form, dependency, config)) {
+// An absent parent cannot activate a follow-up, including through a
+// stale "No" answer or a negative match. Type is an external Place context.
+if (!dependency || !fieldContextuallyApplicable(form, dependency, config, visited)) {
 return false;
 }
 }
@@ -806,7 +811,8 @@ return dependency
 fieldContextuallyApplicable(
 form,
 dependency,
-config
+config,
+visited
 )
 && completionValueAnswered(
 actual,
@@ -890,11 +896,17 @@ return false;
 const fieldContextuallyApplicable = (
 form,
 field,
-config
+config,
+visited = new Set()
 ) => {
-// Issue #5 reconciliation: keep dependency rules as metadata only.
-// Derived fields are not editable questions.
-return !field.derived;
+if (!field || field.derived) return false;
+const key = String(field.key || '');
+if (!key || visited.has(key)) return false;
+
+const next = new Set(visited);
+next.add(key);
+return (Array.isArray(field.applicable_if) ? field.applicable_if : [])
+.every(rule => completionRuleMatches(form, rule, config, next));
 };
 
 const fieldCountsTowardCompletion = (
@@ -914,35 +926,48 @@ const syncApplicabilityVisibility = (
 form,
 config
 ) => {
-// Reconciliation mode: show every question belonging to this form.
-// Scope routing is handled by the form renderer, not dependencies.
-config.fields.forEach((field) => {
-const key = String(field.key || '');
-if (!key || field.derived) return;
+const reviewNode = form.querySelector('[data-place-report-schema-config]');
+const showAllForReview = reviewNode?.dataset.inventoryReview === '1';
+const fields = new Map(config.fields.map(field => [String(field.key), field]));
+const visible = key => {
+const field = fields.get(String(key));
+return !!field && (showAllForReview
+? !field.derived
+: fieldContextuallyApplicable(form, field, config));
+};
 
-const controls = [
-...form.querySelectorAll(
-`[name="${CSS.escape(key)}"], [name="${CSS.escape(key + '[]')}"]`
-)
-];
+// Use canonical question keys, not input names: radio controls include
+// hidden sentinels and compound controls can contain multiple components.
+form.querySelectorAll('[data-report-field]').forEach(wrapper => {
+const allowed = visible(wrapper.dataset.reportField);
+wrapper.hidden = !allowed;
+wrapper.classList.toggle('is-applicability-hidden', !allowed);
+if (allowed) delete wrapper.dataset.placeReportApplicabilityHidden;
+else wrapper.dataset.placeReportApplicabilityHidden = '1';
+});
 
-controls.forEach((control) => {
-const wrapper = control.closest(
-'.contribution-field, .contribution-check'
+// A compound question remains visible if ANY of its actual components
+// is applicable. Never hide it just because its first control is not.
+form.querySelectorAll('[data-report-compound-question]').forEach(wrapper => {
+const controls = [...wrapper.querySelectorAll('input[name], select[name], textarea[name]')];
+const keys = new Set(controls.map(control => String(control.name).replace(/\\[\\]$/, '')));
+const allowed = [...keys].some(key => visible(key));
+wrapper.hidden = !allowed;
+wrapper.classList.toggle('is-applicability-hidden', !allowed);
+});
+
+// Hide empty question groups, but preserve coordinates, photos, and other
+// non-question workflow controls regardless of the selected target.
+const sections = [...form.querySelectorAll('.contribution-section')].reverse();
+sections.forEach(section => {
+const wrappers = [...section.querySelectorAll('[data-report-field], [data-report-compound-question]')];
+if (!wrappers.length) return;
+const standalone = section.querySelector(
+'.add-place-coordinate-field, .add-place-locate-panel, .add-place-photo-upload, [data-place-report-photos]'
 );
-if (!wrapper) return;
-
-wrapper.hidden = false;
-wrapper.classList.remove('is-applicability-hidden');
-delete wrapper.dataset.placeReportApplicabilityHidden;
-delete wrapper.dataset.placeReportOriginalHidden;
-});
-});
-
-form.querySelectorAll('.contribution-section').forEach((section) => {
-section.hidden = false;
-section.classList.remove('is-applicability-hidden');
-delete section.dataset.placeReportApplicabilityHidden;
+const allowed = !!standalone || wrappers.some(wrapper => !wrapper.hidden);
+section.hidden = !allowed;
+section.classList.toggle('is-applicability-hidden', !allowed);
 });
 };
 
