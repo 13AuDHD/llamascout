@@ -136,12 +136,15 @@ $placeReportAllowedStoragePaths =
         : null;
 
 /*
- * Issue #5 reconciliation: show the entire canonical question set.
- * Visibility is independent of the current workflow's save capabilities.
- * Set false only when restoring workflow storage filtering intentionally.
+ * Full-inventory review is finished. New reports and updates use the active
+ * workflow's actual storage paths and the canonical parent-child rules.
+ * Historical answers remain stored even when follow-ups are hidden.
+ *
+ * A caller can still explicitly request inventory-review mode for an
+ * administrative audit, but it is no longer the default for contributors.
  */
 $placeReportReconciliationMode =
-    (bool) ($placeReportReconciliationMode ?? true);
+    (bool) ($placeReportReconciliationMode ?? false);
 
 $placeReportAllowedStorageLookup =
     $placeReportAllowedStoragePaths !== null
