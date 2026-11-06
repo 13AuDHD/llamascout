@@ -1120,6 +1120,14 @@
                     : []
             );
 
+        // Only the authorized Site detail endpoint can evaluate member-only
+        // child dependencies. Catalog previews must not revive those cards.
+        const hasSiteApplicability = Array.isArray(site.report_inapplicable_keys);
+        const inapplicable = new Set(hasSiteApplicability
+            ? site.report_inapplicable_keys.map(clean)
+            : []);
+
+
         document
             .querySelectorAll(
                 '[data-campsite-report-field]'
@@ -1131,6 +1139,15 @@
                             card.dataset
                                 .campsiteReportField
                         );
+
+                    const conditional = card.dataset.campsiteReportConditional === '1';
+                    if (inapplicable.has(key)
+                        || (conditional && !hasSiteApplicability)) {
+                        card.hidden = true;
+                        card.classList.add('is-applicability-hidden');
+                        return;
+                    }
+                    card.classList.remove('is-applicability-hidden');
 
                     const isStructurallyLocked =
                         card.dataset
