@@ -873,7 +873,7 @@
                 areaDetailsNote.textContent =
                     type === 'parking_area'
                         ? 'Use Overnight vehicle parking for ordinary parking spaces where sleeping in the vehicle is permitted. Local rules and posted signage still control.'
-                        : 'Use Developed campground for managed RV or tent sites. Individual sites and detailed rates can be mapped inside this area later.';
+                        : 'Use Developed campground for managed RV or tent sites. Set campsite prices in the Place rate card.';
             }
         };
 

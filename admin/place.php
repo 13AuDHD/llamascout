@@ -346,6 +346,15 @@ $placeReportValues = (
     && $error !== ''
 ) ? $_POST : llama_place_report_form_input_from_data($reportData);
 
+// Load old flat, mapped and class rates into the same editor without writing.
+if (!(($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && $error !== '')) {
+    require_once dirname(__DIR__) . '/app/place-pricing.php';
+    $pricingDocument = llama_pricing_document($db, $place);
+    $placeReportValues['place_rate_cards_json'] = !empty($pricingDocument['invalid'])
+        ? (string) ($rules['rate_cards_json'] ?? '')
+        : json_encode($pricingDocument, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+}
+
 $placeReportMode = 'moderator';
 $placeReportExistingPhotos = $images;
 $placeReportShowLocate = true;

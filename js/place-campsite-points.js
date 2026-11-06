@@ -179,6 +179,12 @@
             top.appendChild(accessible);
         }
         content.appendChild(top);
+        if (site.pricing_summary) {
+            const price = document.createElement('strong');
+            price.className = 'place-map-site-popup-meta';
+            price.textContent = site.pricing_summary;
+            content.appendChild(price);
+        }
 
         const bottom = document.createElement('div');
         bottom.className = 'place-map-site-popup-bottom';

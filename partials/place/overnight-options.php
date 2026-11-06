@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 require_once dirname(__DIR__, 2) . '/app/place-map-features.php';
-require_once dirname(__DIR__, 2) . '/app/place-map-pricing.php';
+require_once dirname(__DIR__, 2) . '/app/place-pricing.php';
 require_once dirname(__DIR__, 2) . '/app/place-campsites.php';
 require_once dirname(__DIR__, 2) . '/app/place-report.php';
 require_once dirname(__DIR__, 2) . '/app/place-report/scoped-answers.php';
@@ -19,9 +19,7 @@ $placeId =
 $stayViewerHasCompleteAccess =
     (bool) ($hasCompleteAccess ?? false);
 
-$baseCampingFee =
-    $place['rules']['fee']
-    ?? null;
+$stayPricing = llama_pricing_document(db(), $place);
 
 $stayFeatures = [];
 $stayDb = db();
@@ -185,20 +183,13 @@ foreach ($stayFeatures as $feature) {
             )
         );
 
-    $effectiveRates =
-        llama_place_map_effective_rates_with_place_base(
-            (array) (
-                $feature['effective_rates']
-                ?? $feature['rates']
-                ?? []
-            ),
-            $baseCampingFee
-        );
-
-    $pricingSummary =
-        llama_place_map_rate_summary_label(
-            $effectiveRates
-        );
+    $pricingSummary = llama_pricing_for_site($stayPricing, [
+        'map_feature_id' => $id,
+        'site_code' => $code,
+        'site_type' => $type,
+        'parking_style' => $style,
+        'parent_feature_id' => (int) ($details['camping_area_feature_id'] ?? 0),
+    ])['label'];
 
     $summaryParts =
         array_values(

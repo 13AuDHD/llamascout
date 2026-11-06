@@ -924,6 +924,13 @@
                 );
             }
 
+            if (feature.pricing_summary) {
+                const price = document.createElement('span');
+                price.className = 'place-map-popup-rate-summary';
+                price.textContent = feature.pricing_summary;
+                wrapper.append(price);
+            }
+
             const ownRateSummary =
                 feature
                     .effective_rate_summary

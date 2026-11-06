@@ -1336,8 +1336,9 @@ $check('Unified Place map editor contract', static function () use ($assert): vo
     );
 
     $assert(
-        strpos($endpoint, "!array_key_exists('rates', \$input)") !== false
-        && strpos($endpoint, "!array_key_exists('site_classes', \$input)") !== false,
+        strpos($endpoint, "llama_place_map_features(\$db, \$placeId, true, true)") !== false
+        && strpos($endpoint, "\$ratesInput = (array) (\$existingFeature['rates'] ?? [])") !== false
+        && strpos($endpoint, "\$siteClassesInput = (array) (\$existingFeature['site_classes'] ?? [])") !== false,
         'Map save no longer preserves pricing that this editor does not control'
     );
 

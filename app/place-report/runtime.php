@@ -1113,6 +1113,11 @@ function llama_place_report_display_value(
             (string) $field['storage']
         );
 
+    if ($fieldKey === 'place_rate_cards_json') {
+        require_once dirname(__DIR__) . '/place-pricing.php';
+        return llama_pricing_place_summary(llama_pricing_decode($value)) ?: 'See Site pricing';
+    }
+
    $type = (string) $field['type'];
 
     if ($type === 'tri') {

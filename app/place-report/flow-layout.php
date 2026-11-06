@@ -111,6 +111,7 @@ function llama_place_report_layout_groups(): array
             'nearest_services' => 'Nearest Services',
             'place_rules' => 'Rules & Restrictions',
             'operating_closures' => 'Operating Hours & Closures',
+            'pricing' => 'Campsite Rates',
         ],
         'site' => [
             'selection_type' => 'Site & Capacity',
@@ -173,6 +174,7 @@ function llama_place_report_layout_assignments(): array
             'land_manager', 'region',
         ],
 
+        'place:pricing' => ['place_rate_cards_json'],
         'site:reservations_pricing' => [
             'fee',
             'extra_vehicle_fee',

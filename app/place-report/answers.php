@@ -42,7 +42,10 @@ function llama_place_report_parse_answer(array $field, mixed $raw): array
     if ($text === '') {
         return ['state' => 'unanswered', 'value' => null];
     }
-    if (in_array($type, ['tri', 'checkbox'], true)) {
+    if ($key === 'place_rate_cards_json') {
+        require_once dirname(__DIR__) . '/place-pricing.php';
+        $value = json_encode(llama_pricing_validate($text), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+    } elseif (in_array($type, ['tri', 'checkbox'], true)) {
         if (!in_array($text, ['0', '1'], true)) {
             $invalid('Choose Yes or No.');
         }

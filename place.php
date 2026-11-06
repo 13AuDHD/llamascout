@@ -752,6 +752,7 @@ require
     require
         __DIR__
         . '/partials/place/hero.php';
+    require __DIR__ . '/partials/place/pricing.php';
     ?>
 
     <?php

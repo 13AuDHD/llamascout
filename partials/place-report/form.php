@@ -16,6 +16,16 @@ $placeReportValues =
         ? $placeReportValues
         : [];
 
+// Older submitted rate-card lists use the same editor and server adapter.
+if (isset($placeReportValues['place_rate_cards_json']) && is_string($placeReportValues['place_rate_cards_json']) && trim($placeReportValues['place_rate_cards_json']) !== '') {
+    require_once dirname(__DIR__, 2) . '/app/place-pricing.php';
+    try {
+        $placeReportValues['place_rate_cards_json'] = json_encode(llama_pricing_validate($placeReportValues['place_rate_cards_json']), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+    } catch (InvalidArgumentException) {
+        // Leave invalid input intact so the user can inspect and correct it.
+    }
+}
+
 $placeReportReferenceValues =
     is_array($placeReportReferenceValues ?? null)
         ? $placeReportReferenceValues

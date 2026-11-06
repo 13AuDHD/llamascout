@@ -159,6 +159,7 @@ function llama_ridb_normalization_definitions(): array
             'standard_basis' => 'Federal Camping Data Standard: Parking Site Feature',
             'aliases' => [
                 'Driveway Entry',
+                'Driveway Type',
                 'Parking Type',
                 'RV Parking',
             ],

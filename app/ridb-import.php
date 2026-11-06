@@ -165,7 +165,7 @@ function llama_ridb_import_parking_style(mixed $value): ?string {
     return match (true) {
         str_contains($key, 'PULL THROUGH') => 'pull_through',
         str_contains($key, 'BACK IN') => 'back_in',
-        str_contains($key, 'PULL IN') => 'pull_in',
+        str_contains($key, 'PULL IN'), str_contains($key, 'FRONT IN') => 'pull_in',
         str_contains($key, 'PARALLEL') => 'parallel',
         default => null,
     };
