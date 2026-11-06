@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/nps.php';
 require_once dirname(__DIR__) . '/app/nps-place-fill.php';
+require_once dirname(__DIR__) . '/app/nps-batch-fill.php';
 
 $adminUser = moderation_require_admin();
 $adminPageTitle = 'NPS Place Enrichment';
@@ -20,10 +21,61 @@ $error = '';
 $notice = '';
 $matches = [];
 $previews = [];
+$batchPage = ['items' => [], 'has_more' => false, 'after_park' => '', 'after_id' => ''];
+$batchResults = null;
+$batchPreview = [];
+$batchCursorPark = trim((string) ($_POST['batch_after_park'] ?? $_GET['batch_after_park'] ?? ''));
+$batchCursorId = trim((string) ($_POST['batch_after_id'] ?? $_GET['batch_after_id'] ?? ''));
 
 try {
     $mainDb = db();
     $npsDb = nps_db();
+    $batchPage = llama_nps_fill_batch_page($npsDb, $batchCursorPark, $batchCursorId, 5);
+    if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST'
+        && ($_POST['action'] ?? '') === 'fill_batch') {
+        if (!moderation_verify_csrf((string) ($_POST['csrf_token'] ?? ''))) {
+            throw new RuntimeException('Your session expired. Reload before applying an NPS batch.');
+        }
+        $batchResults = llama_nps_fill_batch_apply(
+            $npsDb,
+            $mainDb,
+            $batchPage,
+            (string) ($_POST['batch_signature'] ?? ''),
+            (int) ($adminUser['id'] ?? 0),
+            ($_POST['batch_include_photos'] ?? '') === '1'
+        );
+        $stats = $batchResults['stats'];
+        $notice = 'NPS batch: ' . (int) $stats['completed'] . ' of '
+            . (int) $stats['checked'] . ' checked, '
+            . (int) $stats['fields_filled'] . ' missing fields filled, '
+            . (int) $stats['photos_added'] . ' photos added, '
+            . (int) $stats['conflicts_kept'] . ' existing conflicts preserved, '
+            . (int) $stats['errors'] . ' errors.';
+    }
+    foreach ($batchPage['items'] as $candidate) {
+        try {
+            $pair = llama_nps_fill_pair(
+                $npsDb, $mainDb,
+                (string) $candidate['park_code'],
+                (string) $candidate['record_id'],
+                (string) $candidate['ridb_facility_id']
+            );
+            $preview = llama_nps_fill_preview($mainDb, $pair);
+            $batchPreview[] = [
+                'candidate' => $candidate,
+                'ready' => true,
+                'fields' => count($preview['fill']),
+                'photos' => count($preview['images_new']),
+                'conflicts' => count($preview['conflict']),
+            ];
+        } catch (Throwable $exception) {
+            $batchPreview[] = [
+                'candidate' => $candidate,
+                'ready' => false,
+                'error' => $exception->getMessage(),
+            ];
+        }
+    }
     if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'fill_missing') {
         if (!moderation_verify_csrf((string) ($_POST['csrf_token'] ?? ''))) {
             throw new RuntimeException('Session expired. Reload the page before importing.');
@@ -95,6 +147,109 @@ require __DIR__ . '/_header.php';
             <a class="admin-button is-secondary" href="/nps-ridb-matches.php">Review campground matches</a>
             <a class="admin-button is-secondary" href="/nps-field-reconciliation.php">Review NPS / RIDB facts</a>
         </div>
+    </div>
+</section>
+
+<section class="admin-panel" id="nps-batch-fill">
+    <header class="admin-panel-header">
+        <div>
+            <p>Source-matched enrichment</p>
+            <h2>Fill confirmed campgrounds in batches</h2>
+        </div>
+    </header>
+    <div class="admin-panel-body">
+        <p>Process up to five confirmed NPS/RIDB campground pairs per request.
+            Matches must still have a current human-approved identity and
+            an existing published RIDB Place. This fills only missing
+            Place facts. It never creates duplicate Places or Site numbers,
+            and never replaces approved answers.</p>
+        <p>Photos are optional because matching URLs does not yet detect visually
+            duplicate images from different sources.</p>
+        <?php if (!$batchPage['items']): ?>
+            <p>No current confirmed NPS/RIDB pairs remain at this position.
+                <a href="/nps-ridb-matches.php">Review or confirm more source matches</a>.</p>
+        <?php else: ?>
+            <div class="admin-table-scroll">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>NPS campground</th>
+                            <th>RIDB facility ID</th>
+                            <th>Missing fields</th>
+                            <th>New photo URLs</th>
+                            <th>Existing conflicts</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($batchPreview as $item): ?>
+                            <?php $candidate = $item['candidate']; ?>
+                            <tr>
+                                <td>
+                                    <strong><?= moderation_e((string) $candidate['record_name']) ?></strong>
+                                    <small><?= moderation_e(strtoupper((string) $candidate['park_code'])) ?></small>
+                                    <?php if (!$item['ready']): ?>
+                                        <p class="admin-place-seasons-message is-error">
+                                            Not ready: <?= moderation_e((string) $item['error']) ?>
+                                        </p>
+                                    <?php endif; ?>
+                                </td>
+                                <td><?= moderation_e((string) $candidate['ridb_facility_id']) ?></td>
+                                <td><?= $item['ready'] ? (int) $item['fields'] : 'Unavailable' ?></td>
+                                <td><?= $item['ready'] ? (int) $item['photos'] : 'Unavailable' ?></td>
+                                <td><?= $item['ready'] ? (int) $item['conflicts'] : 'Unavailable' ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+            <form class="admin-form" method="post" action="/nps-place-fill.php#nps-batch-fill">
+                <input type="hidden" name="action" value="fill_batch">
+                <input type="hidden" name="csrf_token"
+                       value="<?= moderation_e(moderation_csrf_token()) ?>">
+                <input type="hidden" name="batch_after_park"
+                       value="<?= moderation_e($batchCursorPark) ?>">
+                <input type="hidden" name="batch_after_id"
+                       value="<?= moderation_e($batchCursorId) ?>">
+                <input type="hidden" name="batch_signature"
+                       value="<?= moderation_e(llama_nps_fill_batch_signature($batchPage['items'])) ?>">
+                <label class="admin-checkbox-row">
+                    <input type="checkbox" name="batch_include_photos" value="1">
+                    Also add NPS photos whose URLs are not already saved
+                </label>
+                <button class="admin-button" type="submit">
+                    Apply this batch (<?= count($batchPage['items']) ?> campgrounds)
+                </button>
+            </form>
+            <div class="admin-user-form-actions">
+                <?php if ($batchPage['has_more']): ?>
+                    <a class="admin-button is-secondary"
+                       href="/nps-place-fill.php?<?= moderation_e(http_build_query([
+                           'batch_after_park' => $batchPage['after_park'],
+                           'batch_after_id' => $batchPage['after_id'],
+                       ])) ?>#nps-batch-fill">
+                        Preview next five
+                    </a>
+                <?php endif; ?>
+                <?php if ($batchCursorPark !== ''): ?>
+                    <a class="admin-button is-secondary"
+                       href="/nps-place-fill.php#nps-batch-fill">Start from first batch</a>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
+        <?php if ($batchResults !== null): ?>
+            <h3>Batch results</h3>
+            <ul>
+                <?php foreach ($batchResults['results'] as $item): ?>
+                    <li>
+                        <strong><?= moderation_e((string) $item['name']) ?>:</strong>
+                        <?= moderation_e((string) $item['message']) ?>
+                        <?php if (!empty($item['place_id'])): ?>
+                            <a href="/place.php?id=<?= (int) $item['place_id'] ?>">Open Place</a>
+                        <?php endif; ?>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        <?php endif; ?>
     </div>
 </section>
 
