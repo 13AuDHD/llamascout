@@ -289,3 +289,11 @@
     border-color: color-mix(in srgb, #387ec6 65%, var(--border));
     background: color-mix(in srgb, #387ec6 13%, var(--background));
 }
+
+
+/* Follow-up Site cards are shown only when the selected authorized Site
+   satisfies their canonical parent answers. */
+.scout-report-grid [data-campsite-report-conditional].is-applicability-hidden,
+.scout-report-grid [data-campsite-report-field][hidden] {
+    display: none !important;
+}
