@@ -226,7 +226,7 @@ function llama_nps_fill_preview(PDO $db, array $pair): array
 }
 
 /** Transactional, idempotent NPS fill. This never overwrites nonempty facts. */
-function llama_nps_fill_apply(PDO $npsDb, PDO $db, string $park, string $npsId, string $ridbId, int $userId): array
+function llama_nps_fill_apply(PDO $npsDb, PDO $db, string $park, string $npsId, string $ridbId, int $userId, bool $includePhotos = true): array
 {
     $pair = llama_nps_fill_pair($npsDb, $db, $park, $npsId, $ridbId);
     $db->beginTransaction();
@@ -268,15 +268,18 @@ function llama_nps_fill_apply(PDO $npsDb, PDO $db, string $park, string $npsId, 
         $insert = $db->prepare('INSERT INTO place_images
             (place_id, src, alt_text, is_featured, sort_order, uploaded_by)
             VALUES (?, ?, ?, ?, ?, ?)');
-        foreach ($preview['images_new'] as $image) {
-            $insert->execute([$pair['place_id'], $image['url'], $image['alt'] ?? $pair['place_name'],
-                $hasFeatured ? 0 : 1, $order++, $userId > 0 ? $userId : null]);
-            $hasFeatured = true;
+        if ($includePhotos) {
+            foreach ($preview['images_new'] as $image) {
+                $insert->execute([$pair['place_id'], $image['url'], $image['alt'] ?? $pair['place_name'],
+                    $hasFeatured ? 0 : 1, $order++, $userId > 0 ? $userId : null]);
+                $hasFeatured = true;
+            }
         }
         $db->commit();
         return ['place_id' => $pair['place_id'], 'place_name' => $pair['place_name'],
             'fields_filled' => count($preview['fill']), 'fields_skipped' => count($preview['conflict']),
-            'photos_added' => count($preview['images_new']), 'photos_already_present' => $preview['images_existing']];
+            'photos_added' => $includePhotos ? count($preview['images_new']) : 0,
+            'photos_already_present' => $preview['images_existing']];
     } catch (Throwable $error) {
         if ($db->inTransaction()) {
             $db->rollBack();
