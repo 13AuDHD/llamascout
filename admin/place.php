@@ -380,7 +380,11 @@ $placeReportPhotoHelp = 'Add photos to the currently selected Place, Area, or Si
 
 <script src="https://llamascout.com/js/add-place-location.js"></script>
 <script src="https://llamascout.com/js/add-place-name.js"></script>
-<script src="https://llamascout.com/js/place-report-form.js"></script>
+<?php
+$sharedReportAsset = dirname(__DIR__) . '/js/place-report-form.js';
+$sharedReportVersion = is_file($sharedReportAsset) ? (int) filemtime($sharedReportAsset) : 1;
+?>
+<script src="https://llamascout.com/js/place-report-form.js?v=<?= $sharedReportVersion ?>"></script>
 <script src="https://llamascout.com/js/admin/place-report-save.js"></script>
 <script src="https://llamascout.com/js/admin/place-report-seasons.js"></script>
 <script src="https://llamascout.com/js/admin/place-report-area.js"></script>
