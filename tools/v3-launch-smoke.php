@@ -1885,7 +1885,8 @@ $check('Parent-child visibility active across canonical forms and public Site re
     $fields = llama_report_questions();
     $assert(!llama_place_report_full_inventory_review_enabled(),
         'Inventory review must be off before evaluating conditional questions');
-    foreach (['tent_pad_width_feet', 'hookup_electric', 'hookup_electric_service'] as $key) {
+    foreach (['tent_pad_width_feet', 'hookup_electric_service',
+              'generator_prohibited', 'generator_quiet_hours_begin'] as $key) {
         $assert(!empty($fields[$key]['applicable_if']),
             'Canonical dependency missing for ' . $key);
     }
@@ -1900,18 +1901,25 @@ $check('Parent-child visibility active across canonical forms and public Site re
         $base + ['tent_pad' => '0'], 'tent_pad_width_feet'
     ), 'Tent Pad No should hide dimensions');
 
-    $hookups = $base + [
-        'site_hookups_available' => '1',
-        'hookup_electric' => '1',
-    ];
+    // The approved Site inventory intentionally keeps individual utilities
+    // independent of the broad hookups summary.
+    $hookups = $base + ['site_hookups_available' => '0', 'hookup_electric' => '1'];
     $assert(llama_place_report_question_applicable($hookups, 'hookup_electric_service'),
-        'Both hookup parents Yes should reveal Electric Service');
-    $hookups['site_hookups_available'] = '0';
+        'Electric Service depends on Electric Yes, not on the broad hookup summary');
+    $hookups['hookup_electric'] = '0';
     $assert(!llama_place_report_question_applicable($hookups, 'hookup_electric_service'),
-        'Stale Electric Yes cannot activate grandchild after Hookups No');
-    $hookups['site_hookups_available'] = llama_place_report_unknown_token();
-    $assert(!llama_place_report_question_applicable($hookups, 'hookup_electric'),
-        'Unknown hookups must not trigger Yes-only electric follow-up');
+        'Electric No must hide its service detail');
+
+    $generator = $base + [
+        'generator_restrictions' => '1',
+        'generator_prohibited' => '0',
+        'generator_quiet_hours' => '1',
+    ];
+    $assert(llama_place_report_question_applicable($generator, 'generator_quiet_hours_begin'),
+        'Generator restrictions Yes, prohibited No, quiet hours Yes show start time');
+    $generator['generator_restrictions'] = '0';
+    $assert(!llama_place_report_question_applicable($generator, 'generator_quiet_hours_begin'),
+        'Stale generator values cannot reveal child of an inapplicable parent');
 
     $form = file_get_contents(dirname(__DIR__) . '/partials/place-report/form.php');
     $browser = file_get_contents(dirname(__DIR__) . '/js/place-report-form.js');
