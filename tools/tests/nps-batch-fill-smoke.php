@@ -50,18 +50,6 @@ $changed[0]['ridb_facility_id'] = '999999';
 $assert(!hash_equals($signature, llama_nps_fill_batch_signature($changed)),
     'Changed confirmed source identity must invalidate a preview');
 
-// No database is needed to enforce the exact preview signature before a POST.
-$rejected = false;
-try {
-    llama_nps_fill_batch_apply(
-        null, null, ['items' => $rows],
-        str_repeat('0', 64), 5
-    );
-} catch (TypeError|InvalidArgumentException) {
-    $rejected = true;
-}
-$assert($rejected, 'Invalid batch signature cannot be accepted');
-
 $batchSource = file_get_contents(dirname(__DIR__, 2) . '/app/nps-batch-fill.php');
 $fillSource = file_get_contents(dirname(__DIR__, 2) . '/app/nps-place-fill.php');
 $adminSource = file_get_contents(dirname(__DIR__, 2) . '/admin/nps-place-fill.php');
@@ -84,6 +72,15 @@ $assert(strpos($adminSource, "moderation_verify_csrf(") !== false
 if (extension_loaded('pdo_sqlite')) {
     $db = new PDO('sqlite::memory:');
     $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $rejected = false;
+    try {
+        llama_nps_fill_batch_apply(
+            $db, $db, ['items' => $rows], str_repeat('0', 64), 5
+        );
+    } catch (InvalidArgumentException) {
+        $rejected = true;
+    }
+    $assert($rejected, 'Invalid batch signature must fail before any writes');
     $db->exec('CREATE TABLE nps_raw_records (
         resource_type TEXT, park_code TEXT, record_id TEXT, record_name TEXT, source_hash TEXT
     )');
