@@ -7,16 +7,20 @@ on:
       - '.github/workflows/nps-enrichment-smoke.yml'
       - 'app/nps-batch-fill.php'
       - 'app/nps-place-fill.php'
+      - 'app/nps-publication-readiness.php'
       - 'admin/nps-place-fill.php'
       - 'tools/tests/nps-batch-fill-smoke.php'
+      - 'tools/tests/nps-publication-readiness-smoke.php'
   pull_request:
     branches: [main]
     paths:
       - '.github/workflows/nps-enrichment-smoke.yml'
       - 'app/nps-batch-fill.php'
       - 'app/nps-place-fill.php'
+      - 'app/nps-publication-readiness.php'
       - 'admin/nps-place-fill.php'
       - 'tools/tests/nps-batch-fill-smoke.php'
+      - 'tools/tests/nps-publication-readiness-smoke.php'
   workflow_dispatch:
 
 permissions:
@@ -32,7 +36,11 @@ jobs:
           php -l app/nps.php
           php -l app/nps-place-fill.php
           php -l app/nps-batch-fill.php
+          php -l app/nps-publication-readiness.php
           php -l admin/nps-place-fill.php
           php -l tools/tests/nps-batch-fill-smoke.php
+          php -l tools/tests/nps-publication-readiness-smoke.php
       - name: NPS batch identity and pagination safety
         run: php tools/tests/nps-batch-fill-smoke.php
+      - name: NPS reviewed-to-published coverage safety
+        run: php tools/tests/nps-publication-readiness-smoke.php
