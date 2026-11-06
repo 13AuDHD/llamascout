@@ -94,6 +94,8 @@ function llama_pricing_validate(mixed $raw): array
             foreach ($ids as $id) if (!is_int($id) || $id < 1) throw new InvalidArgumentException('Invalid pricing Site ID.');
             $cleanMatch[$key] = array_values(array_unique($ids));
         }
+        $cleanMatch['site_selection'] = !empty($match['site_selection']);
+        if ($cleanMatch['site_selection'] && !$cleanMatch['site_ids']) throw new InvalidArgumentException('Choose at least one Site, or select All matching Sites.');
         $unit = (string) ($row['unit'] ?? 'night');
         if (!in_array($unit, ['night','week','month','stay','season','person_night','vehicle_night'], true)) throw new InvalidArgumentException('Invalid rate unit.');
         $out = ['id' => mb_substr((string) ($row['id'] ?? 'rate-' . $index), 0, 80), 'name' => mb_substr(trim((string) ($row['name'] ?? '')), 0, 120), 'match' => $cleanMatch, 'unit' => $unit];
@@ -330,6 +332,10 @@ function llama_pricing_for_site(array $doc, array $site, ?string $date = null, s
     if ($uncertain && $best < 100) $state = 'needs_review';
     $row = $matches[0] ?? [];
     $price = $state !== '' ? ['state' => $state, 'amount' => null] : llama_pricing_row_price($doc, $row, $date);
+    $price['schedule_label'] = (string) ($price['label'] ?? '');
+    $price['row_id'] = count($matches) === 1 ? (string) ($row['id'] ?? '') : '';
+    $price['rate_name'] = (string) ($row['name'] ?? '');
+    if ($price['rate_name'] === '') $price['rate_name'] = ucfirst((string) ($row['match']['category'] ?? '')) ?: 'All Sites';
     $price['label'] = llama_pricing_label($price, $unit);
     $price['unit'] = $unit; $price['currency'] = 'USD';
     return $price;

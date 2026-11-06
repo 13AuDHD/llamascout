@@ -33,3 +33,7 @@ Rollback: revert the application commit. Keep the nullable JSON column and its v
 - Existing reporting, coordinate/Site visibility, photo access and Place page access smoke checks.
 
 Production MariaDB, a live signed-in save and visual browser QA still need the deployment checks above. SQLite tests do not execute the MariaDB migration or spatial queries.
+
+## Compact editor follow-up
+
+The main matrix exposes Site category, layout and base/weekend/holiday prices. Optional matching and source fields are collapsed in full-width More options below each row. Select actual Site names rather than entering database IDs. Existing invalid selections are preserved and visibly flagged; an explicitly selected empty Site list cannot become a campground-wide price. Seasonal/date controls edit existing periods and select the edited schedule, with the preview moved to its first night. A Site/date preview refreshes through the shared PHP resolver after edits; unresolved Sites are in a collapsed list instead of a long inline paragraph. Save prices invokes the existing atomic Save Place Report action.

@@ -42,6 +42,7 @@ bad(fn() => llama_pricing_amount(INF), 'Infinite amount');
 bad(fn() => llama_pricing_validate('{broken'), 'Malformed JSON');
 bad(fn() => llama_pricing_period(['start' => '2027-02-30', 'end' => '2027-03-01']), 'Invalid dates');
 $bad = $doc; $bad['rows'][0]['source_url'] = 'javascript:alert(1)'; bad(fn() => llama_pricing_validate($bad), 'Unsafe source URL');
+$bad = $doc; $bad['rows'][0]['match']['site_selection'] = true; $bad['rows'][0]['match']['site_ids'] = []; bad(fn() => llama_pricing_validate($bad), 'An empty explicit Site selection must not apply to all Sites');
 $bad = $doc; $bad['rows'][0]['match']['site_ids'] = ['not-a-site']; bad(fn() => llama_pricing_validate($bad), 'Invalid ID');
 check(llama_pricing_decode('{broken')['invalid'] === true, 'Persisted invalid data fails closed');
 $legacy = llama_pricing_validate([['name' => 'Summer', 'price' => 10, 'season' => 'peak']]);
