@@ -1785,6 +1785,12 @@ if ($placeReportShowPhotos):
     ? (int) filemtime(dirname(__DIR__, 2) . '/js/place-report-section-completion.js')
     : 1 ?>"></script>
 <script defer src="/js/place-report-road-hazards.js"></script>
+<?php if (isset($placeReportFields['place_rate_cards_json'])): ?>
+<link rel="stylesheet" data-place-rate-cards-style
+      href="https://llamascout.com/css/site/features/place-report-rate-cards.css?v=<?= (int) filemtime(dirname(__DIR__, 2) . '/css/site/features/place-report-rate-cards.css') ?>">
+<script defer data-place-rate-cards-script
+        src="https://llamascout.com/js/place-report-rate-cards.js?v=<?= (int) filemtime(dirname(__DIR__, 2) . '/js/place-report-rate-cards.js') ?>"></script>
+<?php endif; ?>
 
 <script
     src="https://llamascout.com/js/place-report-form/recovery.js"

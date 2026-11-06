@@ -32,6 +32,11 @@ jobs:
         run: php tools/v3-launch-smoke.php
       - name: Verify shared Place pricing
         run: php tools/tests/place-pricing.php
+      - name: Verify pricing editor and Admin asset loading
+        run: |
+          npm install --prefix "$RUNNER_TEMP/llama-pricing-ui" --no-save --ignore-scripts jsdom@26.1.0
+          NODE_PATH="$RUNNER_TEMP/llama-pricing-ui/node_modules" node tools/tests/place-pricing-ui.cjs
+          NODE_PATH="$RUNNER_TEMP/llama-pricing-ui/node_modules" node tools/tests/place-pricing-assets.cjs
       - name: Verify coordinate and Site visibility contract
         if: always()
         run: php tools/coordinate-visibility-smoke.php
