@@ -1881,6 +1881,63 @@ $check('Site preview has no duplicate official RIDB cards', static function () u
         'Public Site catalog must use official RIDB Tent permission as Yes');
 });
 
+$check('Parent-child visibility active across canonical forms and public Site report', static function () use ($assert): void {
+    $fields = llama_report_questions();
+    $assert(!llama_place_report_full_inventory_review_enabled(),
+        'Inventory review must be off before evaluating conditional questions');
+    foreach (['tent_pad_width_feet', 'hookup_electric', 'hookup_electric_service'] as $key) {
+        $assert(!empty($fields[$key]['applicable_if']),
+            'Canonical dependency missing for ' . $key);
+    }
+
+    $base = ['type' => 'developed-campground'];
+    $assert(!llama_place_report_question_applicable($base, 'tent_pad_width_feet'),
+        'Tent pad dimensions should not appear without Tent Pad Yes');
+    $assert(llama_place_report_question_applicable(
+        $base + ['tent_pad' => '1'], 'tent_pad_width_feet'
+    ), 'Tent Pad Yes should reveal dimensions');
+    $assert(!llama_place_report_question_applicable(
+        $base + ['tent_pad' => '0'], 'tent_pad_width_feet'
+    ), 'Tent Pad No should hide dimensions');
+
+    $hookups = $base + [
+        'site_hookups_available' => '1',
+        'hookup_electric' => '1',
+    ];
+    $assert(llama_place_report_question_applicable($hookups, 'hookup_electric_service'),
+        'Both hookup parents Yes should reveal Electric Service');
+    $hookups['site_hookups_available'] = '0';
+    $assert(!llama_place_report_question_applicable($hookups, 'hookup_electric_service'),
+        'Stale Electric Yes cannot activate grandchild after Hookups No');
+    $hookups['site_hookups_available'] = llama_place_report_unknown_token();
+    $assert(!llama_place_report_question_applicable($hookups, 'hookup_electric'),
+        'Unknown hookups must not trigger Yes-only electric follow-up');
+
+    $form = file_get_contents(dirname(__DIR__) . '/partials/place-report/form.php');
+    $browser = file_get_contents(dirname(__DIR__) . '/js/place-report-form.js');
+    $section = file_get_contents(dirname(__DIR__) . '/js/place-report-section-completion.js');
+    $read = file_get_contents(dirname(__DIR__) . '/partials/place-report/read-only.php');
+    $detail = file_get_contents(dirname(__DIR__) . '/api/place-campsite-detail.php');
+    $sites = file_get_contents(dirname(__DIR__) . '/js/place-campsites.js');
+    $assert(is_string($form) && is_string($browser) && is_string($section)
+        && is_string($read) && is_string($detail) && is_string($sites),
+        'Some shared applicability consumers could not be inspected');
+    $assert(strpos($form, '$placeReportReconciliationMode ?? false') !== false,
+        'Shared Add/Update form still defaults to all-question reconciliation mode');
+    $assert(strpos($browser, 'fieldContextuallyApplicable(form, field, config)') !== false
+        && strpos($browser, "wrapper.hidden = !allowed") !== false
+        && strpos($browser, "visited.has(key)") !== false,
+        'Editable form does not evaluate canonical nested dependencies');
+    $assert(strpos($section, 'applicable(form, dependency, cfg, visited)') !== false,
+        'Section completion can count stale children from inapplicable parents');
+    $assert(strpos($read, 'llama_place_report_question_applicable(') !== false
+        && strpos($read, 'data-campsite-report-conditional="1"') !== false,
+        'Public Scout Report does not hide Place/Site conditional questions');
+    $assert(strpos($detail, "report_inapplicable_keys") !== false
+        && strpos($sites, "inapplicable.has(key)") !== false,
+        'Site switching does not reevaluate canonical child question visibility');
+});
+
 $check('Canonical field contract', static function () use ($assert): void {
     $issues = llama_place_report_contract_issues();
     $assert(!$issues, 'Contract issues: ' . implode(' | ', array_slice($issues, 0, 12)) . ' (total ' . count($issues) . ')');
