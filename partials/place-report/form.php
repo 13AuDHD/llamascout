@@ -1771,7 +1771,9 @@ if ($placeReportShowPhotos):
 <?php endif; ?>
 
 <script defer src="/js/place-report-season-picker.js"></script>
-<script defer src="/js/place-report-section-completion.js"></script>
+<script defer src="https://llamascout.com/js/place-report-section-completion.js?v=<?= is_file(dirname(__DIR__, 2) . '/js/place-report-section-completion.js')
+    ? (int) filemtime(dirname(__DIR__, 2) . '/js/place-report-section-completion.js')
+    : 1 ?>"></script>
 <script defer src="/js/place-report-road-hazards.js"></script>
 
 <script
