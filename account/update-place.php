@@ -1620,7 +1620,9 @@ $e =
 ></script>
 
 <script
-    src="https://llamascout.com/js/place-report-form.js"
+    src="https://llamascout.com/js/place-report-form.js?v=<?= is_file(dirname(__DIR__) . '/js/place-report-form.js')
+        ? (int) filemtime(dirname(__DIR__) . '/js/place-report-form.js')
+        : 1 ?>"
 ></script>
 
 
