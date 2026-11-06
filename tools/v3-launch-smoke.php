@@ -1482,8 +1482,21 @@ $check('Season definition editor is isolated from normal Scout Report save', sta
     $assert(is_string($page) && is_string($panel) && is_string($actions), 'Admin season files missing');
     $seasonInclude = strpos($page, "require __DIR__ . '/place-report-seasons.php'");
     $normalForm = strpos($page, '<form method="post" class="admin-place-report-form');
+    $normalFormEnd = strpos($page, '</form>', $normalForm === false ? 0 : $normalForm);
     $assert($seasonInclude !== false && $normalForm !== false
-        && $seasonInclude < $normalForm, 'Season editor must be outside the normal Scout Report form');
+        && $normalFormEnd !== false && $seasonInclude > $normalFormEnd,
+        'Optional Seasons must appear after Save Place Report, outside its form');
+    $assert(strpos($panel, '<details class="admin-place-seasons"') !== false
+        && strpos($panel, 'data-admin-seasons-disclosure') !== false
+        && strpos($panel, '<summary class="admin-place-seasons-toggle">') !== false,
+        'Seasons must be one native collapsed, accessible disclosure');
+    $assert(strpos($panel, "'open' : ''") !== false
+        && strpos($panel, "str_starts_with(\$seasonSaved, 'season')") !== false,
+        'Season saves/edits must reopen the collapsed panel');
+    $seasonScript = file_get_contents(dirname(__DIR__) . '/js/admin/place-report-seasons.js');
+    $assert(is_string($seasonScript)
+        && strpos($seasonScript, "window.location.hash === '#place-seasons'") !== false,
+        'The Seasons nav link must open the collapsed panel');
     $assert(strpos($panel, 'name="place_admin_action" value="save-season"') !== false,
         'Missing season-only save action');
     $assert(strpos($panel, 'name="csrf_token"') !== false,
