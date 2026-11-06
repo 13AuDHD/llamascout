@@ -49,8 +49,7 @@ if (
 
 $seasonSaved = (string) ($_GET['saved'] ?? '');
 $seasonRequest = (string) ($action ?? '');
-$showSeasons = isset($_GET['season_edit'], $_GET['season_view'])
-    || isset($_GET['season_edit'])
+$showSeasons = isset($_GET['season_edit'])
     || isset($_GET['season_view'])
     || str_starts_with($seasonSaved, 'season')
     || (
