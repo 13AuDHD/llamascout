@@ -189,6 +189,18 @@
     const key =
       String(rule.field || '');
 
+    // All rule operators must respect the parent's own applicability.
+    // Otherwise a stale "Yes" can activate a child even if the parent
+    // is hidden by its grandparent.
+    if (key !== 'type') {
+      const dependency = cfg.fields.find(
+        field => String(field.key) === key
+      );
+      if (!dependency || !applicable(form, dependency, cfg, visited)) {
+        return false;
+      }
+    }
+
     const actual =
       getValue(
         form,
@@ -268,41 +280,10 @@
     }
 
     if (op === 'answered') {
-      if (visited.has(key)) {
-        return false;
-      }
-
-      const dependency =
-        cfg.fields.find(
-          (field) =>
-            field.key === key
-        );
-
-      if (!dependency) {
-        return values.some(
-          (value) =>
-            value !== ''
-        );
-      }
-
-      const next =
-        new Set(visited);
-
-      next.add(key);
-
-      return (
-        applicable(
-          form,
-          dependency,
-          cfg,
-          next
-        )
-        && answered(
-          actual,
-          dependency,
-          cfg
-        )
+      const dependency = cfg.fields.find(
+        field => String(field.key) === key
       );
+      return !!dependency && answered(actual, dependency, cfg);
     }
 
     return false;
@@ -313,21 +294,14 @@
     field,
     cfg,
     visited = new Set()
-  ) => (
-    !field.derived
-    && (
-      field.applicable_if
-      || []
-    ).every(
-      (rule) =>
-        matches(
-          form,
-          rule,
-          cfg,
-          visited
-        )
-    )
-  );
+  ) => {
+    const key = String(field?.key || '');
+    if (!key || field.derived || visited.has(key)) return false;
+    const next = new Set(visited);
+    next.add(key);
+    return (Array.isArray(field.applicable_if) ? field.applicable_if : [])
+      .every(rule => matches(form, rule, cfg, next));
+  };
 
   const dispatchFieldUpdate = (
     control
