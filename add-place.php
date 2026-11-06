@@ -782,7 +782,10 @@ $placeReportInitialCompletion =
 
 <script
     src="<?= htmlspecialchars(
-        $siteUrl . '/js/place-report-form.js',
+        $siteUrl . '/js/place-report-form.js?v='
+        . (is_file(__DIR__ . '/js/place-report-form.js')
+            ? (int) filemtime(__DIR__ . '/js/place-report-form.js')
+            : 1),
         ENT_QUOTES,
         'UTF-8'
     ) ?>"
