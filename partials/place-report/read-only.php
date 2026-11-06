@@ -389,7 +389,7 @@ $renderValue =
          * visible instead of waiting for a Site selection.
          */
         $hideUntilCampsite =
-            false;
+            $isCampsiteSwitchable && !empty($field['applicable_if']);
 
         $fieldReportScopes =
             array_values(
@@ -411,6 +411,9 @@ $renderValue =
             <?php if ($isCampsiteSwitchable): ?>
                 data-campsite-report-field="<?= $e($key) ?>"
                 data-campsite-report-type="<?= $e($type) ?>"
+                <?php if (!empty($field['applicable_if'])): ?>
+                    data-campsite-report-conditional="1"
+                <?php endif; ?>
             <?php endif; ?>
             <?php if (
                 $placeReportReadMode === 'scout-report'
@@ -961,8 +964,17 @@ foreach (
                 $publicFieldGroups
             ): bool {
                 if ($placeReportReadMode === 'scout-report') {
-                    return ($publicFieldGroups[(string) $fieldKey] ?? null) === $sectionKey
-                        && empty($field['hide_public']);
+                    if (($publicFieldGroups[(string) $fieldKey] ?? null) !== $sectionKey
+                        || !empty($field['hide_public'])) {
+                        return false;
+                    }
+                    // Place follow-ups use their canonical parent answers.
+                    // Site follow-ups are handled after a Site is selected.
+                    return (string) ($field['report_scope_group'] ?? 'place') !== 'place'
+                        || llama_place_report_question_applicable(
+                            $placeReportApplicabilityInput,
+                            (string) $fieldKey
+                        );
                 }
 
                 if (
