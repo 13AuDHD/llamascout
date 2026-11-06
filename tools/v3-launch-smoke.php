@@ -1901,14 +1901,18 @@ $check('Parent-child visibility active across canonical forms and public Site re
         $base + ['tent_pad' => '0'], 'tent_pad_width_feet'
     ), 'Tent Pad No should hide dimensions');
 
-    // The approved Site inventory intentionally keeps individual utilities
-    // independent of the broad hookups summary.
-    $hookups = $base + ['site_hookups_available' => '0', 'hookup_electric' => '1'];
+    // Current approved Site Equipment metadata gates these utility detail
+    // fields on the broad Site Hookups answer. Independently reported Site
+    // suitability and amenities are not converted into inferred answers.
+    $hookups = $base + ['site_hookups_available' => '1'];
     $assert(llama_place_report_question_applicable($hookups, 'hookup_electric_service'),
-        'Electric Service depends on Electric Yes, not on the broad hookup summary');
-    $hookups['hookup_electric'] = '0';
+        'Hookups Yes should reveal the approved Electric Service question');
+    $hookups['site_hookups_available'] = '0';
     $assert(!llama_place_report_question_applicable($hookups, 'hookup_electric_service'),
-        'Electric No must hide its service detail');
+        'Hookups No should hide Electric Service');
+    $hookups['site_hookups_available'] = llama_place_report_unknown_token();
+    $assert(!llama_place_report_question_applicable($hookups, 'hookup_electric_service'),
+        'Unknown Hookups cannot activate a Yes-only Site child');
 
     $generator = $base + [
         'generator_restrictions' => '1',
