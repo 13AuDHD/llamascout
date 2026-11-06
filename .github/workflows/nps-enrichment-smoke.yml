@@ -1,0 +1,38 @@
+name: NPS Source Enrichment Checks
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/nps-enrichment-smoke.yml'
+      - 'app/nps-batch-fill.php'
+      - 'app/nps-place-fill.php'
+      - 'admin/nps-place-fill.php'
+      - 'tools/tests/nps-batch-fill-smoke.php'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/nps-enrichment-smoke.yml'
+      - 'app/nps-batch-fill.php'
+      - 'app/nps-place-fill.php'
+      - 'admin/nps-place-fill.php'
+      - 'tools/tests/nps-batch-fill-smoke.php'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  nps-source-enrichment:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PHP syntax
+        run: |
+          php -l app/nps.php
+          php -l app/nps-place-fill.php
+          php -l app/nps-batch-fill.php
+          php -l admin/nps-place-fill.php
+          php -l tools/tests/nps-batch-fill-smoke.php
+      - name: NPS batch identity and pagination safety
+        run: php tools/tests/nps-batch-fill-smoke.php
