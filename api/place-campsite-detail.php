@@ -279,6 +279,29 @@ try {
             'effective'
         );
 
+    // Compute Site-dependent applicability from this Site's actual
+    // approved/inherited values. Do not use stale values from a previously
+    // selected Site, and never expose hidden dependency answers to guests.
+    $siteApplicabilityInput = [
+        'type' => (string) ($place['type'] ?? $publicPlace['type'] ?? ''),
+    ];
+    foreach ($effectiveValues as $key => $value) {
+        if (is_bool($value)) {
+            $siteApplicabilityInput[(string) $key] = $value ? '1' : '0';
+        } elseif (is_int($value) || is_float($value) || is_string($value) || is_array($value)) {
+            $siteApplicabilityInput[(string) $key] = $value;
+        }
+    }
+    $site['report_inapplicable_keys'] = [];
+    foreach (llama_report_questions() as $key => $question) {
+        if (!empty($question['applicable_if'])
+            && !llama_place_report_question_applicable(
+                $siteApplicabilityInput, (string) $key
+            )) {
+            $site['report_inapplicable_keys'][] = (string) $key;
+        }
+    }
+
     // Same attribution service as the Place report. Only sources matched
     // to the currently published observation are eligible for display.
     $site['report_answer_sources'] = array_replace(
