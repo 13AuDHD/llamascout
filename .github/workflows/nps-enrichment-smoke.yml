@@ -8,9 +8,11 @@ on:
       - 'app/nps-batch-fill.php'
       - 'app/nps-place-fill.php'
       - 'app/nps-publication-readiness.php'
+      - 'app/nps-reviewed-publication-plan.php'
       - 'admin/nps-place-fill.php'
       - 'tools/tests/nps-batch-fill-smoke.php'
       - 'tools/tests/nps-publication-readiness-smoke.php'
+      - 'tools/tests/nps-reviewed-publication-plan-smoke.php'
   pull_request:
     branches: [main]
     paths:
@@ -18,9 +20,11 @@ on:
       - 'app/nps-batch-fill.php'
       - 'app/nps-place-fill.php'
       - 'app/nps-publication-readiness.php'
+      - 'app/nps-reviewed-publication-plan.php'
       - 'admin/nps-place-fill.php'
       - 'tools/tests/nps-batch-fill-smoke.php'
       - 'tools/tests/nps-publication-readiness-smoke.php'
+      - 'tools/tests/nps-reviewed-publication-plan-smoke.php'
   workflow_dispatch:
 
 permissions:
@@ -37,10 +41,14 @@ jobs:
           php -l app/nps-place-fill.php
           php -l app/nps-batch-fill.php
           php -l app/nps-publication-readiness.php
+          php -l app/nps-reviewed-publication-plan.php
           php -l admin/nps-place-fill.php
           php -l tools/tests/nps-batch-fill-smoke.php
           php -l tools/tests/nps-publication-readiness-smoke.php
+          php -l tools/tests/nps-reviewed-publication-plan-smoke.php
       - name: NPS batch identity and pagination safety
         run: php tools/tests/nps-batch-fill-smoke.php
       - name: NPS reviewed-to-published coverage safety
         run: php tools/tests/nps-publication-readiness-smoke.php
+      - name: Reviewed NPS field destination and blockers
+        run: php tools/tests/nps-reviewed-publication-plan-smoke.php
