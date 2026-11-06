@@ -46,19 +46,44 @@ if (
         'source_url' => (string) ($_POST['season_source_url'] ?? ''),
     ];
 }
+
+$seasonSaved = (string) ($_GET['saved'] ?? '');
+$seasonRequest = (string) ($action ?? '');
+$showSeasons = isset($_GET['season_edit'], $_GET['season_view'])
+    || isset($_GET['season_edit'])
+    || isset($_GET['season_view'])
+    || str_starts_with($seasonSaved, 'season')
+    || (
+        ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST'
+        && str_starts_with($seasonRequest, 'save-season')
+    );
+$seasonCount = count($adminPlaceSeasons);
 ?>
 
-<section class="admin-place-seasons" id="place-seasons"
-         aria-labelledby="admin-place-seasons-heading">
-    <header class="admin-place-report-header">
-        <p>Scout Report · Operating Seasons</p>
-        <h2 id="admin-place-seasons-heading">Seasons</h2>
-        <span class="admin-place-muted">
-            Define the seasons for this Place here. These dates organize seasonal
-            report answers, not verified closures. Normal Scout Report answers
-            and Site measurements remain unchanged.
+<details class="admin-place-seasons" id="place-seasons"
+         data-admin-seasons-disclosure
+         <?= $showSeasons ? 'open' : '' ?>>
+    <summary class="admin-place-seasons-toggle">
+        <span class="admin-place-seasons-toggle-label">
+            <strong>Seasonal conditions</strong>
+            <small><?= $seasonCount > 0
+                ? $e((string) $seasonCount . ($seasonCount === 1 ? ' season configured' : ' seasons configured'))
+                : 'Optional · No seasons configured' ?></small>
         </span>
-    </header>
+        <span class="admin-place-seasons-toggle-action">
+            <span>Manage seasons</span>
+            <span class="admin-place-seasons-toggle-chevron" aria-hidden="true">⌄</span>
+        </span>
+    </summary>
+    <div class="admin-place-seasons-content">
+        <header class="admin-place-report-header">
+            <p>Scout Report · Operating seasons</p>
+            <h2 id="admin-place-seasons-heading">Season definitions and changes</h2>
+            <span class="admin-place-muted">
+                Add seasons only when services or Site rules change through the year.
+                Seasonal answers are separate from the main Scout Report and verified closures.
+            </span>
+        </header>
 
     <?php if ($adminPlaceSeasonsError !== ''): ?>
         <p class="admin-place-seasons-message is-error">
@@ -168,4 +193,5 @@ if (
         <div class="admin-place-seasons-divider"></div>
         <?php require __DIR__ . '/place-report-season-answers.php'; ?>
     <?php endif; ?>
-</section>
+    </div>
+</details>
