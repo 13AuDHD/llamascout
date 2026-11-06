@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/place-campsites.php';
+require_once dirname(__DIR__) . '/app/place-pricing.php';
 require_once dirname(__DIR__) . '/app/site-visibility.php';
 require_once dirname(__DIR__) . '/app/place-map-features.php';
 require_once dirname(__DIR__) . '/app/campsite-closure-display.php';
@@ -56,6 +57,7 @@ try {
         static fn(array $site): bool =>
             llama_site_can_read($place, $site, $canRead, $restrictedSiteIds)
     ));
+    $sites = llama_pricing_enrich_sites($db, $place, $sites);
     $sites = llama_campsite_closure_enrich($db, $placeId, $sites);
     $placeVerifiedClosed = llama_public_place_verified_closed($db, $placeId);
     foreach ($sites as &$site) {
@@ -405,6 +407,8 @@ try {
                             ? ['site_reservation_method' => (string) $site['reservation_method']]
                             : []
                     ),
+                    'pricing_summary' => $site['pricing_summary'],
+                    'summary' => [$site['pricing_summary']],
                     'official_details' =>
                         array_map(
                             static fn (array $detail): array => [
@@ -440,7 +444,8 @@ try {
                 'closure_reason' => $site['closure_reason'] ?? null,
                 'expected_reopening' => $site['expected_reopening'] ?? null,
                 'closure_verified_at' => $site['closure_verified_at'] ?? null,
-                'summary' => llama_place_campsite_summary($site),
+                'pricing_summary' => $site['pricing_summary'],
+                'summary' => array_merge([$site['pricing_summary']], llama_place_campsite_summary($site)),
             ];
         }
 
@@ -631,85 +636,6 @@ try {
                     )
                 )
                 : [];
-    }
-    unset($site);
-
-    $baseCampingFee =
-        $place['rules']['fee']
-        ?? null;
-
-    $mappedSitePricing = [];
-
-    foreach (
-        llama_place_map_features(
-            $db,
-            $placeId,
-            true
-        )
-        as $feature
-    ) {
-        if (
-            (string) (
-                $feature['feature_type']
-                ?? ''
-            ) !== 'camping_site'
-        ) {
-            continue;
-        }
-
-        $featureId =
-            (int) (
-                $feature['id']
-                ?? 0
-            );
-
-        if ($featureId < 1) {
-            continue;
-        }
-
-        $mappedSitePricing[
-            $featureId
-        ] =
-            (array) (
-                $feature['effective_rates']
-                ?? $feature['rates']
-                ?? []
-            );
-    }
-
-    foreach ($sites as &$site) {
-        $mapFeatureId =
-            max(
-                0,
-                (int) (
-                    $site['map_feature_id']
-                    ?? 0
-                )
-            );
-
-        $effectiveRates =
-            llama_place_map_effective_rates_with_place_base(
-                (array) (
-                    $mappedSitePricing[
-                        $mapFeatureId
-                    ]
-                    ?? []
-                ),
-                $baseCampingFee
-            );
-
-        $site['effective_rates'] =
-            $effectiveRates;
-
-        $site['effective_rate_summary'] =
-            llama_place_map_feature_rate_summary(
-                $effectiveRates
-            );
-
-        $site['pricing_summary'] =
-            llama_place_map_rate_summary_label(
-                $effectiveRates
-            );
     }
     unset($site);
 

@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+require_once __DIR__ . '/place-pricing.php';
 
 /**
  * Read-only, evidence-backed camping fee statuses for public map output.
@@ -353,7 +354,36 @@ function llama_camping_fee_enrich_map_places(PDO $db, array $places): array
     );
     $statuses = llama_camping_fee_map_statuses($db, $ids);
 
+    $labels = [];
+    foreach (array_chunk($ids, 400) as $batch) {
+        if (!$batch) continue;
+        $marks = implode(',', array_fill(0, count($batch), '?'));
+        try {
+            $q = $db->prepare('SELECT place_id, rate_cards_json, fee FROM place_rules WHERE place_id IN (' . $marks . ')');
+            $q->execute($batch);
+            foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $doc = llama_pricing_decode($row['rate_cards_json']);
+                if (empty($row['rate_cards_json']) && $row['fee'] !== null) $doc['rows'][] = ['unit' => 'night', 'match' => [], 'price' => (float) $row['fee']];
+                $labels[(int) $row['place_id']] = llama_pricing_place_summary($doc);
+                // A saved v2 card supersedes the obsolete scalar fee status.
+                $raw = json_decode((string) ($row['rate_cards_json'] ?? ''), true);
+                if (is_array($raw) && ($raw['version'] ?? null) === 2) {
+                    $values = [];
+                    foreach ($doc['rows'] as $rate) {
+                        if (llama_pricing_place_summary(array_merge($doc, ['rows' => [$rate]])) === '') continue;
+                        $p = llama_pricing_row_price($doc, $rate, null);
+                        if ($p['minimum'] !== null) { $values[] = $p['minimum']; $values[] = $p['maximum']; }
+                    }
+                    $statuses[(int) $row['place_id']] = !$values ? 'unknown' : (max($values) == 0 ? 'free' : (min($values) == 0 ? 'mixed' : 'paid'));
+                }
+            }
+        } catch (PDOException $e) {
+            if (!in_array((string) ($e->errorInfo[1] ?? ''), ['1146','1054'], true)) throw $e;
+        }
+    }
     foreach ($places as &$place) {
+        $place['pricing_summary'] = $labels[(int) ($place['id'] ?? 0)] ?? '';
+
         $place['camping_fee_status'] =
             $statuses[(int) ($place['id'] ?? 0)] ?? 'unknown';
     }

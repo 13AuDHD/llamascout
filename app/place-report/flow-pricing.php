@@ -5,17 +5,23 @@ declare(strict_types=1);
 /**
  * Canonical pricing semantics for Scout Report fields.
  *
- * This does not introduce a new persistence model. It documents how existing
- * fee fields relate to the normalized mapped-rate tables.
+ * The versioned Place card is authoritative. Old scalar and mapped prices
+ * are read only by its legacy adapter until the Place saves a version 2 card.
  */
 function llama_place_report_pricing_semantics(): array
 {
     return [
+        'place_rate_cards_json' => [
+            'kind' => 'camping_rate_schedule',
+            'scope' => 'place',
+            'precedence' => 'authoritative',
+            'mapped_override' => false,
+        ],
         'fee' => [
             'kind' => 'base_overnight',
             'unit' => 'night',
             'scope' => 'place',
-            'precedence' => 'fallback',
+            'precedence' => 'legacy_adapter_only',
             'mapped_override' => true,
         ],
 
@@ -53,20 +59,13 @@ function llama_place_report_pricing_semantics(): array
     ];
 }
 
-/**
- * Detailed mapped nightly rates have precedence for their mapped target.
- *
- * Site rates override matching Site pricing-class rates, and Site pricing
- * classes override matching parent Area rates. Unmatched rates continue to
- * inherit from the less-specific layer. If no mapped rate applies, consumers
- * may fall back to the Place-level base camping fee.
- */
+/** Public prices resolve exclusively through app/place-pricing.php. */
 function llama_place_report_pricing_precedence(): array
 {
     return [
-        'site_mapped_rate',
-        'site_pricing_class_rate',
-        'parent_area_mapped_rate',
-        'place_base_fee',
+        'individual_site_selector',
+        'preserved_area_selector',
+        'most_specific_site_attributes',
+        'place_wide_row',
     ];
 }

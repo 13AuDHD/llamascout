@@ -6,6 +6,7 @@ require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/place-map-features.php';
 require_once dirname(__DIR__) . '/app/place-campsites.php';
 require_once dirname(__DIR__) . '/app/place-site-identity.php';
+require_once dirname(__DIR__) . '/app/place-pricing.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -29,20 +30,10 @@ function llama_place_map_api_features(
     PDO $db,
     int $placeId
 ): array {
-    /*
-     * The map editor only needs map features here. Site identity is persisted
-     * by the save path, and the production editor no longer exposes a separate
-     * campsite-to-geometry linker.
-     *
-     * Avoid loading every active campsite and association just to decorate the
-     * feature payload. On Places with imported or duplicated Site rows that
-     * redundant work can be dramatically more expensive than the map itself.
-     */
-    return llama_place_map_features(
-        $db,
-        $placeId,
-        true,
-        true
+    // Prices on map geometry are a projection of the shared Place rate card.
+    return llama_pricing_enrich_features(
+        $db, ['id' => $placeId],
+        llama_place_map_features($db, $placeId, true, true)
     );
 }
 
@@ -821,32 +812,18 @@ try {
         $existingFeatureId = (int) ($input['feature_id'] ?? 0);
         $existingFeature = null;
 
-        if (
-            $existingFeatureId > 0
-            && (
-                !array_key_exists('rates', $input)
-                || !array_key_exists('site_classes', $input)
-            )
-        ) {
-            foreach (llama_place_map_api_features($db, $placeId) as $candidate) {
+        if ($existingFeatureId > 0) {
+            // Geometry writes must preserve archived rates/classes even though
+            // public map output no longer exposes those old price sources.
+            foreach (llama_place_map_features($db, $placeId, true, true) as $candidate) {
                 if ((int) ($candidate['id'] ?? 0) === $existingFeatureId) {
                     $existingFeature = $candidate;
                     break;
                 }
             }
         }
-
-        $ratesInput = array_key_exists('rates', $input)
-            ? $input['rates']
-            : (is_array($existingFeature['rates'] ?? null)
-                ? $existingFeature['rates']
-                : []);
-
-        $siteClassesInput = array_key_exists('site_classes', $input)
-            ? $input['site_classes']
-            : (is_array($existingFeature['site_classes'] ?? null)
-                ? $existingFeature['site_classes']
-                : []);
+        $ratesInput = (array) ($existingFeature['rates'] ?? []);
+        $siteClassesInput = (array) ($existingFeature['site_classes'] ?? []);
 
         $featureId =
             llama_place_map_feature_save(

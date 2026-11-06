@@ -1451,6 +1451,7 @@ popupAnchor: [0, -42]
                             : ''
                     }
 
+                    ${place.pricing_summary ? `<span class="map-result-card-location">${escapeHtml(place.pricing_summary)}</span>` : ''}
                     <span class="map-result-card-pills">
                         ${
                             place.elevation_feet

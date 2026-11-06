@@ -198,3 +198,16 @@
         grid-column: auto;
     }
 }
+
+.place-rate-matrix-scroll { overflow-x: auto; }
+.place-rate-matrix { width: 100%; border-collapse: collapse; }
+.place-rate-matrix th, .place-rate-matrix td { padding: 10px 6px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+.place-rate-matrix th { font-size: .78rem; color: var(--text-muted); }
+.place-rate-matrix input { width: 100%; min-width: 72px; padding: 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--background); color: var(--text); font: inherit; box-sizing: border-box; }
+.place-rate-matrix td:first-child { min-width: 180px; }
+.place-rate-matrix details { margin-top: 8px; font-size: .8rem; }
+.place-rate-matrix details[open] .place-rate-card-grid { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.place-rate-period { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 8px 0; }
+.place-rate-period input { min-width: 0; max-width: 100%; padding: 8px; background: var(--background); color: var(--text); border: 1px solid var(--border); border-radius: 8px; }
+.place-rate-weekday { display: inline-flex; align-items: center; gap: 3px; padding: 5px; font-size: .78rem; }
+.place-rate-cards-field [hidden] { display: none !important; }

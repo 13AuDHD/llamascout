@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/site-visibility.php';
+require_once dirname(__DIR__) . '/app/place-pricing.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: private, no-store');
@@ -164,6 +165,8 @@ try {
         }
     }
 
+    $rows = llama_pricing_enrich_sites($db, $place, $rows);
+
     $points = [];
     foreach ($rows as $row) {
         $name = trim((string) ($row['site_code'] ?? ''));
@@ -180,6 +183,7 @@ try {
             $points[] = [
                 'id' => (int) $row['id'],
                 'name' => $name,
+                'pricing_summary' => $row['pricing_summary'],
                 'latitude' => (float) $row['latitude'],
                 'longitude' => (float) $row['longitude'],
                 'coordinate_status' => llama_coordinate_status(
@@ -196,6 +200,7 @@ try {
         $points[] = [
             'id' => (int) $row['id'],
             'name' => $name,
+            'pricing_summary' => $row['pricing_summary'],
             'hero_image' => $heroImages[(int) $row['id']] ?? null,
             'latitude' => (float) $row['latitude'],
             'longitude' => (float) $row['longitude'],

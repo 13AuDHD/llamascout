@@ -1,5 +1,7 @@
 <?php
 require __DIR__ . '/access-alert.php';
+require_once dirname(__DIR__, 2) . '/app/place-pricing.php';
+$placePriceLabel = llama_pricing_place_summary(llama_pricing_document(db(), $place));
 ?>
 
 <header class="place-detail-hero<?= $heroImage ? ' has-image' : ' no-image' ?>">
@@ -44,6 +46,10 @@ require __DIR__ . '/access-alert.php';
                             / <?= place_h($place['land_type']) ?>
                         <?php endif; ?>
                     </p>
+                <?php endif; ?>
+
+                <?php if ($placePriceLabel !== ''): ?>
+                    <p class="place-detail-location"><?= place_h($placePriceLabel) ?></p>
                 <?php endif; ?>
 
                 <div class="place-documentation-meta">

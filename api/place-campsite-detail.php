@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/place-campsites.php';
+require_once dirname(__DIR__) . '/app/place-pricing.php';
 require_once dirname(__DIR__) . '/app/site-visibility.php';
 require_once dirname(__DIR__) . '/app/place-campsite-media.php';
 require_once dirname(__DIR__) . '/app/place-map-features.php';
@@ -345,29 +346,8 @@ try {
             $effectiveValues
         );
 
-    $mapFeatureId = (int) ($site['map_feature_id'] ?? 0);
-    $rates = [];
-    if ($mapFeatureId > 0) {
-        foreach (llama_place_map_features($db, $placeId, true) as $feature) {
-            if (
-                (int) ($feature['id'] ?? 0) === $mapFeatureId
-                && (string) ($feature['feature_type'] ?? '') === 'camping_site'
-            ) {
-                $rates = (array) ($feature['effective_rates'] ?? $feature['rates'] ?? []);
-                break;
-            }
-        }
-    }
-
-    $effectiveRates = llama_place_map_effective_rates_with_place_base(
-        $rates, $place['rules']['fee'] ?? null
-    );
-    $site['effective_rates'] = $effectiveRates;
-    $site['effective_rate_summary'] = llama_place_map_feature_rate_summary($effectiveRates);
-    $site['pricing_summary'] = llama_place_map_rate_summary_label($effectiveRates);
-    $site['summary'] = array_values(array_unique(array_filter([
-        $site['pricing_summary'], ...llama_place_campsite_summary($site),
-    ], static fn ($value): bool => trim((string) $value) !== '')));
+    $site = llama_pricing_enrich_sites($db, $place, [$site])[0];
+    $site['summary'] = array_values(array_unique([$site['pricing_summary'], ...llama_place_campsite_summary($site)]));
 
     llama_place_campsite_detail_json([
         'ok' => true,
