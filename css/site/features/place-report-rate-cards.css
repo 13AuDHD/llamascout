@@ -52,4 +52,17 @@
     .place-rate-toolbar, .place-rate-card-grid, .place-rate-period-form { grid-template-columns: minmax(0,1fr); }
     .place-rate-cards-field input:not([type=checkbox]), .place-rate-cards-field select { font-size: 16px; }
     .place-rate-site-options { grid-template-columns: minmax(0,1fr); }
+    .place-rate-matrix-scroll { overflow: visible; }
+    .place-rate-matrix { display: block; min-width: 0; }
+    .place-rate-matrix thead { display: none; }
+    .place-rate-matrix tbody { display: block; }
+    .place-rate-matrix [data-row] { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); gap: 10px; padding-top: 10px; }
+    .place-rate-matrix [data-row] > td { display: block; width: auto; padding: 0; grid-column: span 2; }
+    .place-rate-matrix [data-row] > td:first-child, .place-rate-matrix [data-row] > td:nth-child(2) { grid-column: span 3; }
+    .place-rate-matrix [data-row] > td:last-child { grid-column: 1/-1; justify-self: end; }
+    .place-rate-matrix [data-label]::before { content: attr(data-label); display: block; margin-bottom: 6px; color: var(--text-muted); font-size: .72rem; }
+    .place-rate-matrix [data-remove]::before { content: "Remove row "; }
+    .place-rate-matrix [data-details-for], .place-rate-matrix [data-details-for] > td { display: block; width: 100%; }
+    .place-rate-row-details > summary { padding-top: 8px; }
+
 }
