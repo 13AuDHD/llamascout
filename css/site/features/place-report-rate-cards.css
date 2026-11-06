@@ -1,213 +1,55 @@
-.place-rate-cards-field {
-    display: grid;
-    gap: 14px;
-}
-
-.place-rate-cards-json {
-    display: none !important;
-}
-
-.place-rate-cards-heading {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-}
-
-.place-rate-cards-heading > div {
-    min-width: 0;
-}
-
-.place-rate-cards-label {
-    display: block;
-    font-weight: 850;
-}
-
-.place-rate-cards-heading p {
-    max-width: 70ch;
-    margin: 4px 0 0;
-    color: var(--text-muted);
-    font-size: .82rem;
-    line-height: 1.45;
-}
-
-.place-rate-cards-add,
-.place-rate-card-remove {
-    appearance: none;
-    min-height: 38px;
-    padding: 7px 12px;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    background: var(--surface);
-    color: var(--text);
-    font: inherit;
-    font-size: .8rem;
-    font-weight: 800;
-    cursor: pointer;
-}
-
-.place-rate-cards-add:hover,
-.place-rate-card-remove:hover,
-.place-rate-cards-add:focus-visible,
-.place-rate-card-remove:focus-visible {
-    border-color: color-mix(in srgb, var(--text) 38%, var(--border));
-}
-
-.place-rate-cards-list {
-    display: grid;
-    gap: 12px;
-}
-
-.place-rate-card {
-    display: grid;
-    gap: 14px;
-    padding: 16px;
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    background: color-mix(in srgb, var(--surface) 94%, var(--text) 6%);
-}
-
-.place-rate-card-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-}
-
-.place-rate-card-header > div {
-    min-width: 0;
-    display: grid;
-    gap: 2px;
-}
-
-.place-rate-card-kicker {
-    color: var(--text-muted);
-    font-size: .67rem;
-    font-weight: 850;
-    letter-spacing: .08em;
-    text-transform: uppercase;
-}
-
-.place-rate-card-header strong {
-    overflow-wrap: anywhere;
-}
-
-.place-rate-card-grid {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 12px;
-}
-
-.place-rate-card-field {
-    display: grid;
-    gap: 6px;
-    min-width: 0;
-}
-
-.place-rate-card-field > span {
-    color: var(--text-muted);
-    font-size: .72rem;
-    font-weight: 750;
-}
-
-.place-rate-card-field input,
-.place-rate-card-field select {
-    width: 100%;
-    min-width: 0;
-    min-height: 42px;
-    box-sizing: border-box;
-    padding: 8px 10px;
-    border: 1px solid var(--border);
-    border-radius: 9px;
-    background: var(--background);
-    color: var(--text);
-    font: inherit;
-}
-
-.place-rate-card-field input:focus-visible,
-.place-rate-card-field select:focus-visible {
-    outline: 2px solid var(--focus);
-    outline-offset: 2px;
-}
-
-.place-rate-card-span-2 {
-    grid-column: span 2;
-}
-
-.place-rate-card-money {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    align-items: center;
-    min-height: 42px;
-    border: 1px solid var(--border);
-    border-radius: 9px;
-    background: var(--background);
-    overflow: hidden;
-}
-
-.place-rate-card-money > span {
-    padding-left: 11px;
-    color: var(--text-muted);
-    font-weight: 800;
-}
-
-.place-rate-card-money input {
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-}
-
-.place-rate-cards-empty {
-    padding: 14px 16px;
-    border: 1px dashed var(--border);
-    border-radius: 12px;
-    color: var(--text-muted);
-    font-size: .82rem;
-    line-height: 1.45;
-}
-
-.place-rate-cards-status {
-    min-height: 1.2em;
-    color: var(--text-muted);
-    font-size: .76rem;
-}
-
-@media (max-width: 980px) {
-    .place-rate-card-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-}
-
-@media (max-width: 620px) {
-    .place-rate-cards-heading,
-    .place-rate-card-header {
-        align-items: stretch;
-        flex-direction: column;
-    }
-
-    .place-rate-cards-add,
-    .place-rate-card-remove {
-        width: 100%;
-    }
-
-    .place-rate-card-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .place-rate-card-span-2 {
-        grid-column: auto;
-    }
-}
-
+.place-rate-cards-field { display: grid; gap: 14px; min-width: 0; }
+.place-rate-cards-field *, .place-rate-cards-field *::before, .place-rate-cards-field *::after { box-sizing: border-box; }
+.place-rate-cards-json { display: none !important; }
+.place-rate-cards-heading, .place-rate-footer, .place-rate-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.place-rate-cards-label { font-size: .85rem; font-weight: 700; }
+.place-rate-toolbar, .place-rate-card-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+.place-rate-card-field { display: grid; gap: 6px; min-width: 0; align-content: start; }
+.place-rate-card-field > span { font-size: .76rem; color: var(--text-muted); font-weight: 600; }
+.place-rate-cards-field input:not([type=checkbox]), .place-rate-cards-field select { width: 100%; min-width: 0; min-height: 42px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--background); color: var(--text); font: inherit; font-size: .85rem; }
+.place-rate-cards-field input[type=checkbox] { width: 18px; height: 18px; flex-shrink: 0; margin: 0; }
+.place-rate-cards-field button { min-height: 38px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); font: inherit; font-size: .78rem; font-weight: 650; cursor: pointer; }
+.place-rate-cards-field button:disabled { opacity: .6; cursor: wait; }
+.place-rate-cards-field button:focus-visible, .place-rate-cards-field input:focus-visible, .place-rate-cards-field select:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.place-rate-cards-field .place-rate-cards-save { background: var(--brand, #2b6348); color: #fff; border-color: transparent; }
+.place-rate-schedule-note, .place-rate-hint, .place-rate-cards-status, .place-rate-empty { margin: 0; color: var(--text-muted); font-size: .78rem; line-height: 1.5; }
+.place-rate-schedule-note { font-weight: 650; }
 .place-rate-matrix-scroll { overflow-x: auto; }
-.place-rate-matrix { width: 100%; border-collapse: collapse; }
-.place-rate-matrix th, .place-rate-matrix td { padding: 10px 6px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
-.place-rate-matrix th { font-size: .78rem; color: var(--text-muted); }
-.place-rate-matrix input { width: 100%; min-width: 72px; padding: 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--background); color: var(--text); font: inherit; box-sizing: border-box; }
-.place-rate-matrix td:first-child { min-width: 180px; }
-.place-rate-matrix details { margin-top: 8px; font-size: .8rem; }
-.place-rate-matrix details[open] .place-rate-card-grid { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
-.place-rate-period { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 8px 0; }
-.place-rate-period input { min-width: 0; max-width: 100%; padding: 8px; background: var(--background); color: var(--text); border: 1px solid var(--border); border-radius: 8px; }
-.place-rate-weekday { display: inline-flex; align-items: center; gap: 3px; padding: 5px; font-size: .78rem; }
+.place-rate-matrix { border-collapse: collapse; width: 100%; table-layout: fixed; min-width: 590px; }
+.place-rate-matrix th, .place-rate-matrix td { text-align: left; padding: 9px 5px; vertical-align: top; }
+.place-rate-matrix th { font-weight: 600; color: var(--text-muted); font-size: .72rem; border-bottom: 1px solid var(--border); }
+.place-rate-matrix th:first-child { width: 24%; }
+.place-rate-matrix th:nth-child(2) { width: 26%; }
+.place-rate-matrix th:last-child { width: 40px; }
+.place-rate-matrix [data-price] { font-variant-numeric: tabular-nums; padding: 8px 5px; }
+.place-rate-matrix small { display: block; font-size: .7rem; color: var(--text-muted); margin-top: 4px; }
+.place-rate-matrix [data-details-for] > td { border-bottom: 1px solid var(--border); padding-top: 0; padding-bottom: 12px; }
+.place-rate-row-details > summary { color: var(--text-muted); font-size: .75rem; cursor: pointer; width: fit-content; }
+.place-rate-row-details[open] > .place-rate-card-grid { padding: 14px; margin-top: 8px; background: var(--surface); border-radius: 8px; }
+.place-rate-site-picker { grid-column: 1/-1; display: grid; gap: 8px; font-size: .8rem; }
+.place-rate-site-options { max-height: 190px; overflow: auto; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 6px; }
+.place-rate-site-options label, .place-rate-repeat, .place-rate-weekday { display: flex; gap: 8px; align-items: center; padding: 7px 0; font-size: .8rem; }
+.place-rate-weekday { display: inline-flex; margin-right: 10px; }
+.place-rate-warning { color: var(--text); font-size: .8rem; margin: 0; }
+.place-rate-section { padding: 14px 0; border-top: 1px solid var(--border); }
+.place-rate-section > summary { font-size: .85rem; font-weight: 650; cursor: pointer; }
+.place-rate-section[open] > div { margin-top: 12px; }
+.place-rate-period { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 0; }
+.place-rate-period > div { display: grid; gap: 3px; margin-right: auto; }
+.place-rate-period strong { font-size: .85rem; }
+.place-rate-period span { color: var(--text-muted); font-size: .75rem; }
+.place-rate-period-form { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; padding: 14px; background: var(--surface); border-radius: 8px; }
+.place-rate-period-form [role=alert], .place-rate-period-form .place-rate-actions { grid-column: 1/-1; margin: 0; }
+.place-rate-preview { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; display: grid; gap: 12px; }
+.place-rate-preview h3 { margin: 0; font-size: .9rem; }
+.place-rate-preview-price { display: block; margin-bottom: 6px; font-size: 1.45rem; font-weight: 750; }
+.place-rate-preview [data-coverage] { margin-top: 8px; }
+.place-rate-preview [data-attention] { font-size: .78rem; }
+.place-rate-preview ul { max-height: 180px; overflow: auto; padding-left: 20px; }
+.place-rate-footer { padding-top: 4px; }
 .place-rate-cards-field [hidden] { display: none !important; }
+@media (max-width: 560px) {
+    .place-rate-toolbar, .place-rate-card-grid, .place-rate-period-form { grid-template-columns: minmax(0,1fr); }
+    .place-rate-cards-field input:not([type=checkbox]), .place-rate-cards-field select { font-size: 16px; }
+    .place-rate-site-options { grid-template-columns: minmax(0,1fr); }
+}

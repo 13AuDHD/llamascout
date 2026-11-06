@@ -21,13 +21,20 @@ try {
     $doc = llama_pricing_validate((string) ($_POST['rate_cards_json'] ?? ''));
     if (($_POST['action'] ?? '') === 'preview') {
         $date = llama_pricing_date((string) ($_POST['date'] ?? ''));
-        $counts = ['priced' => 0, 'review' => 0, 'unknown' => 0]; $examples = [];
+        $counts = ['priced' => 0, 'review' => 0, 'unknown' => 0]; $examples = []; $rowCounts = [];
         foreach (llama_pricing_enrich_sites($db, $place, llama_place_campsites($db, $id), $doc, $date) as $site) {
             $p = $site['pricing'];
             $counts[$p['state'] === 'priced' ? 'priced' : ($p['state'] === 'unknown' ? 'unknown' : 'review')]++;
-            if (count($examples) < 12 || $p['state'] !== 'priced') $examples[] = ['name' => $site['display_name'], 'price' => $p['label']];
+            if (!empty($p['row_id'])) $rowCounts[$p['row_id']] = ($rowCounts[$p['row_id']] ?? 0) + 1;
+            $reason = match ($p['state']) {
+                'priced' => trim(($p['rate_name'] ?? '') . ' · ' . ($p['schedule_label'] ?? ''), ' ·'),
+                'conflict' => 'More than one rate or date range applies. Review the overlapping prices.',
+                'needs_review' => 'A required Site attribute is missing, or an older rate needs review.',
+                default => 'No matching price for this Site and night.',
+            };
+            $examples[] = ['id' => (int) $site['id'], 'name' => $site['display_name'], 'state' => $p['state'], 'price' => $p['label'], 'reason' => $reason];
         }
-        rate_cards_json_response(['ok' => true, ...$counts, 'sites' => $examples]);
+        rate_cards_json_response(['ok' => true, ...$counts, 'sites' => $examples, 'row_counts' => $rowCounts]);
     }
     // Compatibility callers publish through the same atomic canonical save,
     // permission check and audit as Edit Place. No direct JSON-column writer.
