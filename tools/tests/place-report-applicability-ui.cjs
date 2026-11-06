@@ -19,7 +19,7 @@ const rules = {
         {field: 'type', operator: 'in', value: ['developed-campground']},
     ],
     hookup_electric_service: [
-        {field: 'hookup_electric', operator: 'equals', value: '1'},
+        {field: 'site_hookups_available', operator: 'equals', value: '1'},
     ],
     generator_prohibited: [
         {field: 'generator_restrictions', operator: 'equals', value: '1'},
@@ -115,13 +115,15 @@ assert.equal(field('hookup_electric').hidden, false,
     'Utility question is independent of the general hookup parent');
 change('site_hookups_available', '0');
 assert.equal(field('hookup_electric').hidden, false,
-    'General Hookups No does not hide independently verified Electric');
-change('hookup_electric', '1');
-assert.equal(field('hookup_electric_service').hidden, false,
-    'Electric Yes reveals service details');
-change('hookup_electric', '0');
+    'Broad Hookups No does not change independent Electric status');
 assert.equal(field('hookup_electric_service').hidden, true,
-    'Electric No hides service details');
+    'Broad Hookups No hides approved Site Equipment details');
+change('site_hookups_available', '1');
+assert.equal(field('hookup_electric_service').hidden, false,
+    'Broad Hookups Yes reveals Electric Service');
+change('site_hookups_available', '__LLAMA_UNKNOWN__');
+assert.equal(field('hookup_electric_service').hidden, true,
+    'Unknown Hookups does not activate a Yes-only detail');
 
 change('generator_restrictions', '1');
 assert.equal(field('generator_prohibited').hidden, false,
