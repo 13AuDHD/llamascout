@@ -16,11 +16,22 @@ const rules = {
         {field: 'type', operator: 'in', value: ['developed-campground']},
     ],
     hookup_electric: [
-        {field: 'site_hookups_available', operator: 'equals', value: '1'},
+        {field: 'type', operator: 'in', value: ['developed-campground']},
     ],
     hookup_electric_service: [
-        {field: 'site_hookups_available', operator: 'equals', value: '1'},
         {field: 'hookup_electric', operator: 'equals', value: '1'},
+    ],
+    generator_prohibited: [
+        {field: 'generator_restrictions', operator: 'equals', value: '1'},
+    ],
+    generator_quiet_hours: [
+        {field: 'generator_restrictions', operator: 'equals', value: '1'},
+        {field: 'generator_prohibited', operator: 'equals', value: '0'},
+    ],
+    generator_quiet_hours_begin: [
+        {field: 'generator_restrictions', operator: 'equals', value: '1'},
+        {field: 'generator_prohibited', operator: 'equals', value: '0'},
+        {field: 'generator_quiet_hours', operator: 'equals', value: '1'},
     ],
     tent_pad_width_feet: [
         {field: 'tent_pad', operator: 'equals', value: '1'},
@@ -28,7 +39,9 @@ const rules = {
 };
 const keys = [
     'type', 'site_hookups_available', 'hookup_electric',
-    'hookup_electric_service', 'tent_pad', 'tent_pad_width_feet',
+    'hookup_electric_service', 'generator_restrictions',
+    'generator_prohibited', 'generator_quiet_hours',
+    'generator_quiet_hours_begin', 'tent_pad', 'tent_pad_width_feet',
     'independent_site_question',
 ];
 const config = {
@@ -81,59 +94,69 @@ const change = (key, value) => {
     select(key).dispatchEvent(new window.Event('change', {bubbles: true}));
 };
 
-assert.equal(field('hookup_electric').hidden, true,
-    'Unanswered hookup parent should hide the electric child');
 assert.equal(field('hookup_electric_service').hidden, true,
-    'Unanswered hookup grandparent should hide the electric-service grandchild');
+    'Unanswered Electric must hide Electric Service');
+assert.equal(field('generator_prohibited').hidden, true,
+    'Generator Restrictions unanswered must hide Prohibited');
+assert.equal(field('generator_quiet_hours_begin').hidden, true,
+    'Generator Quiet Hours start must remain hidden until parents match');
 assert.equal(field('tent_pad_width_feet').hidden, true,
-    'Tent Pad Width must remain hidden without a Tent Pad Yes');
+    'Tent Pad Width must remain hidden without Tent Pad Yes');
 assert.equal(field('independent_site_question').hidden, false,
-    'Independent Site question should remain visible');
+    'Independent question stays visible');
 
-change('type', '1');
-// This fixture uses the canonical Place type slug, not a Yes/No surrogate.
-{
-    const typeControl = select('type');
-    const opt = window.document.createElement('option');
-    opt.value = 'developed-campground';
-    opt.textContent = 'Developed Campground';
-    typeControl.append(opt);
-}
+const typeControl = select('type');
+const option = window.document.createElement('option');
+option.value = 'developed-campground';
+option.textContent = 'Developed Campground';
+typeControl.append(option);
 change('type', 'developed-campground');
-assert.equal(field('site_hookups_available').hidden, false,
-    'Campground should show its hookup parent question');
-change('site_hookups_available', '1');
 assert.equal(field('hookup_electric').hidden, false,
-    'Hookup Yes should reveal Electric');
-assert.equal(field('hookup_electric_service').hidden, true,
-    'Electric Service remains hidden until Electric itself is Yes');
+    'Utility question is independent of the general hookup parent');
+change('site_hookups_available', '0');
+assert.equal(field('hookup_electric').hidden, false,
+    'General Hookups No does not hide independently verified Electric');
 change('hookup_electric', '1');
 assert.equal(field('hookup_electric_service').hidden, false,
-    'Nested electric-service question must reveal when both parents are Yes');
-
-change('site_hookups_available', '0');
-assert.equal(field('hookup_electric').hidden, true,
-    'Hookup No must hide electric detail');
+    'Electric Yes reveals service details');
+change('hookup_electric', '0');
 assert.equal(field('hookup_electric_service').hidden, true,
-    'A stale Electric Yes must NOT reveal grandchild after Hookup No');
-assert.equal(select('hookup_electric').value, '1',
-    'Hide must preserve historical/draft answer rather than deleting it');
+    'Electric No hides service details');
 
-change('site_hookups_available', '__LLAMA_UNKNOWN__');
-assert.equal(field('hookup_electric').hidden, true,
-    'Unknown parent must not activate a Yes-only child');
+change('generator_restrictions', '1');
+assert.equal(field('generator_prohibited').hidden, false,
+    'Generator Restrictions Yes reveals the Prohibited follow-up');
+change('generator_prohibited', '0');
+assert.equal(field('generator_quiet_hours').hidden, false,
+    'Generators not prohibited reveals Quiet Hours');
+change('generator_quiet_hours', '1');
+assert.equal(field('generator_quiet_hours_begin').hidden, false,
+    'Matching nested generator parents reveal the start-time question');
+change('generator_restrictions', '0');
+assert.equal(field('generator_prohibited').hidden, true,
+    'Restrictions No hides Prohibited question');
+assert.equal(field('generator_quiet_hours').hidden, true,
+    'Stale Prohibited No cannot reveal Quiet Hours when restrictions are hidden');
+assert.equal(field('generator_quiet_hours_begin').hidden, true,
+    'Stale Quiet Hours Yes cannot reveal a grandchild');
+assert.equal(select('generator_quiet_hours').value, '1',
+    'Hidden answers remain stored for future review');
+
+change('generator_restrictions', '__LLAMA_UNKNOWN__');
+assert.equal(field('generator_prohibited').hidden, true,
+    'Unknown Restrictions does not trigger a Yes-only child');
 
 change('tent_pad', '1');
 assert.equal(field('tent_pad_width_feet').hidden, false,
-    'Tent Pad Yes must reveal dimensions');
+    'Tent Pad Yes reveals dimensions');
 change('tent_pad', '0');
 assert.equal(field('tent_pad_width_feet').hidden, true,
-    'Tent Pad No must hide dimensions again');
+    'Tent Pad No hides dimensions');
 
 change('type', '0');
-assert.equal(field('site_hookups_available').hidden, true,
-    'Non-campground Place type hides campground hookup parent');
 assert.equal(field('hookup_electric').hidden, true,
-    'Type-inapplicable hookup parent cannot reveal electric details');
+    'Inapplicable Place type hides Site utility questions');
+assert.equal(field('hookup_electric_service').hidden, true,
+    'An inapplicable parent cannot activate its child');
 
 console.log('PASS: parent-child fields hide/reveal, nested stale values never activate, independent questions remain visible, saved answers preserved');
