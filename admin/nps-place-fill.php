@@ -6,6 +6,7 @@ require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/nps.php';
 require_once dirname(__DIR__) . '/app/nps-place-fill.php';
 require_once dirname(__DIR__) . '/app/nps-batch-fill.php';
+require_once dirname(__DIR__) . '/app/nps-publication-readiness.php';
 
 $adminUser = moderation_require_admin();
 $adminPageTitle = 'NPS Place Enrichment';
@@ -123,6 +124,20 @@ try {
     $error = $exception->getMessage();
 }
 
+// Read-only cross-source coverage. Failure here must not block the proven
+// single-Place / batch enrichment workflows above.
+$publicationCoverage = null;
+$publicationCoverageError = '';
+try {
+    $publicationCoverage = llama_nps_publication_readiness(nps_db(), ridb_db(), db());
+} catch (Throwable $coverageException) {
+    $publicationCoverageError = 'The publication readiness audit could not be loaded. '
+        . 'Existing import and reconciliation tools are unaffected.';
+    if (function_exists('llama_log_caught_exception')) {
+        llama_log_caught_exception($coverageException, 'admin.nps.publication-readiness');
+    }
+}
+
 require __DIR__ . '/_header.php';
 ?>
 <section class="admin-panel">
@@ -147,6 +162,157 @@ require __DIR__ . '/_header.php';
             <a class="admin-button is-secondary" href="/nps-ridb-matches.php">Review campground matches</a>
             <a class="admin-button is-secondary" href="/nps-field-reconciliation.php">Review NPS / RIDB facts</a>
         </div>
+    </div>
+</section>
+
+<section class="admin-panel" id="nps-publication-readiness">
+    <header class="admin-panel-header">
+        <div>
+            <p>Source coverage · Read only</p>
+            <h2>What can actually be published?</h2>
+        </div>
+    </header>
+    <div class="admin-panel-body">
+        <p>NPS and RIDB can describe the same campground. This view checks
+            reviewed source identities against actual Llama Scout Place links
+            before creating any records. Reviewed field decisions remain
+            unpublished candidates until they are mapped and promoted safely.</p>
+        <?php if ($publicationCoverageError !== ''): ?>
+            <p class="admin-user-notice is-error" role="alert">
+                <?= moderation_e($publicationCoverageError) ?>
+            </p>
+        <?php elseif ($publicationCoverage !== null): ?>
+            <?php $coverageTotals = $publicationCoverage['totals']; ?>
+            <p>
+                <strong><?= (int) $coverageTotals['cached_campgrounds'] ?></strong>
+                cached NPS campground records ·
+                <strong><?= (int) $coverageTotals['confirmed_pairs'] ?></strong>
+                confirmed source pairs ·
+                <strong><?= (int) $coverageTotals['published_places'] ?></strong>
+                linked to existing Places ·
+                <strong><?= (int) $coverageTotals['unpublished_ridb'] ?></strong>
+                RIDB facilities not yet published ·
+                <strong><?= (int) $coverageTotals['stale_identities'] ?></strong>
+                stale identity reviews ·
+                <strong><?= (int) $coverageTotals['identity_conflicts'] ?></strong>
+                identity conflicts
+            </p>
+            <?php if ($publicationCoverage['truncated']): ?>
+                <p class="admin-user-notice is-error">
+                    This preview is limited to 500 confirmed pairs;
+                    the counts below are incomplete. Do not treat this as
+                    an exhaustive national import inventory.
+                </p>
+            <?php endif; ?>
+            <?php if (!$publicationCoverage['pairs']): ?>
+                <p>No confirmed NPS/RIDB campground pairs are currently available.
+                    Start with <a href="/nps-ridb-matches.php">identity review</a>.</p>
+            <?php else: ?>
+                <div class="admin-table-scroll">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>NPS campground</th>
+                                <th>RIDB facility</th>
+                                <th>Llama Scout Place</th>
+                                <th>Next action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($publicationCoverage['pairs'] as $pair): ?>
+                                <?php
+                                $status = (string) $pair['status'];
+                                $statusMessage = match ($status) {
+                                    'published_place' => 'Existing Place linked',
+                                    'unpublished_ridb' => 'RIDB Place not yet imported',
+                                    'stale_identity' => 'NPS identity changed; re-review required',
+                                    default => 'Identity conflict; investigate',
+                                };
+                                ?>
+                                <tr>
+                                    <td>
+                                        <strong><?= moderation_e((string) $pair['name']) ?></strong>
+                                        <small><?= moderation_e(strtoupper((string) $pair['park_code'])) ?></small>
+                                    </td>
+                                    <td><?= moderation_e((string) $pair['ridb_id']) ?></td>
+                                    <td>
+                                        <?php if ($pair['place_id'] !== null): ?>
+                                            <a href="/place.php?id=<?= (int) $pair['place_id'] ?>">
+                                                <?= moderation_e((string) $pair['place_name']) ?>
+                                            </a>
+                                        <?php else: ?>
+                                            Not linked
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <?= moderation_e($statusMessage) ?>
+                                        <?php if ($status === 'unpublished_ridb'): ?>
+                                            <a href="/ridb-facility.php?id=<?= rawurlencode((string) $pair['ridb_id']) ?>">
+                                                Inspect RIDB source
+                                            </a>
+                                        <?php elseif ($status === 'stale_identity' || $status === 'identity_conflict'): ?>
+                                            <a href="/nps-ridb-matches.php">Review identity</a>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+
+            <h3>Recorded field decisions, still awaiting publication</h3>
+            <?php if ($publicationCoverage['review_error'] !== ''): ?>
+                <p><?= moderation_e((string) $publicationCoverage['review_error']) ?></p>
+            <?php elseif (!$publicationCoverage['field_reviews']): ?>
+                <p>No field decisions are recorded for these confirmed identities.</p>
+            <?php else: ?>
+                <div class="admin-table-scroll">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Campground</th>
+                                <th>Field</th>
+                                <th>Reviewed choice</th>
+                                <th>Publication state</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($publicationCoverage['field_reviews'] as $review): ?>
+                                <?php
+                                $reviewState = match ((string) $review['status']) {
+                                    'reviewed_not_published' => 'Current review, not published',
+                                    'waiting_for_place' => 'Awaiting the existing RIDB Place',
+                                    'stale_sources' => 'Sources changed; review again',
+                                    default => 'Still unresolved',
+                                };
+                                ?>
+                                <tr>
+                                    <td><?= moderation_e((string) $review['campground']) ?></td>
+                                    <td><?= moderation_e((string) $review['field_key']) ?></td>
+                                    <td>
+                                        <?= moderation_e((string) $review['value']) ?>
+                                        <small><?= moderation_e((string) $review['decision']) ?></small>
+                                    </td>
+                                    <td>
+                                        <?= moderation_e($reviewState) ?>
+                                        <?php if ($review['place_id'] !== null): ?>
+                                            <a href="/place.php?id=<?= (int) $review['place_id'] ?>">
+                                                Inspect Place
+                                            </a>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <p>These are reviewed interpretations, not proof that the
+                    corresponding Scout Report answer, rate card or map
+                    coordinate has been published. Reconciliation decisions
+                    must preserve existing manual corrections and source history.</p>
+            <?php endif; ?>
+        <?php endif; ?>
     </div>
 </section>
 
