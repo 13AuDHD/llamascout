@@ -60,8 +60,6 @@ declare(strict_types=1);
 
 <?php require __DIR__ . '/place-map.php'; ?>
 
-<?php require __DIR__ . '/place-report-seasons.php'; ?>
-
 <form method="post" class="admin-place-report-form place-report-form" id="place-report">
     <input type="hidden" name="csrf_token" value="<?= $e(moderation_csrf_token()) ?>">
     <input type="hidden" name="place_id" value="<?= $placeId ?>">
@@ -152,3 +150,6 @@ declare(strict_types=1);
         </button>
     </div>
 </form>
+
+<?php // Independent season forms belong after the complete canonical Place Report. ?>
+<?php require __DIR__ . '/place-report-seasons.php'; ?>
