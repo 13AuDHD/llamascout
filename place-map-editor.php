@@ -74,6 +74,11 @@ $pageStyles = [
     'site/pages/place-map-editor.css',
 ];
 
+$returnToAdmin = ($_GET['from'] ?? '') === 'admin';
+$returnUrl = $returnToAdmin
+    ? 'https://admin.llamascout.com/place.php?id=' . (int) $place['id'] . '#place-report'
+    : '/place.php?slug=' . rawurlencode((string) $place['slug']);
+
 require __DIR__ . '/partials/header.php';
 ?>
 
@@ -104,9 +109,10 @@ require __DIR__ . '/partials/header.php';
 
         <a
             class="mapped-area-editor-back"
-            href="/place.php?slug=<?= rawurlencode((string) $place['slug']) ?>"
+            href="<?= htmlspecialchars($returnUrl, ENT_QUOTES, 'UTF-8') ?>"
+            <?= $returnToAdmin ? 'data-map-admin-return' : '' ?>
         >
-            Back to Place
+            <?= $returnToAdmin ? 'Back to Admin report' : 'Back to Place' ?>
         </a>
     </header>
 
@@ -408,6 +414,6 @@ require __DIR__ . '/partials/header.php';
 <script src="/js/place-map-editor/geometry.js"></script>
 <script src="/js/place-map-editor/gps.js"></script>
 <script src="/js/place-map-editor/map-styles.js"></script>
-<script src="/js/place-map-editor.js"></script>
+<script src="/js/place-map-editor.js?v=<?= (int) filemtime(__DIR__ . '/js/place-map-editor.js') ?>"></script>
 
 <?php require __DIR__ . '/partials/footer.php'; ?>

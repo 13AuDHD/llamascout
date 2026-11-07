@@ -1365,9 +1365,10 @@ $reportMainLabels = [
 ];
 
 $placeReportVisibleFields = [];
+$hasAdminSitePicker = isset($placeReportSiteOptions);
 
 foreach ($placeReportFields as $fieldKey => $field) {
-    if (isset($placeReportExternalFieldLookup[$fieldKey])) {
+    if (isset($placeReportExternalFieldLookup[$fieldKey]) || ($hasAdminSitePicker && $fieldKey === 'site_number')) {
         continue;
     }
 
@@ -1415,17 +1416,35 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
         static fn (array $field): bool =>
             (string) ($field['layout_section'] ?? '') === $reportMainKey
     );
-    if (!$reportMainFields) {
+    $showSitePicker = $reportMainKey === 'site' && $hasAdminSitePicker;
+    if (!$reportMainFields && !$showSitePicker) {
         continue;
     }
 ?>
-<details class="contribution-section" <?= $reportMainKey === 'getting_there' ? 'open' : '' ?>
+<details class="contribution-section" <?= $reportMainKey === 'getting_there' || ($showSitePicker && $placeReportSelectedSite !== '') ? 'open' : '' ?>
+    <?= $showSitePicker ? 'id="admin-site-report"' : '' ?>
     data-report-main-section="<?= $e($reportMainKey) ?>">
     <summary>
         <span><?= llama_icon($reportMainIcon) ?> <?= $e($reportMainLabel) ?></span>
         <span class="place-report-section-progress" data-section-completion-percent aria-label="Section completion"></span>
     </summary>
     <div class="contribution-section-body">
+        <?php if ($showSitePicker): ?>
+            <label class="contribution-field" data-admin-site-picker>
+                <span class="place-report-field-label">Site to edit</span>
+                <select name="selected_campsite_id" data-admin-campsite-selector <?= $placeReportSiteOptions ? '' : 'disabled' ?>>
+                    <option value=""><?= $placeReportSiteOptions ? 'Select a Site' : 'No saved Sites' ?></option>
+                    <?php foreach ($placeReportSiteOptions as $siteValue => $siteLabel): ?>
+                        <option value="<?= $e($siteValue) ?>" <?= $placeReportSelectedSite === $siteValue ? 'selected' : '' ?>>
+                            <?= $e($siteLabel) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <?php if (!$placeReportSiteOptions): ?>
+                    <small>In Edit map, place the pin and tap Save Site point to create a Site.</small>
+                <?php endif; ?>
+            </label>
+        <?php endif; ?>
         <?php
         /*
          * Render one collapsible section per approved questionnaire group.
@@ -1793,7 +1812,7 @@ if ($placeReportShowPhotos):
 <?php endif; ?>
 
 <script
-    src="https://llamascout.com/js/place-report-form/recovery.js"
+    src="https://llamascout.com/js/place-report-form/recovery.js?v=<?= (int) filemtime(dirname(__DIR__, 2) . '/js/place-report-form/recovery.js') ?>"
 ></script>
 
 

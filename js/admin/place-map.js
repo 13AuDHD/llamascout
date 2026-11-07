@@ -381,11 +381,29 @@
         }
     );
 
+    const sitePins = new Map();
+    for (const site of config.sites ?? []) {
+        const point = [site.latitude, site.longitude];
+        const pin = L.circleMarker(point, {
+            pane: paneFor('camping_site'),
+            radius: 7,
+            ...styleFor('camping_site'),
+            fillOpacity: .9,
+            bubblingMouseEvents: false
+        }).addTo(map);
+        const tooltip = document.createElement('span');
+        tooltip.textContent = site.label;
+        pin.bindTooltip(tooltip);
+        pin.on('click', () => window.LlamaPlaceContext?.selectSiteByValue(site.id));
+        sitePins.set(site.id, pin);
+        allBounds.extend(point);
+    }
+
     let selectedFeatureId =
         0;
 
     const updateStyles =
-        () => {
+        (selectedSite) => {
             layers.forEach(
                 (
                     entry,
@@ -407,6 +425,13 @@
                     );
                 }
             );
+            for (const [id, pin] of sitePins) {
+                pin.setStyle({
+                    ...styleFor('camping_site', id === selectedSite),
+                    fillOpacity: .9
+                });
+                pin.setRadius(id === selectedSite ? 9 : 7);
+            }
         };
 
     const fitSelection =
@@ -504,7 +529,7 @@
         };
 
     const updateEditLink =
-        (featureId) => {
+        (featureId, siteId) => {
             if (!editLink) {
                 return;
             }
@@ -524,8 +549,11 @@
                 'slug',
                 slug
             );
+            url.searchParams.set('from', 'admin');
 
-            if (featureId > 0) {
+            if (siteId > 0) {
+                url.searchParams.set('site_id', String(siteId));
+            } else if (featureId > 0) {
                 url.searchParams.set(
                     'feature',
                     String(
@@ -560,15 +588,23 @@
                     )
                 );
 
-            updateStyles();
+            const selectedSite = detail.level === 'site' ? detail.selector_value : '';
+            updateStyles(selectedSite);
 
             updateSelectionLabel(
                 detail
             );
 
             updateEditLink(
-                selectedFeatureId
+                selectedFeatureId,
+                detail.site_id
             );
+
+            const pin = sitePins.get(selectedSite);
+            if (pin) {
+                map.setView(pin.getLatLng(), 20);
+                return;
+            }
 
             fitSelection(
                 selectedFeatureId,
