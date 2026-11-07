@@ -73,6 +73,10 @@
     align-items: stretch;
 }
 
+.scout-report-basic-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .scout-report-grid + .scout-report-grid {
     margin-top: 12px;
 }
