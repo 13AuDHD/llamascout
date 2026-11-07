@@ -163,13 +163,28 @@ assert.equal(field('hookup_electric_service').hidden, true,
 
 window.close();
 
-async function testAdminSiteEditing(preselected = false) {
-    const site = {id: 'campsite_record:5', site_id: 5, label: 'Site 5', imported_values: {tent_pad: '1'}};
+const siteLists = {
+    landscape_details: ['rocky', 'wooded'],
+    landscape_views: ['forest-woodland', 'mountain'],
+    connectivity_services_tested: ['starlink', 'amazon_leo', 'other'],
+};
+
+async function testAdminSiteEditing(overrides = null) {
+    const site = {id: 'campsite_record:5', site_id: 5, label: 'Site 5', imported_values: {tent_pad: '1'}, override_values: overrides};
     const catalog = {
         sites: [site],
-        site_field_keys: ['tent_pad', 'tent_pad_width_feet', 'independent_site_question'],
+        site_field_keys: ['tent_pad', 'tent_pad_width_feet', 'independent_site_question', ...Object.keys(siteLists)],
         place_field_keys: ['generator_restrictions'],
     };
+    const adminConfig = {
+        ...config,
+        fields: [...config.fields, ...Object.keys(siteLists).map(key => ({key, type: 'multiselect'}))],
+    };
+    const listFields = Object.entries(siteLists).map(([key, options]) =>
+        `<div data-report-field="${key}" data-place-report-multiselect>`
+        + options.map(value => `<label data-place-report-multiselect-option><input type="checkbox" name="${key}[]" value="${value}"></label>`).join('')
+        + '</div>'
+    ).join('');
     const context = {place: {place_id: 17}, sites: {[site.id]: site}};
     const mapData = {
         place: {slug: 'test-place'},
@@ -181,16 +196,16 @@ async function testAdminSiteEditing(preselected = false) {
         + '<a data-admin-place-map-edit></a>'
         + '<script type="application/json" data-admin-place-map-data>' + JSON.stringify(mapData) + '</script></div>'
         + '<form id="place-report" class="place-report-form">'
-        + '<script type="application/json" data-place-report-schema-config>' + JSON.stringify(config) + '</script>'
+        + '<script type="application/json" data-place-report-schema-config>' + JSON.stringify(adminConfig) + '</script>'
         + '<script type="application/json" data-admin-place-campsites>' + JSON.stringify(catalog) + '</script>'
         + '<script type="application/json" data-admin-place-context>' + JSON.stringify(context) + '</script>'
         + '<details class="contribution-section" data-report-main-section="site">'
         + '<label data-admin-site-picker><select name="selected_campsite_id" data-admin-campsite-selector>'
         + '<option value="all-sites">All Sites</option><option value="" selected>Select a Site</option>'
-        + '<option value="campsite_record:5"' + (preselected ? ' selected' : '') + '>Site 5</option>'
+        + '<option value="campsite_record:5"' + (overrides ? ' selected' : '') + '>Site 5</option>'
         + '</select></label><label data-admin-overwrite-site-panel hidden>'
         + '<input type="checkbox" role="switch" data-admin-overwrite-site-answers></label>'
-        + keys.map(fieldHtml).join('')
+        + keys.map(fieldHtml).join('') + listFields
         + '</details><button type="button" data-place-report-admin-save>Save Place Report</button></form>',
         {url: 'https://admin.llamascout.com/place.php?id=17', runScripts: 'outside-only'}
     );
@@ -248,10 +263,17 @@ async function testAdminSiteEditing(preselected = false) {
         const picker = get('[data-admin-campsite-selector]');
         assert.equal(get('[data-admin-site-picker]').hidden, false, 'The Site picker is independent of questions and Place type');
         assert.equal(pins.length, 1, 'A saved Site point renders without any map feature geometry');
-        if (preselected) {
+        if (overrides) {
             assert.equal(picker.value, site.id, 'Opening a direct Site link keeps the Site selected');
-            assert.equal(input('tent_pad').value, '1', 'Direct Site links load existing answers');
-            assert.equal(question('tent_pad_width_feet').hidden, false, 'Direct Site links show applicable Site questions');
+            assert.equal(input('tent_pad').value, '0', 'Direct Site links load existing answers');
+            assert.equal(question('tent_pad_width_feet').hidden, true, 'Reload respects the saved parent answer');
+            for (const [key, options] of Object.entries(siteLists)) {
+                assert.deepEqual(Array.from(w.document.querySelectorAll(`[name="${key}[]"]:checked`), control => control.value), options,
+                    `${key} restores every saved choice`);
+            }
+            get('[data-place-report-admin-save]').click();
+            assert.deepEqual(JSON.parse(saved.get('admin_site_answers_json')), {}, 'Unchanged lists are not rewritten');
+            await new Promise(resolve => setImmediate(resolve));
             return;
         }
         assert.equal(question('independent_site_question').hidden, true, 'Site-only questions wait for a target');
@@ -289,20 +311,56 @@ async function testAdminSiteEditing(preselected = false) {
         update(input('tent_pad'), '0');
         assert.equal(question('tent_pad_width_feet').hidden, true, 'Parent change still hides its child');
         update(input('generator_restrictions'), '1');
+        for (const key of Object.keys(siteLists)) {
+            for (const checkbox of w.document.querySelectorAll(`[name="${key}[]"]`)) checkbox.click();
+        }
         get('[data-place-report-admin-save]').click();
         assert.equal(saved.get('selected_campsite_id'), site.id);
-        assert.deepEqual(JSON.parse(saved.get('admin_site_answers_json')), {tent_pad: '0'});
+        const savedAnswers = JSON.parse(saved.get('admin_site_answers_json'));
+        assert.deepEqual(savedAnswers, {tent_pad: '0', ...siteLists});
         assert.equal(saved.get('generator_restrictions'), '1', 'Place answer remains in the Place payload');
         await new Promise(resolve => setImmediate(resolve));
         update(picker, '');
         assert.equal(question('independent_site_question').hidden, true, 'Clearing the Site hides its questions again');
+        return savedAnswers;
     } finally {
         w.close();
     }
 }
 
-testAdminSiteEditing().then(() => testAdminSiteEditing(true)).then(() => {
-    console.log('PASS: parent-child visibility, editable Admin Site and Place questions, and scoped save payloads');
+async function testClosureDates() {
+    const keys = ['season_begins', 'season_ends'];
+    const dates = ['12-15', '10-31'];
+    const options = values => '<option value="">Select</option>' + values.map(value => `<option>${value}</option>`).join('');
+    const dom = new JSDOM('<form>' + keys.map((key, index) =>
+        `<div data-season-picker><select data-season-month>${options(['02', '10', '12'])}</select>`
+        + `<select data-season-day>${options(['15', '29', '31'])}</select>`
+        + `<input type="hidden" name="${key}" value="${dates[index]}" data-season-value></div>`
+    ).join('') + '</form>', {runScripts: 'outside-only'});
+    const w = dom.window;
+    try {
+        w.eval(fs.readFileSync(path.resolve(__dirname, '../../js/place-report-season-picker.js'), 'utf8'));
+        await new Promise(resolve => w.document.addEventListener('DOMContentLoaded', resolve, {once: true}));
+        const form = w.document.querySelector('form');
+        assert.deepEqual(Array.from(new w.FormData(form).values()), dates, 'Opening the report preserves both dates');
+        const month = form.querySelector('[data-season-month]');
+        const day = form.querySelector('[data-season-day]');
+        assert.equal(month.value, '12');
+        assert.equal(day.value, '15');
+        form.elements.season_begins.value = '02-29';
+        form.dispatchEvent(new w.Event('change'));
+        assert.equal(month.value, '02', 'Scoped date changes update the picker');
+        assert.equal(day.value, '29');
+        day.value = '15';
+        day.dispatchEvent(new w.Event('change', {bubbles: true}));
+        assert.equal(new w.FormData(form).get('season_begins'), '02-15', 'Changing a picker submits the new date');
+    } finally {
+        w.close();
+    }
+}
+
+testAdminSiteEditing().then(testAdminSiteEditing).then(testClosureDates).then(() => {
+    console.log('PASS: closure dates and Site selections survive reload, parent-child visibility and scoped saves');
 }).catch(error => {
     console.error(error);
     process.exitCode = 1;

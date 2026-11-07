@@ -171,26 +171,7 @@ function admin_place_apply_site_overrides(array $values, array $overrides): arra
             continue;
         }
 
-        $type = (string) ($fields[$key]['type'] ?? '');
-
-        if ($value === llama_place_report_unknown_token()) {
-            $values[$key] = llama_place_report_unknown_token();
-        } elseif ($value === null) {
-            // A cleared answer must suppress the imported baseline on reload.
-            $values[$key] = llama_place_report_answer_form_value($fields[$key], null);
-        } elseif (
-            in_array(
-                $type,
-                ['tri', 'checkbox'],
-                true
-            )
-            && is_bool($value)
-        ) {
-            $values[$key] =
-                $value
-                    ? '1'
-                    : '0';
-        } elseif ($value !== null && !is_array($value)) {
+        if (!is_array($value) || $fields[$key]['type'] === 'multiselect') {
             $values[$key] = llama_place_report_answer_form_value($fields[$key], $value);
         }
     }
