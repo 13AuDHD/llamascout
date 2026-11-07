@@ -7,6 +7,14 @@ $mapFeatures =
         ? $adminPlaceMapFeatures
         : [];
 
+$mapSites = [];
+foreach ($adminPlaceCampsites as $site) {
+    if (llama_coordinate_status($site['latitude'], $site['longitude']) === 'missing') {
+        continue;
+    }
+    $mapSites[] = array_intersect_key($site, array_flip(['id', 'latitude', 'longitude', 'label']));
+}
+
 $mapLatitude =
     isset($place['latitude'])
     && is_numeric($place['latitude'])
@@ -39,7 +47,7 @@ $mapLongitude =
             data-admin-place-map-edit
             href="https://llamascout.com/place-map-editor.php?slug=<?= rawurlencode(
                 (string) ($place['slug'] ?? '')
-            ) ?>"
+            ) ?>&amp;from=admin"
             target="_blank"
             rel="noopener"
         >
@@ -106,6 +114,7 @@ $mapLongitude =
                 'longitude' => $mapLongitude,
             ],
             'features' => $mapFeatures,
+            'sites' => $mapSites,
         ],
         JSON_UNESCAPED_SLASHES
         | JSON_UNESCAPED_UNICODE

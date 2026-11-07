@@ -102,6 +102,7 @@ return [
 'admin',
 sessionPart,
 placeId,
+...(form.dataset.adminSiteReportId ? [`site-${form.dataset.adminSiteReportId}`] : []),
 ].join(':');
 }
 

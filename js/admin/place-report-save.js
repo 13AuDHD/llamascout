@@ -341,6 +341,8 @@
         if (placeId === '') {
             return;
         }
+        const initialSiteId = form.dataset.adminSiteReportId;
+        const recoverySuffix = initialSiteId ? `:${placeId}:site-${initialSiteId}` : `:${placeId}`;
 
         try {
             const remove = [];
@@ -359,7 +361,7 @@
                         'llama:place-report-recovery:admin:'
                     )
                     && key.endsWith(
-                        `:${placeId}`
+                        recoverySuffix
                     )
                 ) {
                     remove.push(key);
@@ -591,79 +593,8 @@
             )
         );
 
-    const siteNumberInput =
-        form.querySelector(
-            '[name="site_number"]'
-        );
-
-    let campsiteSelect = null;
-
-    if (siteNumberInput) {
-        campsiteSelect =
-            document.createElement(
-                'select'
-            );
-
-        campsiteSelect.name =
-            'selected_campsite_id';
-        campsiteSelect.setAttribute(
-            'data-admin-campsite-selector',
-            '1'
-        );
-
-        const choose =
-            document.createElement(
-                'option'
-            );
-
-        choose.value = '';
-        choose.textContent =
-            campsiteSites.length > 0
-                ? 'Select a Site'
-                : 'No Sites yet';
-        campsiteSelect.appendChild(choose);
-
-        campsiteSites.forEach(site => {
-            const option =
-                document.createElement(
-                    'option'
-                );
-
-            option.value =
-                String(site.id || '');
-            option.textContent =
-                String(
-                    site.label
-                    || `Site ${site.id}`
-                );
-            campsiteSelect.appendChild(option);
-        });
-
-        if (campsiteSites.length === 0) {
-            campsiteSelect.disabled = true;
-        }
-
-        const wrapper =
-            siteNumberInput.closest(
-                '.contribution-field'
-            );
-
-        const label =
-            wrapper?.querySelector(
-                '.place-report-field-label > span:first-child'
-            );
-
-        if (label) {
-            label.textContent =
-                'Site';
-        }
-
-        siteNumberInput.replaceWith(
-            campsiteSelect
-        );
-        // Outside the field wrapper so scope/applicability hiding cannot hide the bulk controls.
-        (wrapper || campsiteSelect).insertAdjacentElement('afterend', bulkPanel);
-    }
+    const campsiteSelect = form.querySelector('[data-admin-campsite-selector]');
+    campsiteSelect?.closest('[data-admin-site-picker]')?.after(bulkPanel);
 
     const selectedCampsite =
         () => {
@@ -1262,6 +1193,8 @@
         resetBulk();
         activeCampsiteId =
             String(site.id);
+        const siteSection = campsiteSelect.closest('[data-report-main-section="site"]');
+        if (siteSection) siteSection.open = true;
         campsiteDirty = false;
         placeSiteDirty = false;
         // Programmatically populating fields doesn't emit input/change events.
@@ -1347,10 +1280,8 @@
             }
         );
 
-        // A Place must open as Place even when it has exactly one Site.
-        // Auto-selecting that Site silently changes the owner of photos
-        // and other scoped answers. Select a Site only when requested.
-        loadCampsite('');
+        // The server selects a Site only when an explicit, valid Site link was opened.
+        loadCampsite(campsiteSelect.value);
     }
 
     form.addEventListener(

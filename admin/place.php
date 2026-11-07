@@ -398,7 +398,7 @@ $sharedReportVersion = is_file($sharedReportAsset) ? (int) filemtime($sharedRepo
 <script src="https://llamascout.com/js/admin/place-report-seasons.js"></script>
 <script src="https://llamascout.com/js/admin/place-report-area.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://llamascout.com/js/admin/place-map.js"></script>
+<script src="https://llamascout.com/js/admin/place-map.js?v=<?= (int) filemtime(dirname(__DIR__) . '/js/admin/place-map.js') ?>"></script>
 <script src="https://llamascout.com/js/admin/place-context.js?v=<?= (int) filemtime(dirname(__DIR__) . '/js/admin/place-context.js') ?>"></script>
 <script src="https://llamascout.com/js/admin/place-report-photos.js"></script>
 <script src="https://llamascout.com/js/admin/place-verifications.js"></script>

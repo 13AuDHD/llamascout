@@ -163,17 +163,7 @@ assert.equal(field('hookup_electric_service').hidden, true,
 
 window.close();
 
-async function testAdminSiteEditing() {
-    const schema = {
-        ...config,
-        fields: [
-            ...config.fields,
-            {
-                key: 'site_number',
-                applicable_if: [{field: 'type', operator: 'equals', value: 'developed-campground'}],
-            },
-        ],
-    };
+async function testAdminSiteEditing(preselected = false) {
     const site = {id: 'campsite_record:5', site_id: 5, label: 'Site 5', imported_values: {tent_pad: '1'}};
     const catalog = {
         sites: [site],
@@ -181,13 +171,24 @@ async function testAdminSiteEditing() {
         place_field_keys: ['generator_restrictions'],
     };
     const context = {place: {place_id: 17}, sites: {[site.id]: site}};
+    const mapData = {
+        place: {slug: 'test-place'},
+        features: [],
+        sites: [{id: site.id, label: site.label, latitude: 37.25, longitude: -107.75}],
+    };
     const admin = new JSDOM(
-        '<form id="place-report" class="place-report-form">'
-        + '<script type="application/json" data-place-report-schema-config>' + JSON.stringify(schema) + '</script>'
+        '<div data-admin-place-map-panel><div data-admin-place-map></div>'
+        + '<a data-admin-place-map-edit></a>'
+        + '<script type="application/json" data-admin-place-map-data>' + JSON.stringify(mapData) + '</script></div>'
+        + '<form id="place-report" class="place-report-form">'
+        + '<script type="application/json" data-place-report-schema-config>' + JSON.stringify(config) + '</script>'
         + '<script type="application/json" data-admin-place-campsites>' + JSON.stringify(catalog) + '</script>'
         + '<script type="application/json" data-admin-place-context>' + JSON.stringify(context) + '</script>'
-        + '<details class="contribution-section" open>'
-        + fieldHtml('site_number') + keys.map(fieldHtml).join('')
+        + '<details class="contribution-section" data-report-main-section="site">'
+        + '<label data-admin-site-picker><select name="selected_campsite_id" data-admin-campsite-selector>'
+        + '<option value="">Select a Site</option>'
+        + '<option value="campsite_record:5"' + (preselected ? ' selected' : '') + '>Site 5</option>'
+        + '</select></label>' + keys.map(fieldHtml).join('')
         + '</details><button type="button" data-place-report-admin-save>Save Place Report</button></form>',
         {url: 'https://admin.llamascout.com/place.php?id=17', runScripts: 'outside-only'}
     );
@@ -195,13 +196,42 @@ async function testAdminSiteEditing() {
     try {
         w.CSS = {escape: window.CSS.escape};
         w.LlamaPlaceReportForm = {setupRecovery() {}};
+        const points = [];
+        const pins = [];
+        const views = [];
+        const map = {
+            createPane() {},
+            getPane: () => ({style: {}}),
+            fitBounds() {},
+            setView: point => views.push(point),
+            invalidateSize() {},
+        };
+        w.requestAnimationFrame = callback => callback();
+        w.L = {
+            map: () => map,
+            control: {zoom: () => ({addTo() {}})},
+            tileLayer: () => ({addTo() {}, bringToBack() {}}),
+            latLngBounds: () => ({extend: point => points.push(point), isValid: () => points.length > 0}),
+            circleMarker: point => {
+                const pin = {
+                    addTo: () => pin,
+                    bindTooltip() {},
+                    on: (event, handler) => { pin[event] = handler; },
+                    getLatLng: () => point,
+                    setStyle() {},
+                    setRadius() {},
+                };
+                pins.push(pin);
+                return pin;
+            },
+        };
         let saved;
         w.fetch = async (_url, options) => {
             saved = options.body;
             return {ok: true, text: async () => '{"success":true}'};
         };
         w.eval(source);
-        for (const script of ['place-report-save.js', 'place-context.js']) {
+        for (const script of ['place-report-save.js', 'place-map.js', 'place-context.js']) {
             w.eval(fs.readFileSync(path.resolve(__dirname, '../../js/admin', script), 'utf8'));
         }
         const get = selector => w.document.querySelector(selector);
@@ -212,7 +242,14 @@ async function testAdminSiteEditing() {
             control.dispatchEvent(new w.Event('change', {bubbles: true}));
         };
         const picker = get('[data-admin-campsite-selector]');
-        assert.equal(question('site_number').hidden, false, 'An existing Site stays selectable on a legacy Place type');
+        assert.equal(get('[data-admin-site-picker]').hidden, false, 'The Site picker is independent of questions and Place type');
+        assert.equal(pins.length, 1, 'A saved Site point renders without any map feature geometry');
+        if (preselected) {
+            assert.equal(picker.value, site.id, 'Opening a direct Site link keeps the Site selected');
+            assert.equal(input('tent_pad').value, '1', 'Direct Site links load existing answers');
+            assert.equal(question('tent_pad_width_feet').hidden, false, 'Direct Site links show applicable Site questions');
+            return;
+        }
         assert.equal(question('independent_site_question').hidden, true, 'Site-only questions wait for a target');
         assert.equal(input('independent_site_question').disabled, false, 'Questions are hidden without being locked');
 
@@ -221,8 +258,12 @@ async function testAdminSiteEditing() {
         bulk.dispatchEvent(new w.Event('change', {bubbles: true}));
         assert.equal(question('independent_site_question').hidden, false, 'Bulk editing reveals Site questions');
 
-        update(picker, site.id);
+        pins[0].click();
         await Promise.resolve();
+        assert.equal(picker.value, site.id, 'Tapping a point-only Site selects its canonical report');
+        assert.deepEqual(Array.from(views.at(-1)), [37.25, -107.75], 'Map centers on the selected Site point');
+        assert.equal(new URL(get('[data-admin-place-map-edit]').href).searchParams.get('site_id'), '5');
+        assert.equal(get('[data-report-main-section="site"]').open, true, 'Selecting a map Site opens its report section');
         assert.equal(question('independent_site_question').hidden, false, 'A selected Site reveals its own questions');
         assert.equal(input('tent_pad').disabled, false, 'Imported Site answers are editable');
         assert.equal(input('generator_restrictions').disabled, false, 'Place answers stay editable with a Site selected');
@@ -242,7 +283,7 @@ async function testAdminSiteEditing() {
     }
 }
 
-testAdminSiteEditing().then(() => {
+testAdminSiteEditing().then(() => testAdminSiteEditing(true)).then(() => {
     console.log('PASS: parent-child visibility, editable Admin Site and Place questions, and scoped save payloads');
 }).catch(error => {
     console.error(error);

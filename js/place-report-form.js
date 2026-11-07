@@ -934,8 +934,6 @@ const editingSites = Boolean(sitePicker?.value || form.querySelector('[data-admi
 const scopeAllows = key => editingSites || !siteOnlyKeys.has(key);
 const fields = new Map(config.fields.map(field => [String(field.key), field]));
 const applicable = key => {
-// In Admin this control selects an existing record, even for a legacy Place type.
-if (key === 'site_number' && sitePicker) return true;
 const field = fields.get(String(key));
 return !!field && (showAllForReview
 ? !field.derived
@@ -974,7 +972,7 @@ sections.forEach(section => {
 const wrappers = [...section.querySelectorAll('[data-report-field], [data-report-compound-question]')];
 if (!wrappers.length) return;
 const standalone = section.querySelector(
-'.add-place-coordinate-field, .add-place-locate-panel, .add-place-photo-upload, [data-place-report-photos]'
+'.add-place-coordinate-field, .add-place-locate-panel, .add-place-photo-upload, [data-place-report-photos], [data-admin-site-picker]'
 );
 const allowed = !!standalone || wrappers.some(wrapper => !wrapper.hidden);
 section.hidden = !allowed;

@@ -1,6 +1,11 @@
 <?php
 
 declare(strict_types=1);
+
+$placeReportSiteOptions = array_column($adminPlaceCampsites, 'label', 'id');
+$requestedSiteId = (int) ($_GET['site_id'] ?? 0);
+$requestedSite = 'campsite_record:' . $requestedSiteId;
+$placeReportSelectedSite = isset($placeReportSiteOptions[$requestedSite]) ? $requestedSite : '';
 ?>
 
 <section class="admin-place-summary">
@@ -60,7 +65,8 @@ declare(strict_types=1);
 
 <?php require __DIR__ . '/place-map.php'; ?>
 
-<form method="post" class="admin-place-report-form place-report-form" id="place-report">
+<form method="post" class="admin-place-report-form place-report-form" id="place-report"
+    <?php if ($placeReportSelectedSite !== ''): ?>data-admin-site-report-id="<?= $requestedSiteId ?>"<?php endif; ?>>
     <input type="hidden" name="csrf_token" value="<?= $e(moderation_csrf_token()) ?>">
     <input type="hidden" name="place_id" value="<?= $placeId ?>">
     <input type="hidden" name="place_admin_action" value="save-report">

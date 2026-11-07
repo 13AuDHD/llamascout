@@ -1973,6 +1973,16 @@
             }
         };
 
+    const adminReturn = editor.querySelector('[data-map-admin-return]');
+    const linkToSiteReport = (siteId) => {
+        if (!adminReturn || siteId < 1) return;
+        const url = new URL(adminReturn.href);
+        url.searchParams.set('site_id', String(siteId));
+        url.hash = 'admin-site-report';
+        adminReturn.href = url.toString();
+        adminReturn.textContent = 'Edit Site report';
+    };
+
     const saveSitePoint =
         async () => {
             const latText =
@@ -2081,6 +2091,7 @@
                         data.site_id
                         || 0
                     );
+                linkToSiteReport(savedId);
 
                 syncSiteOptions(
                     savedId > 0
@@ -2174,6 +2185,7 @@
             }
         };
 
+    const requestedSiteId = Number(new URLSearchParams(window.location.search).get('site_id'));
     const requestedFeatureId =
         Math.max(
             0,
@@ -2234,6 +2246,13 @@
                     .resetEditor(
                         true
                     );
+
+                if (campsites.some(site => Number(site.id) === requestedSiteId)) {
+                    setMode('site', {siteId: requestedSiteId});
+                    linkToSiteReport(requestedSiteId);
+                    setStatus('Site location loaded.');
+                    return;
+                }
 
                 const requestedFeature =
                     requestedFeatureId > 0
