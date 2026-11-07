@@ -15,6 +15,8 @@ check(llama_pricing_for_site($doc, $site, '2027-07-03')['amount'] === 38.0, 'Hol
 check(llama_pricing_for_site($doc, $site, '2027-06-04')['amount'] === 34.0, 'Seasonal weekend');
 check(llama_pricing_for_site($doc, $site, '2027-05-04')['amount'] === 24.0, 'Base schedule');
 check(llama_pricing_for_site($doc, $site)['label'] === '$24 to $38 / night', 'Published range');
+check(llama_pricing_place_summary($doc) === 'From: $24 / night', 'Place card shows the lowest rate');
+check(llama_pricing_money(59.8) === '$59.80', 'Prices with cents keep both digits');
 $zero = $doc; $zero['rows'][0]['price'] = 0.0;
 check(llama_pricing_for_site($zero, $site, '2027-05-04')['label'] === 'Free', 'Explicit zero');
 $inherit = $doc; $inherit['rows'][0]['seasons'][0]['weekend_price'] = null;
@@ -31,6 +33,16 @@ check(llama_pricing_for_site($conflict, $site, '2027-06-04')['state'] === 'confl
 $specific = $doc; $specific['rows'][] = ['name' => 'Site override', 'match' => ['site_ids' => [2]], 'unit' => 'night', 'price' => 99];
 check(llama_pricing_for_site($specific, $site, '2027-07-03')['amount'] === 99, 'Explicit Site overrides category schedule');
 check(llama_pricing_place_summary($specific) === llama_pricing_place_summary($doc), 'Do not leak individual prices into Place summaries');
+$scoped = llama_pricing_empty();
+$scoped['rows'] = [
+    ['match' => ['site_ids' => [2]], 'seasons' => [['name' => 'Winter', 'start' => '11-16', 'end' => '03-20', 'recurring' => true, 'price' => 15]]],
+    ['match' => ['site_ids' => [3]], 'price' => 1],
+];
+$scoped = llama_pricing_validate($scoped);
+check(llama_pricing_place_overview($scoped) === ['label' => '', 'status' => 'unknown'], 'Site prices require public Site matches');
+check(llama_pricing_place_overview($scoped, [llama_pricing_for_site($scoped, $site)]) === ['label' => 'From: $15 / night', 'status' => 'paid'], 'Public seasonal Site rates drive the starting price and Paid status');
+check(llama_pricing_place_overview($zero) === ['label' => 'From: $0 / night', 'status' => 'mixed'], 'Free and paid nights are mixed');
+check(llama_pricing_place_overview(['rows' => [['price' => 0]]]) === ['label' => 'Free', 'status' => 'free'], 'Only zero-price nights are Free');
 $weekly = $doc; $weekly['rows'][0]['unit'] = 'week';
 check(llama_pricing_for_site($weekly, $site)['state'] === 'unknown', 'Weekly price never divided into nightly');
 check(llama_pricing_for_site($weekly, $site, null, 'week')['label'] === '$24 to $38 / week', 'Published weekly unit');

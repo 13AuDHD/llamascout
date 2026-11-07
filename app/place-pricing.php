@@ -299,7 +299,8 @@ function llama_pricing_row_price(array $doc, array $row, ?string $date): array
 
 function llama_pricing_money(float $value): string
 {
-    return '$' . rtrim(rtrim(number_format($value, 2, '.', ''), '0'), '.');
+    $amount = number_format($value, 2, '.', '');
+    return '$' . (str_ends_with($amount, '.00') ? substr($amount, 0, -3) : $amount);
 }
 
 function llama_pricing_label(array $price, string $unit = 'night'): string
@@ -341,18 +342,72 @@ function llama_pricing_for_site(array $doc, array $site, ?string $date = null, s
     return $price;
 }
 
-/** Only Place-wide / category rows; never expose private Site IDs or their rates. */
+function llama_pricing_row_targets_sites(array $row): bool
+{
+    $match = $row['match'] ?? [];
+    return !empty($match['site_ids']) || !empty($match['feature_ids'])
+        || !empty($match['area_ids']) || !empty($match['legacy_site']);
+}
+
+/** Without public Site results, only use the Place's general rates. */
+function llama_pricing_place_overview(array $doc, ?array $sitePrices = null): array
+{
+    if ($sitePrices === null) {
+        $sitePrices = [];
+        foreach ($doc['rows'] as $row) {
+            if (($row['unit'] ?? 'night') !== 'night' || llama_pricing_row_targets_sites($row)) continue;
+            $sitePrices[] = llama_pricing_row_price($doc, $row, null);
+        }
+    }
+
+    $values = [];
+    foreach ($sitePrices as $price) {
+        if ($price['state'] !== 'priced') continue;
+        $values[] = $price['minimum'];
+        $values[] = $price['maximum'];
+    }
+    if (!$values) return ['label' => '', 'status' => 'unknown'];
+
+    $minimum = (float) min($values);
+    $maximum = (float) max($values);
+    if ($maximum === 0.0) return ['label' => 'Free', 'status' => 'free'];
+
+    return [
+        'label' => 'From: ' . llama_pricing_money($minimum) . ' / night',
+        'status' => $minimum === 0.0 ? 'mixed' : 'paid',
+    ];
+}
+
 function llama_pricing_place_summary(array $doc): string
 {
-    $values = [];
+    return llama_pricing_place_overview($doc)['label'];
+}
+
+/** Resolve Site-targeted rates only against Sites anyone can see. */
+function llama_pricing_public_place_overview(PDO $db, array $place, array $doc): array
+{
     foreach ($doc['rows'] as $row) {
-        $m = $row['match'] ?? [];
-        if (!empty($row['needs_review']) || ($row['unit'] ?? 'night') !== 'night' || !empty($m['site_ids']) || !empty($m['feature_ids']) || !empty($m['area_ids']) || !empty($m['legacy_site'])) continue;
-        $p = llama_pricing_row_price($doc, $row, null);
-        if (($p['state'] ?? '') === 'priced') { $values[] = $p['minimum']; $values[] = $p['maximum']; }
+        if (($row['unit'] ?? 'night') !== 'night' || !llama_pricing_row_targets_sites($row)
+            || llama_pricing_row_price($doc, $row, null)['state'] !== 'priced') continue;
+
+        require_once __DIR__ . '/place-campsites.php';
+        $placeId = (int) $place['id'];
+        $sites = llama_place_campsites($db, $placeId);
+        if (!$sites) break;
+
+        // The same visibility policy used by the Site API also gates prices.
+        $restricted = llama_site_restricted_visibility_ids($db, $placeId);
+        $sites = array_filter(
+            $sites,
+            static fn (array $site): bool => llama_site_is_public($place, $site, $restricted)
+        );
+        if (!$sites) break;
+
+        $pricedSites = llama_pricing_enrich_sites($db, $place, $sites, $doc);
+        return llama_pricing_place_overview($doc, array_column($pricedSites, 'pricing'));
     }
-    if (!$values) return '';
-    return 'Published: ' . llama_pricing_label(['state' => 'priced', 'minimum' => min($values), 'maximum' => max($values)]);
+
+    return llama_pricing_place_overview($doc);
 }
 
 /** Enrich already-authorized Sites. Never returns raw selectors or source URLs. */

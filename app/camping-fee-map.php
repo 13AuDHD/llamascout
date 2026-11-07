@@ -6,9 +6,8 @@ require_once __DIR__ . '/place-pricing.php';
 /**
  * Read-only, evidence-backed camping fee statuses for public map output.
  *
- * Only the latest verified campground-wide decision is authoritative here.
- * Campsite decisions are NOT extrapolated to the parent Place: even a dozen
- * known paid campsites cannot establish that every campsite is paid.
+ * A saved rate card describes the overnight options at a Place. Without one,
+ * use campground-wide evidence and never extrapolate from Site evidence.
  *
  * If the fee evidence migration has not run, the map remains available and
  * returns unknown for every Place rather than implying that they are free.
@@ -353,6 +352,7 @@ function llama_camping_fee_enrich_map_places(PDO $db, array $places): array
         $places
     );
     $statuses = llama_camping_fee_map_statuses($db, $ids);
+    $placesById = array_column($places, null, 'id');
 
     $labels = [];
     foreach (array_chunk($ids, 400) as $batch) {
@@ -364,17 +364,13 @@ function llama_camping_fee_enrich_map_places(PDO $db, array $places): array
             foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $row) {
                 $doc = llama_pricing_decode($row['rate_cards_json']);
                 if (empty($row['rate_cards_json']) && $row['fee'] !== null) $doc['rows'][] = ['unit' => 'night', 'match' => [], 'price' => (float) $row['fee']];
-                $labels[(int) $row['place_id']] = llama_pricing_place_summary($doc);
+                $id = (int) $row['place_id'];
+                $overview = llama_pricing_public_place_overview($db, $placesById[$id], $doc);
+                $labels[$id] = $overview['label'];
                 // A saved v2 card supersedes the obsolete scalar fee status.
                 $raw = json_decode((string) ($row['rate_cards_json'] ?? ''), true);
                 if (is_array($raw) && ($raw['version'] ?? null) === 2) {
-                    $values = [];
-                    foreach ($doc['rows'] as $rate) {
-                        if (llama_pricing_place_summary(array_merge($doc, ['rows' => [$rate]])) === '') continue;
-                        $p = llama_pricing_row_price($doc, $rate, null);
-                        if ($p['minimum'] !== null) { $values[] = $p['minimum']; $values[] = $p['maximum']; }
-                    }
-                    $statuses[(int) $row['place_id']] = !$values ? 'unknown' : (max($values) == 0 ? 'free' : (min($values) == 0 ? 'mixed' : 'paid'));
+                    $statuses[$id] = $overview['status'];
                 }
             }
         } catch (PDOException $e) {
