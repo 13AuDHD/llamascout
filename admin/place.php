@@ -394,12 +394,12 @@ $sharedReportAsset = dirname(__DIR__) . '/js/place-report-form.js';
 $sharedReportVersion = is_file($sharedReportAsset) ? (int) filemtime($sharedReportAsset) : 1;
 ?>
 <script src="https://llamascout.com/js/place-report-form.js?v=<?= $sharedReportVersion ?>"></script>
-<script src="https://llamascout.com/js/admin/place-report-save.js"></script>
+<script src="https://llamascout.com/js/admin/place-report-save.js?v=<?= (int) filemtime(dirname(__DIR__) . '/js/admin/place-report-save.js') ?>"></script>
 <script src="https://llamascout.com/js/admin/place-report-seasons.js"></script>
 <script src="https://llamascout.com/js/admin/place-report-area.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://llamascout.com/js/admin/place-map.js"></script>
-<script src="https://llamascout.com/js/admin/place-context.js"></script>
+<script src="https://llamascout.com/js/admin/place-context.js?v=<?= (int) filemtime(dirname(__DIR__) . '/js/admin/place-context.js') ?>"></script>
 <script src="https://llamascout.com/js/admin/place-report-photos.js"></script>
 <script src="https://llamascout.com/js/admin/place-verifications.js"></script>
 

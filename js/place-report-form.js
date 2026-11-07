@@ -924,12 +924,18 @@ config
 
 const syncApplicabilityVisibility = (
 form,
-config
+config,
+siteOnlyKeys
 ) => {
 const reviewNode = form.querySelector('[data-place-report-schema-config]');
 const showAllForReview = reviewNode?.dataset.inventoryReview === '1';
+const sitePicker = form.querySelector('[data-admin-campsite-selector]');
+const editingSites = Boolean(sitePicker?.value || form.querySelector('[data-admin-bulk-site-toggle]')?.checked);
+const scopeAllows = key => editingSites || !siteOnlyKeys.has(key);
 const fields = new Map(config.fields.map(field => [String(field.key), field]));
-const visible = key => {
+const applicable = key => {
+// In Admin this control selects an existing record, even for a legacy Place type.
+if (key === 'site_number' && sitePicker) return true;
 const field = fields.get(String(key));
 return !!field && (showAllForReview
 ? !field.derived
@@ -939,8 +945,11 @@ return !!field && (showAllForReview
 // Use canonical question keys, not input names: radio controls include
 // hidden sentinels and compound controls can contain multiple components.
 form.querySelectorAll('[data-report-field]').forEach(wrapper => {
-const allowed = visible(wrapper.dataset.reportField);
-wrapper.hidden = !allowed;
+const key = wrapper.dataset.reportField;
+const inScope = scopeAllows(key);
+const allowed = applicable(key);
+wrapper.hidden = !inScope || !allowed;
+wrapper.classList.toggle('is-force-hidden', !inScope);
 wrapper.classList.toggle('is-applicability-hidden', !allowed);
 if (allowed) delete wrapper.dataset.placeReportApplicabilityHidden;
 else wrapper.dataset.placeReportApplicabilityHidden = '1';
@@ -951,8 +960,10 @@ else wrapper.dataset.placeReportApplicabilityHidden = '1';
 form.querySelectorAll('[data-report-compound-question]').forEach(wrapper => {
 const controls = [...wrapper.querySelectorAll('input[name], select[name], textarea[name]')];
 const keys = new Set(controls.map(control => String(control.name).replace(/\\[\\]$/, '')));
-const allowed = [...keys].some(key => visible(key));
+const scopedKeys = [...keys].filter(scopeAllows);
+const allowed = scopedKeys.some(applicable);
 wrapper.hidden = !allowed;
+wrapper.classList.toggle('is-force-hidden', !scopedKeys.length);
 wrapper.classList.toggle('is-applicability-hidden', !allowed);
 });
 
@@ -1483,10 +1494,25 @@ setupMultiselectControls(
 form
 );
 
+const siteOnlyKeys = new Set();
+const adminSiteConfig = form.querySelector('[data-admin-place-campsites]');
+if (adminSiteConfig) {
+try {
+const {site_field_keys = [], place_field_keys = []} = JSON.parse(adminSiteConfig.textContent);
+const placeKeys = new Set(place_field_keys);
+site_field_keys.forEach(key => {
+if (!placeKeys.has(key)) siteOnlyKeys.add(key);
+});
+} catch (_) {
+// A missing Site catalog leaves the shared question visibility rules in place.
+}
+}
+
 const sync = () => {
 syncApplicabilityVisibility(
 form,
-config
+config,
+siteOnlyKeys
 );
 };
 
@@ -1499,6 +1525,11 @@ form.addEventListener(
 'change',
 sync
 );
+
+if (adminSiteConfig) {
+form.addEventListener('llama:campsite-selected', sync);
+form.addEventListener('llama:admin-bulk-site-mode-changed', sync);
+}
 
 sync();
 
