@@ -366,7 +366,7 @@
 
     form.addEventListener(
         'llama:admin-place-report-save-starting',
-        () => {
+        (event) => {
             answersField.value =
                 '';
 
@@ -374,7 +374,7 @@
                 String(
                     siteSelector?.value
                     || ''
-                ).trim() !== ''
+                ).startsWith('campsite_record:')
             ) {
                 target.value =
                     '';
@@ -403,6 +403,10 @@
                     || {},
                     pending
                 );
+
+            for (const key of event.detail?.bulkSiteFields ?? []) {
+                delete pendingChanges[key];
+            }
 
             answersField.value =
                 JSON.stringify(

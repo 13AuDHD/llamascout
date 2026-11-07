@@ -930,7 +930,7 @@ siteOnlyKeys
 const reviewNode = form.querySelector('[data-place-report-schema-config]');
 const showAllForReview = reviewNode?.dataset.inventoryReview === '1';
 const sitePicker = form.querySelector('[data-admin-campsite-selector]');
-const editingSites = Boolean(sitePicker?.value || form.querySelector('[data-admin-bulk-site-toggle]')?.checked);
+const editingSites = Boolean(sitePicker?.value);
 const scopeAllows = key => editingSites || !siteOnlyKeys.has(key);
 const fields = new Map(config.fields.map(field => [String(field.key), field]));
 const applicable = key => {
@@ -1526,7 +1526,6 @@ sync
 
 if (adminSiteConfig) {
 form.addEventListener('llama:campsite-selected', sync);
-form.addEventListener('llama:admin-bulk-site-mode-changed', sync);
 }
 
 sync();

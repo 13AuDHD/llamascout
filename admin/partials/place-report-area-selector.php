@@ -16,6 +16,10 @@ $areas =
         ? $adminPlaceAreas
         : [];
 
+if (!$areas) {
+    return;
+}
+
 $areaFields =
     array_keys(
         admin_place_area_fields()
@@ -36,12 +40,9 @@ $encode =
 >
     <header>
         <h3 id="admin-place-area-heading">
-            Area
+            Report area
         </h3>
 
-        <p>
-            Choose an Area to edit information that applies to that part of the Place.
-        </p>
     </header>
 
     <label for="admin-place-area-target">
@@ -53,7 +54,7 @@ $encode =
         data-admin-area-selector
     >
         <option value="">
-            Place
+            Entire Place
         </option>
 
         <?php foreach ($areas as $area): ?>

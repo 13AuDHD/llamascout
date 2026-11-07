@@ -548,43 +548,15 @@
     let pendingSiteChanges =
         null;
 
-    // Bulk editing is explicitly opt-in and only available for the Place target.
-    // Track user edits, not the values loaded when switching targets.
     const bulkTouched = new Set();
-    let bulkConfirmedPayload = '';
-    const bulkField = document.createElement('input');
-    bulkField.type = 'hidden';
-    bulkField.name = 'admin_bulk_site_answers_json';
-    form.appendChild(bulkField);
-    const bulkPanel = document.createElement('div');
-    bulkPanel.className = 'contribution-field';
-    bulkPanel.hidden = true;
-    const bulkLabel = document.createElement('label');
-    const bulkToggle = document.createElement('input');
-    bulkToggle.type = 'checkbox';
-    bulkToggle.dataset.adminBulkSiteToggle = '1';
-    bulkLabel.append(bulkToggle, document.createTextNode(' Apply changed Site answers to all Sites'));
-    const bulkHelp = document.createElement('p');
-    bulkHelp.textContent = 'Only questions you change after enabling this option will be applied. Existing Site answers are protected unless you choose overwrite.';
-    const overwriteLabel = document.createElement('label');
-    const overwriteToggle = document.createElement('input');
-    overwriteToggle.type = 'checkbox';
-    overwriteLabel.append(overwriteToggle, document.createTextNode(' Overwrite existing Site answers'));
-    bulkPanel.append(bulkLabel, bulkHelp, overwriteLabel);
+    const overwritePanel = form.querySelector('[data-admin-overwrite-site-panel]');
+    const overwriteToggle = form.querySelector('[data-admin-overwrite-site-answers]');
+    let editingAllSites = false;
     const resetBulk = () => {
         bulkTouched.clear();
-        bulkConfirmedPayload = '';
-        bulkField.value = '';
-        bulkToggle.checked = false;
-        overwriteToggle.checked = false;
-        form.dispatchEvent(new CustomEvent('llama:admin-bulk-site-mode-changed'));
+        if (overwriteToggle) overwriteToggle.checked = false;
+        if (overwritePanel) overwritePanel.hidden = !editingAllSites;
     };
-    bulkToggle.addEventListener('change', () => {
-        bulkTouched.clear();
-        bulkConfirmedPayload = '';
-        form.dispatchEvent(new CustomEvent('llama:admin-bulk-site-mode-changed'));
-    });
-
 
     const controlsFor = (name) =>
         Array.from(
@@ -594,7 +566,6 @@
         );
 
     const campsiteSelect = form.querySelector('[data-admin-campsite-selector]');
-    campsiteSelect?.closest('[data-admin-site-picker]')?.after(bulkPanel);
 
     const selectedCampsite =
         () => {
@@ -672,6 +643,9 @@
     ) => {
         const stringValue =
             String(value);
+        if (key === 'site_type_of_use') {
+            select.querySelector('[data-previous-site-use]')?.remove();
+        }
 
         const found =
             Array.from(select.options)
@@ -692,6 +666,10 @@
                     key,
                     stringValue
                 );
+            if (key === 'site_type_of_use') {
+                option.dataset.previousSiteUse = '1';
+                option.textContent += ' (previous entry)';
+            }
             select.appendChild(option);
         }
 
@@ -1132,7 +1110,7 @@
         );
 
         activeCampsiteId = '';
-        bulkPanel.hidden = campsiteSites.length === 0;
+        editingAllSites = campsiteSelect?.value === 'all-sites';
         resetBulk();
         campsiteDirty = false;
         placeSiteDirty = false;
@@ -1189,7 +1167,7 @@
                 }
             );
 
-        bulkPanel.hidden = true;
+        editingAllSites = false;
         resetBulk();
         activeCampsiteId =
             String(site.id);
@@ -1212,8 +1190,9 @@
             control.addEventListener(
                 'change',
                 () => {
-                    if (activeCampsiteId === '' && bulkToggle.checked) {
+                    if (editingAllSites) {
                         bulkTouched.add(key);
+                        return;
                     }
                     if (activeCampsiteId !== '') {
                         campsiteDirty = true;
@@ -1233,7 +1212,7 @@
     campsiteFieldKeys.forEach(key => {
         controlsFor(key).forEach(control => {
             control.addEventListener('input', () => {
-                if (activeCampsiteId === '' && bulkToggle.checked) bulkTouched.add(key);
+                if (editingAllSites) bulkTouched.add(key);
             });
         });
     });
@@ -1244,6 +1223,12 @@
             () => {
                 const next =
                     campsiteSelect.value;
+
+                if (editingAllSites && bulkTouched.size > 0 && next !== 'all-sites'
+                    && !window.confirm('Discard unsaved All Sites changes?')) {
+                    campsiteSelect.value = 'all-sites';
+                    return;
+                }
 
                 if (
                     activeCampsiteId === ''
@@ -1326,8 +1311,8 @@
     );
 
     const save = async () => {
-        bulkField.value = '';
-        if (activeCampsiteId === '' && bulkToggle.checked) {
+        let bulkPayload = '';
+        if (editingAllSites) {
             const values = currentCampsiteFormValues();
             const answers = {};
             bulkTouched.forEach(key => {
@@ -1342,13 +1327,12 @@
                 window.alert('No Site answers were changed for bulk editing.');
                 return;
             }
-            const mode = overwriteToggle.checked ? 'OVERWRITE existing answers' : 'fill unanswered fields only';
+            const mode = overwriteToggle?.checked ? 'OVERWRITE existing answers' : 'fill unanswered fields only';
             const preview = keys.map(key => `${key}: ${String(answers[key])}`).join('\n');
             if (!window.confirm(`Apply ${keys.length} answer(s) to up to ${campsiteSites.length} Sites?\nMode: ${mode}\n\n${preview}\n\nThis action updates individual Site records.`)) {
                 return;
             }
-            bulkConfirmedPayload = JSON.stringify({answers, overwrite: overwriteToggle.checked});
-            bulkField.value = bulkConfirmedPayload;
+            bulkPayload = JSON.stringify({answers, overwrite: Boolean(overwriteToggle?.checked)});
         }
         if (busy) {
             return;
@@ -1360,7 +1344,8 @@
 
         form.dispatchEvent(
             new CustomEvent(
-                'llama:admin-place-report-save-starting'
+                'llama:admin-place-report-save-starting',
+                {detail: {bulkSiteFields: bulkPayload ? campsiteFieldKeys : []}}
             )
         );
 
@@ -1388,7 +1373,10 @@
 
         try {
             const saveData = new FormData(form);
-            if (bulkConfirmedPayload) saveData.set('admin_bulk_site_answers_json', bulkConfirmedPayload);
+            if (bulkPayload) {
+                saveData.delete('selected_campsite_id');
+                saveData.set('admin_bulk_site_answers_json', bulkPayload);
+            }
 
             // Site-only answers need an individual Site or the bulk payload.
             if (!selectedCampsite()) {
@@ -1489,13 +1477,13 @@
             }
 
             clearRecoveryCopies();
-            if (bulkConfirmedPayload) {
-                resetBulk();
+            if (bulkPayload) {
+                loadPlaceSiteSection();
                 window.alert(`Bulk update saved: ${Number(payload.bulk_sites_updated || 0)} Sites, ${Number(payload.bulk_answers_saved || 0)} answers.`);
             }
 
             if (activeCampsiteId === '') {
-                rememberSavedPlaceSiteSection();
+                if (!bulkPayload) rememberSavedPlaceSiteSection();
             } else {
                 rememberSavedCampsite();
                 campsiteDirty = false;

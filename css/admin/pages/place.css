@@ -12,6 +12,51 @@
     gap: 20px;
 }
 
+.admin-place-overwrite-switch:not([hidden]) {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-block: 12px;
+    cursor: pointer;
+}
+
+.admin-place-overwrite-switch input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+}
+
+.admin-place-overwrite-switch > span {
+    display: flex;
+    flex: 0 0 44px;
+    align-items: center;
+    width: 44px;
+    height: 26px;
+    padding: 3px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+}
+
+.admin-place-overwrite-switch > span::before {
+    content: "";
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #fff;
+}
+
+.admin-place-overwrite-switch input:checked + span {
+    justify-content: flex-end;
+    background: #22744c;
+}
+
+.admin-place-overwrite-switch input:focus-visible + span {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+
 .admin-place-summary,
 .admin-place-operations-strip,
 .admin-place-section-nav,

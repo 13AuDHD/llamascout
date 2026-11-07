@@ -2,6 +2,21 @@
 
 declare(strict_types=1);
 
+/** Normalize known source spellings while keeping unrecognized historical text readable. */
+function llama_place_report_site_use_value(string $value): string
+{
+    $token = trim(preg_replace('/[^A-Z]+/', ' ', strtoupper($value)) ?? '');
+    return match ($token) {
+        'OVERNIGHT', 'OVERNIGHT ONLY' => 'OVERNIGHT',
+        'DAY', 'DAY USE', 'DAY USE ONLY', 'DAY ONLY' => 'DAY-USE',
+        'DAY AND OVERNIGHT', 'DAY USE AND OVERNIGHT', 'DAY USE OVERNIGHT',
+        'OVERNIGHT AND DAY USE', 'OVERNIGHT DAY USE' => 'DAY-USE AND OVERNIGHT',
+        'MANAGEMENT', 'MANAGEMENT USE', 'MANAGEMENT STAFF USE', 'STAFF USE' => 'MANAGEMENT',
+        'OTHER' => 'OTHER',
+        default => $value,
+    };
+}
+
 /** Canonical answer contract. Transport tokens never become published facts. */
 function llama_place_report_parse_answer(array $field, mixed $raw): array
 {
@@ -72,6 +87,9 @@ function llama_place_report_parse_answer(array $field, mixed $raw): array
             $value = (int) $value;
         }
     } else {
+        if ($key === 'site_type_of_use') {
+            $text = llama_place_report_site_use_value($text);
+        }
         if ($type === 'select' && $key === 'type' && str_starts_with($text, 'Other: ')) {
             $text = 'other';
         }
@@ -301,6 +319,9 @@ function llama_place_report_values_equal(mixed $left, mixed $right, ?array $fiel
     }
     if (is_bool($left)) { $left = $left ? '1' : '0'; }
     if (is_bool($right)) { $right = $right ? '1' : '0'; }
+    if (($field['key'] ?? '') === 'site_type_of_use') {
+        return llama_place_report_site_use_value((string) $left) === llama_place_report_site_use_value((string) $right);
+    }
     return (string) $left === (string) $right;
 }
 
@@ -316,6 +337,9 @@ function llama_place_report_answer_form_value(array $field, mixed $value, bool $
     if ($value === null) {
         return in_array($field['type'], ['tri','permission','rating'], true)
             ? llama_place_report_unanswered_token() : '';
+    }
+    if (($field['key'] ?? '') === 'site_type_of_use') {
+        return llama_place_report_site_use_value((string) $value);
     }
     return is_bool($value) ? ($value ? '1' : '0') : (string) $value;
 }

@@ -261,6 +261,8 @@ $check('Getting There parent-child rules are declared beneath inventory review',
         'operator' => 'equals',
         'value' => '1',
     ], 'Approach gate type is not a child of Road gated?');
+    $assert(($road['approach_gate_access_type']['options']['seasonally_closed'] ?? '') === 'Seasonally Closed',
+        'Approach gate type is missing the seasonal closure option');
     foreach (['approach_gate_opens', 'approach_gate_closes'] as $key) {
         $assert(($road[$key]['applicable_if'][0] ?? []) === [
             'field' => 'approach_gate_access_type',
@@ -415,10 +417,12 @@ $check('Place Fees and Reservations dependencies match owner review', static fun
     ], 'Discounts Available pill inventory changed unexpectedly');
 });
 
-$check('Stay Limit is Basic Place info and Place accessibility is retired', static function () use ($assert): void {
+$check('Stay Limit follows Overnight stay permitted and Place accessibility is retired', static function () use ($assert): void {
     $groups = llama_place_report_approved_question_groups();
-    $assert(in_array('stay_limit_days', (array) $groups['basic'][1], true),
-        'Stay Limit is missing from Basic Place info');
+    $assert(array_slice($groups['rules_public'][1], 0, 2) === ['overnight_camping_allowed', 'stay_limit_days'],
+        'Stay Limit must immediately follow Overnight stay permitted');
+    $assert(!in_array('stay_limit_days', (array) $groups['basic'][1], true),
+        'Stay Limit is still in Basic Place info');
     $assert(!in_array('stay_limit_days', (array) $groups['fees'][1], true),
         'Stay Limit is still in Fees and Reservations');
 
@@ -1798,6 +1802,14 @@ $check('RIDB Site Info uses one canonical Loop and Type of Use group', static fu
     $assert(($values['site_loop'] ?? '') === 'NORT'
         && ($values['site_type_of_use'] ?? '') === 'OVERNIGHT',
         'Loop and Type of Use must come from existing RIDB feature rows');
+    $use = llama_report_question('site_type_of_use');
+    $assert(($use['type'] ?? '') === 'select'
+        && ($use['options']['DAY-USE AND OVERNIGHT'] ?? '') === 'Day-Use and Overnight',
+        'Type of Use must be a dropdown that supports mixed use');
+    $assert(llama_place_report_parse_answer($use, 'Day Use')['value'] === 'DAY-USE',
+        'Known older Type of Use spellings must still be accepted');
+    $assert(llama_place_report_answer_form_value($use, 'Local custom label') === 'Local custom label',
+        'Unrecognized historical Type of Use answers remain readable');
     $assert(($values['rv_suitable'] ?? '') === '1',
         'Imported RV suitability should not be lost');
     $assert(($values['tent_camping_suitable'] ?? '') === '1',

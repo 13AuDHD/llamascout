@@ -169,7 +169,7 @@ function llama_place_report_layout_assignments(): array
         ],
 
         'place:information_location' => [
-            'name', 'type', 'description', 'stay_limit_days', 'latitude', 'longitude',
+            'name', 'type', 'description', 'latitude', 'longitude',
             'elevation_feet', 'road', 'city', 'county', 'state', 'land_type',
             'land_manager', 'region',
         ],
@@ -249,6 +249,7 @@ function llama_place_report_layout_assignments(): array
 
         'place:place_rules' => [
             'overnight_camping_allowed',
+            'stay_limit_days',
             'dispersed_camping_allowed',
             'designated_sites_only',
             'pets_allowed',
