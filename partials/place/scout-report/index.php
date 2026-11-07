@@ -49,6 +49,7 @@ if (empty($isDemoScoutReport) && !empty($placeReportSource['id'])) {
 $publicReportSeasons = [];
 $publicReportSeason = null;
 $publicSeasonAttribution = [];
+$seasonAnswers = [];
 if (empty($isDemoScoutReport) && !empty($placeReportSource['id'])) {
     try {
         require_once dirname(__DIR__, 3) . '/app/place-report/season-public.php';
@@ -189,6 +190,9 @@ $compareReportHistoryUrl =
                 Staying across seasons? Check both.
             </small>
         </form>
+        <?php if (($seasonAnswers['seasonal_place_closed']['value'] ?? null) === true): ?>
+            <p role="status">The entire Place is normally closed this season.</p>
+        <?php endif; ?>
         <script defer src="/js/place-report-seasons.js"></script>
     <?php endif; ?>
 

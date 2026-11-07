@@ -28,8 +28,8 @@ function llama_season_builder_targets(array $available, mixed $selected, int $pl
     if ($selected === null || $selected === []) {
         $selected = ['place:place:' . $placeId];
     }
-    if (!is_array($selected) || count($selected) > 250) {
-        throw new InvalidArgumentException('Select no more than 250 reporting targets.');
+    if (!is_array($selected) || count($selected) > 500) {
+        throw new InvalidArgumentException('Select no more than 500 reporting targets.');
     }
     $targets = [];
     foreach ($selected as $token) {
@@ -198,7 +198,8 @@ function llama_season_builder_save(
     mixed $rawTargets,
     mixed $rawChanges,
     mixed $rawRemovals,
-    mixed $sourceInput = null
+    mixed $sourceInput = null,
+    bool $savingPrices = false
 ): array {
     if ($placeId < 1 || $seasonId < 1 || $actorId < 1) {
         throw new InvalidArgumentException('A valid Place, season, and Admin are required.');
@@ -272,7 +273,7 @@ function llama_season_builder_save(
             }
             $removals[$raw] = true;
         }
-        if (!$changes && !$removals) {
+        if (!$changes && !$removals && !$savingPrices) {
             throw new InvalidArgumentException('Choose at least one seasonal change.');
         }
 

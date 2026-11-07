@@ -1,48 +1,115 @@
 <?php
-// Caller has already authorized the Place. Individual/Area selectors never
-// appear in the Place-wide table; their prices are resolved on authorized Sites.
+// Only show rates whose selectors can be published at Place level.
 require_once dirname(__DIR__, 2) . '/app/place-pricing.php';
-$publishedPricing = llama_pricing_document(db(), $place);
-$publicPriceRows = array_values(array_filter($publishedPricing['rows'], static function ($row): bool {
-    $m = $row['match'] ?? [];
-    return empty($m['site_ids']) && empty($m['feature_ids']) && empty($m['area_ids']) && empty($m['legacy_site']) && empty($row['needs_review']);
-}));
-?>
-<?php if ($publicPriceRows): ?>
-<section class="place-section" aria-labelledby="place-pricing-heading">
-    <h2 id="place-pricing-heading">Campsite rates</h2>
-    <p>Published USD rates. Additional fees may apply. Confirm current prices with the operator.</p>
-    <?php foreach ($publicPriceRows as $rate): ?>
-        <details>
-            <summary><?= place_h(($rate['name'] ?: 'Camping') . ' · ' . llama_pricing_label(llama_pricing_row_price($publishedPricing, $rate, null), $rate['unit'])) ?></summary>
-            <dl>
-                <?php foreach (['price' => 'Base', 'weekend_price' => 'Weekend', 'holiday_price' => 'Holiday / event'] as $key => $label): ?>
-                    <?php if (($rate[$key] ?? null) !== null): ?>
-                        <dt><?= place_h($label) ?></dt><dd><?= place_h(llama_pricing_label(['state' => 'priced', 'amount' => $rate[$key]], $rate['unit'])) ?></dd>
-                    <?php endif; ?>
-                <?php endforeach; ?>
-                <?php foreach ($publishedPricing['holidays'] as $holiday): ?>
-                    <?php if (($rate['holiday_prices'][$holiday['id']] ?? null) !== null): ?>
-                        <dt><?= place_h($holiday['name'] ?: 'Holiday / event') ?></dt>
-                        <dd><?= place_h(llama_pricing_label(['state' => 'priced', 'amount' => $rate['holiday_prices'][$holiday['id']]], $rate['unit'])) ?></dd>
-                    <?php endif; ?>
-                <?php endforeach; ?>
-                <?php foreach ($rate['seasons'] ?? [] as $period): ?>
-                    <dt><?= place_h(($period['name'] ?: 'Season') . ': ' . $period['start'] . ' to ' . $period['end'] . (!empty($period['recurring']) ? ' annually' : '')) ?></dt>
-                    <dd><?php
-                    $parts = [];
-                    foreach (['price' => 'Base', 'weekend_price' => 'Weekend', 'holiday_price' => 'Holiday'] as $key => $label) {
-                        if (($period[$key] ?? null) !== null) $parts[] = $label . ': ' . llama_pricing_label(['state' => 'priced', 'amount' => $period[$key]], $rate['unit']);
-                    }
-                    echo place_h(implode(' · ', $parts) ?: 'Uses base schedule');
-                    ?></dd>
-                <?php endforeach; ?>
-            </dl>
-        </details>
-    <?php endforeach; ?>
-    <p>Weekend nights: <?= place_h(implode(', ', array_map(static fn($d) => ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][$d], $publishedPricing['weekend_days'])) ?: 'None') ?></p>
-    <?php if ($publishedPricing['holidays']): ?>
-        <p>Holiday nights: <?= place_h(implode('; ', array_map(static fn($p) => $p['name'] . ': ' . $p['start'] . ' to ' . $p['end'], $publishedPricing['holidays']))) ?></p>
-    <?php endif; ?>
-</section>
+$rateDoc = llama_pricing_document(db(), $placeReportSource ?? $place);
+$rateSeasons = array_column($publicReportSeasons ?? [], null, 'id');
+$rateGroups = ['base' => ['name' => '', 'cards' => []]];
+$ratePublicSites = null;
+foreach ($rateDoc['rows'] as $rate) {
+    if (!empty($rate['needs_review'])) continue;
+    $match = $rate['match'] ?? [];
+    $scope = '';
+    if (llama_pricing_row_targets_sites($rate)) {
+        if (empty($match['site_ids']) || !empty($match['area_ids'])
+            || !empty($match['feature_ids']) || !empty($match['legacy_site'])) continue;
+
+        if ($ratePublicSites === null) {
+            require_once dirname(__DIR__, 2) . '/app/place-campsites.php';
+            $ratePlace = $placeReportSource ?? $place;
+            $ratePlaceId = (int) $ratePlace['id'];
+            $restricted = llama_site_restricted_visibility_ids(db(), $ratePlaceId);
+            $ratePublicSites = [];
+            foreach (llama_place_campsites(db(), $ratePlaceId) as $site) {
+                if (llama_site_is_public($ratePlace, $site, $restricted)) {
+                    $ratePublicSites[(int) $site['id']] = $site['display_name'];
+                }
+            }
+        }
+        if (array_diff($match['site_ids'], array_keys($ratePublicSites))) continue;
+        $scope = count($match['site_ids']) <= 3
+            ? implode(', ', array_intersect_key($ratePublicSites, array_flip($match['site_ids'])))
+            : count($match['site_ids']) . ' selected Sites';
+    }
+    $category = ucfirst((string) ($match['category'] ?? ''));
+    $conditions = array_filter([
+        $category,
+        match ($match['hookups'] ?? '') {
+            'none' => 'No hookups', 'electric' => 'Electric', 'full' => 'Full hookups', default => '',
+        },
+        ucwords(str_replace('_', ' ', (string) ($match['layout'] ?? ''))),
+        $match['raw_type'] ?? '',
+        $match['loop'] ?? '',
+    ]);
+    $label = (string) ($rate['name'] ?? '');
+    if ($label === '' || strcasecmp($label, 'Place base price') === 0 || strcasecmp($label, 'Camping') === 0) {
+        $label = implode(' · ', $conditions) ?: 'Base Price';
+    }
+    $rateGroups['base']['cards'][] = [$label, $rate, $rate['unit'], $rate['holiday_prices'] ?? [], $scope];
+    foreach ($rate['seasons'] ?? [] as $period) {
+        if (isset($period['season_id'])) {
+            $season = $rateSeasons[$period['season_id']] ?? null;
+            if ($season === null) continue;
+            $key = 'season:' . $period['season_id'];
+            $heading = $season['name'];
+        } else {
+            $key = 'legacy:' . json_encode([$period['name'], $period['start'], $period['end'], $period['recurring']]);
+            $heading = ($period['name'] ?: 'Season') . ' · ' . $period['start'] . ' to ' . $period['end'];
+        }
+        $rateGroups[$key]['name'] = $heading;
+        $rateGroups[$key]['cards'][] = [$label, $period, $rate['unit'], [], $scope];
+    }
+}
+
+$renderedRates = false;
+$showWeekendNights = false;
+foreach ($rateGroups as $groupKey => $group):
+    $cards = [];
+    foreach ($group['cards'] as [$label, $prices, $unit, $events, $scope]) {
+        $values = [];
+        foreach (['price' => 'Weekday', 'weekend_price' => 'Weekend', 'holiday_price' => 'Holiday'] as $key => $dayType) {
+            if (($prices[$key] ?? null) !== null) {
+                $values[$dayType] = llama_pricing_label(['state' => 'priced', 'amount' => $prices[$key]], $unit);
+            }
+        }
+        foreach ($rateDoc['holidays'] as $event) {
+            if (($events[$event['id']] ?? null) !== null) {
+                $values[$event['name'] ?: 'Holiday / event'] = llama_pricing_label(
+                    ['state' => 'priced', 'amount' => $events[$event['id']]], $unit
+                );
+            }
+        }
+        if (isset($values['Weekend'])) $showWeekendNights = true;
+        if ($values) $cards[] = [$label, $values, $scope];
+    }
+    if (!$cards) continue;
+    $renderedRates = true;
+    ?>
+    <div class="scout-report-subsection">
+        <?php if ($group['name'] !== ''): ?>
+            <h4><?= $e($group['name']) ?></h4>
+        <?php elseif (count($rateGroups) > 1): ?>
+            <h4>Base schedule</h4>
+        <?php endif; ?>
+        <div class="scout-report-grid">
+            <?php foreach ($cards as [$label, $values, $scope]): ?>
+                <article class="scout-report-item scout-report-value-item">
+                    <div class="scout-report-value-content">
+                        <span><?= $e($label) ?></span>
+                        <?php if ($scope !== ''): ?>
+                            <small><?= $e($scope) ?></small>
+                        <?php endif; ?>
+                        <?php foreach ($values as $dayType => $amount): ?>
+                            <strong><?= $e(count($values) === 1 && $dayType === 'Weekday' ? $amount : $dayType . ' · ' . $amount) ?></strong>
+                        <?php endforeach; ?>
+                    </div>
+                </article>
+            <?php endforeach; ?>
+        </div>
+    </div>
+<?php endforeach; ?>
+<?php if ($showWeekendNights): ?>
+    <?php $dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']; ?>
+    <p>Weekend nights: <?= $e(implode(', ', array_map(static fn ($day) => $dayNames[$day], $rateDoc['weekend_days'])) ?: 'None') ?></p>
+<?php elseif (!$renderedRates): ?>
+    <p>No Place-wide rates published.</p>
 <?php endif; ?>

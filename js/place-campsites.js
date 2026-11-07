@@ -688,7 +688,6 @@
             class="place-campsite-detail${closureStatus(site) ? ' is-closed' : ''}"
             data-campsite-detail-id="${escapeHtml(site.feature_id)}"
         >
-            ${site.pricing_summary ? `<p class="place-campsite-price">${escapeHtml(site.pricing_summary)}</p>` : ''}
             ${closureDetails(site)}
             ${!site.is_closed && !site.place_verified_closed && site.seasonal_operating_status === 'open'
                 ? '<aside class="place-campsite-seasonal-open" role="status">Normally open during this season. Check current conditions before traveling.</aside>'

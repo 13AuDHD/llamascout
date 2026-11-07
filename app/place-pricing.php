@@ -112,7 +112,14 @@ function llama_pricing_validate(mixed $raw): array
         if (!is_array($seasons) || !array_is_list($seasons) || count($seasons) > 30) throw new InvalidArgumentException('Invalid seasonal prices.');
         foreach ($seasons as $season) {
             if (!is_array($season)) throw new InvalidArgumentException('Invalid seasonal price.');
-            $period = llama_pricing_period($season);
+            $seasonId = filter_var($season['season_id'] ?? null, FILTER_VALIDATE_INT);
+            if (array_key_exists('season_id', $season) && (!$seasonId || $seasonId < 1)) {
+                throw new InvalidArgumentException('Invalid operating season.');
+            }
+            $period = $seasonId ? ['season_id' => $seasonId] : llama_pricing_period($season);
+            if ($seasonId && in_array($seasonId, array_column($out['seasons'], 'season_id'), true)) {
+                throw new InvalidArgumentException('Duplicate price for an operating season.');
+            }
             foreach (['price', 'weekend_price', 'holiday_price'] as $key) $period[$key] = llama_pricing_amount($season[$key] ?? null);
             $out['seasons'][] = $period;
         }
@@ -274,11 +281,27 @@ function llama_pricing_row_price(array $doc, array $row, ?string $date): array
     $prices = array_intersect_key($row, array_flip(['price','weekend_price','holiday_price']));
     $label = 'Base';
     if ($date !== null) {
-        $seasons = array_values(array_filter($row['seasons'] ?? [], static fn($p) => llama_pricing_in_period($p, $date)));
+        $seasons = array_values(array_filter($row['seasons'] ?? [], static fn($p) => empty($doc['_base_only']) && !isset($p['season_id']) && llama_pricing_in_period($p, $date)));
+        foreach ($row['seasons'] ?? [] as $period) {
+            if (isset($period['season_id']) && $period['season_id'] === ($doc['_season_id'] ?? null)) {
+                $seasons = [$period];
+                break;
+            }
+        }
         if (count($seasons) > 1) return ['state' => 'conflict', 'amount' => null];
+        $replaceEventPrice = false;
         if ($seasons) {
-            foreach (['price','weekend_price','holiday_price'] as $k) if (($seasons[0][$k] ?? null) !== null) $prices[$k] = $seasons[0][$k];
-            $label = $seasons[0]['name'] ?: 'Seasonal';
+            $seasonPrices = $seasons[0];
+            $replaceEventPrice = isset($seasonPrices['season_id'])
+                && ($seasonPrices['price'] !== null || $seasonPrices['holiday_price'] !== null);
+            if (isset($seasonPrices['season_id']) && $seasonPrices['price'] !== null) {
+                // A seasonal weekday amount becomes the fallback for its weekend and holiday.
+                $prices = [];
+            }
+            foreach (['price','weekend_price','holiday_price'] as $k) {
+                if (($seasonPrices[$k] ?? null) !== null) $prices[$k] = $seasonPrices[$k];
+            }
+            $label = ($seasonPrices['name'] ?? '') ?: 'Seasonal';
         }
         $isWeekend = in_array((int) (new DateTimeImmutable($date))->format('w'), $doc['weekend_days'], true);
         $holidays = array_filter($doc['holidays'], static fn($p) => llama_pricing_in_period($p, $date));
@@ -286,7 +309,7 @@ function llama_pricing_row_price(array $doc, array $row, ?string $date): array
         if ($isWeekend && ($prices['weekend_price'] ?? null) !== null) { $amount = $prices['weekend_price']; $label .= ' · Weekend'; }
         if ($holidays && ($prices['holiday_price'] ?? null) !== null) { $amount = $prices['holiday_price']; $label .= ' · Holiday'; }
         $holidayAmounts = [];
-        foreach ($holidays as $h) if (($row['holiday_prices'][$h['id']] ?? null) !== null) $holidayAmounts[] = $row['holiday_prices'][$h['id']];
+        foreach ($replaceEventPrice ? [] : $holidays as $h) if (($row['holiday_prices'][$h['id']] ?? null) !== null) $holidayAmounts[] = $row['holiday_prices'][$h['id']];
         if (count(array_unique($holidayAmounts, SORT_REGULAR)) > 1) return ['state' => 'conflict', 'amount' => null];
         if ($holidayAmounts) { $amount = $holidayAmounts[0]; $label .= ' · Event override'; }
         return ['state' => $amount === null ? 'unknown' : 'priced', 'amount' => $amount, 'label' => $label];
@@ -319,20 +342,31 @@ function llama_pricing_for_site(array $doc, array $site, ?string $date = null, s
     if ($date !== null) llama_pricing_date($date);
     if (!empty($doc['invalid'])) return ['state' => 'needs_review', 'label' => 'Needs pricing review'];
     if (preg_match('/PICNIC|SHELTER|DAY USE/i', (string) ($site['raw_site_type'] ?? ''))) return ['state' => 'unknown', 'label' => 'No overnight rate', 'amount' => null];
-    $site = llama_pricing_site_context($site); $best = -1; $matches = []; $uncertain = false;
+    $site = llama_pricing_site_context($site); $best = -1; $bestSeason = false; $matches = []; $uncertain = false;
     foreach ($doc['rows'] as $row) {
         if (($row['unit'] ?? 'night') !== $unit) continue;
         $score = llama_pricing_match($row['match'] ?? [], $site);
-        if ($score === -1) { $uncertain = true; continue; }
         if ($score === null) continue;
-        if ($score > $best) { $best = $score; $matches = []; }
-        if ($score === $best) $matches[] = $row;
+        $rowPrice = llama_pricing_row_price($doc, $row, $date);
+        if ($rowPrice['state'] === 'unknown' && !empty($row['seasons'])) {
+            // A row that only applies in another season must not mask the base rate.
+            continue;
+        }
+        if ($score === -1) { $uncertain = true; continue; }
+        $seasonal = $date !== null && ($doc['_season_id'] ?? null) !== null
+            && in_array($doc['_season_id'], array_column($row['seasons'] ?? [], 'season_id'), true);
+        if ($score > $best || ($score === $best && $seasonal && !$bestSeason)) {
+            $best = $score;
+            $bestSeason = $seasonal;
+            $matches = [];
+        }
+        if ($score === $best && $seasonal === $bestSeason) $matches[] = [$row, $rowPrice];
     }
     $state = count($matches) > 1 ? 'conflict' : (!$matches ? ($uncertain ? 'needs_review' : 'unknown') : '');
     // An unresolved possible category must not silently fall through to a flat price.
     if ($uncertain && $best < 100) $state = 'needs_review';
-    $row = $matches[0] ?? [];
-    $price = $state !== '' ? ['state' => $state, 'amount' => null] : llama_pricing_row_price($doc, $row, $date);
+    [$row, $resolvedPrice] = $matches[0] ?? [[], []];
+    $price = $state !== '' ? ['state' => $state, 'amount' => null] : $resolvedPrice;
     $price['schedule_label'] = (string) ($price['label'] ?? '');
     $price['row_id'] = count($matches) === 1 ? (string) ($row['id'] ?? '') : '';
     $price['rate_name'] = (string) ($row['name'] ?? '');
@@ -386,6 +420,18 @@ function llama_pricing_place_summary(array $doc): string
 /** Resolve Site-targeted rates only against Sites anyone can see. */
 function llama_pricing_public_place_overview(PDO $db, array $place, array $doc): array
 {
+    $linked = array_filter($doc['rows'], static fn ($row) => array_column($row['seasons'] ?? [], 'season_id'));
+    if ($linked) {
+        require_once __DIR__ . '/place-report/season-definitions.php';
+        $active = array_column(llama_seasons_for_place($db, (int) $place['id']), null, 'id');
+        foreach ($doc['rows'] as &$row) {
+            $row['seasons'] = array_values(array_filter(
+                $row['seasons'] ?? [],
+                static fn ($period) => !isset($period['season_id']) || isset($active[$period['season_id']])
+            ));
+        }
+        unset($row);
+    }
     foreach ($doc['rows'] as $row) {
         if (($row['unit'] ?? 'night') !== 'night' || !llama_pricing_row_targets_sites($row)
             || llama_pricing_row_price($doc, $row, null)['state'] !== 'priced') continue;
@@ -408,6 +454,25 @@ function llama_pricing_public_place_overview(PDO $db, array $place, array $doc):
     }
 
     return llama_pricing_place_overview($doc);
+}
+
+/** Keep public price and booking lookups on the same selected operating season. */
+function llama_pricing_public_night(array $doc, ?array $season, mixed $requested): array
+{
+    $date = date('Y-m-d');
+    $doc['_base_only'] = (string) $requested === '0';
+    $doc['_season_id'] = isset($season['id']) ? (int) $season['id'] : null;
+    if ($season !== null && (string) $requested === (string) $season['id']
+        && !empty($season['start_mmdd']) && !empty($season['end_mmdd'])) {
+        $period = ['start' => $season['start_mmdd'], 'end' => $season['end_mmdd'], 'recurring' => true];
+        if (!llama_pricing_in_period($period, $date)) {
+            $date = date('Y') . '-' . $period['start'];
+            if (str_ends_with($date, '-02-29') && !checkdate(2, 29, (int) date('Y'))) {
+                $date = date('Y') . '-03-01';
+            }
+        }
+    }
+    return [$doc, $date];
 }
 
 /** Enrich already-authorized Sites. Never returns raw selectors or source URLs. */
@@ -449,12 +514,20 @@ function llama_pricing_enrich_sites(PDO $db, array $place, array $sites, ?array 
         elseif (($o['back_in'] ?? null) === true) $context['parking_style'] = 'back_in';
         if (array_key_exists('site_loop', $o)) $context['pricing_loop'] = (string) $o['site_loop'];
         $site['pricing'] = llama_pricing_for_site($doc, $context, $date);
-        $site['pricing_summary'] = $site['pricing']['label'];
+        $priceLabels = [];
+        $closed = !empty($site['is_closed']) || !empty($site['place_verified_closed'])
+            || ($site['seasonal_operating_status'] ?? '') === 'closed';
+        if ($closed) {
+            $site['pricing_summary'] = '';
+            continue;
+        }
+        if ($site['pricing']['state'] === 'priced') $priceLabels[] = $site['pricing']['label'];
         foreach (['week','month','stay','season','person_night','vehicle_night'] as $unit) {
             $other = llama_pricing_for_site($doc, $context, $date, $unit);
-            if ($other['state'] === 'priced') $site['pricing_summary'] .= ' · ' . $other['label'];
+            if ($other['state'] === 'priced') $priceLabels[] = $other['label'];
         }
-        $site['summary'] = array_values(array_unique([$site['pricing_summary'], ...($site['summary'] ?? [])]));
+        $site['pricing_summary'] = implode(' · ', $priceLabels);
+        $site['summary'] = array_values(array_unique([...$priceLabels, ...($site['summary'] ?? [])]));
     }
     unset($site);
     return $sites;
@@ -463,14 +536,24 @@ function llama_pricing_enrich_sites(PDO $db, array $place, array $sites, ?array 
 /** Decorate authorized mapped geometry using the same canonical Site prices. */
 function llama_pricing_enrich_features(PDO $db, array $place, array $features): array
 {
-    $doc = llama_pricing_document($db, $place);
     require_once __DIR__ . '/place-campsites.php';
+    require_once __DIR__ . '/place-report/season-public.php';
+    $placeId = (int) $place['id'];
+    $requested = $_GET['season'] ?? null;
+    $season = llama_public_season_selection($db, $placeId, $requested)['selected'];
+    [$doc, $date] = llama_pricing_public_night(llama_pricing_document($db, $place), $season, $requested);
     $byMap = [];
-    foreach (llama_pricing_enrich_sites($db, $place, llama_place_campsites($db, (int) $place['id']), $doc) as $site) {
-        if (!empty($site['map_feature_id'])) $byMap[(int) $site['map_feature_id']] = $site['pricing_summary'];
+    $sites = llama_place_campsites($db, $placeId);
+    $seasonId = (int) ($season['id'] ?? 0);
+    $status = $seasonId ? llama_public_season_site_statuses($db, $placeId, $seasonId, array_column($sites, 'id')) : [];
+    $placeClosed = llama_public_place_verified_closed($db, $placeId);
+    foreach (llama_pricing_enrich_sites($db, $place, $sites, $doc, $date) as $site) {
+        if (!empty($site['map_feature_id'])) $byMap[(int) $site['map_feature_id']] = $site;
     }
     foreach ($features as &$feature) {
-        $feature['pricing_summary'] = $byMap[(int) ($feature['id'] ?? 0)] ?? '';
+        $site = $byMap[(int) ($feature['id'] ?? 0)] ?? null;
+        $closed = $placeClosed || ($status[(int) ($site['id'] ?? 0)] ?? '') === 'closed';
+        $feature['pricing_summary'] = $closed ? '' : ($site['pricing_summary'] ?? '');
         // Retain legacy storage for rollback, never expose a competing public price.
         foreach (['rates','effective_rates','rate_summary','effective_rate_summary','site_class_rate_summary','site_classes'] as $key) $feature[$key] = [];
     }

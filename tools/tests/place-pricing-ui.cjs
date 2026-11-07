@@ -45,18 +45,9 @@ const settle=()=>new Promise(resolve=>setTimeout(resolve,50));
     input(q('[data-night]'),'2027-01-05');await settle();assert.equal(q('[data-preview-price]').textContent,'Free');
     input(q('[data-price="price"]'),'17');await settle();assert.equal(q('[data-preview-price]').textContent,'$17 / night','Typing updates preview using production PHP resolver');
     change(q('[data-preview-site]'),'202');assert.equal(q('[data-preview-price]').textContent,'Price unknown');change(q('[data-preview-site]'),'101');
-    q('[data-season-add]').click();input(q('[data-new-name]'),'Winter');input(q('[data-new-start]'),'2026-11-16');input(q('[data-new-end]'),'2027-03-20');q('[data-new-save]').click();
-    assert.ok(q('[data-schedule]').value.includes('Winter'),'New season is selected automatically');assert.equal(q('[data-night]').value,'2026-11-16','Preview moves inside selected season');
-    input(q('[data-price="price"]'),'15');await settle();assert.equal(q('[data-preview-price]').textContent,'$15 / night');assert.match(q('[data-schedule-note]').textContent,/Editing Winter/);
-    assert.equal(payload().rows[0].price,17,'Season price did not rewrite base');
-    change(q('[data-schedule]'),'');assert.equal(q('[data-price="price"]').value,'17');
     q('[data-holiday-add]').click();input(q('[data-new-name]'),'Event');input(q('[data-new-start]'),'2027-07-02');input(q('[data-new-end]'),'2027-07-05');q('[data-new-save]').click();input(q('[data-price="price"]'),'80');await settle();assert.equal(q('[data-preview-price]').textContent,'$80 / night');
     change(q('[data-schedule]'),'');
     change(q('[data-detail="selection"]'),'selected');q('[data-site-id="101"]').checked=true;q('[data-site-id="101"]').dispatchEvent(new w.Event('change',{bubbles:true}));assert.deepEqual(payload().rows[0].match.site_ids,[101],'Named Site selection persists the correct identity');
-    q('[data-extra-row] [data-season-booking]').click();
-    assert.equal(q('[data-admin-seasons-disclosure]').open,true);
-    assert.equal(q('[name="season_booking"]').value,'1');
-    assert.deepEqual(new w.FormData(q('[data-season-builder-load]')).getAll('season_targets[]'),['site:campsite_record:101']);
     change(q('[data-detail="selection"]'),'');assert.deepEqual(payload().rows[0].match.site_ids,[]);
     q('[data-add]').click();assert.equal(payload().rows.length,2);q('[data-remove="1"]').click();assert.equal(payload().rows.length,1);
     assert.ok(q('[data-fees] [name="reservation_fee"]'));assert.equal(new w.FormData(q('form')).get('reservation_fee'),'8');
@@ -68,5 +59,28 @@ const settle=()=>new Promise(resolve=>setTimeout(resolve,50));
     assert.equal(old.window.document.querySelector('[data-selection-warning]').hidden,false,'Old database-ID mistakes are visible');
     assert.deepEqual(JSON.parse(old.window.document.querySelector('textarea').value).rows[0].match.site_ids,[1,2,3],'Never reinterpret or silently erase old IDs');
     old.window.close();
-    console.log('PASS: compact matrix, named Site selection, real PHP live preview, Winter date selection, holiday prices, one save path');
+    const seasonEditor = new JSDOM(
+        '<form><input name="season_rate_version" value="current">'
+        + '<div class="contribution-field"><textarea name="place_rate_cards_json" data-managed-season></textarea></div></form>',
+        {runScripts:'outside-only'}
+    );
+    const form = seasonEditor.window.document.querySelector('form');
+    const rates = form.querySelector('textarea');
+    rates.value = JSON.stringify(original);
+    rates.dataset.seasonChoice = JSON.stringify({id:7, name:'Winter', start_mmdd:'11-16', end_mmdd:'03-20'});
+    seasonEditor.window.eval(fs.readFileSync('js/place-report-rate-cards.js','utf8'));
+    assert.equal(form.querySelector('[data-schedule]').value, 'season:7');
+    assert.equal(form.querySelector('[data-base-heading]').textContent, 'Weekday $');
+    assert.equal(new seasonEditor.window.FormData(form).has('place_rate_cards_json'), false);
+    input(form.querySelector('[data-price="price"]'), '15');
+    const formData = new seasonEditor.window.FormData(form);
+    const saved = JSON.parse(formData.get('place_rate_cards_json'));
+    assert.equal(formData.get('season_rate_version'), 'current');
+    assert.equal(saved.rows[0].price, 0);
+    assert.deepEqual(saved.rows[0].seasons, [{season_id:7,price:15,weekend_price:null,holiday_price:null}]);
+    form.querySelector('[data-remove="0"]').click();
+    assert.equal(JSON.parse(rates.value).rows[0].price, 0, 'Removing a Winter price preserves the base rate');
+    assert.equal(JSON.parse(rates.value).rows[0].seasons.length, 0);
+    seasonEditor.window.close();
+    console.log('PASS: compact matrix, named Site selection, real PHP live preview, linked season prices, holiday prices, season save payload');
 })().catch(e=>{dom.window.close();console.error(e);process.exitCode=1;});

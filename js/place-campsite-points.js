@@ -179,6 +179,14 @@
             top.appendChild(accessible);
         }
         content.appendChild(top);
+        const status = site.place_verified_closed || site.seasonal_operating_status === 'closed'
+            ? 'Closed' : { first_come: 'FCFS', reservable: 'Reservable' }[site.reservation_method];
+        if (status) {
+            const label = document.createElement('p');
+            label.className = 'place-map-site-popup-meta';
+            label.textContent = status;
+            content.append(label);
+        }
         if (site.pricing_summary) {
             const price = document.createElement('strong');
             price.className = 'place-map-site-popup-meta';
@@ -298,8 +306,10 @@
 
     const loadPoints = async () => {
         try {
+            const season = new URLSearchParams(window.location.search).get('season');
+            const seasonQuery = season && /^\d+$/.test(season) ? `&season=${encodeURIComponent(season)}` : '';
             const response = await fetch(
-                `/api/place-campsite-points.php?slug=${encodeURIComponent(slug)}`,
+                `/api/place-campsite-points.php?slug=${encodeURIComponent(slug)}${seasonQuery}`,
                 { credentials: 'same-origin', headers: { Accept: 'application/json' } }
             );
 

@@ -62,6 +62,19 @@ check($legacy['rows'][0]['needs_review'], 'Undated legacy season not a flat rate
 $event = $doc; $event['rows'][0]['holiday_prices'] = ['holiday-0' => 80];
 $event = llama_pricing_validate($event);
 check(llama_pricing_for_site($event, $site, '2027-07-03')['amount'] === 80.0, 'Specific event overrides generic summer holiday');
+$winter = $event;
+$winter['rows'][0]['seasons'][] = ['season_id' => 7, 'price' => 0, 'holiday_price' => null];
+$winter = llama_pricing_validate($winter);
+$winter['_season_id'] = 7;
+check(llama_pricing_for_site($winter, $site, '2027-07-03')['amount'] === 0.0, 'Linked season replaces legacy rates including holiday and weekend prices');
+$winter['_season_id'] = 8;
+check(llama_pricing_for_site($winter, $site, '2027-07-03')['amount'] === 80.0, 'Another season retains the legacy date schedule');
+$winter['rows'][] = [
+    'id' => 'another-season', 'name' => 'Another season', 'unit' => 'night',
+    'match' => ['site_ids' => [$site['id']]],
+    'seasons' => [['season_id' => 9, 'price' => 25]],
+];
+check(llama_pricing_for_site($winter, $site, '2027-07-03')['amount'] === 80.0, 'Out-of-season rows cannot mask an active price');
 $fields = llama_place_report_fields();
 check($fields['place_rate_cards_json']['report_scopes'] === ['place'], 'Place owns rates');
 check($fields['place_rate_cards_json']['layout_section'] === 'place', 'Editor belongs on Place page');
@@ -89,4 +102,6 @@ $db->exec("UPDATE place_report_current_answers SET answer_state = 'unknown', val
 check(llama_pricing_enrich_sites($db, ['id' => 1], [$site], $loaded)[0]['pricing']['state'] === 'needs_review', 'Explicit Unknown blocks stale imported category');
 $many = array_map(static fn($i) => array_merge($site, ['id' => $i]), range(3, 402));
 check(count(llama_pricing_enrich_sites($db, ['id' => 1], $many, $loaded)) === 400, '400 Sites share one rate card');
+$unresolved = llama_pricing_enrich_sites($db, ['id' => 1], [$site], $loaded)[0];
+check($unresolved['pricing_summary'] === '', 'Public Site summary omits the internal pricing review message');
 echo "PASS: shared pricing rules, canonical validation, storage reads, public projection, and 400-Site matching\n";

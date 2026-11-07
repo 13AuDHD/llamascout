@@ -15,6 +15,8 @@ function llama_season_allowed_question_keys(): array
 {
     return [
         // Shared Place/Area operations.
+        'place_entrance_gate',
+        'place_gate_access_type',
         'amenity_toilets',
         'amenity_potable_water',
         'amenity_showers',
@@ -64,6 +66,20 @@ function llama_season_question_for_scope(string $key, string $scope): array
     if (!in_array($scope, ['place', 'area', 'site'], true)) {
         throw new InvalidArgumentException('Invalid seasonal reporting scope.');
     }
+    if ($scope === 'place') {
+        $operations = [
+            'seasonal_place_closed' => ['label' => 'Entire Place closed this season?', 'type' => 'tri'],
+            'seasonal_sites_closed' => ['label' => 'Close Sites by default this season?', 'type' => 'tri'],
+            'seasonal_booking_method' => [
+                'label' => 'Default Site reservation method',
+                'type' => 'select',
+                'options' => ['reservable' => 'Reservable', 'first_come' => 'First-come, first-served'],
+            ],
+        ];
+        if (isset($operations[$key])) {
+            return $operations[$key] + ['key' => $key, 'storage' => ''];
+        }
+    }
     if (!in_array($key, llama_season_allowed_question_keys(), true)) {
         throw new InvalidArgumentException(
             'This question is permanent or cannot be changed by season.'
@@ -85,7 +101,9 @@ function llama_season_question_for_scope(string $key, string $scope): array
 function llama_season_questions_for_scope(string $scope): array
 {
     $allowed = [];
-    foreach (llama_season_allowed_question_keys() as $key) {
+    foreach ([...llama_season_allowed_question_keys(),
+        'seasonal_place_closed', 'seasonal_sites_closed', 'seasonal_booking_method',
+    ] as $key) {
         try {
             $allowed[$key] = llama_season_question_for_scope($key, $scope);
         } catch (InvalidArgumentException) {
@@ -103,6 +121,10 @@ function llama_season_question_groups(string $scope): array
 {
     $available = llama_season_questions_for_scope($scope);
     $definitions = [
+        'Seasonal access & reservations' => [
+            'seasonal_place_closed', 'seasonal_sites_closed', 'seasonal_booking_method',
+            'place_entrance_gate', 'place_gate_access_type',
+        ],
         'Services & amenities' => [
             'amenity_toilets', 'amenity_potable_water', 'amenity_showers',
             'amenity_trash', 'amenity_dump_station', 'amenity_laundry',

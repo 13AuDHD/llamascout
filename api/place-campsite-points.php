@@ -5,6 +5,8 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/site-visibility.php';
 require_once dirname(__DIR__) . '/app/place-pricing.php';
+require_once dirname(__DIR__) . '/app/place-report/season-public.php';
+require_once dirname(__DIR__) . '/app/place-report/site-booking.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: private, no-store');
@@ -165,7 +167,17 @@ try {
         }
     }
 
-    $rows = llama_pricing_enrich_sites($db, $place, $rows);
+    $requestedSeason = $_GET['season'] ?? null;
+    $season = llama_public_season_selection($db, $placeId, $requestedSeason)['selected'];
+    [$rateDoc, $rateDate] = llama_pricing_public_night(
+        llama_pricing_document($db, $place), $season, $requestedSeason
+    );
+    $rows = llama_pricing_enrich_sites($db, $place, $rows, $rateDoc, $rateDate);
+    $seasonId = isset($season['id']) ? (int) $season['id'] : null;
+    $siteIds = array_column($rows, 'id');
+    $statuses = $seasonId ? llama_public_season_site_statuses($db, $placeId, $seasonId, $siteIds) : [];
+    $methods = llama_public_site_booking_methods($db, $placeId, $seasonId, $siteIds);
+    $placeClosed = llama_public_place_verified_closed($db, $placeId);
 
     $points = [];
     foreach ($rows as $row) {
@@ -177,13 +189,21 @@ try {
             $name = 'Site ' . (int) $row['id'];
         }
 
+        $id = (int) $row['id'];
+        $pointRates = [
+            'pricing_summary' => !$placeClosed && ($statuses[$id] ?? '') !== 'closed'
+                ? $row['pricing_summary'] : '',
+            'seasonal_operating_status' => $statuses[$id] ?? null,
+            'place_verified_closed' => $placeClosed,
+            'reservation_method' => $methods[$id] ?? null,
+        ];
         if (!$canRead) {
             // Reviewed public developed Sites: map location and identity only.
             // Scout observations, photos and capacity/connectivity remain gated.
             $points[] = [
                 'id' => (int) $row['id'],
                 'name' => $name,
-                'pricing_summary' => $row['pricing_summary'],
+                ...$pointRates,
                 'latitude' => (float) $row['latitude'],
                 'longitude' => (float) $row['longitude'],
                 'coordinate_status' => llama_coordinate_status(
@@ -200,7 +220,7 @@ try {
         $points[] = [
             'id' => (int) $row['id'],
             'name' => $name,
-            'pricing_summary' => $row['pricing_summary'],
+            ...$pointRates,
             'hero_image' => $heroImages[(int) $row['id']] ?? null,
             'latitude' => (float) $row['latitude'],
             'longitude' => (float) $row['longitude'],

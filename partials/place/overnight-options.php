@@ -19,7 +19,12 @@ $placeId =
 $stayViewerHasCompleteAccess =
     (bool) ($hasCompleteAccess ?? false);
 
-$stayPricing = llama_pricing_document(db(), $place);
+require_once dirname(__DIR__, 2) . '/app/place-report/season-public.php';
+$stayRequestedSeason = $_GET['season'] ?? null;
+$staySeason = llama_public_season_selection(db(), $placeId, $stayRequestedSeason)['selected'];
+[$stayPricing, $stayRateDate] = llama_pricing_public_night(
+    llama_pricing_document(db(), $place), $staySeason, $stayRequestedSeason
+);
 
 $stayFeatures = [];
 $stayDb = db();
@@ -189,7 +194,8 @@ foreach ($stayFeatures as $feature) {
         'site_type' => $type,
         'parking_style' => $style,
         'parent_feature_id' => (int) ($details['camping_area_feature_id'] ?? 0),
-    ])['label'];
+    ], $stayRateDate);
+    $pricingSummary = $pricingSummary['state'] === 'priced' ? $pricingSummary['label'] : '';
 
     $summaryParts =
         array_values(
