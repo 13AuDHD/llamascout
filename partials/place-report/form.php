@@ -666,9 +666,11 @@ $renderField =
 
         $usesYesNoControl = $type === 'tri'
             || ($field['control'] ?? '') === 'yes-no';
+        $showNameRefresh = !empty($field['name_suggestion']) && $placeReportShowNameSuggestion;
+        $fieldLabelTag = $showNameRefresh ? 'label' : 'span';
 
         $fieldContainerTag =
-            $usesYesNoControl || in_array($type, ['multiselect', 'permission', 'rating'], true)
+            $showNameRefresh || $usesYesNoControl || in_array($type, ['multiselect', 'permission', 'rating'], true)
                 ? 'div'
                 : 'label';
         ?>
@@ -677,7 +679,7 @@ $renderField =
             $class
         ) ?>" data-report-field="<?= $e($key) ?>">
 
-            <span class="place-report-field-label">
+            <<?= $fieldLabelTag ?> class="place-report-field-label" <?= $showNameRefresh ? 'for="place-report-name"' : '' ?>>
                 <span>
                     <?= $e(
                         $field['label']
@@ -710,7 +712,7 @@ $renderField =
                         </span>
                     </span>
                 <?php endif; ?>
-            </span>
+            </<?= $fieldLabelTag ?>>
 
 
             <?php if ($usesYesNoControl): ?>
@@ -1113,12 +1115,7 @@ $renderField =
                 ?>
 
 
-                <?php if (
-                    !empty(
-                        $field['name_suggestion']
-                    )
-                    && $placeReportShowNameSuggestion
-                ): ?>
+                <?php if ($showNameRefresh): ?>
 
                     <div class="add-place-name-control">
 
@@ -1126,6 +1123,7 @@ $renderField =
 
 
                 <input
+                    <?= $showNameRefresh ? 'id="place-report-name"' : '' ?>
                     type="<?= $e(
                         $htmlType
                     ) ?>"
@@ -1193,36 +1191,18 @@ $renderField =
                 >
 
 
-                <?php if (
-                    !empty(
-                        $field['name_suggestion']
-                    )
-                    && $placeReportShowNameSuggestion
-                ): ?>
+                <?php if ($showNameRefresh): ?>
 
                         <button
                             class="add-place-name-refresh"
                             type="button"
                             data-refresh-place-name
                             aria-label="Suggest another Place name"
-                            title="Suggest another name"
                         >
                             <?= llama_icon('refresh') ?>
-
-                            <span>
-                                Another name
-                            </span>
                         </button>
 
                     </div>
-
-
-                    <small>
-                        We suggest simple location-neutral names so the title
-                        does not accidentally reveal a road, landmark, or exact
-                        location. You can still edit the suggestion.
-                    </small>
-
                 <?php endif; ?>
 
 
@@ -1475,133 +1455,58 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
             ?>
             <details class="contribution-section"
                 data-report-subsection="<?= $e($approvedKey) ?>"
-                <?= $hasLocate ? 'open' : '' ?>>
+                <?= $approvedKey === 'basic' ? 'open' : '' ?>>
                 <summary>
                     <span><?= $e($approvedSection['label']) ?></span>
                     <span class="place-report-section-progress" data-section-completion-percent
                         aria-label="Subsection completion"></span>
                 </summary>
                 <div class="contribution-section-body">
-                    <?php if ($hasLocate): ?>
-            <?php if (
-                true
-                && $placeReportShowLocate
-            ): ?>
+                    <div class="contribution-grid">
+                        <?php if ($hasLocate): ?>
+                            <div class="contribution-field add-place-locate-panel">
+                                <span>At the Place right now?</span>
+                                <button class="add-place-locate-button" type="button" data-locate-place>
+                                    <?= llama_icon('current-location') ?>
+                                    Locate me
+                                </button>
+                            </div>
 
-                <div class="add-place-coordinate-field">
+                            <div class="contribution-field add-place-coordinate-field">
+                                <label class="place-report-field-label" for="add-place-coordinates">Coordinates</label>
+                                <div class="add-place-coordinate-row">
+                                    <input
+                                        id="add-place-coordinates"
+                                        type="text"
+                                        name="coordinates"
+                                        value="<?= $e($combinedCoordinates) ?>"
+                                        placeholder="37.2522200, -107.2192000"
+                                        inputmode="decimal"
+                                        autocomplete="off"
+                                        spellcheck="false"
+                                        data-coordinate-input
+                                    >
+                                    <button class="add-place-coordinate-search" type="button" data-search-coordinates>
+                                        Search
+                                    </button>
+                                </div>
 
-                    <label for="add-place-coordinates">
-                        Coordinates
-                    </label>
+                                <?php
+                                $latitudeReference = $referenceFor('latitude');
+                                $longitudeReference = $referenceFor('longitude');
+                                ?>
+                                <?php if ($latitudeReference !== '' && $longitudeReference !== ''): ?>
+                                    <small class="place-report-answer-context" data-place-report-reference>
+                                        Current answer: <?= $e($latitudeReference . ', ' . $longitudeReference) ?>
+                                    </small>
+                                <?php endif; ?>
 
-                    <div class="add-place-coordinate-row">
+                                <input type="hidden" name="latitude" value="<?= $e($combinedLatitude) ?>" data-location-field="latitude">
+                                <input type="hidden" name="longitude" value="<?= $e($combinedLongitude) ?>" data-location-field="longitude">
+                            </div>
 
-                        <input
-                            id="add-place-coordinates"
-                            type="text"
-                            name="coordinates"
-                            value="<?= $e($combinedCoordinates) ?>"
-                            placeholder="37.2522200, -107.2192000"
-                            inputmode="decimal"
-                            autocomplete="off"
-                            spellcheck="false"
-                            data-coordinate-input
-                        >
-
-                        <button
-                            class="add-place-coordinate-search"
-                            type="button"
-                            data-search-coordinates
-                        >
-                            Search
-                        </button>
-
-                    </div>
-
-                    <small>
-                        Paste latitude, longitude in decimal degrees. Use at
-                        least 5 decimal places for each coordinate. Llama Scout
-                        standardizes both values to 7 decimal places.
-                    </small>
-
-                    <?php
-                    $latitudeReference =
-                        $referenceFor('latitude');
-
-                    $longitudeReference =
-                        $referenceFor('longitude');
-
-                    $coordinateReference =
-                        $latitudeReference !== ''
-                        && $longitudeReference !== ''
-                            ? $latitudeReference . ', ' . $longitudeReference
-                            : '';
-                    ?>
-
-                    <?php if ($coordinateReference !== ''): ?>
-                        <small class="place-report-answer-context" data-place-report-reference>
-                        Current answer: <?= $e($coordinateReference) ?>
-                        </small>
-                    <?php endif; ?>
-
-                    <input
-                        type="hidden"
-                        name="latitude"
-                        value="<?= $e($combinedLatitude) ?>"
-                        data-location-field="latitude"
-                    >
-
-                    <input
-                        type="hidden"
-                        name="longitude"
-                        value="<?= $e($combinedLongitude) ?>"
-                        data-location-field="longitude"
-                    >
-
-                </div>
-
-
-                <div class="add-place-locate-panel">
-
-                    <div>
-
-                        <strong>
-                            At the Place right now?
-                        </strong>
-
-                        <span>
-                            Use your device location to fill coordinates,
-                            elevation, road, city, county, and state.
-                        </span>
-
-                    </div>
-
-
-                    <button
-                        class="add-place-locate-button"
-                        type="button"
-                        data-locate-place
-                    >
-
-                        <?= llama_icon('current-location') ?>
-
-                        Locate me
-
-                    </button>
-
-                </div>
-
-
-                <div
-                    class="add-place-location-status"
-                    data-location-status
-                    aria-live="polite"
-                ></div>
-
-            <?php endif; ?>
-                    <?php endif; ?>
-                    <?php if ($approvedSection['fields']): ?>
-                        <div class="contribution-grid">
+                            <div class="add-place-location-status contribution-field-wide" data-location-status aria-live="polite"></div>
+                        <?php endif; ?>
                             <?php
                             $renderedCompoundQuestions = [];
                             ?>
@@ -1646,8 +1551,7 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
                                 $renderField($field);
                                 ?>
                             <?php endforeach; ?>
-                        </div>
-                    <?php endif; ?>
+                    </div>
 
                 </div>
             </details>

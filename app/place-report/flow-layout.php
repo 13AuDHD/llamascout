@@ -169,7 +169,7 @@ function llama_place_report_layout_assignments(): array
         ],
 
         'place:information_location' => [
-            'name', 'type', 'description', 'latitude', 'longitude',
+            'type', 'name', 'description', 'latitude', 'longitude',
             'elevation_feet', 'road', 'city', 'county', 'state', 'land_type',
             'land_manager', 'region',
         ],
