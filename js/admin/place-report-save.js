@@ -62,7 +62,7 @@
             const hiddenFields =
                 Array.from(
                     form.querySelectorAll(
-                        '.contribution-field.is-applicability-hidden, .contribution-check.is-applicability-hidden'
+                        '.contribution-field.is-applicability-hidden:not(.is-force-hidden), .contribution-check.is-applicability-hidden:not(.is-force-hidden)'
                     )
                 );
 
@@ -619,8 +619,8 @@
         choose.value = '';
         choose.textContent =
             campsiteSites.length > 0
-                ? 'Place'
-                : 'Place (no Sites yet)';
+                ? 'Select a Site'
+                : 'No Sites yet';
         campsiteSelect.appendChild(choose);
 
         campsiteSites.forEach(site => {
@@ -665,18 +665,6 @@
         (wrapper || campsiteSelect).insertAdjacentElement('afterend', bulkPanel);
     }
 
-    const setSiteControlMode = (
-        mode
-    ) => {
-        // Reconciliation keeps every Site question interactive.
-        // Ownership is enforced when constructing the save payload.
-        campsiteFieldKeys.forEach(key => {
-            controlsFor(key).forEach(control => {
-                control.disabled = false;
-            });
-        });
-    };
-
     const selectedCampsite =
         () => {
             const selected =
@@ -699,39 +687,6 @@
                 )
                 || null
             );
-        };
-
-    const syncSiteControlModeFromSelection =
-        () => {
-            const site =
-                selectedCampsite();
-
-            if (site) {
-                activeCampsiteId =
-                    String(
-                        site.id
-                    );
-
-                setSiteControlMode(
-                    'site'
-                );
-
-                return;
-            }
-
-            if (
-                String(
-                    campsiteSelect?.value
-                    || ''
-                ).trim() === ''
-            ) {
-                activeCampsiteId =
-                    '';
-
-                setSiteControlMode(
-                    'place'
-                );
-            }
         };
 
     const importedSelectLabel = (
@@ -1248,8 +1203,6 @@
         activeCampsiteId = '';
         bulkPanel.hidden = campsiteSites.length === 0;
         resetBulk();
-        setSiteControlMode('place');
-        form.dispatchEvent(new CustomEvent('llama:admin-bulk-site-mode-changed'));
         campsiteDirty = false;
         placeSiteDirty = false;
 
@@ -1309,7 +1262,6 @@
         resetBulk();
         activeCampsiteId =
             String(site.id);
-        setSiteControlMode('site');
         campsiteDirty = false;
         placeSiteDirty = false;
         // Programmatically populating fields doesn't emit input/change events.
@@ -1442,39 +1394,6 @@
         }
     );
 
-    /*
-     * Place / Area / Site context can also be changed by the embedded map or
-     * the shared context controller. Always derive enabled Site controls from
-     * the actual Site selector after those changes instead of relying only on
-     * this file's internal activeCampsiteId state.
-     */
-    form.addEventListener(
-        'llama:place-context-changed',
-        () => {
-            queueMicrotask(
-                syncSiteControlModeFromSelection
-            );
-        }
-    );
-
-    form.addEventListener(
-        'llama:campsite-selected',
-        () => {
-            queueMicrotask(
-                syncSiteControlModeFromSelection
-            );
-        }
-    );
-
-    window.addEventListener(
-        'llama:place-context-changed',
-        () => {
-            queueMicrotask(
-                syncSiteControlModeFromSelection
-            );
-        }
-    );
-
     const save = async () => {
         bulkField.value = '';
         if (activeCampsiteId === '' && bulkToggle.checked) {
@@ -1540,9 +1459,7 @@
             const saveData = new FormData(form);
             if (bulkConfirmedPayload) saveData.set('admin_bulk_site_answers_json', bulkConfirmedPayload);
 
-            // Previously disabled Site-only fields were not submitted on
-            // the Place target. Keep that persistence boundary intact while
-            // exposing the controls for reconciliation.
+            // Site-only answers need an individual Site or the bulk payload.
             if (!selectedCampsite()) {
                 campsiteFieldKeys.forEach(key => {
                     if (!placeSiteFieldLookup.has(key)) {
