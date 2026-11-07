@@ -1357,9 +1357,12 @@
             }
 
             try {
+                const url = new URL(mappedAreasApi, window.location.href);
+                const season = new URLSearchParams(window.location.search).get('season');
+                if (season && /^\d+$/.test(season)) url.searchParams.set('season', season);
                 const response =
                     await fetch(
-                        mappedAreasApi,
+                        url,
                         {
                             credentials:
                                 'same-origin',

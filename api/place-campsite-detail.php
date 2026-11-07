@@ -346,8 +346,11 @@ try {
             $effectiveValues
         );
 
-    $site = llama_pricing_enrich_sites($db, $place, [$site])[0];
-    $site['summary'] = array_values(array_unique([$site['pricing_summary'], ...llama_place_campsite_summary($site)]));
+    [$rateDoc, $rateDate] = llama_pricing_public_night(
+        llama_pricing_document($db, $place), $activeSeason, $_GET['season'] ?? null
+    );
+    $site['summary'] = llama_place_campsite_summary($site);
+    $site = llama_pricing_enrich_sites($db, $place, [$site], $rateDoc, $rateDate)[0];
 
     llama_place_campsite_detail_json([
         'ok' => true,

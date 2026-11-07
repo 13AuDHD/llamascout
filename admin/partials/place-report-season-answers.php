@@ -12,32 +12,27 @@ $availableSeasons = array_values(array_filter(
 
 <section class="admin-place-season-answers" id="seasonal-conditions"
          aria-labelledby="season-answers-heading">
-    <header class="admin-place-report-header">
-        <p>Seasonal Scout Report</p>
-        <h3 id="season-answers-heading">Seasonal conditions</h3>
-        <span class="admin-place-muted">
-            Choose a season and the Place, an Area, or several Sites.
-            Add only the questions that actually change.
-        </span>
-    </header>
-
-    <?php if (($action ?? '') === 'save-season-builder' && ($error ?? '') !== ''): ?>
+    <?php if (in_array(($action ?? ''), ['save-season-builder', 'save-season-prices'], true) && ($error ?? '') !== ''): ?>
         <div class="admin-place-seasons-message is-error" role="alert"
              id="season-save-feedback">
             <strong>Seasonal changes were not saved.</strong>
             <?= $e((string) $error) ?>
         </div>
-    <?php elseif ((string) ($_GET['saved'] ?? '') === 'season-builder'): ?>
+    <?php elseif ((string) ($_GET['saved'] ?? '') === 'season-builder' || (string) ($_GET['saved'] ?? '') === 'season-prices'): ?>
         <div class="admin-place-seasons-message is-success" role="status"
              id="season-save-feedback">
-            Seasonal changes saved for the selected reporting targets.
+            Season and rate changes saved.
         </div>
     <?php endif; ?>
 
     <?php if (!$availableSeasons): ?>
-        <p class="admin-place-seasons-message">
-            Save an active season above before editing seasonal conditions.
-        </p>
+        <form method="post" action="/place.php?id=<?= (int) $placeId ?>#place-seasons">
+            <input type="hidden" name="csrf_token" value="<?= $e(moderation_csrf_token()) ?>">
+            <input type="hidden" name="place_id" value="<?= (int) $placeId ?>">
+            <input type="hidden" name="place_admin_action" value="save-season-prices">
+            <?php require __DIR__ . '/place-season-rate-editor.php'; ?>
+            <button type="submit" class="admin-button">Save rates</button>
+        </form>
     <?php else: ?>
         <?php
         $loadError = '';
@@ -86,12 +81,6 @@ $availableSeasons = array_values(array_filter(
             $seasonRows = llama_season_builder_existing(
                 $db, $placeId, $selectedSeasonId, $selectedTargets, $seasonQuestions
             );
-            $focusBooking = ($_GET['season_booking'] ?? '') === '1';
-            if ($focusBooking && !$buildingFailedPost
-                && isset($seasonQuestions['site_reservation_method'])
-                && !in_array('site_reservation_method', array_column($seasonRows, 'key'), true)) {
-                array_unshift($seasonRows, ['key' => 'site_reservation_method', 'draft' => true]);
-            }
             // A rejected POST remains on this page. Restore the submitted
             // changes so the editor never silently discards someone's work.
             $seasonPendingRemovals = [];
@@ -169,10 +158,6 @@ $availableSeasons = array_values(array_filter(
             <form class="admin-place-season-switch" method="get"
                   action="/place.php#place-seasons" data-season-builder-load>
                 <input type="hidden" name="id" value="<?= (int) $placeId ?>">
-                <input type="hidden" name="season_booking" value="<?= $focusBooking ? '1' : '' ?>">
-                <p class="admin-place-seasons-help" data-season-booking-hint<?= $focusBooking ? '' : ' hidden' ?>>
-                    Choose an operating season and the Sites, then load conditions to set their reservation method.
-                </p>
                 <label class="admin-place-season-picker-label">
                     <span>Viewing season</span>
                     <select name="season_view" aria-label="Choose season">
@@ -221,7 +206,7 @@ $availableSeasons = array_values(array_filter(
                         </div>
                     </details>
                 </div>
-                <button type="submit" class="admin-button is-muted">Load conditions</button>
+                <button type="submit" class="admin-button is-muted">Load season and Sites</button>
             </form>
 
             <form method="post" action="/place.php?id=<?= (int) $placeId ?>#place-seasons"
@@ -264,10 +249,12 @@ $availableSeasons = array_values(array_filter(
                                : '') ?>">
                 </label>
 
+                <?php require __DIR__ . '/place-season-rate-editor.php'; ?>
+
                 <div class="admin-place-season-builder-footer">
                     <span data-season-builder-change-count role="status">Loading seasonal editor…</span>
                     <button type="submit" class="admin-button" data-season-builder-save
-                            disabled>Save seasonal changes</button>
+                            disabled>Save season changes</button>
                 </div>
                 <script type="application/json" data-season-builder-config><?= json_encode(
                     [

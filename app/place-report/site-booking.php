@@ -44,6 +44,12 @@ function llama_public_site_booking_methods(
         return [];
     }
     $methods = [];
+    $seasonDefault = null;
+    if ($seasonId !== null && $seasonId > 0) {
+        require_once __DIR__ . '/season-public.php';
+        $conditions = llama_public_season_place_conditions($db, $placeId, $seasonId);
+        $seasonDefault = llama_site_booking_method_label($conditions['seasonal_booking_method']['value'] ?? null);
+    }
     foreach (array_chunk($ids, 400) as $chunk) {
         $marks = implode(',', array_fill(0, count($chunk), '?'));
         $ridb = $db->prepare(
@@ -86,6 +92,11 @@ function llama_public_site_booking_methods(
             }
         }
 
+        if ($seasonDefault !== null) {
+            foreach ($chunk as $id) {
+                $methods[$id] = $seasonDefault;
+            }
+        }
         if ($seasonId !== null && $seasonId > 0) {
             $season = $db->prepare(
                 'SELECT target_id, answer_state, value_json

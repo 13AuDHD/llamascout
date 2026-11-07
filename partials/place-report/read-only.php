@@ -1341,6 +1341,9 @@ foreach (
                 ?>
             <?php endif; ?>
 
+        <?php elseif ($placeReportReadMode === 'scout-report' && $sectionKey === 'pricing' && empty($isDemoScoutReport)): ?>
+            <?php require dirname(__DIR__) . '/place/pricing.php'; ?>
+
         <?php elseif ($sectionKey === 'sensory'): ?>
             <?php foreach (
                 [

@@ -57,7 +57,6 @@ try {
         static fn(array $site): bool =>
             llama_site_can_read($place, $site, $canRead, $restrictedSiteIds)
     ));
-    $sites = llama_pricing_enrich_sites($db, $place, $sites);
     $sites = llama_campsite_closure_enrich($db, $placeId, $sites);
     $placeVerifiedClosed = llama_public_place_verified_closed($db, $placeId);
     foreach ($sites as &$site) {
@@ -84,6 +83,11 @@ try {
         }
         unset($site);
     }
+
+    [$rateDoc, $rateDate] = llama_pricing_public_night(
+        llama_pricing_document($db, $place), $season, $_GET['season'] ?? null
+    );
+    $sites = llama_pricing_enrich_sites($db, $place, $sites, $rateDoc, $rateDate);
 
     $bookingMethods = llama_public_site_booking_methods(
         $db,

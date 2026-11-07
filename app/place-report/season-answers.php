@@ -49,10 +49,13 @@ function llama_season_answers_for_target(
     PDO $db, int $placeId, int $seasonId, array $target
 ): array {
     llama_season_verified_place($db, $placeId, $seasonId);
-    $verified = llama_report_verified_target(
-        $db, $placeId, (string) ($target['scope'] ?? ''),
-        (string) ($target['source'] ?? ''), (int) ($target['id'] ?? 0)
-    );
+    $scope = (string) ($target['scope'] ?? '');
+    $source = (string) ($target['source'] ?? '');
+    $id = (int) ($target['id'] ?? 0);
+    // The verified season already establishes ownership of its Place target.
+    $verified = $scope === 'place' && $source === 'place' && $id === $placeId
+        ? ['scope' => $scope, 'source' => $source, 'id' => $id]
+        : llama_report_verified_target($db, $placeId, $scope, $source, $id);
     $stmt = $db->prepare(
         'SELECT question_key, answer_state, value_json, source_url, approved_by, approved_at
          FROM place_season_answers

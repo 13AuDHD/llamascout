@@ -752,7 +752,6 @@ require
     require
         __DIR__
         . '/partials/place/hero.php';
-    require __DIR__ . '/partials/place/pricing.php';
     ?>
 
     <?php
@@ -797,7 +796,7 @@ require
 
 <script src="/js/place-gallery.js"></script>
 <script src="/js/place.js"></script>
-<script src="/js/place-campsites.js"></script>
+<script src="/js/place-campsites.js?v=<?= (int) filemtime(__DIR__ . '/js/place-campsites.js') ?>"></script>
 
 <?php
 require

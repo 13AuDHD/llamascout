@@ -64,7 +64,7 @@ $seasonCount = count($adminPlaceSeasons);
          <?= $showSeasons ? 'open' : '' ?>>
     <summary class="admin-place-seasons-toggle">
         <span class="admin-place-seasons-toggle-label">
-            <strong>Seasonal conditions</strong>
+            <strong>Seasons and campsite rates</strong>
             <small><?= $seasonCount > 0
                 ? $e((string) $seasonCount . ($seasonCount === 1 ? ' season configured' : ' seasons configured'))
                 : 'Optional · No seasons configured' ?></small>
@@ -76,12 +76,7 @@ $seasonCount = count($adminPlaceSeasons);
     </summary>
     <div class="admin-place-seasons-content">
         <header class="admin-place-report-header">
-            <p>Scout Report · Operating seasons</p>
-            <h2 id="admin-place-seasons-heading">Season definitions and changes</h2>
-            <span class="admin-place-muted">
-                Add seasons only when services or Site rules change through the year.
-                Seasonal answers are separate from the main Scout Report and verified closures.
-            </span>
+            <h2 id="admin-place-seasons-heading">Seasons and campsite rates</h2>
         </header>
 
     <?php if ($adminPlaceSeasonsError !== ''): ?>
@@ -105,7 +100,7 @@ $seasonCount = count($adminPlaceSeasons);
                         : 'Manual selection only';
                     ?>
                     <a class="admin-place-season-entry<?= $seasonEditId === (int) $item['id'] ? ' is-selected' : '' ?>"
-                       href="/place.php?id=<?= (int) $placeId ?>&season_edit=<?= (int) $item['id'] ?>#place-seasons">
+                       href="/place.php?id=<?= (int) $placeId ?>&season_edit=<?= (int) $item['id'] ?>&season_view=<?= (int) $item['id'] ?>#place-seasons">
                         <strong><?= $e($item['name']) ?></strong>
                         <span><?= $e($dates) ?></span>
                         <?php if ((int) ($item['is_default'] ?? 0) === 1): ?>

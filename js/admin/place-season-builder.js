@@ -32,6 +32,9 @@
             .map(node => node.value).sort().join('|');
         return checked !== loadedTargets;
     };
+    const rates = form.querySelector('[data-managed-season]');
+    const ratesChanged = () => rates?.dataset.seasonDirty === '1';
+    rates?.addEventListener('input', refresh);
     const removed = new Set(initialRemovals.filter(key => definitions.has(String(key))));
     let sequence = 0;
 
@@ -206,7 +209,7 @@
 
     function refresh() {
         const {changes, deletions} = pending();
-        const total = changes.length + deletions.size;
+        const total = changes.length + deletions.size + Number(ratesChanged());
         const selectionChanged = selectedTargetsChanged();
         counter.textContent = selectionChanged
             ? 'Selection changed: load conditions before saving'
@@ -242,7 +245,7 @@
             window.alert('Each seasonal question may appear only once. Remove the duplicate row.');
             return;
         }
-        if (changes.length === 0 && deletions.size === 0) {
+        if (changes.length === 0 && deletions.size === 0 && !ratesChanged()) {
             event.preventDefault();
             return;
         }
@@ -297,9 +300,9 @@
                     if (other.dataset.seasonTargetScope !== 'site') other.checked = false;
                 });
             }
-            if (boxes.filter(x => x.checked).length > 250) {
+            if (boxes.filter(x => x.checked).length > 500) {
                 box.checked = false;
-                window.alert('Select no more than 250 Sites at once.');
+                window.alert('Select no more than 500 Sites at once.');
             }
             updateTargets();
             refresh();
@@ -318,7 +321,7 @@
                 return;
             }
             const draft = pending();
-            if ((draft.changes.length || draft.deletions.size) && !window.confirm(
+            if ((draft.changes.length || draft.deletions.size || ratesChanged()) && !window.confirm(
                 'Discard unsaved seasonal changes and load another selection?'
             )) {
                 event.preventDefault();

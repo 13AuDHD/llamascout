@@ -21,6 +21,11 @@ try {
     $doc = llama_pricing_validate((string) ($_POST['rate_cards_json'] ?? ''));
     if (($_POST['action'] ?? '') === 'preview') {
         $date = llama_pricing_date((string) ($_POST['date'] ?? ''));
+        require_once dirname(__DIR__) . '/app/place-report/season-public.php';
+        $requestedSeason = $_POST['season_id'] ?? null;
+        $doc['_base_only'] = (string) $requestedSeason === '0';
+        $season = llama_public_season_selection($db, $id, $requestedSeason, $date)['selected'];
+        $doc['_season_id'] = isset($season['id']) ? (int) $season['id'] : null;
         $counts = ['priced' => 0, 'review' => 0, 'unknown' => 0]; $examples = []; $rowCounts = [];
         foreach (llama_pricing_enrich_sites($db, $place, llama_place_campsites($db, $id), $doc, $date) as $site) {
             $p = $site['pricing'];

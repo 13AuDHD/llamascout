@@ -108,6 +108,7 @@ function llama_place_report_add_operating_fields(callable $add): void
     $gateOptions = [
         'always_open' => 'Normally left open',
         'scheduled' => 'Scheduled hours',
+        'closed' => 'Gate closed',
         'code_key' => 'Code or key required',
         'staff' => 'Staff-controlled',
     ];

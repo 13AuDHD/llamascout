@@ -100,6 +100,9 @@ function llama_public_season_overlay_answer_layers(
         }
         foreach ((array) ($layer['answers'] ?? []) as $key => $seasonal) {
             $field = llama_season_question_for_scope((string) $key, $scope);
+            if (($field['storage'] ?? '') === '') {
+                continue;
+            }
             $normal = (array) ($normalAnswers[$key] ?? []);
             $originScope = (string) (($normal['origin'] ?? [])['scope'] ?? '');
             if (!empty($normal['recorded'])
@@ -141,10 +144,8 @@ function llama_public_season_site_answers(
     );
     $layers = [];
     $placeTarget = ['scope' => 'place', 'source' => 'place', 'id' => $placeId];
-    $layers[] = [
-        'scope' => 'place', 'target' => $placeTarget,
-        'answers' => llama_season_answers_for_target($db, $placeId, $seasonId, $placeTarget),
-    ];
+    $placeAnswers = llama_public_season_place_conditions($db, $placeId, $seasonId);
+    $layers[] = ['scope' => 'place', 'target' => $placeTarget, 'answers' => $placeAnswers];
     $areaId = (int) ($verified['parent_area_id'] ?? 0);
     if ($areaId > 0) {
         $areaTarget = ['scope' => 'area', 'source' => 'map_feature', 'id' => $areaId];
@@ -153,10 +154,11 @@ function llama_public_season_site_answers(
             'answers' => llama_season_answers_for_target($db, $placeId, $seasonId, $areaTarget),
         ];
     }
-    $layers[] = [
-        'scope' => 'site', 'target' => $verified,
-        'answers' => llama_season_answers_for_target($db, $placeId, $seasonId, $verified),
-    ];
+    $siteAnswers = llama_season_answers_for_target($db, $placeId, $seasonId, $verified);
+    if (isset($placeAnswers['seasonal_booking_method'])) {
+        $siteAnswers['site_reservation_method'] ??= $placeAnswers['seasonal_booking_method'];
+    }
+    $layers[] = ['scope' => 'site', 'target' => $verified, 'answers' => $siteAnswers];
 
     return llama_public_season_overlay_answer_layers($normalAnswers, $layers, $verified);
 }
@@ -175,8 +177,12 @@ function llama_public_season_site_statuses(
     if (!$ids || $seasonId < 1) {
         return [];
     }
-    llama_season_verified_place($db, $placeId, $seasonId);
-    $statuses = [];
+    $conditions = llama_public_season_place_conditions($db, $placeId, $seasonId);
+    if (($conditions['seasonal_place_closed']['value'] ?? null) === true) {
+        return array_fill_keys($ids, 'closed');
+    }
+    $statuses = ($conditions['seasonal_sites_closed']['value'] ?? null) === true
+        ? array_fill_keys($ids, 'closed') : [];
     foreach (array_chunk($ids, 400) as $batch) {
         $marks = implode(',', array_fill(0, count($batch), '?'));
         $query = $db->prepare(
@@ -196,6 +202,13 @@ function llama_public_season_site_statuses(
     return $statuses;
 }
 
+
+function llama_public_season_place_conditions(PDO $db, int $placeId, int $seasonId): array
+{
+    return llama_season_answers_for_target(
+        $db, $placeId, $seasonId, ['scope' => 'place', 'source' => 'place', 'id' => $placeId]
+    );
+}
 
 /** A verified closure of the whole Place outranks every normal Site season. */
 function llama_public_place_verified_closed(PDO $db, int $placeId): bool

@@ -145,6 +145,7 @@ $placeReportSelectedSite = isset($placeReportSiteOptions[$requestedSite]) ? $req
 
         <?php
         $placeReportPhotoContext = 'admin-place';
+        $placeReportExternalFieldKeys[] = 'place_rate_cards_json';
         require dirname(__DIR__, 2) . '/partials/place-report/form.php';
         ?>
     </section>
