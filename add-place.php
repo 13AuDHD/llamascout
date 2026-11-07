@@ -758,7 +758,7 @@ $placeReportInitialCompletion =
 
 <script
     src="<?= htmlspecialchars(
-        $siteUrl . '/js/add-place-location.js',
+        $siteUrl . '/js/add-place-location.js?v=' . (int) filemtime(__DIR__ . '/js/add-place-location.js'),
         ENT_QUOTES,
         'UTF-8'
     ) ?>"

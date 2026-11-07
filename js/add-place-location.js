@@ -6,25 +6,23 @@ document.addEventListener("DOMContentLoaded", () => {
   const coordinateInput = document.querySelector("[data-coordinate-input]");
   const status = document.querySelector("[data-location-status]");
   const form = coordinateInput ? coordinateInput.closest("form") : null;
+  const locationHint = status?.textContent.trim() || "";
+  const lookupInProgress = "The llamas are checking the map and land records. This can take up to a minute.";
+  const lookupSucceeded = "The llamas filled in what they found. Give the details a quick look before saving.";
 
   if (!locateButton && !searchButton && !coordinateInput) return;
 
-  const setStatus = (message, type = "") => {
+  const setStatus = (message, type) => {
     if (!status) return;
 
-    status.textContent = message;
-    status.className = "add-place-location-status is-visible";
-
-    if (type) {
-      status.classList.add(type);
-    }
+    status.textContent = type === "is-error" ? `The llamas hit a snag. ${message}` : message;
+    status.classList.remove("is-info", "is-warning", "is-success", "is-error");
+    status.classList.add(type);
+    status.classList.toggle("is-visible", Boolean(message));
   };
 
   const clearStatus = () => {
-    if (!status) return;
-
-    status.textContent = "";
-    status.className = "add-place-location-status";
+    setStatus(locationHint, "is-info");
   };
 
   const setField = (name, value) => {
@@ -521,7 +519,7 @@ document.addEventListener("DOMContentLoaded", () => {
       );
 
       setStatus(
-        "Please wait. Resolving location, land, and management information. This can take up to a minute...",
+        lookupInProgress,
         "is-warning"
       );
 
@@ -531,7 +529,7 @@ document.addEventListener("DOMContentLoaded", () => {
       );
 
       setStatus(
-        "Location information populated. Check the results before submitting because map and data can occasionally be imperfect.",
+        lookupSucceeded,
         "is-success"
       );
     };
@@ -754,7 +752,7 @@ document.addEventListener("DOMContentLoaded", () => {
         );
 
         setStatus(
-          "Finding your current GPS position...",
+          "The llamas are waiting for your device’s GPS.",
           "is-warning"
         );
 
@@ -784,7 +782,7 @@ document.addEventListener("DOMContentLoaded", () => {
               );
 
               setStatus(
-                "GPS found. Please wait while Llama Scout resolves the location, land, and management information. This can take up to a minute...",
+                `GPS found. ${lookupInProgress}`,
                 "is-warning"
               );
 
@@ -794,7 +792,7 @@ document.addEventListener("DOMContentLoaded", () => {
               );
 
               setStatus(
-                "Location information populated. Check the results before submitting because map and data can occasionally be imperfect.",
+                lookupSucceeded,
                 "is-success"
               );
 
@@ -804,7 +802,7 @@ document.addEventListener("DOMContentLoaded", () => {
               );
 
               setStatus(
-                "GPS coordinates were added, but some location information could not be resolved. You can fill those fields manually.",
+                "The llamas added your GPS coordinates. Fill in any details they couldn’t find.",
                 "is-warning"
               );
 

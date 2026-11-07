@@ -387,7 +387,7 @@ $placeReportPhotoHelp = 'Add photos to the currently selected Place, Area, or Si
     ?>
 </div>
 
-<script src="https://llamascout.com/js/add-place-location.js"></script>
+<script src="https://llamascout.com/js/add-place-location.js?v=<?= (int) filemtime(dirname(__DIR__) . '/js/add-place-location.js') ?>"></script>
 <script src="https://llamascout.com/js/add-place-name.js"></script>
 <?php
 $sharedReportAsset = dirname(__DIR__) . '/js/place-report-form.js';
