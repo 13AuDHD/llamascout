@@ -472,68 +472,37 @@
     }
 }
 
-/* Combined coordinate entry on Add Place. */
-.place-report-form .add-place-coordinate-field {
-    display: grid;
-    gap: 6px;
-
-    margin-top: 16px;
-}
-
-.place-report-form .add-place-coordinate-field > label {
-    font-size: .78rem;
-    font-weight: 800;
-}
-
+/* The two location actions use the same colors and shape as the fields. */
 .place-report-form .add-place-coordinate-row {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 8px;
-    align-items: stretch;
 }
 
 .place-report-form .add-place-coordinate-row input {
-    min-width: 0;
     font-variant-numeric: tabular-nums;
 }
 
-.place-report-form .add-place-coordinate-search {
+.place-report-form :is(.add-place-locate-button, .add-place-coordinate-search) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
     min-height: 42px;
-
-    padding: 8px 16px;
+    padding: 11px 12px;
 
     border: 1px solid var(--border);
-    border-radius: 9px;
-
-    background: var(--text);
-    color: var(--background);
+    border-radius: 8px;
+    background: var(--background);
+    color: var(--text);
 
     font: inherit;
-    font-size: .76rem;
-    font-weight: 850;
-
     cursor: pointer;
 }
 
-.place-report-form .add-place-coordinate-search:disabled {
+.place-report-form :is(.add-place-locate-button, .add-place-coordinate-search):disabled {
     opacity: .55;
     cursor: wait;
-}
-
-.place-report-form .add-place-coordinate-field > small {
-    color: var(--text-muted);
-    font-size: .68rem;
-    line-height: 1.45;
-}
-
-@media (max-width: 450px) {
-    .place-report-form .add-place-coordinate-row {
-        grid-template-columns: minmax(0, 1fr) auto;
-    }
-
-    .place-report-form .add-place-coordinate-search {
-        padding-inline: 12px;
-    }
 }
 
 .place-report-form .contribution-field-compound {

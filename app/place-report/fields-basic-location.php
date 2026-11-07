@@ -11,10 +11,8 @@ function llama_place_report_add_basic_location_fields(
     $add('name', 'Place name *', 'basic', 'text', 'name', [
         'required' => true,
         'maxlength' => 200,
-        'wide' => true,
         'placeholder' => 'A suggested name will appear here',
         'name_suggestion' => true,
-        'help' => 'Use the official or commonly recognized Place name when one exists. For unnamed dispersed locations, use a simple location-neutral name.',
     ]);
 
     $add('type', 'Place type', 'basic', 'select', 'type', [

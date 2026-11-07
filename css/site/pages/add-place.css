@@ -75,7 +75,8 @@
     grid-column: 1 / -1;
 }
 
-.contribution-field > span {
+.contribution-field > span,
+.contribution-field > label.place-report-field-label {
     font-size: .9rem;
     font-weight: 700;
 }
@@ -279,70 +280,8 @@
     text-transform: uppercase;
 }
 
-.add-place-locate-panel {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 18px;
-
-    margin-top: 16px;
-    padding: 14px;
-
-    border: 1px solid var(--border);
-    border-radius: 10px;
-
-    background: var(--background);
-}
-
-.add-place-locate-panel > div {
-    display: grid;
-    gap: 3px;
-}
-
-.add-place-locate-panel strong {
-    font-size: .82rem;
-}
-
-.add-place-locate-panel span {
-    color: var(--text-muted);
-
-    font-size: .72rem;
-    line-height: 1.45;
-}
-
-.add-place-locate-button {
-    min-height: 42px;
-
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-
-    padding: 8px 13px;
-
-    border: 1px solid var(--border);
-    border-radius: 9px;
-
-    background: var(--text);
-    color: var(--background);
-
-    font: inherit;
-    font-size: .76rem;
-    font-weight: 850;
-
-    cursor: pointer;
-}
-
-.add-place-locate-button:disabled {
-    opacity: .55;
-
-    cursor: wait;
-}
-
 .add-place-location-status {
     display: none;
-
-    margin-top: 10px;
     padding: 10px 12px;
 
     border: 1px solid var(--border);
@@ -449,46 +388,37 @@
    ========================================================= */
 
 .add-place-name-control {
-    display: grid;
-    grid-template-columns:
-        minmax(0, 1fr)
-        auto;
-    gap: 8px;
-    align-items: stretch;
+    position: relative;
 }
 
-.add-place-name-control > input {
-    min-width: 0;
+.contribution-field .add-place-name-control > input {
+    padding-inline-end: 48px;
 }
 
 .add-place-name-refresh {
-    min-height: 42px;
+    position: absolute;
+    inset-block: 3px;
+    inset-inline-end: 3px;
+    width: 42px;
 
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 7px;
+    display: grid;
+    place-items: center;
 
-    padding: 8px 12px;
-
-    border: 1px solid var(--border);
-    border-radius: 9px;
-
-    background: var(--background);
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
     color: var(--text);
-
-    font: inherit;
-    font-size: .72rem;
-    font-weight: 800;
-
-    white-space: nowrap;
 
     cursor: pointer;
 }
 
-.add-place-name-refresh:hover,
-.add-place-name-refresh:focus-visible {
+.add-place-name-refresh:hover {
     background: var(--surface);
+}
+
+.add-place-name-refresh:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: -2px;
 }
 
 .add-place-name-refresh:disabled {
@@ -558,24 +488,5 @@ textarea::placeholder {
     .contribution-section > summary::after {
         position: absolute;
         right: 18px;
-    }
-
-    .add-place-locate-panel {
-        align-items: stretch;
-        flex-direction: column;
-    }
-
-    .add-place-locate-button {
-        width: 100%;
-    }
-}
-
-@media (max-width: 560px) {
-    .add-place-name-control {
-        grid-template-columns: 1fr;
-    }
-
-    .add-place-name-refresh {
-        width: 100%;
     }
 }
