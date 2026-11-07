@@ -106,6 +106,16 @@ $publicSiteIsParking = preg_match('/parking|space/', $publicSiteType) === 1;
 
 $publicFieldGroups = [];
 if ($placeReportReadMode === 'scout-report') {
+    // Keep the published introduction separate from the editor's field order.
+    $publicReportGroups['basic'][1] = [
+        'name',
+        'type',
+        ...array_diff($publicReportGroups['basic'][1], ['name', 'type', 'description']),
+        'activities',
+        'description',
+    ];
+    $publicReportGroups['location'][1] = array_diff($publicReportGroups['location'][1], ['activities']);
+
     $placeReportSections = [];
     foreach ($publicReportGroups as $groupKey => [$groupLabel, $keys]) {
         $placeReportSections[$groupKey] = ['label' => $groupLabel, 'icon' => 'info-circle'];
@@ -1263,7 +1273,10 @@ foreach (
                 ],
             ];
             ?>
-            <div class="scout-report-grid">
+            <div class="scout-report-grid scout-report-basic-grid">
+                <?php foreach (['name', 'type'] as $key): ?>
+                    <?php if (isset($reportedFields[$key])) $renderValue($key, $reportedFields[$key]); ?>
+                <?php endforeach; ?>
                 <?php foreach ($officialContact as $contactLabel => $contact): ?>
                     <?php if ($contact['value'] === '') continue; ?>
                     <div class="scout-report-item scout-report-value-item">
@@ -1305,10 +1318,16 @@ foreach (
                         <?= llama_icon('external-link', ['class' => 'scout-report-value-icon']) ?>
                     </div>
                 <?php endforeach; ?>
+                <?php foreach ($publicReportGroups['basic'][1] as $key): ?>
+                    <?php
+                    if ($key !== 'name' && $key !== 'type' && isset($reportedFields[$key])) {
+                        $renderValue($key, $reportedFields[$key]);
+                    }
+                    ?>
+                <?php endforeach; ?>
             </div>
-        <?php endif; ?>
 
-        <?php if (
+        <?php elseif (
             $placeReportReadMode === 'scout-report'
             && !$sectionHasReportedData
         ): ?>
