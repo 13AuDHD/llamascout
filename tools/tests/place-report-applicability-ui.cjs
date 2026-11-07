@@ -186,9 +186,11 @@ async function testAdminSiteEditing(preselected = false) {
         + '<script type="application/json" data-admin-place-context>' + JSON.stringify(context) + '</script>'
         + '<details class="contribution-section" data-report-main-section="site">'
         + '<label data-admin-site-picker><select name="selected_campsite_id" data-admin-campsite-selector>'
-        + '<option value="">Select a Site</option>'
+        + '<option value="all-sites">All Sites</option><option value="" selected>Select a Site</option>'
         + '<option value="campsite_record:5"' + (preselected ? ' selected' : '') + '>Site 5</option>'
-        + '</select></label>' + keys.map(fieldHtml).join('')
+        + '</select></label><label data-admin-overwrite-site-panel hidden>'
+        + '<input type="checkbox" role="switch" data-admin-overwrite-site-answers></label>'
+        + keys.map(fieldHtml).join('')
         + '</details><button type="button" data-place-report-admin-save>Save Place Report</button></form>',
         {url: 'https://admin.llamascout.com/place.php?id=17', runScripts: 'outside-only'}
     );
@@ -226,6 +228,8 @@ async function testAdminSiteEditing(preselected = false) {
             },
         };
         let saved;
+        w.confirm = () => true;
+        w.alert = () => {};
         w.fetch = async (_url, options) => {
             saved = options.body;
             return {ok: true, text: async () => '{"success":true}'};
@@ -253,14 +257,28 @@ async function testAdminSiteEditing(preselected = false) {
         assert.equal(question('independent_site_question').hidden, true, 'Site-only questions wait for a target');
         assert.equal(input('independent_site_question').disabled, false, 'Questions are hidden without being locked');
 
-        const bulk = get('[data-admin-bulk-site-toggle]');
-        bulk.checked = true;
-        bulk.dispatchEvent(new w.Event('change', {bubbles: true}));
+        const overwritePanel = get('[data-admin-overwrite-site-panel]');
+        const overwrite = get('[data-admin-overwrite-site-answers]');
+        assert.equal(overwritePanel.hidden, true);
+        update(picker, 'all-sites');
         assert.equal(question('independent_site_question').hidden, false, 'Bulk editing reveals Site questions');
+        assert.equal(overwritePanel.hidden, false);
+        assert.equal(overwrite.checked, false, 'Existing answers are protected by default');
+        update(input('tent_pad'), '1');
+        get('[data-place-report-admin-save]').click();
+        assert.equal(saved.has('selected_campsite_id'), false, 'All Sites is not a Site ID');
+        assert.deepEqual(JSON.parse(saved.get('admin_bulk_site_answers_json')), {answers: {tent_pad: '1'}, overwrite: false});
+        await new Promise(resolve => setImmediate(resolve));
+        overwrite.checked = true;
+        update(input('tent_pad'), '0');
+        get('[data-place-report-admin-save]').click();
+        assert.deepEqual(JSON.parse(saved.get('admin_bulk_site_answers_json')), {answers: {tent_pad: '0'}, overwrite: true});
+        await new Promise(resolve => setImmediate(resolve));
 
         pins[0].click();
         await Promise.resolve();
         assert.equal(picker.value, site.id, 'Tapping a point-only Site selects its canonical report');
+        assert.equal(overwritePanel.hidden, true, 'Single-Site editing has no overwrite toggle');
         assert.deepEqual(Array.from(views.at(-1)), [37.25, -107.75], 'Map centers on the selected Site point');
         assert.equal(new URL(get('[data-admin-place-map-edit]').href).searchParams.get('site_id'), '5');
         assert.equal(get('[data-report-main-section="site"]').open, true, 'Selecting a map Site opens its report section');

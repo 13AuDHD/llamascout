@@ -107,7 +107,7 @@
                     || ''
                 ).trim();
 
-            if (siteValue !== '') {
+            if (siteValue.startsWith('campsite_record:')) {
                 return 'site:' + siteValue;
             }
 
@@ -287,13 +287,15 @@
         payload.set('csrf_token', String(csrfField?.value || ''));
         payload.set('photo_stage_token', String(tokenField?.value || ''));
         payload.set('photos_json', String(photosField?.value || '[]'));
+        const selectedSite = String(siteSelector?.value || '');
+        const siteValue = selectedSite.startsWith('campsite_record:') ? selectedSite : '';
         payload.set(
             'selected_campsite_id',
-            String(siteSelector?.value || '')
+            siteValue
         );
         payload.set(
             'selected_area_id',
-            siteSelector?.value
+            siteValue
                 ? ''
                 : String(areaSelector?.value || '')
         );

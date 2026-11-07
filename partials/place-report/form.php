@@ -1433,7 +1433,10 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
             <label class="contribution-field" data-admin-site-picker>
                 <span class="place-report-field-label">Site to edit</span>
                 <select name="selected_campsite_id" data-admin-campsite-selector <?= $placeReportSiteOptions ? '' : 'disabled' ?>>
-                    <option value=""><?= $placeReportSiteOptions ? 'Select a Site' : 'No saved Sites' ?></option>
+                    <?php if ($placeReportSiteOptions): ?>
+                        <option value="all-sites">All Sites</option>
+                    <?php endif; ?>
+                    <option value="" <?= $placeReportSelectedSite === '' ? 'selected' : '' ?>><?= $placeReportSiteOptions ? 'Select a Site' : 'No saved Sites' ?></option>
                     <?php foreach ($placeReportSiteOptions as $siteValue => $siteLabel): ?>
                         <option value="<?= $e($siteValue) ?>" <?= $placeReportSelectedSite === $siteValue ? 'selected' : '' ?>>
                             <?= $e($siteLabel) ?>
@@ -1444,6 +1447,13 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
                     <small>In Edit map, place the pin and tap Save Site point to create a Site.</small>
                 <?php endif; ?>
             </label>
+            <?php if ($placeReportSiteOptions): ?>
+                <label class="admin-place-overwrite-switch" data-admin-overwrite-site-panel hidden>
+                    <input type="checkbox" role="switch" data-admin-overwrite-site-answers>
+                    <span aria-hidden="true"></span>
+                    Overwrite existing Site answers
+                </label>
+            <?php endif; ?>
         <?php endif; ?>
         <?php
         /*

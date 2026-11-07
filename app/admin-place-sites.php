@@ -118,7 +118,8 @@ function admin_place_site_section_place_field_keys(): array
 
 function admin_place_without_campsite_fields(array $input): array
 {
-    if (trim((string) ($input['selected_campsite_id'] ?? '')) === '') {
+    if (trim((string) ($input['selected_campsite_id'] ?? '')) === ''
+        && trim((string) ($input['admin_bulk_site_answers_json'] ?? '')) === '') {
         return $input;
     }
 
@@ -190,7 +191,7 @@ function admin_place_apply_site_overrides(array $values, array $overrides): arra
                     ? '1'
                     : '0';
         } elseif ($value !== null && !is_array($value)) {
-            $values[$key] = (string) $value;
+            $values[$key] = llama_place_report_answer_form_value($fields[$key], $value);
         }
     }
 

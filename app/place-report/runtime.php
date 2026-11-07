@@ -1158,7 +1158,9 @@ function llama_place_report_display_value(
     if ($type === 'select') {
         $options = (array) ($field['options'] ?? []);
         $legacyValues = (array) ($field['legacy_values'] ?? []);
-        $key = (string) $value;
+        $key = $fieldKey === 'site_type_of_use'
+            ? llama_place_report_site_use_value((string) $value)
+            : (string) $value;
 
         if (array_key_exists($key, $options)) {
             return (string) $options[$key];

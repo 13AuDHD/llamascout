@@ -45,6 +45,7 @@ function llama_place_report_add_road_restriction_questions(callable $add): void
             'options' => [
                 'always_open' => 'Always open',
                 'scheduled' => 'Scheduled hours',
+                'seasonally_closed' => 'Seasonally Closed',
                 'code_key' => 'Code or key required',
                 'staff' => 'Staff-controlled',
             ],

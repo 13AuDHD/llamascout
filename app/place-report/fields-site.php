@@ -64,7 +64,14 @@ function llama_place_report_add_site_fields(
         'counts_toward_completion' => false,
         'points_categories' => [],
     ]);
-    $add('site_type_of_use', 'Type of use', 'site_vehicle', 'text', 'details.site_type_of_use', [
+    $add('site_type_of_use', 'Type of use', 'site_vehicle', 'select', 'details.site_type_of_use', [
+        'options' => [
+            'OVERNIGHT' => 'Overnight',
+            'DAY-USE' => 'Day-Use',
+            'DAY-USE AND OVERNIGHT' => 'Day-Use and Overnight',
+            'MANAGEMENT' => 'Management / Staff Use',
+            'OTHER' => 'Other',
+        ],
         'maxlength' => 120,
         'allow_unknown' => true,
         'report_group' => 'site_info',

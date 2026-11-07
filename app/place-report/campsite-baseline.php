@@ -169,7 +169,9 @@ function llama_place_report_campsite_imported_form_values(array $site): array
             llama_place_report_campsite_feature_value($site, $ridbFeatureKey) ?? ''
         ));
         if ($value !== '') {
-            $values[$canonicalKey] = $value;
+            $values[$canonicalKey] = $canonicalKey === 'site_type_of_use'
+                ? llama_place_report_site_use_value($value)
+                : $value;
         }
     }
 
