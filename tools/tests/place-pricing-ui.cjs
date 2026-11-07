@@ -18,6 +18,18 @@ w.fetch=async(url,{body})=>{
     const result=spawnSync(php,[...args,'-r',code],{input:JSON.stringify({doc:JSON.parse(body.get('rate_cards_json')),date:body.get('date'),sites:fixtures}),encoding:'utf8'});
     assert.equal(result.status,0,result.stdout+result.stderr);return{ok:true,json:async()=>JSON.parse(result.stdout)};
 };
+d.body.insertAdjacentHTML('beforeend', `
+    <details id="place-seasons" data-admin-seasons-disclosure>
+      <form data-season-builder-load>
+        <input type="hidden" name="season_booking">
+        <p data-season-booking-hint hidden>Choose a season</p>
+        <details data-season-targets>
+          <input type="checkbox" name="season_targets[]" value="place:place:1" checked>
+          <input type="checkbox" name="season_targets[]" value="site:campsite_record:101">
+          <input type="checkbox" name="season_targets[]" value="site:campsite_record:202">
+        </details>
+      </form>
+    </details>`);
 w.eval(fs.readFileSync('js/place-report-rate-cards.js','utf8'));
 const q=s=>d.querySelector(s);
 const payload=()=>JSON.parse(new w.FormData(q('form')).get('place_rate_cards_json'));
@@ -41,6 +53,10 @@ const settle=()=>new Promise(resolve=>setTimeout(resolve,50));
     q('[data-holiday-add]').click();input(q('[data-new-name]'),'Event');input(q('[data-new-start]'),'2027-07-02');input(q('[data-new-end]'),'2027-07-05');q('[data-new-save]').click();input(q('[data-price="price"]'),'80');await settle();assert.equal(q('[data-preview-price]').textContent,'$80 / night');
     change(q('[data-schedule]'),'');
     change(q('[data-detail="selection"]'),'selected');q('[data-site-id="101"]').checked=true;q('[data-site-id="101"]').dispatchEvent(new w.Event('change',{bubbles:true}));assert.deepEqual(payload().rows[0].match.site_ids,[101],'Named Site selection persists the correct identity');
+    q('[data-extra-row] [data-season-booking]').click();
+    assert.equal(q('[data-admin-seasons-disclosure]').open,true);
+    assert.equal(q('[name="season_booking"]').value,'1');
+    assert.deepEqual(new w.FormData(q('[data-season-builder-load]')).getAll('season_targets[]'),['site:campsite_record:101']);
     change(q('[data-detail="selection"]'),'');assert.deepEqual(payload().rows[0].match.site_ids,[]);
     q('[data-add]').click();assert.equal(payload().rows.length,2);q('[data-remove="1"]').click();assert.equal(payload().rows.length,1);
     assert.ok(q('[data-fees] [name="reservation_fee"]'));assert.equal(new w.FormData(q('form')).get('reservation_fee'),'8');

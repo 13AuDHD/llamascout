@@ -35,6 +35,7 @@
             <div class="place-rate-matrix-scroll"><table class="place-rate-matrix"><thead><tr><th>Site category</th><th>Layout</th><th data-base-heading>Base $</th><th data-optional-price>Weekend $</th><th data-optional-price>Holiday $</th><th></th></tr></thead><tbody data-rows></tbody></table></div>
             <p class="place-rate-empty" data-empty>Add a rate row. Choose All Sites for one campground-wide price, or Single, Double and Group for different prices.</p>
             <p class="place-rate-hint">0 = Free. Blank optional cells use the base schedule.</p>
+            <p class="place-rate-hint" data-booking-link hidden><a href="#place-seasons" data-season-booking>Set seasonal reservations or FCFS</a></p>
             <details class="place-rate-section"><summary>Seasons &amp; holiday dates</summary><div data-periods></div><div class="place-rate-actions"><button type="button" class="place-rate-cards-add" data-season-add>+ Season</button><button type="button" class="place-rate-cards-add" data-holiday-add>+ Holiday / event</button></div><div data-period-editor></div></details>
             <details class="place-rate-section"><summary>Additional fees</summary><div class="place-rate-card-grid" data-fees></div></details>
             <section class="place-rate-preview" data-preview><h3>Site price preview</h3><div class="place-rate-toolbar"><label class="place-rate-card-field"><span>Site</span><select data-preview-site></select></label><label class="place-rate-card-field"><span>Night of</span><input type="date" data-night></label></div><div aria-live="polite"><strong class="place-rate-preview-price" data-preview-price>Choose a Site</strong><p class="place-rate-hint" data-preview-reason></p><p class="place-rate-hint" data-coverage></p></div><details data-attention hidden><summary>Sites needing attention</summary><ul data-attention-list></ul></details></section>
@@ -92,6 +93,7 @@
                 ${select('Hookups','hookups',r.match?.hookups,{'':'Any hookups',none:'No hookups',electric:'Electric',full:'Full hookups'})}
                 ${select('Applies to','selection',specific ? 'selected' : '',{'':'All matching Sites',selected:'Choose specific Sites'})}
                 <div class="place-rate-site-picker" data-site-picker${specific ? '' : ' hidden'}><span>Choose Sites by name</span><input type="search" data-site-search placeholder="Find a Site" aria-label="Find a Site"><div class="place-rate-site-options">${sites.map(s => `<label><input type="checkbox" data-site-id="${s.id}"${selected.has(s.id) ? ' checked' : ''}>${esc(s.name)}</label>`).join('') || '<p>Site choices are available after the Place has Sites.</p>'}</div>${missing ? `<p class="place-rate-warning">${missing} saved selections do not match this Place. Choose Sites above, or select All matching Sites. Your existing selection has been kept.</p>` : ''}</div>
+                ${admin && document.querySelector('[data-admin-seasons-disclosure]') ? '<p class="place-rate-hint"><a href="#place-seasons" data-season-booking>Set seasonal reservations for these Sites</a></p>' : ''}
                 ${select('Billing unit','unit',r.unit,units)}${input('Label (optional)','name',r.name || '')}${input('Loop (optional)','loop',r.match?.loop || '')}${input('Imported Site type (optional)','raw_type',r.match?.raw_type || '')}
                 ${input('Pricing source URL','source_url',r.source_url || '','url')}${input('Price checked','verified_on',r.verified_on || '','date')}${input('Notes','notes',r.notes || '')}
                 ${r.match?.legacy_category ? input('Previous category','legacy_category',r.match.legacy_category) : ''}${r.match?.legacy_site ? input('Previous Site code','legacy_site',r.match.legacy_site) : ''}
@@ -189,6 +191,31 @@
         q('[data-preview-site]').innerHTML=sites.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('');q('[data-night]').value=localDate();
         q('[data-preview-site]').addEventListener('change',showSite);q('[data-night]').addEventListener('input',queuePreview);
         if(!admin){q('[data-preview-price]').textContent='Site prices will appear when this Place has Sites.';q('[data-preview-site]').disabled=true;q('[data-save-prices]').hidden=true;}
+        const seasonPanel = document.querySelector('[data-admin-seasons-disclosure]');
+        q('[data-booking-link]').hidden = !admin || !seasonPanel;
+        host.addEventListener('click', event => {
+            const link = event.target.closest('[data-season-booking]');
+            if (!link || !seasonPanel) return;
+
+            seasonPanel.open = true;
+            const load = seasonPanel.querySelector('[data-season-builder-load]');
+            if (!load) return;
+            load.querySelector('[name="season_booking"]').value = '1';
+            load.querySelector('[data-season-booking-hint]').hidden = false;
+            const picker = load.querySelector('[data-season-targets]');
+            picker.open = true;
+
+            const row = link.closest('[data-extra-row]');
+            const ids = doc.rows[Number(row?.dataset.extraRow)]?.match?.site_ids || [];
+            if (!ids.length || ids.length > 250) return;
+            const tokens = new Set(ids.map(id => 'site:campsite_record:' + id));
+            const options = [...picker.querySelectorAll('[name="season_targets[]"]')];
+            const selected = options.filter(option => tokens.has(option.value));
+            if (selected.length !== tokens.size) return;
+
+            options.forEach(option => { option.checked = tokens.has(option.value); });
+            selected[0].dispatchEvent(new Event('change', { bubbles: true }));
+        });
         q('[data-save-prices]').addEventListener('click',()=>{const save=form?.querySelector('[data-place-report-admin-save]');if(save){status('Saving prices with the Place Report…');save.click();}});
         window.addEventListener('llama:admin-place-report-saved',e=>{if(String(e.detail?.placeId || '')===String(placeId)){status('Prices saved.');queuePreview();}});
         render();if(!textarea.value.trim())textarea.value=JSON.stringify(doc);queuePreview();

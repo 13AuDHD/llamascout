@@ -86,6 +86,12 @@ $availableSeasons = array_values(array_filter(
             $seasonRows = llama_season_builder_existing(
                 $db, $placeId, $selectedSeasonId, $selectedTargets, $seasonQuestions
             );
+            $focusBooking = ($_GET['season_booking'] ?? '') === '1';
+            if ($focusBooking && !$buildingFailedPost
+                && isset($seasonQuestions['site_reservation_method'])
+                && !in_array('site_reservation_method', array_column($seasonRows, 'key'), true)) {
+                array_unshift($seasonRows, ['key' => 'site_reservation_method', 'draft' => true]);
+            }
             // A rejected POST remains on this page. Restore the submitted
             // changes so the editor never silently discards someone's work.
             $seasonPendingRemovals = [];
@@ -163,6 +169,10 @@ $availableSeasons = array_values(array_filter(
             <form class="admin-place-season-switch" method="get"
                   action="/place.php#place-seasons" data-season-builder-load>
                 <input type="hidden" name="id" value="<?= (int) $placeId ?>">
+                <input type="hidden" name="season_booking" value="<?= $focusBooking ? '1' : '' ?>">
+                <p class="admin-place-seasons-help" data-season-booking-hint<?= $focusBooking ? '' : ' hidden' ?>>
+                    Choose an operating season and the Sites, then load conditions to set their reservation method.
+                </p>
                 <label class="admin-place-season-picker-label">
                     <span>Viewing season</span>
                     <select name="season_view" aria-label="Choose season">

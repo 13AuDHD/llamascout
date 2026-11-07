@@ -110,7 +110,7 @@
         const row = document.createElement('div');
         row.className = 'admin-place-season-builder-row';
         row.dataset.sequence = String(++sequence);
-        row._originalKey = initialKey;
+        row._originalKey = data.draft ? '' : initialKey;
         row._originalValue = textValue(initialValue);
         row._mixed = !!data.mixed;
         row._dirty = data.dirty === true;
@@ -189,7 +189,7 @@
                 deletions.add(row._originalKey);
             }
             if (!key) continue;
-            if (row._originalKey === key && !row._dirty) continue;
+            if (!row._dirty && (row._originalKey === key || !value)) continue;
             if (!value) {
                 changes.push({key, value: '', missing: true});
             } else {
