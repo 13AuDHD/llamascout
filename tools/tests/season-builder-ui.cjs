@@ -94,6 +94,22 @@ const change = (window, node, value) => {
 const values = form => new form.ownerDocument.defaultView.FormData(form);
 
 {
+    const {window, form} = startFixture([{key: 'site_reservation_method', draft: true}]);
+    const save = form.querySelector('[data-season-builder-save]');
+    assert.equal(save.disabled, true, 'Opening seasonal booking must not queue an override');
+    change(window, form.querySelector('.admin-place-season-value'), 'first_come');
+    form.dispatchEvent(new window.Event('submit', {bubbles: true, cancelable: true}));
+    const data = values(form);
+    assert.equal(data.get('season_changes[0][key]'), 'site_reservation_method');
+    assert.equal(data.get('season_changes[0][value]'), 'first_come');
+    assert.deepEqual(data.getAll('season_targets[]'), [
+        'site:campsite_record:101', 'site:campsite_record:102',
+    ]);
+    window.close();
+}
+
+
+{
     const {window, form, alerts} = startFixture();
     const add = form.querySelector('[data-season-add-row]');
     const rows = () => [...form.querySelectorAll('.admin-place-season-builder-row')];
