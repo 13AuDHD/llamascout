@@ -561,7 +561,7 @@
     const controlsFor = (name) =>
         Array.from(
             form.querySelectorAll(
-                `[name="${name}"]`
+                `[name="${name}"], [name="${name}[]"], [name="_report_unknown[${name}]"]`
             )
         );
 
@@ -687,6 +687,17 @@
             return;
         }
 
+        const choices = controls.filter(control => control.name === `${key}[]`);
+        if (choices.length) {
+            const selected = Array.isArray(value) ? value : [];
+            choices.forEach(control => {
+                control.checked = selected.includes(control.value);
+            });
+            const unknown = controls.find(control => control.name === `_report_unknown[${key}]`);
+            if (unknown) unknown.checked = value === campsiteUnknown;
+            return;
+        }
+
         const stringValue =
             value === null
             || value === undefined
@@ -761,6 +772,15 @@
                 return;
             }
 
+            const choices = controls.filter(control => control.name === `${key}[]`);
+            if (choices.length) {
+                const unknown = controls.find(control => control.name === `_report_unknown[${key}]`);
+                values[key] = unknown?.checked
+                    ? campsiteUnknown
+                    : choices.filter(control => control.checked).map(control => control.value);
+                return;
+            }
+
             const radios =
                 controls.filter(
                     control =>
@@ -830,9 +850,12 @@
     };
 
     const valuesEqual =
-        (left, right) =>
-            JSON.stringify(left)
-            === JSON.stringify(right);
+        (left, right) => {
+            if (Array.isArray(left) && Array.isArray(right)) {
+                return JSON.stringify([...left].sort()) === JSON.stringify([...right].sort());
+            }
+            return left === right;
+        };
 
     const siteAreaOverrides =
         (site) => {
@@ -963,12 +986,11 @@
 
             campsiteFieldKeys.forEach(
                 (key) => {
-                    if (
-                        controlsFor(key).length
-                        === 0
-                    ) {
+                    const controls = controlsFor(key);
+                    if (!controls.length) {
                         return;
                     }
+                    const unanswered = controls.some(control => control.name === `${key}[]`) ? [] : '';
 
                     const baseValue =
                         Object.prototype.hasOwnProperty.call(
@@ -976,7 +998,7 @@
                             key
                         )
                             ? base[key]
-                            : '';
+                            : unanswered;
 
                     const hasOverride =
                         Object.prototype.hasOwnProperty.call(
@@ -995,7 +1017,7 @@
                             key
                         )
                             ? current[key]
-                            : '';
+                            : unanswered;
 
                     if (
                         valuesEqual(
@@ -1318,7 +1340,8 @@
             bulkTouched.forEach(key => {
                 if (!campsiteFieldKeys.includes(key)) return;
                 const value = values[key];
-                if (value !== undefined && value !== '' && value !== campsiteUnanswered) {
+                if (value !== undefined && value !== '' && value !== campsiteUnanswered
+                    && (!Array.isArray(value) || value.length > 0)) {
                     answers[key] = value;
                 }
             });

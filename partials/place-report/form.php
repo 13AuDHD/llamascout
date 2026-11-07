@@ -1043,7 +1043,7 @@ $renderField =
                     <select aria-label="<?= $e($field['label']) ?> month" data-season-month>
                         <option value="">Month...</option>
                         <?php foreach ($seasonMonths as $monthNumber => $monthName): ?>
-                            <option value="<?= $e($monthNumber) ?>" <?= $seasonParts[0] === $monthNumber ? 'selected' : '' ?>><?= $e($monthName) ?></option>
+                            <option value="<?= $e($monthNumber) ?>" <?= $seasonParts[0] === (string) $monthNumber ? 'selected' : '' ?>><?= $e($monthName) ?></option>
                         <?php endforeach; ?>
                     </select>
                     <select aria-label="<?= $e($field['label']) ?> day" data-season-day>
@@ -1809,7 +1809,7 @@ if ($placeReportShowPhotos):
 
 <?php endif; ?>
 
-<script defer src="/js/place-report-season-picker.js"></script>
+<script defer src="https://llamascout.com/js/place-report-season-picker.js?v=<?= (int) filemtime(dirname(__DIR__, 2) . '/js/place-report-season-picker.js') ?>"></script>
 <script defer src="https://llamascout.com/js/place-report-section-completion.js?v=<?= is_file(dirname(__DIR__, 2) . '/js/place-report-section-completion.js')
     ? (int) filemtime(dirname(__DIR__, 2) . '/js/place-report-section-completion.js')
     : 1 ?>"></script>
