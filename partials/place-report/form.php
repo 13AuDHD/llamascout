@@ -1505,7 +1505,9 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
                                 <input type="hidden" name="longitude" value="<?= $e($combinedLongitude) ?>" data-location-field="longitude">
                             </div>
 
-                            <div class="add-place-location-status contribution-field-wide" data-location-status aria-live="polite"></div>
+                            <div class="add-place-location-status is-visible is-info" data-location-status role="status">
+                                At the Place? Tap Locate me. Otherwise, enter coordinates and tap Search. The llamas will fill in what they can.
+                            </div>
                         <?php endif; ?>
                             <?php
                             $renderedCompoundQuestions = [];

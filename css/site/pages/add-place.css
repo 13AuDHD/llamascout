@@ -281,6 +281,7 @@
 }
 
 .add-place-location-status {
+    grid-column: 1 / -1;
     display: none;
     padding: 10px 12px;
 
@@ -296,6 +297,10 @@
 
 .add-place-location-status.is-visible {
     display: block;
+}
+
+.add-place-location-status.is-info {
+    border-color: color-mix(in srgb, #8ac7f3 75%, var(--border));
 }
 
 .add-place-location-status.is-success {

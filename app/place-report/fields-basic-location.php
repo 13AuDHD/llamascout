@@ -100,7 +100,6 @@ function llama_place_report_add_basic_location_fields(
     $add('region', 'Region / ranger district / local unit', 'location', 'text', 'region', [
         'allow_unknown' => true,
         'location_field' => true,
-        'wide' => true,
         'help' => 'Use the most useful local management subdivision when one exists, such as a ranger district, recreation area, park unit, preserve, or regional district.',
     ]);
 

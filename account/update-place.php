@@ -1616,7 +1616,7 @@ $e =
 
 
 <script
-    src="https://llamascout.com/js/add-place-location.js"
+    src="https://llamascout.com/js/add-place-location.js?v=<?= (int) filemtime(dirname(__DIR__) . '/js/add-place-location.js') ?>"
 ></script>
 
 <script
