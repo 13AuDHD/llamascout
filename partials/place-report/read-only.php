@@ -289,7 +289,8 @@ $campsiteSwitchableFields =
 $renderValue =
     static function (
         string $key,
-        array $field
+        array $field,
+        ?array $longitudeField = null
     ) use (
         $placeReportData,
         $placeReportReadMode,
@@ -307,10 +308,15 @@ $renderValue =
                 ?? 'community'
             );
 
+        $label = $longitudeField === null ? (string) $field['label'] : 'Coordinates';
+        $longitudeVisibility = $longitudeField['approved_visibility']
+            ?? $longitudeField['report_visibility']
+            ?? $visibility;
+
         $isAccessLocked =
             $placeReportReadMode === 'scout-report'
             && !$placeReportCanViewCommunity
-            && $visibility !== 'public';
+            && ($visibility !== 'public' || $longitudeVisibility !== 'public');
 
         if ($isAccessLocked) {
             $state = 'locked';
@@ -337,6 +343,18 @@ $renderValue =
             $state = 'unanswered';
             $value = null;
         }
+        if (!$isAccessLocked && $longitudeField !== null) {
+            $longitudeState = llama_place_report_answer_state($placeReportData, 'longitude');
+            if ($state === 'unknown' || $longitudeState === 'unknown') {
+                $state = 'unknown';
+                $value = 'Unknown';
+            } elseif ($state === 'answered' && $longitudeState === 'answered') {
+                $value .= ', ' . llama_place_report_display_value($placeReportData, 'longitude');
+            } else {
+                $state = 'unanswered';
+            }
+        }
+
         /*
          * During Issue #5 reconciliation, unanswered values stay visible in
          * every read-only flow so they can be compared against editable input.
@@ -447,7 +465,7 @@ $renderValue =
                     <span>
                         <?= $e(
                             rtrim(
-                                (string) $field['label'],
+                                $label,
                                 '*'
                             )
                         ) ?>
@@ -482,7 +500,7 @@ $renderValue =
                     <span>
                         <?= $e(
                             rtrim(
-                                (string) $field['label'],
+                                $label,
                                 '*'
                             )
                         ) ?>
@@ -555,7 +573,7 @@ $renderValue =
                     <span>
                         <?= $e(
                             rtrim(
-                                (string) $field['label'],
+                                $label,
                                 '*'
                             )
                         ) ?>
@@ -585,11 +603,12 @@ $renderValue =
             <?php endif; ?>
 
                 <?php
-                $publicAttribution =
-                    !$isCampsiteSwitchable
-                    ? ($publicPlaceReportAttribution[$key] ?? null)
-                    : null;
-                if (is_array($publicAttribution)):
+                $attributions = $isCampsiteSwitchable ? [] : [$publicPlaceReportAttribution[$key] ?? null];
+                if ($longitudeField !== null && !$isAccessLocked) {
+                    $attributions[] = $publicPlaceReportAttribution['longitude'] ?? null;
+                }
+                $attributions = array_unique(array_filter($attributions, 'is_array'), SORT_REGULAR);
+                foreach ($attributions as $publicAttribution):
                     $dateLabel = (string) ($publicAttribution['dateLabel'] ?? '');
                 ?>
                     <small class="scout-report-answer-source">
@@ -598,7 +617,7 @@ $renderValue =
                         <?php endif; ?>
                         <?= $e((string) $publicAttribution['label']) ?>
                     </small>
-                <?php endif; ?>
+                <?php endforeach; ?>
 
         </div>
         <?php
@@ -1471,7 +1490,10 @@ foreach (
                 $renderedCompoundQuestions = [];
                 ?>
                 <?php foreach ($publicReportGroups[$sectionKey][1] as $key): ?>
-                    <?php if (!isset($reportedFields[$key])): ?>
+                    <?php if (
+                        !isset($reportedFields[$key])
+                        || ($key === 'longitude' && isset($reportedFields['latitude']))
+                    ): ?>
                         <?php continue; ?>
                     <?php endif; ?>
 
@@ -1517,7 +1539,8 @@ foreach (
 
                     $renderValue(
                         (string) $key,
-                        $field
+                        $field,
+                        $key === 'latitude' ? ($reportedFields['longitude'] ?? null) : null
                     );
                     ?>
                 <?php endforeach; ?>
