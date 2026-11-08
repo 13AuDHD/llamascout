@@ -6,7 +6,7 @@ require_once __DIR__ . '/report-targets.php';
 require_once __DIR__ . '/scoped-answers.php';
 require_once __DIR__ . '/target-model.php';
 require_once dirname(__DIR__) . '/photo-staging.php';
-require_once dirname(__DIR__) . '/points.php';
+require_once dirname(__DIR__) . '/place-update.php';
 
 /**
  * Parse and validate one Area/Site correction payload against the current
@@ -22,7 +22,8 @@ require_once dirname(__DIR__) . '/points.php';
 function llama_scoped_update_build_payload(
     PDO $db,
     int $placeId,
-    array $input
+    array $input,
+    bool $isRevision = false
 ): array {
     $scope =
         trim(
@@ -179,6 +180,10 @@ function llama_scoped_update_build_payload(
                 $key,
                 $scope
             );
+
+        if (!$isRevision && !llama_place_update_allows_field($field)) {
+            throw new InvalidArgumentException('This question is managed in the Place or Site editor.');
+        }
 
         $raw =
             $answer['value']
@@ -654,7 +659,8 @@ function llama_scoped_update_resubmit(
         llama_scoped_update_build_payload(
             $db,
             $placeId,
-            $input
+            $input,
+            true
         );
 
     $payload =

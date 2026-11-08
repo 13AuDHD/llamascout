@@ -1,7 +1,7 @@
 (() => {
     'use strict';
     const q = (selector) => document.querySelector(selector);
-    let search = q('[data-report-target-search]');
+    const search = q('[data-report-target-search]');
     const scope = q('[data-report-target-scope]');
     const source = q('[data-report-target-source]');
     const id = q('[data-report-target-id]');
@@ -44,6 +44,57 @@
     if (initial.locked === true) search.disabled = true;
 
     const form = search.closest('form');
+    const picker = q('[data-contribution-picker]');
+    const modes = [...(picker?.querySelectorAll('[data-contribution-mode]') || [])];
+    const targetPanel = search.closest('.place-update-report-target');
+    const targetLabel = q('[data-contribution-target-label]');
+    const resourcePanel = q('[data-contribution-resource]');
+    const updateContent = q('[data-contribution-update]');
+    const actions = q('[data-contribution-actions]');
+    const photoTitle = q('[data-contribution-photo-title]');
+    const photoButton = q('[data-contribution-photo-button]');
+    const scopedTarget = target => target.scope !== 'place';
+    const hasScopedTargets = targets.some(scopedTarget);
+    let currentMode = scopedTarget(initialTarget) ? 'site' : 'place';
+    let lastScopedTarget = scopedTarget(initialTarget) ? initialTarget : targets.find(scopedTarget);
+
+    function showMode(mode) {
+        currentMode = mode;
+        const resource = mode === 'resource';
+        if (resourcePanel) resourcePanel.hidden = !resource;
+        if (updateContent) updateContent.hidden = resource;
+        if (actions) actions.hidden = resource;
+        for (const button of modes) {
+            button.setAttribute('aria-pressed', String(button.dataset.contributionMode === mode));
+        }
+
+        if (resource) return;
+        if (targetPanel) targetPanel.hidden = mode === 'place' || !hasScopedTargets;
+        if (targetLabel) targetLabel.textContent = 'Site or Area to update';
+        if (photoTitle) photoTitle.textContent = mode === 'site' ? 'Site photos' : 'Place photos';
+
+        for (const option of search.options) {
+            option.hidden = mode === 'site' && labels.get(option.value)?.scope === 'place';
+        }
+        const target = mode === 'site' ? lastScopedTarget : place;
+        if (!target) return;
+        search.value = `${target.scope}:${target.source}:${target.id}`;
+        update();
+    }
+
+    if (picker && initial.locked !== true) {
+        picker.hidden = false;
+        for (const button of modes) {
+            const mode = button.dataset.contributionMode;
+            button.disabled = mode === 'site' && !hasScopedTargets;
+            button.addEventListener('click', () => showMode(mode));
+        }
+    }
+
+    if (photoButton) {
+        photoButton.hidden = false;
+        photoButton.addEventListener('click', () => q('[data-photo-uploader] [data-photo-files]')?.click());
+    }
 
     // Draft answers belong to an individual reporting target, not to the
     // reusable set of Site questions. Switching Site must never carry over
@@ -85,7 +136,7 @@
     let loadSequence = 0;
 
     function eligible(f) {
-        return !f.derived && !f.location && f.scopes.includes(scope.value) && supported.has(f.type);
+        return !f.derived && !f.location && !f.excluded && f.scopes.includes(scope.value) && supported.has(f.type);
     }
 
     function make(tag, className, text) {
@@ -592,11 +643,9 @@
             input.disabled = scoped || Boolean(field && !field.scopes.includes('place'));
         }
 
-        const scopedHeading = scopedFields.querySelector('h3');
+        const scopedHeading = scopedFields.querySelector('[data-contribution-scoped-title]');
         if (scopedHeading) {
-            scopedHeading.textContent = scoped
-                ? `${t.scope === 'site' ? 'Site' : 'Area'} Scout Report: ${t.label}`
-                : 'Area or Site Scout Report';
+            scopedHeading.textContent = t.scope === 'area' ? 'Area details' : 'Site details';
         }
 
         if (switched) {
@@ -628,9 +677,17 @@
         }
     }
 
-    search.addEventListener('change', update);
+    search.addEventListener('change', () => {
+        const target = labels.get(search.value);
+        if (target && scopedTarget(target)) lastScopedTarget = target;
+        update();
+    });
 
     form?.addEventListener('submit', event => {
+        if (currentMode === 'resource') {
+            event.preventDefault();
+            return;
+        }
         const t = labels.get(search.value);
 
         if (!t) {
@@ -651,6 +708,7 @@
 
             if (count === 0 || count > 50) {
                 event.preventDefault();
+                scopedFields.open = true;
                 status.textContent = count > 50
                     ? 'Submit no more than 50 answers at once.'
                     : 'Answer at least one question before submitting.';
@@ -658,5 +716,9 @@
         }
     });
 
-    update();
+    if (picker && initial.locked !== true) {
+        showMode(currentMode);
+    } else {
+        update();
+    }
 })();
