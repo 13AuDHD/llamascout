@@ -65,7 +65,10 @@ $placeReportSelectedSite = isset($placeReportSiteOptions[$requestedSite]) ? $req
 
 <?php require __DIR__ . '/place-map.php'; ?>
 
-<form method="post" class="admin-place-report-form place-report-form" id="place-report"
+<div class="contribution-tab-shell" data-contribution-tabs data-contribution-split
+    data-contribution-initial="<?= ($_GET['mode'] ?? '') === 'resource' ? 'resource' : ($placeReportSelectedSite !== '' ? 'site' : 'place') ?>">
+    <?php require dirname(__DIR__, 2) . '/partials/place-report/contribution-tabs.php'; ?>
+<form method="post" class="admin-place-report-form place-report-form" id="place-report" data-contribution-report
     <?php if ($placeReportSelectedSite !== ''): ?>data-admin-site-report-id="<?= $requestedSiteId ?>"<?php endif; ?>>
     <input type="hidden" name="csrf_token" value="<?= $e(moderation_csrf_token()) ?>">
     <input type="hidden" name="place_id" value="<?= $placeId ?>">
@@ -75,7 +78,7 @@ $placeReportSelectedSite = isset($placeReportSiteOptions[$requestedSite]) ? $req
     <input type="hidden" name="photos_json"
            value="<?= $e((string) ($_POST['photos_json'] ?? '[]')) ?>">
 
-    <section class="admin-place-admin-meta">
+    <section class="admin-place-admin-meta" data-contribution-place-only>
         <header><p>Admin metadata</p><h2>Publishing + URL</h2></header>
         <div class="admin-place-meta-grid">
             <label>
@@ -157,6 +160,18 @@ $placeReportSelectedSite = isset($placeReportSiteOptions[$requestedSite]) ? $req
         </button>
     </div>
 </form>
+    <?php
+    require_once dirname(__DIR__, 2) . '/app/admin-resources.php';
+    $contributionResourceAdmin = true;
+    $contributionPlaceId = $placeId;
+    $contributionResourceOptions = [];
+    if (admin_resources_tables_ready($db)) {
+        $contributionResourceOptions = $db->query('SELECT id, name FROM resources ORDER BY name, id')->fetchAll(PDO::FETCH_ASSOC);
+        $contributionResource = admin_resource_get($db, (int) ($_GET['resource_id'] ?? 0));
+    }
+    require dirname(__DIR__, 2) . '/partials/resources/contribution.php';
+    ?>
+</div>
 
 <?php // Independent season forms belong after the complete canonical Place Report. ?>
 <?php require __DIR__ . '/place-report-seasons.php'; ?>

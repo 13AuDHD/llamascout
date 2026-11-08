@@ -200,12 +200,8 @@ function admin_resource_service_rows(array $input): array
     return $services;
 }
 
-function admin_resource_save(
-    PDO $db,
-    int $actorUserId,
-    int $resourceId,
-    array $input
-): int {
+function llama_resource_prepare_input(PDO $db, int $resourceId, array $input): array
+{
     if (!admin_resources_tables_ready($db)) {
         throw new RuntimeException(
             'Resource tables are not installed yet.'
@@ -572,6 +568,22 @@ function admin_resource_save(
             10000
         );
 
+    return compact(
+        'name', 'slug', 'resourceType', 'markerServiceType', 'latitude', 'longitude',
+        'clean', 'countryCode', 'websiteUrl', 'hoursText', 'hoursMode', 'fixedOpenHour',
+        'fixedCloseHour', 'status', 'notes', 'sourceUrl', 'sourceUpdatedAt', 'verifiedAt',
+        'services', 'weeklyHours'
+    );
+}
+
+function admin_resource_save(
+    PDO $db,
+    int $actorUserId,
+    int $resourceId,
+    array $input
+): int {
+    extract(llama_resource_prepare_input($db, $resourceId, $input), EXTR_SKIP);
+
     $creating = $resourceId < 1;
 
     if (!$creating && !admin_resource_get($db, $resourceId)) {
@@ -580,7 +592,10 @@ function admin_resource_save(
         );
     }
 
-    $db->beginTransaction();
+    $ownsTransaction = !$db->inTransaction();
+    if ($ownsTransaction) {
+        $db->beginTransaction();
+    }
 
     try {
         if ($creating) {
@@ -805,10 +820,12 @@ function admin_resource_save(
             }
         }
 
-        $db->commit();
+        if ($ownsTransaction) {
+            $db->commit();
+        }
 
     } catch (Throwable $exception) {
-        if ($db->inTransaction()) {
+        if ($ownsTransaction && $db->inTransaction()) {
             $db->rollBack();
         }
 

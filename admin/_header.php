@@ -418,6 +418,11 @@ function admin_shell_nav_class(string $key, string $active): string
         href="<?= moderation_e($siteUrl . '/css/admin/core.css') ?>"
     >
 
+<?php if ($adminScriptName === 'place.php'): ?>
+    <link rel="stylesheet" href="<?= moderation_e($siteUrl . '/css/site/features/contribution-tabs.css') ?>">
+    <link rel="stylesheet" href="<?= moderation_e($siteUrl . '/css/site/features/resource-form.css') ?>">
+<?php endif; ?>
+
 <?php foreach ($adminPageStyles as $adminStyle): ?>
         <?php
         $adminStyle = basename((string) $adminStyle);

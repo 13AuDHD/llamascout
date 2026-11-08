@@ -916,6 +916,8 @@ $pageTitle =
 $pageStyles = [
     'account/pages/update-place.css',
     'site/features/place-report-form.css',
+    'site/features/contribution-tabs.css',
+    'site/features/resource-form.css',
 ];
 
 
@@ -1053,9 +1055,14 @@ $e =
         <?php endif; ?>
 
 
+        <div class="contribution-tab-shell" data-contribution-tabs
+            data-contribution-initial="<?= ($_GET['mode'] ?? '') === 'resource' ? 'resource' : ($reportTargetIsScoped ? 'site' : 'place') ?>">
+            <?php if (!$isScopedNeedsChanges): ?>
+                <?php require dirname(__DIR__) . '/partials/place-report/contribution-tabs.php'; ?>
+            <?php endif; ?>
         <form
             method="post"
-            class="contribution-form add-place-form place-report-form place-update-form"
+            class="contribution-form add-place-form place-report-form place-update-form" data-contribution-report
         >
 
 
@@ -1171,23 +1178,6 @@ $e =
                 'locked' => $isScopedNeedsChanges,
             ];
             ?>
-            <?php $canEditResources = user_has_role('admin', $userId); ?>
-            <div class="contribution-scope-picker" role="group" aria-label="What to update" hidden data-contribution-picker>
-                <button type="button" data-contribution-mode="place" aria-pressed="true">Place</button>
-                <button type="button" data-contribution-mode="site" aria-pressed="false">Site</button>
-                <button type="button" data-contribution-mode="resource" aria-pressed="false">Resource</button>
-            </div>
-            <section class="contribution-section contribution-resource-panel" data-contribution-resource hidden>
-                <div class="contribution-section-body">
-                    <h2>Resources</h2>
-                    <?php if ($canEditResources): ?>
-                        <a href="https://admin.llamascout.com/resources.php">Manage Resources</a>
-                    <?php else: ?>
-                        <p>Resource updates are handled by Llama Scout staff.</p>
-                    <?php endif; ?>
-                    <a href="https://llamascout.com/map.php#map-resources-heading">Find Resources on the map</a>
-                </div>
-            </section>
             <div class="contribution-update-content" data-contribution-update>
             <section class="contribution-section place-update-report-target">
                 <div class="contribution-section-body">
@@ -1537,6 +1527,20 @@ $e =
 
 
         </form>
+
+        <?php if (!$isScopedNeedsChanges): ?>
+            <?php
+            $contributionReturnPlace = $slug;
+            require_once dirname(__DIR__) . '/app/resource-submissions.php';
+            $contributionResourceOptions = [];
+            if (admin_resources_tables_ready($db)) {
+                $contributionResourceOptions = $db->query('SELECT id, name FROM resources WHERE is_active = 1 ORDER BY name, id')->fetchAll(PDO::FETCH_ASSOC);
+                $contributionResource = llama_resource_active_record($db, (int) ($_GET['resource_id'] ?? 0));
+            }
+            require dirname(__DIR__) . '/partials/resources/contribution.php';
+            ?>
+        <?php endif; ?>
+        </div>
 
 
     <?php endif; ?>
