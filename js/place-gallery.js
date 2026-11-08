@@ -139,8 +139,8 @@
     }, { passive: true });
     dialog.addEventListener('touchend', (event) => {
         if (touchStartX === null) return;
-        const end = event.changedTouches?.[0]?.clientX ?? touchStartX;
+        const distance = (event.changedTouches?.[0]?.clientX ?? touchStartX) - touchStartX;
         touchStartX = null;
-        if (Math.abs(end) >= 50) render(end > 0 ? currentIndex - 1 : currentIndex + 1);
+        if (Math.abs(distance) >= 50) render(distance > 0 ? currentIndex - 1 : currentIndex + 1);
     }, { passive: true });
 })();
