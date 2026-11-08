@@ -192,9 +192,6 @@
 .place-overnight-options .place-photo-gallery {
     grid-auto-columns: minmax(145px, 25%);
 }
-.place-overnight-options [data-place-gallery] .place-photo-thumb {
-    border-left: 3px solid var(--explorer-color);
-}
 /* The official Place pin holds the only Place photo popup. */
 .place-map-card .place-explorer-pin-popup-shell .leaflet-popup-content-wrapper {
     padding: 0;
