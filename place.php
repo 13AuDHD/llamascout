@@ -766,7 +766,13 @@ require
         . '/partials/place/facts-weather-amenities.php';
     ?>
 
-    <?php require __DIR__ . '/partials/place/gallery.php'; ?>
+    <?php
+    if ($canPreviewPlacePhotos && !$galleryImages) {
+        require_once __DIR__ . '/app/contribution-presentation.php';
+        $placePhotoFallback = llama_contribution_photo_url($db);
+    }
+    require __DIR__ . '/partials/place/gallery.php';
+    ?>
 
     <div
         data-place-campsites-mount

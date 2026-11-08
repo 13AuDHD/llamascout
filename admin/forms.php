@@ -6,6 +6,7 @@ require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/admin-users.php';
 require_once dirname(__DIR__) . '/app/place-report.php';
 require_once __DIR__ . '/_dashboard.php';
+require_once dirname(__DIR__) . '/app/contribution-presentation.php';
 
 $adminUser = moderation_require_admin();
 $db = db();
@@ -18,6 +19,7 @@ $actorUserId =
 
 $notice = '';
 $error = '';
+$fallbackPhotoPath = llama_site_setting($db, LLAMA_CONTRIBUTION_PHOTO_SETTING, '') ?? '';
 
 $settingDefinitions = [
     'place_report_description_min_characters' => [
@@ -109,6 +111,27 @@ if (
     ) {
         $error =
             'Your session token expired. Reload and try again.';
+    } elseif (($_POST['action'] ?? '') === 'save_contribution_photo') {
+        try {
+            $path = trim((string) ($_POST['fallback_photo_path'] ?? ''));
+            if ($path !== '' && llama_contribution_photo_path($path) === null) {
+                throw new InvalidArgumentException('Enter a public image path beginning with /images/.');
+            }
+
+            $db->beginTransaction();
+            llama_set_site_setting($db, LLAMA_CONTRIBUTION_PHOTO_SETTING, $path);
+            admin_users_audit($db, $actorUserId, null, 'system.contribution_photo_updated',
+                'Updated the contribution fallback image.', ['before' => $fallbackPhotoPath, 'after' => $path]);
+            $db->commit();
+
+            $fallbackPhotoPath = $path;
+            $notice = 'Contribution fallback image saved.';
+        } catch (Throwable $exception) {
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
+            $error = $exception->getMessage();
+        }
     } else {
         try {
             $submitted =
@@ -347,5 +370,24 @@ require __DIR__ . '/_header.php';
         </button>
     </div>
 </form>
+
+<section class="admin-panel">
+    <header class="admin-panel-header">
+        <div>
+            <p>Contributions</p>
+            <h2>Fallback photo</h2>
+        </div>
+    </header>
+    <form method="post" class="admin-user-action-box">
+        <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+        <input type="hidden" name="action" value="save_contribution_photo">
+        <label for="fallback-photo-path">Public image path</label>
+        <input id="fallback-photo-path" name="fallback_photo_path" type="text"
+            value="<?= moderation_e($fallbackPhotoPath) ?>"
+            placeholder="/images/demo/llama-scout-headquarters-hero.jpeg">
+        <p>Leave blank to use the Llama Scout Headquarters illustration.</p>
+        <button class="admin-button" type="submit">Save fallback photo</button>
+    </form>
+</section>
 
 <?php require __DIR__ . '/_footer.php'; ?>

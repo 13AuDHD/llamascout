@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/place-update.php';
+require_once dirname(__DIR__) . '/app/contribution-presentation.php';
 
 require_verified_email();
 
@@ -16,24 +17,6 @@ $userId =
     (int) (
         $user['id']
         ?? 0
-    );
-
-
-$currentContributionLevel =
-    llama_user_contribution_level(
-        db(),
-        $userId
-    );
-
-
-$currentContributionShortLabel =
-    llama_contribution_level_short_label(
-        $currentContributionLevel
-    );
-
-$currentContributionLabel =
-    llama_contribution_level_label(
-        $currentContributionLevel
     );
 
 
@@ -854,16 +837,21 @@ $placeReportAllowedStoragePaths =
  * Do not also render the Add Place date field inside the Place questions:
  * its empty required control would block native browser submission.
  */
-$placeReportExternalFieldKeys =
-    ['visited_at'];
+$placeReportExternalFieldKeys = ['visited_at'];
+if (!$isNeedsChanges) {
+    foreach (llama_place_report_fields() as $key => $field) {
+        if ($key !== 'visited_at' && !llama_place_update_allows_field($field)) {
+            $placeReportExternalFieldKeys[] = $key;
+        }
+    }
+}
 
 
 $placeReportMode =
     'update-report';
 
 
-$placeReportShowLocate =
-    true;
+$placeReportShowLocate = $isNeedsChanges;
 
 
 $placeReportShowNameSuggestion =
@@ -952,64 +940,8 @@ $e =
     <header class="contribution-header place-update-header">
 
 
-        <p class="eyebrow">
-
-            <?= $isNeedsChanges
-                ? 'Changes requested'
-                : $e(
-                    $currentContributionShortLabel
-                    . ' contribution'
-                ) ?>
-
-        </p>
-
-
-        <h1>
-
-            <?= $isNeedsChanges
-                ? 'Revise this update'
-                : 'Suggest an update' ?>
-
-        </h1>
-
-
-        <p class="place-update-place-name">
-
-            <?= $e(
-                $place['name']
-                ?? ''
-            ) ?>
-
-        </p>
-
-
-        <p class="place-update-intro">
-
-            Submit a new Scout report for what you observed.
-            Current answers are shown as reference only.
-            Answer only the questions you can confirm or update.
-            Questions you leave blank are not submitted and do not change
-            existing information.
-
-        </p>
-
-
-        <div class="add-place-form-note">
-
-            <i
-                aria-hidden="true"
-            ><?= llama_icon('info-circle') ?></i>
-
-            <span>
-                If approved, this field work is recorded as
-                <strong><?= $e($currentContributionLabel) ?></strong>.
-                Your report does not change the live Place immediately. A moderator
-                reviews the submitted answers first, and only approved answers can
-                update the current Place summary. The report remains part of its history.
-            </span>
-
-        </div>
-
+        <p class="eyebrow"><?= $isNeedsChanges ? 'Changes requested' : 'Update this Place' ?></p>
+        <h1><?= $e((string) ($place['name'] ?? '')) ?></h1>
 
     </header>
 
@@ -1239,12 +1171,28 @@ $e =
                 'locked' => $isScopedNeedsChanges,
             ];
             ?>
+            <?php $canEditResources = user_has_role('admin', $userId); ?>
+            <div class="contribution-scope-picker" role="group" aria-label="What to update" hidden data-contribution-picker>
+                <button type="button" data-contribution-mode="place" aria-pressed="true">Place</button>
+                <button type="button" data-contribution-mode="site" aria-pressed="false">Site</button>
+                <button type="button" data-contribution-mode="resource" aria-pressed="false">Resource</button>
+            </div>
+            <section class="contribution-section contribution-resource-panel" data-contribution-resource hidden>
+                <div class="contribution-section-body">
+                    <h2>Resources</h2>
+                    <?php if ($canEditResources): ?>
+                        <a href="https://admin.llamascout.com/resources.php">Manage Resources</a>
+                    <?php else: ?>
+                        <p>Resource updates are handled by Llama Scout staff.</p>
+                    <?php endif; ?>
+                    <a href="https://llamascout.com/map.php#map-resources-heading">Find Resources on the map</a>
+                </div>
+            </section>
+            <div class="contribution-update-content" data-contribution-update>
             <section class="contribution-section place-update-report-target">
                 <div class="contribution-section-body">
-                    <h3>What are you reporting?</h3>
-                    <p>Choose the entire Place or an individual camping Area or Site.</p>
                     <div class="contribution-field contribution-field-wide">
-                        <label for="place-update-report-target">Reporting target</label>
+                        <label for="place-update-report-target" data-contribution-target-label>Reporting target</label>
                         <select
                             id="place-update-report-target"
                             class="contribution-input"
@@ -1299,17 +1247,19 @@ $e =
                 $initialReportTarget,
                 JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR
             ) ?></script>
-            <script defer src="<?= $e($siteUrl . '/js/place-update-report-target.js') ?>"></script>
+            <script defer src="<?= $e($siteUrl . '/js/place-update-report-target.js?v=' . filemtime(dirname(__DIR__) . '/js/place-update-report-target.js')) ?>"></script>
             <div data-place-update-place-fields>
             <?php require dirname(__DIR__) . '/partials/place-report/form.php'; ?>
             </div>
-            <section class="contribution-section" data-place-update-scoped-fields hidden>
-                <h3>Area or Site Scout Report</h3>
-                <p>Answer the questions that apply to the selected Area or Site. Only answers you enter here will be proposed for review. Other areas and the parent Place will not be changed.</p>
-                <div data-scoped-report-questions></div>
-                <input type="hidden" name="scoped_answers_json" value="" data-scoped-answers-json>
-                <p data-scoped-field-notice role="status"></p>
-            </section>
+            <details class="contribution-section" data-place-update-scoped-fields
+                <?= $initialScopedAnswers ? 'open' : '' ?> hidden>
+                <summary><span data-contribution-scoped-title>Site details</span></summary>
+                <div class="contribution-section-body">
+                    <div data-scoped-report-questions></div>
+                    <input type="hidden" name="scoped_answers_json" value="" data-scoped-answers-json>
+                    <p data-scoped-field-notice role="status"></p>
+                </div>
+            </details>
             <?php
             /* Use the same final layout definitions as the shared report form. */
             $scopedReportLayoutGroups = llama_place_report_layout_groups();
@@ -1325,7 +1275,8 @@ $e =
             $scopedReportFieldData = array_values(array_map(
                 static function (array $field) use (
                     $scopedReportLayoutGroups,
-                    $scopedReportLayoutSections
+                    $scopedReportLayoutSections,
+                    $placeReportExternalFieldKeys
                 ): array {
                     $layoutSection = (string) ($field['layout_section'] ?? '');
                     $layoutGroup = (string) ($field['layout_group'] ?? '');
@@ -1355,9 +1306,10 @@ $e =
                         'unknown' => !empty($field['allow_unknown']),
                         'derived' => !empty($field['derived']),
                         'location' => !empty($field['location_field']),
+                        'excluded' => in_array($field['key'], $placeReportExternalFieldKeys, true),
                     ];
                 },
-                llama_place_report_fields()
+                llama_report_questions()
             ));
             ?>
             <script type="application/json" id="place-update-scoped-fields-data"><?= json_encode(
@@ -1445,32 +1397,17 @@ $e =
             </details>
 
 
-            <details
-                class="contribution-section place-update-photo-section"
-                open
-            >
-
-
-                <summary>
-
-                    <span>
-
-                        <i
-                            aria-hidden="true"
-                        ><?= llama_icon('camera') ?></i>
-
-                        Photos from this visit
-
-                    </span>
-
-
-                    <small>
-                        Evidence of changed or current conditions
-                    </small>
-
-                </summary>
-
-
+            <section class="contribution-section place-update-photo-section" id="contribution-photos">
+                <div class="photo-fallback-card">
+                    <img src="<?= $e(llama_contribution_photo_url($db)) ?>" alt="" loading="lazy">
+                    <div>
+                        <p>Illustration</p>
+                        <h2 data-contribution-photo-title>Place photos</h2>
+                        <button type="button" class="photo-fallback-card-action" data-contribution-photo-button hidden>
+                            <?= llama_icon('camera') ?> Add photos
+                        </button>
+                    </div>
+                </div>
                 <div class="contribution-section-body">
 
 
@@ -1571,10 +1508,12 @@ $e =
                 </div>
 
 
-            </details>
+            </section>
+            </div>
 
 
-            <div class="contribution-actions add-place-submit-bar">
+            <div class="contribution-actions add-place-submit-bar" data-contribution-actions>
+                <span>Updates are reviewed before they appear.</span>
 
 
                 <button
@@ -1592,15 +1531,6 @@ $e =
                         : 'Submit Update' ?>
 
                 </button>
-
-
-                <a
-                    href="https://llamascout.com/place.php?slug=<?= rawurlencode(
-                        $slug
-                    ) ?>"
-                >
-                    Cancel
-                </a>
 
 
             </div>

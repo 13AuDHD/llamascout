@@ -32,6 +32,14 @@ function llama_place_update_definitions(): array
 }
 
 
+function llama_place_update_allows_field(array $field): bool
+{
+    return !in_array($field['section'] ?? '', ['basic', 'location'], true)
+        && empty($field['location_field'])
+        && ($field['key'] ?? '') !== 'site_number';
+}
+
+
 function llama_place_update_sections(): array
 {
     $sharedSections =
@@ -141,7 +149,8 @@ function llama_place_update_value_equal(mixed $a, mixed $b, ?array $field = null
 function llama_place_update_build_changes(
     array $input,
     array $current,
-    array $currentUnknownFields = []
+    array $currentUnknownFields = [],
+    bool $limitToUpdateFields = false
 ): array {
     $partialReport =
         !empty(
@@ -186,6 +195,10 @@ function llama_place_update_build_changes(
                 $input['_report_touched'][$key]
             )
         ) {
+            continue;
+        }
+
+        if ($limitToUpdateFields && !llama_place_update_allows_field($field)) {
             continue;
         }
 
@@ -779,7 +792,8 @@ function llama_place_update_submit(
         llama_place_update_build_changes(
             $input,
             $current,
-            $currentUnknownFields
+            $currentUnknownFields,
+            true
         );
 
 

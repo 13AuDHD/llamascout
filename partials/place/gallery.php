@@ -63,9 +63,30 @@ if ($canPreviewPlacePhotos && $galleryImages):
                 : 'Sign in with a free account to enlarge and browse these photos.' ?>
         </p>
     </section>
+<?php elseif ($canPreviewPlacePhotos && !empty($placePhotoFallback)): ?>
+    <section class="place-photo-gallery-section" data-explorer-place-photos aria-labelledby="place-photo-gallery-heading">
+        <div class="place-photo-gallery-heading">
+            <div>
+                <p class="place-detail-eyebrow">Photos</p>
+                <h2 id="place-photo-gallery-heading">Photo gallery</h2>
+            </div>
+        </div>
+        <div class="photo-fallback-card">
+            <img src="<?= place_h($placePhotoFallback) ?>" alt="" loading="lazy" decoding="async">
+            <div>
+                <p>Illustration</p>
+                <strong>Place photo needed</strong>
+                <?php if ($canSuggestUpdate): ?>
+                    <a class="photo-fallback-card-action" href="https://account.llamascout.com/update-place.php?slug=<?= rawurlencode((string) $place['slug']) ?>#contribution-photos">
+                        Submit a photo
+                    </a>
+                <?php endif; ?>
+            </div>
+        </div>
+    </section>
 <?php endif; ?>
 
-<?php if ($canOpenPlaceGallery): ?>
+<?php if ($canOpenPlaceGallery && $galleryImages): ?>
         <dialog class="place-gallery-lightbox" id="place-gallery-lightbox" aria-label="Photo viewer">
             <div class="place-gallery-lightbox-inner">
                 <div class="place-gallery-lightbox-top">

@@ -1,5 +1,6 @@
 @import url("../core.css");
 @import url("../../site/pages/add-place.css");
+@import url("../../site/features/photo-fallback.css");
 
 
 /* =========================================================
@@ -37,28 +38,6 @@
 .place-update-header h1,
 .place-update-header p {
     margin: 0;
-}
-
-
-.place-update-place-name {
-    color: var(--text);
-
-    font-size: 1rem;
-    font-weight: 750;
-}
-
-
-.place-update-intro {
-    max-width: 760px;
-
-    color: var(--text-muted);
-
-    line-height: 1.65;
-}
-
-
-.place-update-header .add-place-form-note {
-    margin-top: 10px;
 }
 
 
@@ -406,4 +385,94 @@
         scroll-behavior: auto;
     }
 
+}
+
+.contribution-scope-picker {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    justify-self: center;
+    width: min(100%, 360px);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+}
+
+.contribution-scope-picker button {
+    min-height: 44px;
+    padding: 8px 12px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-weight: 750;
+    cursor: pointer;
+}
+
+.contribution-scope-picker button:disabled {
+    opacity: .55;
+    cursor: default;
+}
+
+.contribution-scope-picker [aria-pressed="true"] {
+    --mode-color: #70bd87;
+    border-color: color-mix(in srgb, var(--mode-color) 55%, var(--border));
+    background: color-mix(in srgb, var(--mode-color) 24%, var(--surface));
+}
+
+.contribution-scope-picker [data-contribution-mode="site"] {
+    --mode-color: #f2a44e;
+}
+
+.contribution-scope-picker [data-contribution-mode="resource"] {
+    --mode-color: #bb94ef;
+}
+
+.contribution-update-content,
+.contribution-resource-panel .contribution-section-body {
+    display: grid;
+    gap: 14px;
+}
+
+.contribution-resource-panel :is(h2, p) {
+    margin: 0;
+}
+
+.place-update-page :is(
+    [data-contribution-picker],
+    [data-contribution-resource],
+    [data-contribution-update],
+    [data-contribution-actions],
+    [data-contribution-photo-button],
+    .place-update-report-target
+)[hidden] {
+    display: none;
+}
+
+.place-update-photo-section .photo-fallback-card {
+    border: 0;
+    border-radius: 11px 11px 0 0;
+}
+
+.place-update-page .add-place-submit-bar {
+    justify-content: space-between;
+}
+
+.place-update-page .add-place-submit-bar span {
+    color: var(--text-muted);
+    font-size: .82rem;
+}
+
+.place-update-page .add-place-submit-bar .contribution-submit {
+    margin-left: auto;
+    border: 1px solid #7abc8a;
+    background: #28513a;
+    color: #fff;
+}
+
+@media (max-width: 480px) {
+    .place-update-page .add-place-submit-bar {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
 }
