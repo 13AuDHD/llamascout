@@ -1,0 +1,54 @@
+.contribution-scope-picker {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-inline: auto;
+    width: min(100%, 360px);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+}
+
+.contribution-scope-picker button {
+    min-height: 44px;
+    padding: 8px 12px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-weight: 750;
+    cursor: pointer;
+}
+
+.contribution-scope-picker button:disabled {
+    opacity: .55;
+    cursor: default;
+}
+
+.contribution-scope-picker [aria-pressed="true"] {
+    --mode-color: #70bd87;
+    border-color: color-mix(in srgb, var(--mode-color) 55%, var(--border));
+    background: color-mix(in srgb, var(--mode-color) 24%, var(--surface));
+}
+
+.contribution-scope-picker [data-contribution-mode="site"] {
+    --mode-color: #f2a44e;
+}
+
+.contribution-scope-picker [data-contribution-mode="resource"] {
+    --mode-color: #bb94ef;
+}
+
+
+.contribution-tab-shell {
+    display: grid;
+    gap: 16px;
+    min-width: 0;
+}
+
+.contribution-tab-shell [data-contribution-report][hidden],
+.contribution-tab-shell [data-contribution-resource][hidden],
+.contribution-tab-shell [data-contribution-picker][hidden],
+.contribution-tab-shell [data-contribution-inactive] {
+    display: none;
+}

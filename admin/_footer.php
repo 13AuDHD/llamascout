@@ -128,7 +128,7 @@ if (
 <?php endif; ?>
 
 <?php if ($adminFooterScript === 'resources.php'): ?>
-    <script src="https://llamascout.com/js/admin/resources.js"></script>
+    <script src="https://llamascout.com/js/admin/resources.js?v=<?= (int) filemtime(dirname(__DIR__) . '/js/admin/resources.js') ?>"></script>
 <?php endif; ?>
 
 <?php if ($adminFooterScript === 'place.php'): ?>

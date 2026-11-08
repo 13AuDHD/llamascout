@@ -27,6 +27,9 @@ if ($placeId < 1) {
 
 $actionState = admin_place_handle_actions($db, $actorUserId, $placeId);
 $notice = (string) ($actionState['notice'] ?? '');
+if (($_GET['resource_saved'] ?? '') === '1') {
+    $notice = 'Resource saved.';
+}
 $error = (string) ($actionState['error'] ?? '');
 $action = (string) ($actionState['action'] ?? '');
 $place = admin_place_get($db, $placeId);

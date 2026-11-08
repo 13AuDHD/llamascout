@@ -44,31 +44,17 @@
     if (initial.locked === true) search.disabled = true;
 
     const form = search.closest('form');
-    const picker = q('[data-contribution-picker]');
-    const modes = [...(picker?.querySelectorAll('[data-contribution-mode]') || [])];
+    const shell = form?.closest('[data-contribution-tabs]');
+    const picker = shell?.querySelector('[data-contribution-picker]');
     const targetPanel = search.closest('.place-update-report-target');
     const targetLabel = q('[data-contribution-target-label]');
-    const resourcePanel = q('[data-contribution-resource]');
-    const updateContent = q('[data-contribution-update]');
-    const actions = q('[data-contribution-actions]');
     const photoTitle = q('[data-contribution-photo-title]');
     const photoButton = q('[data-contribution-photo-button]');
     const scopedTarget = target => target.scope !== 'place';
     const hasScopedTargets = targets.some(scopedTarget);
-    let currentMode = scopedTarget(initialTarget) ? 'site' : 'place';
     let lastScopedTarget = scopedTarget(initialTarget) ? initialTarget : targets.find(scopedTarget);
 
     function showMode(mode) {
-        currentMode = mode;
-        const resource = mode === 'resource';
-        if (resourcePanel) resourcePanel.hidden = !resource;
-        if (updateContent) updateContent.hidden = resource;
-        if (actions) actions.hidden = resource;
-        for (const button of modes) {
-            button.setAttribute('aria-pressed', String(button.dataset.contributionMode === mode));
-        }
-
-        if (resource) return;
         if (targetPanel) targetPanel.hidden = mode === 'place' || !hasScopedTargets;
         if (targetLabel) targetLabel.textContent = 'Site or Area to update';
         if (photoTitle) photoTitle.textContent = mode === 'site' ? 'Site photos' : 'Place photos';
@@ -80,15 +66,12 @@
         if (!target) return;
         search.value = `${target.scope}:${target.source}:${target.id}`;
         update();
+        if (mode === 'site') scopedFields.open = true;
     }
 
     if (picker && initial.locked !== true) {
-        picker.hidden = false;
-        for (const button of modes) {
-            const mode = button.dataset.contributionMode;
-            button.disabled = mode === 'site' && !hasScopedTargets;
-            button.addEventListener('click', () => showMode(mode));
-        }
+        picker.querySelector('[data-contribution-mode="site"]').disabled = !hasScopedTargets;
+        shell.addEventListener('llama:contribution-mode', event => showMode(event.detail));
     }
 
     if (photoButton) {
@@ -684,10 +667,6 @@
     });
 
     form?.addEventListener('submit', event => {
-        if (currentMode === 'resource') {
-            event.preventDefault();
-            return;
-        }
         const t = labels.get(search.value);
 
         if (!t) {
@@ -716,9 +695,10 @@
         }
     });
 
-    if (picker && initial.locked !== true) {
-        showMode(currentMode);
-    } else {
-        update();
-    }
+    // Keep the canonical Site controls available as templates for the Site tab.
+    // The Place tab displays only Place and Getting There sections.
+    const siteSection = placeFields.querySelector('[data-report-main-section="site"]');
+    if (siteSection) siteSection.setAttribute('data-contribution-inactive', '');
+
+    showMode(scopedTarget(initialTarget) ? 'site' : 'place');
 })();
