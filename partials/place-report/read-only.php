@@ -293,6 +293,7 @@ $renderValue =
         ?array $longitudeField = null
     ) use (
         $placeReportData,
+        $placeReportApplicabilityInput,
         $placeReportReadMode,
         $e,
         $localIcon,
@@ -412,12 +413,15 @@ $renderValue =
                 true
             );
 
-        /*
-         * Reconciliation mode keeps unanswered Site/Area-capable questions
-         * visible instead of waiting for a Site selection.
-         */
+        // Shared Place/Area fields already have a Place context on first render.
+        // Site-only dependencies are evaluated when a Site is selected.
         $hideUntilCampsite =
-            $isCampsiteSwitchable && !empty($field['applicable_if']);
+            $isCampsiteSwitchable
+            && !empty($field['applicable_if'])
+            && (
+                !in_array('place', (array) ($field['report_scopes'] ?? []), true)
+                || !llama_place_report_question_applicable($placeReportApplicabilityInput, $key)
+            );
 
         $fieldReportScopes =
             array_values(
