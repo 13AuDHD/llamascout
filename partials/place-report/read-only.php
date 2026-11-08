@@ -549,6 +549,28 @@ $renderValue =
 
                 <?php
                 $safeUrl = null;
+                $descriptionHtml = null;
+                $descriptionPreview = '';
+                if ($key === 'description' && $state === 'answered') {
+                    $descriptionHtml = $renderSafeDescription((string) $value);
+                    if ($placeReportReadMode === 'scout-report') {
+                        $separated = preg_replace(
+                            '~<(?:br\s*/?|/(?:p|li|ul|ol|h[3-5]|blockquote))>~',
+                            ' ',
+                            $descriptionHtml
+                        );
+                        $text = html_entity_decode(strip_tags($separated), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                        $text = trim(preg_replace('/\s+/u', ' ', $text) ?? $text);
+                        $previewLimit = 1000;
+                        if (mb_strlen($text, 'UTF-8') > $previewLimit) {
+                            $excerpt = mb_substr($text, 0, $previewLimit, 'UTF-8');
+                            if (preg_match('/\S/u', mb_substr($text, $previewLimit, 1, 'UTF-8'))) {
+                                $excerpt = preg_replace('/\s+\S*$/u', '', $excerpt) ?? $excerpt;
+                            }
+                            $descriptionPreview = rtrim($excerpt) . '…';
+                        }
+                    }
+                }
 
                 if (
                     $type === 'url'
@@ -583,19 +605,32 @@ $renderValue =
                         ) ?>
                     </span>
 
-                    <strong>
-                        <?php if ($safeUrl !== null): ?>
-                            <a
-                                href="<?= $e($safeUrl) ?>"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                            ><?= $e($value) ?></a>
-                        <?php elseif ($key === 'description' && $state === 'answered'): ?>
-                            <?= $renderSafeDescription((string) $value) ?>
-                        <?php else: ?>
-                            <?= $e($value) ?>
-                        <?php endif; ?>
-                    </strong>
+                    <?php if ($descriptionPreview !== ''): ?>
+                        <div class="scout-report-description">
+                            <p class="scout-report-description-preview"><?= $e($descriptionPreview) ?></p>
+                            <details>
+                                <summary>
+                                    <span class="scout-report-description-more">Read more</span>
+                                    <span class="scout-report-description-less">Read less</span>
+                                </summary>
+                                <div><?= $descriptionHtml ?></div>
+                            </details>
+                        </div>
+                    <?php else: ?>
+                        <strong>
+                            <?php if ($safeUrl !== null): ?>
+                                <a
+                                    href="<?= $e($safeUrl) ?>"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                ><?= $e($value) ?></a>
+                            <?php elseif ($descriptionHtml !== null): ?>
+                                <?= $descriptionHtml ?>
+                            <?php else: ?>
+                                <?= $e($value) ?>
+                            <?php endif; ?>
+                        </strong>
+                    <?php endif; ?>
                 </div>
 
                 <?= llama_icon(

@@ -271,8 +271,7 @@
     display: none !important;
 }
 
-/* Long-form answers are normal document flow so the card always grows
-   with the full paragraph, regardless of viewport or column width. */
+/* Long-form answers grow with their visible content. */
 .scout-report-long-text {
     position: relative;
     display: block;
@@ -295,7 +294,8 @@
 
 .scout-report-long-text
 > .scout-report-value-content
-> strong {
+> strong,
+.scout-report-description {
     display: block;
     margin: 8px 0 0;
     min-width: 0;
@@ -303,6 +303,23 @@
     font-weight: 450;
     line-height: 1.48;
     overflow-wrap: anywhere;
+}
+
+.scout-report-description-preview {
+    margin: 0 0 8px;
+}
+
+.scout-report-description summary {
+    width: fit-content;
+    min-height: 24px;
+    cursor: pointer;
+    font-weight: 650;
+}
+
+.scout-report-description:has(> details[open]) > .scout-report-description-preview,
+.scout-report-description details[open] .scout-report-description-more,
+.scout-report-description details:not([open]) .scout-report-description-less {
+    display: none;
 }
 
 .scout-report-long-text
