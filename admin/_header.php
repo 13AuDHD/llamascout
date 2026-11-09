@@ -560,6 +560,22 @@ function admin_shell_nav_class(string $key, string $active): string
         </a>
 
         <a
+            class="<?= admin_shell_nav_class(
+                'resources',
+                $adminActiveNav
+            ) ?>"
+            href="<?= moderation_e(
+                $adminUrl . '/resources.php'
+            ) ?>"
+        >
+            <i aria-hidden="true">
+                <?= llama_icon('map-pin') ?>
+            </i>
+
+            <span>Resources</span>
+        </a>
+
+        <a
             class="<?= admin_shell_nav_class('closed_places', $adminActiveNav) ?>"
             href="<?= moderation_e($adminUrl . '/closed-places.php') ?>"
         >
@@ -609,22 +625,6 @@ function admin_shell_nav_class(string $key, string $active): string
         </a>
 
         <p class="admin-nav-label">Map Data</p>
-
-        <a
-            class="<?= admin_shell_nav_class(
-                'resources',
-                $adminActiveNav
-            ) ?>"
-            href="<?= moderation_e(
-                $adminUrl . '/resources.php'
-            ) ?>"
-        >
-            <i aria-hidden="true">
-                <?= llama_icon('map-pin') ?>
-            </i>
-
-            <span>Resources</span>
-        </a>
 
         <a
             class="<?= admin_shell_nav_class(

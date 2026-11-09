@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
+require_once dirname(__DIR__) . '/app/mail.php';
+require_once dirname(__DIR__) . '/app/admin-users.php';
 require_once dirname(__DIR__) . '/app/resource-submissions.php';
 require_once __DIR__ . '/_dashboard.php';
 
@@ -12,6 +14,7 @@ $actorUserId = (int) ($adminUser['id'] ?? 0);
 
 $tablesReady = admin_resources_tables_ready($db);
 $submissionsReady = llama_resource_submissions_ready($db);
+$reviewNotesReady = $submissionsReady && llama_resource_review_notes_ready($db);
 $submissionId = max(0, (int) ($_GET['submission'] ?? $_POST['submission_id'] ?? 0));
 $returnPlaceId = max(0, (int) ($_POST['return_place_id'] ?? 0));
 $notice = '';
@@ -50,21 +53,75 @@ if (
                     )
                 );
 
-            if (in_array($action, ['approve_submission', 'reject_submission'], true)) {
+            $decision = match ($action) {
+                'approve_submission' => 'approved',
+                'reject_submission' => 'rejected',
+                'request_changes' => 'needs-changes',
+                default => null,
+            };
+            if ($decision !== null) {
                 if (!$submissionsReady || $submissionId < 1) {
                     throw new InvalidArgumentException('Choose a pending Resource submission.');
                 }
+                $notes = mb_substr(trim((string) ($_POST['review_notes'] ?? '')), 0, 4000);
+                if ($reviewNotesReady && $decision !== 'approved' && $notes === '') {
+                    throw new InvalidArgumentException('Add review notes explaining your decision.');
+                }
+                $reviewedSubmission = $db->prepare(
+                    'SELECT submitted_by, target_resource_id, name FROM resource_submissions WHERE id = ?'
+                );
+                $reviewedSubmission->execute([$submissionId]);
+                $submission = $reviewedSubmission->fetch(PDO::FETCH_ASSOC);
                 $resourceId = llama_resource_review(
                     $db,
                     $actorUserId,
                     $submissionId,
-                    $action === 'approve_submission' ? $_POST : null
+                    $decision === 'approved' ? $_POST : null,
+                    $notes,
+                    $decision === 'needs-changes',
+                    (string) ($_POST['review_form'] ?? '')
                 );
-                header('Location: /resources.php?' . ($resourceId > 0 ? 'id=' . $resourceId . '&saved=1' : 'rejected=1'), true, 303);
+
+                try {
+                    admin_users_audit(
+                        $db,
+                        $actorUserId,
+                        (int) $submission['submitted_by'],
+                        'resource.submission_' . str_replace('-', '_', $decision),
+                        'Reviewed Resource submission #' . $submissionId,
+                        ['submission_id' => $submissionId, 'decision' => $decision, 'review_notes' => $notes]
+                    );
+                } catch (Throwable $exception) {
+                    llama_log_caught_exception($exception, 'admin.resource_review_audit', ['submission_id' => $submissionId]);
+                }
+
+                try {
+                    $published = $resourceId > 0 ? admin_resource_get($db, $resourceId) : [];
+                    send_contribution_review_email(
+                        $db,
+                        (int) $submission['submitted_by'],
+                        $decision,
+                        $submission['target_resource_id'] ? 'Resource update' : 'new Resource submission',
+                        $submissionId,
+                        (string) $submission['name'],
+                        $notes,
+                        0,
+                        'https://account.llamascout.com/contributions.php',
+                        !empty($published['slug']) ? 'https://llamascout.com/resource.php?slug=' . rawurlencode($published['slug']) : ''
+                    );
+                } catch (Throwable $exception) {
+                    llama_log_caught_exception($exception, 'email.resource_review', ['submission_id' => $submissionId]);
+                }
+
+                $queue = $submission['target_resource_id'] ? '/updates.php' : '/submissions.php';
+                header('Location: ' . $queue . '?resource_review=' . $decision, true, 303);
                 exit;
             }
 
             if ($action === 'save') {
+                if ($resourceId < 1) {
+                    throw new InvalidArgumentException('Use Add a Place to submit a new Resource.');
+                }
                 $resourceId =
                     admin_resource_save(
                         $db,
@@ -239,23 +296,16 @@ $resource =
         : [];
 
 $resourceSubmission = null;
-$pendingResourceSubmissions = [];
-if ($submissionsReady) {
-    $pendingResourceSubmissions = $db->query(
-        "SELECT id, name, created_at FROM resource_submissions WHERE status = 'pending' ORDER BY id LIMIT 50"
-    )->fetchAll(PDO::FETCH_ASSOC);
-    if ($submissionId > 0) {
-        $lookup = $db->prepare("SELECT * FROM resource_submissions WHERE id = ? AND status = 'pending'");
-        $lookup->execute([$submissionId]);
-        $resourceSubmission = $lookup->fetch(PDO::FETCH_ASSOC) ?: null;
-        if ($resourceSubmission === null && $error === '') {
-            $error = 'That Resource submission is no longer pending.';
-        }
+$pendingResourceSubmissions = $submissionId > 0 ? [] : llama_resource_submission_queue($db, null, 50);
+if ($submissionsReady && $submissionId > 0) {
+    $lookup = $db->prepare("SELECT * FROM resource_submissions WHERE id = ? AND status IN ('pending', 'needs-changes')");
+    $lookup->execute([$submissionId]);
+    $resourceSubmission = $lookup->fetch(PDO::FETCH_ASSOC) ?: null;
+    if ($resourceSubmission === null && $error === '') {
+        $error = 'That Resource submission is no longer in the moderation queue.';
     }
 }
-if (($_GET['rejected'] ?? '') === '1') {
-    $notice = 'Resource submission rejected.';
-}
+$waitingForChanges = ($resourceSubmission['status'] ?? '') === 'needs-changes';
 
 $submittedResource = [];
 if ($resourceSubmission && (int) $resourceSubmission['target_resource_id'] > 0) {
@@ -264,7 +314,10 @@ if ($resourceSubmission && (int) $resourceSubmission['target_resource_id'] > 0) 
 $editing =
     !empty($resource);
 
-$form = ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && $error !== ''
+$postedReviewMatches = !$resourceSubmission
+    || hash_equals(hash('sha256', $resourceSubmission['form_data']), (string) ($_POST['review_form'] ?? ''));
+$form = ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && $error !== '' && $postedReviewMatches
+    && in_array($_POST['resource_action'] ?? '', ['save', 'approve_submission'], true)
     ? $_POST
     : ($resourceSubmission
         ? array_replace($submittedResource, json_decode($resourceSubmission['form_data'], true, 512, JSON_THROW_ON_ERROR))
@@ -286,7 +339,7 @@ $adminPageTitle =
         : 'Resources';
 
 $adminPageEyebrow =
-    'Map Data';
+    'Places';
 
 $adminActiveNav =
     'resources';
@@ -320,7 +373,7 @@ $e =
     </header>
     <ul>
         <?php foreach ($pendingResourceSubmissions as $pending): ?>
-            <li><a href="/resources.php?submission=<?= (int) $pending['id'] ?>"><?= $e($pending['name']) ?></a></li>
+            <li><a href="/resources.php?submission=<?= (int) $pending['id'] ?>"><?= $e($pending['place_name']) ?></a></li>
         <?php endforeach; ?>
     </ul>
 </section>
@@ -347,34 +400,38 @@ $e =
 
 <?php else: ?>
 
+<?php if ($editing || $resourceSubmission): ?>
 <section class="admin-panel">
     <header class="admin-panel-header">
         <div>
-            <p><?= $resourceSubmission ? 'Member contribution' : ($editing ? 'Standalone map entity' : 'New map entity') ?></p>
+            <p><?= $resourceSubmission
+                ? ($resourceSubmission['target_resource_id'] ? 'Resource Update' : 'New Resource Submission')
+                : 'Resource Management' ?></p>
 
             <h2>
                 <?= $resourceSubmission
                     ? 'Review ' . $e($resourceSubmission['name'])
-                    : ($editing ? 'Edit ' . $e($resource['name'] ?? 'Resource') : 'Create Resource') ?>
+                    : 'Edit ' . $e($resource['name'] ?? 'Resource') ?>
             </h2>
         </div>
 
-        <?php if ($editing): ?>
-        <a
-            class="admin-button is-muted"
-            href="/resources.php"
-        >
-            New Resource
-        </a>
-        <?php endif; ?>
     </header>
 
     <?php if ($returnPlaceId > 0): ?>
         <p><a href="/place.php?id=<?= $returnPlaceId ?>&amp;mode=resource">Back to the Place editor</a></p>
     <?php endif; ?>
     <?php if ($resourceSubmission): ?>
-        <p>Resource submission #<?= (int) $resourceSubmission['id'] ?> from Member #<?= (int) $resourceSubmission['submitted_by'] ?></p>
+        <p>
+            Resource submission #<?= (int) $resourceSubmission['id'] ?> from Member #<?= (int) $resourceSubmission['submitted_by'] ?>
+            · <a href="<?= $resourceSubmission['target_resource_id'] ? '/updates.php' : '/submissions.php' ?>">Back to moderation queue</a>
+        </p>
     <?php endif; ?>
+    <?php if ($waitingForChanges): ?>
+        <div class="admin-user-action-box">
+            <h3>Waiting for contributor changes</h3>
+            <p><?= nl2br($e($resourceSubmission['review_notes'] ?? '')) ?></p>
+        </div>
+    <?php else: ?>
     <form
         class="admin-user-action-box resource-editor"
         method="post" data-resource-editor
@@ -387,6 +444,9 @@ $e =
 
         <input type="hidden" name="resource_action" value="<?= $resourceSubmission ? 'approve_submission' : 'save' ?>">
         <input type="hidden" name="submission_id" value="<?= (int) ($resourceSubmission['id'] ?? 0) ?>">
+        <?php if ($resourceSubmission): ?>
+            <input type="hidden" name="review_form" value="<?= hash('sha256', $resourceSubmission['form_data']) ?>">
+        <?php endif; ?>
         <input type="hidden" name="return_place_id" value="<?= $returnPlaceId ?>">
 
         <input
@@ -400,12 +460,19 @@ $e =
         require dirname(__DIR__) . '/partials/resources/fields.php';
         ?>
 
+        <?php if ($resourceSubmission && $reviewNotesReady): ?>
+            <label>
+                <span>Review notes (optional for approval)</span>
+                <textarea name="review_notes" rows="3" maxlength="4000"><?= $e($_POST['review_notes'] ?? '') ?></textarea>
+            </label>
+        <?php endif; ?>
+
         <div class="admin-user-form-actions">
             <button
                 class="admin-button"
                 type="submit"
             >
-                <?= $resourceSubmission ? 'Approve and Publish' : ($editing ? 'Save Resource' : 'Create Resource') ?>
+                <?= $resourceSubmission ? 'Approve and Publish' : 'Save Resource' ?>
             </button>
         </div>
     </form>
@@ -413,10 +480,18 @@ $e =
     <?php if ($resourceSubmission): ?>
         <form method="post" class="admin-user-action-box">
             <input type="hidden" name="csrf_token" value="<?= $e(moderation_csrf_token()) ?>">
-            <input type="hidden" name="resource_action" value="reject_submission">
             <input type="hidden" name="submission_id" value="<?= (int) $resourceSubmission['id'] ?>">
-            <button class="admin-button is-muted" type="submit">Reject Submission</button>
+            <input type="hidden" name="review_form" value="<?= hash('sha256', $resourceSubmission['form_data']) ?>">
+            <?php if ($reviewNotesReady): ?>
+                <label>
+                    <span>Review notes</span>
+                    <textarea name="review_notes" rows="3" maxlength="4000" required><?= $e($_POST['review_notes'] ?? '') ?></textarea>
+                </label>
+                <button class="admin-button is-muted" type="submit" name="resource_action" value="request_changes">Request Changes</button>
+            <?php endif; ?>
+            <button class="admin-button is-muted" type="submit" name="resource_action" value="reject_submission">Reject Submission</button>
         </form>
+    <?php endif; ?>
     <?php endif; ?>
 
     <?php if ($editing && !empty($resource['is_active'])): ?>
@@ -453,6 +528,7 @@ $e =
     <?php endif; ?>
 
 </section>
+<?php endif; ?>
 
 <?php if ($editing): ?>
 <section class="admin-panel">

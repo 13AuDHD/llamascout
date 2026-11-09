@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
+require_once dirname(__DIR__) . '/app/resource-submissions.php';
 require_login();
 
 $user = current_user();
@@ -177,6 +178,22 @@ if ($approvedNewSubmissionIds) {
     unset($item);
 }
 
+if (llama_resource_submissions_ready($db)) {
+    $notesColumn = llama_resource_review_notes_ready($db) ? 'rs.review_notes' : 'NULL';
+    $statement = $db->prepare(
+        "SELECT rs.id, rs.name, rs.status, rs.created_at AS submitted_at,
+                {$notesColumn} AS review_notes, r.slug,
+                CASE WHEN rs.target_resource_id IS NULL THEN 'new-resource' ELSE 'resource-update' END AS kind,
+                CASE WHEN rs.target_resource_id IS NULL THEN 'New Resource' ELSE 'Resource Update' END AS label
+         FROM resource_submissions rs
+         LEFT JOIN resources r ON r.id = COALESCE(rs.resource_id, rs.target_resource_id) AND r.is_active = 1
+         WHERE rs.submitted_by = ?"
+    );
+    $statement->execute([$userId]);
+    $items = array_merge($items, $statement->fetchAll(PDO::FETCH_ASSOC));
+    usort($items, static fn (array $a, array $b): int => strcmp($b['submitted_at'], $a['submitted_at']));
+}
+
 $submitted = (string) ($_GET['submitted'] ?? '');
 $successMessage =
     trim(
@@ -328,6 +345,7 @@ require dirname(__DIR__) . '/partials/header.php';
                                     [
                                         'update-resubmitted',
                                         'new-resubmitted',
+                                        'resource-resubmitted',
                                     ],
                                     true
                                 )
@@ -378,6 +396,7 @@ require dirname(__DIR__) . '/partials/header.php';
                         )
                     );
 
+                $isResource = in_array($item['kind'] ?? '', ['new-resource', 'resource-update'], true);
                 $slug =
                     trim(
                         (string) (
@@ -460,32 +479,43 @@ require dirname(__DIR__) . '/partials/header.php';
                                 class="contribution-view-place"
                                 href="<?= htmlspecialchars(
                                     $siteUrl
-                                    . '/place.php?slug='
+                                    . ($isResource ? '/resource.php?slug=' : '/place.php?slug=')
                                     . rawurlencode($slug),
                                     ENT_QUOTES,
                                     'UTF-8'
                                 ) ?>"
                             >
-                                View place
+                                <?= $isResource ? 'View Resource' : 'View place' ?>
                             </a>
 
                         <?php elseif (
-                            (string) ($item['kind'] ?? '') === 'update'
+                            in_array($item['kind'] ?? '', ['update', 'resource-update'], true)
                             && $slug !== ''
                         ): ?>
 
                             <a
                                 href="<?= htmlspecialchars(
                                     $siteUrl
-                                    . '/place.php?slug='
+                                    . ($isResource ? '/resource.php?slug=' : '/place.php?slug=')
                                     . rawurlencode($slug),
                                     ENT_QUOTES,
                                     'UTF-8'
                                 ) ?>"
                             >
-                                View place
+                                <?= $isResource ? 'View Resource' : 'View place' ?>
                             </a>
 
+                        <?php endif; ?>
+
+                        <?php if ($status === 'needs-changes' && $isResource): ?>
+                            <a class="contribution-resubmit-link" href="<?= htmlspecialchars(
+                                $siteUrl . '/resource-contribution.php?revision=' . (int) $item['id'],
+                                ENT_QUOTES,
+                                'UTF-8'
+                            ) ?>">
+                                <i aria-hidden="true"><?= llama_icon('edit') ?></i>
+                                Edit &amp; resubmit
+                            </a>
                         <?php endif; ?>
 
                         <?php if (

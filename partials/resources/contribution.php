@@ -18,8 +18,8 @@ $resourceEditorUrl = $resourceStaffFields
             <input type="hidden" name="mode" value="resource">
             <label>
                 <span>Resource to edit</span>
-                <select name="resource_id">
-                    <option value="">New Resource</option>
+                <select name="resource_id" required>
+                    <option value="">Choose a Resource</option>
                     <?php foreach ($contributionResourceOptions as $option): ?>
                         <option value="<?= (int) $option['id'] ?>" <?= (int) ($resource['id'] ?? 0) === (int) $option['id'] ? 'selected' : '' ?>>
                             <?= $e($option['name']) ?>
@@ -37,8 +37,8 @@ $resourceEditorUrl = $resourceStaffFields
             <input type="hidden" name="mode" value="resource">
             <label>
                 <span>Resource to update</span>
-                <select name="resource_id">
-                    <option value="">New Resource</option>
+                <select name="resource_id" required>
+                    <option value="">Choose a Resource</option>
                     <?php foreach ($contributionResourceOptions as $option): ?>
                         <option value="<?= (int) $option['id'] ?>" <?= (int) ($resource['id'] ?? 0) === (int) $option['id'] ? 'selected' : '' ?>>
                             <?= $e($option['name']) ?>
@@ -55,6 +55,8 @@ $resourceEditorUrl = $resourceStaffFields
         <div class="contribution-section-body">
             <?php if (!admin_resources_tables_ready($db) || (!$resourceStaffFields && !llama_resource_submissions_ready($db))): ?>
                 <p>Resource submissions are currently unavailable.</p>
+            <?php elseif (!$resource && ($resourceStaffFields || isset($contributionResourceOptions))): ?>
+                <p>Choose a Resource above to <?= $resourceStaffFields ? 'edit it' : 'suggest an update' ?>.</p>
             <?php else: ?>
                 <form method="post" action="<?= $e($resourceEditorUrl) ?>" class="contribution-resource-form resource-editor" data-resource-editor>
                     <input type="hidden" name="csrf_token" value="<?= $e($resourceStaffFields ? moderation_csrf_token() : community_csrf_token()) ?>">
@@ -64,6 +66,7 @@ $resourceEditorUrl = $resourceStaffFields
                         <input type="hidden" name="return_place_id" value="<?= (int) ($contributionPlaceId ?? 0) ?>">
                     <?php else: ?>
                         <input type="hidden" name="resource_record_id" value="<?= (int) ($contributionResourceId ?? $resource['id'] ?? 0) ?>">
+                        <input type="hidden" name="resource_revision_id" value="<?= (int) ($contributionRevisionId ?? 0) ?>">
                         <input type="hidden" name="resource_snapshot" value="<?= $e($contributionResourceSnapshot ?? ($resource ? llama_resource_snapshot($resource) : '')) ?>">
                         <input type="hidden" name="return_place" value="<?= $e($contributionReturnPlace ?? '') ?>">
                         <input type="hidden" name="return_draft" value="<?= (int) ($contributionReturnDraft ?? 0) ?>">
@@ -72,7 +75,8 @@ $resourceEditorUrl = $resourceStaffFields
                     <div class="<?= $resourceStaffFields ? 'admin-place-report-savebar' : 'contribution-actions add-place-submit-bar' ?>">
                         <button class="<?= $resourceStaffFields ? 'admin-button' : 'contribution-submit' ?>" type="submit">
                             <?= llama_icon($resourceStaffFields ? 'device-floppy' : 'send') ?>
-                            <?= $resourceStaffFields ? 'Save Resource' : 'Submit Resource for Review' ?>
+                            <?= $resourceStaffFields ? 'Save Resource' : (!empty($contributionRevisionId)
+                                ? 'Resubmit for Review' : ($resource ? 'Submit Update for Review' : 'Submit Resource for Review')) ?>
                         </button>
                     </div>
                 </form>

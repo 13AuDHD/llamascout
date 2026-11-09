@@ -6,6 +6,7 @@ require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/admin-users.php';
 require_once dirname(__DIR__) . '/app/admin-moderation.php';
 require_once __DIR__ . '/_dashboard.php';
+require_once dirname(__DIR__) . '/app/resource-submissions.php';
 
 $adminUser = moderation_require_admin();
 $db = db();
@@ -13,17 +14,24 @@ $db = db();
 $queueStats =
     admin_moderation_stats($db);
 
-$newPlaces =
-    admin_moderation_new_places($db);
-
-$updates =
-    admin_moderation_updates($db);
+$newResources = llama_resource_submission_queue($db, false, 40);
+$resourceUpdates = llama_resource_submission_queue($db, true, 40);
+$newPlaces = array_slice(llama_resource_merge_queue(admin_moderation_new_places($db), $newResources), 0, 40);
+$updates = array_slice(llama_resource_merge_queue(admin_moderation_updates($db), $resourceUpdates), 0, 40);
+if ($newPlaces) {
+    $queueStats['oldest_submission'] = $newPlaces[0]['submitted_at'];
+}
+if ($updates) {
+    $queueStats['oldest_update'] = $updates[0]['submitted_at'];
+}
 
 $reports =
     admin_moderation_reports($db);
 
 $stats =
     admin_dashboard_stats($db);
+$queueStats['new_places'] = $stats['new_places'];
+$queueStats['updates'] = $stats['updates'];
 
 $adminNavCounts = [
     'new_places' => $stats['new_places'],
@@ -43,7 +51,7 @@ require __DIR__ . '/_header.php';
 <section class="admin-moderation-overview-grid">
 
 <a href="/submissions.php">
-    <span>New Places</span>
+    <span>New Places and Resources</span>
     <strong>
         <?= number_format(
             $queueStats['new_places']
@@ -103,7 +111,7 @@ require __DIR__ . '/_header.php';
 <header class="admin-panel-header">
     <div>
         <p>Queue</p>
-        <h2>New Places</h2>
+        <h2>New Places and Resources</h2>
     </div>
 
     <a class="admin-button is-muted" href="/submissions.php">
@@ -115,7 +123,7 @@ require __DIR__ . '/_header.php';
 
 <div class="admin-empty-state">
     <i aria-hidden="true"><?= llama_icon('circle-check') ?></i>
-    <p>No new Place submissions waiting.</p>
+    <p>No new Place or Resource submissions waiting.</p>
 </div>
 
 <?php else: ?>
@@ -173,18 +181,13 @@ require __DIR__ . '/_header.php';
             )
         ) ?>
         ·
-        <?= moderation_e(
-            (string) (
-                $item['role_at_submission']
-                ?: 'member'
-            )
-        ) ?>
+        <?= !empty($item['is_resource']) ? 'New Resource' : moderation_e($item['role_at_submission'] ?: 'member') ?>
     </small>
 </div>
 
 <a
     class="admin-button"
-    href="/moderate-submission.php?id=<?= (int) $item['id'] ?>"
+    href="<?= !empty($item['is_resource']) ? '/resources.php?submission=' : '/moderate-submission.php?id=' ?><?= (int) $item['id'] ?>"
 >
     Review
 </a>
@@ -217,7 +220,7 @@ require __DIR__ . '/_header.php';
 
 <div class="admin-empty-state">
     <i aria-hidden="true"><?= llama_icon('circle-check') ?></i>
-    <p>No Place updates waiting.</p>
+    <p>No Place or Resource updates waiting.</p>
 </div>
 
 <?php else: ?>
@@ -228,7 +231,7 @@ require __DIR__ . '/_header.php';
 <?php
 $changes =
     moderation_decode_json(
-        $item['proposed_changes']
+        $item['proposed_changes'] ?? ''
     );
 ?>
 
@@ -262,8 +265,11 @@ $changes =
             (string) $item['contributor_name']
         ) ?>
         ·
-        <?= number_format(count($changes)) ?>
-        changed field<?= count($changes) === 1 ? '' : 's' ?>
+        <?php if (!empty($item['is_resource'])): ?>
+            Resource update
+        <?php else: ?>
+            <?= number_format(count($changes)) ?> changed field<?= count($changes) === 1 ? '' : 's' ?>
+        <?php endif; ?>
     </span>
 
     <small>
@@ -279,7 +285,7 @@ $changes =
                 str_replace(
                     ['-', '_'],
                     ' ',
-                    (string) $item['update_type']
+                    (string) ($item['update_type'] ?? $item['status'])
                 )
             )
         ) ?>
@@ -288,7 +294,7 @@ $changes =
 
 <a
     class="admin-button"
-    href="/moderate-update.php?id=<?= (int) $item['id'] ?>"
+    href="<?= !empty($item['is_resource']) ? '/resources.php?submission=' : '/moderate-update.php?id=' ?><?= (int) $item['id'] ?>"
 >
     Review
 </a>

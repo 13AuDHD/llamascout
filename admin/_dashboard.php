@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once dirname(__DIR__) . '/app/resource-submissions.php';
+
 function admin_safe_count(
     PDO $db,
     string $sql
@@ -129,6 +131,8 @@ function admin_dashboard_stats(PDO $db): array
             );
 
 
+    $resourceQueueReady = llama_resource_submissions_ready($db);
+
     return [
         // Entire inventory, including unpublished and restricted records.
         'total_places' => admin_safe_count(
@@ -148,14 +152,22 @@ function admin_dashboard_stats(PDO $db): array
             "SELECT COUNT(*)
              FROM place_submissions
              WHERE status IN ('pending','needs-changes')"
-        ),
+        ) + ($resourceQueueReady ? admin_safe_count(
+            $db,
+            "SELECT COUNT(*) FROM resource_submissions
+             WHERE status IN ('pending','needs-changes') AND target_resource_id IS NULL"
+        ) : 0),
 
         'updates' => admin_safe_count(
             $db,
             "SELECT COUNT(*)
              FROM place_update_submissions
              WHERE status IN ('pending','needs-changes')"
-        ),
+        ) + ($resourceQueueReady ? admin_safe_count(
+            $db,
+            "SELECT COUNT(*) FROM resource_submissions
+             WHERE status IN ('pending','needs-changes') AND target_resource_id IS NOT NULL"
+        ) : 0),
 
         'reports' => admin_safe_count(
             $db,
