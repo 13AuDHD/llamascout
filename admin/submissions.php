@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once __DIR__ . '/_dashboard.php';
+require_once dirname(__DIR__) . '/app/resource-submissions.php';
 
 $adminUser = moderation_require_admin();
 $db = db();
@@ -18,14 +19,26 @@ $adminNavCounts = [
     'scout_reviews' => $stats['scout_reviews'],
 ];
 
-$adminPageTitle = 'New Place Submissions';
+$adminPageTitle = 'New Place and Resource Submissions';
 $adminPageEyebrow = 'Moderation';
 $adminActiveNav = 'submissions';
 
 require __DIR__ . '/_header.php';
 
-$items = moderation_new_place_queue($db);
+$items = llama_resource_merge_queue(moderation_new_place_queue($db), llama_resource_submission_queue($db, false));
 ?>
+
+<?php
+$resourceReviewNotice = match ($_GET['resource_review'] ?? '') {
+    'approved' => 'Resource contribution approved.',
+    'rejected' => 'Resource contribution rejected.',
+    'needs-changes' => 'Changes requested from the contributor.',
+    default => '',
+};
+?>
+<?php if ($resourceReviewNotice !== ''): ?>
+    <div class="admin-user-notice is-success" role="status"><?= moderation_e($resourceReviewNotice) ?></div>
+<?php endif; ?>
 
 <section class="admin-panel">
 
@@ -34,25 +47,26 @@ $items = moderation_new_place_queue($db);
         <div class="admin-empty-state">
             <i aria-hidden="true"><?= llama_icon('circle-check') ?></i>
             <h2>Queue clear.</h2>
-            <p>There are no new Place submissions waiting for review.</p>
+            <p>There are no new Place or Resource submissions waiting for review.</p>
         </div>
 
     <?php else: ?>
 
         <div class="admin-queue-list">
             <?php foreach ($items as $item): ?>
+                <?php $isResource = !empty($item['is_resource']); ?>
                 <article class="admin-queue-card">
                     <div>
-                        <span class="admin-queue-type">New Place</span>
+                        <span class="admin-queue-type"><?= $isResource ? 'New Resource' : 'New Place' ?></span>
                         <h2><?= moderation_e($item['place_name']) ?></h2>
                         <p>
-                            <?= moderation_e($item['display_name'] ?: $item['username']) ?>
+                            <?= moderation_e($item['display_name'] ?: ($item['username'] ?: 'Former Llama Scout Member')) ?>
                             · submitted <?= moderation_e(
                                 llama_format_viewer_datetime(
                                     (string) $item['submitted_at']
                                 )
                             ) ?>
-                            · <?= moderation_e($item['role_at_submission'] ?: 'user') ?>
+                            <?php if (!$isResource): ?>· <?= moderation_e($item['role_at_submission'] ?: 'user') ?><?php endif; ?>
                         </p>
                     </div>
 
@@ -67,7 +81,7 @@ $items = moderation_new_place_queue($db);
 
                         <a
                             class="admin-button"
-                            href="/moderate-submission.php?id=<?= (int) $item['id'] ?>"
+                            href="<?= $isResource ? '/resources.php?submission=' : '/moderate-submission.php?id=' ?><?= (int) $item['id'] ?>"
                         >
                             Review
                         </a>

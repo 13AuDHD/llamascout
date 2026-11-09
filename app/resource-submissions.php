@@ -14,6 +14,45 @@ function llama_resource_submissions_ready(PDO $db): bool
     }
 }
 
+function llama_resource_review_notes_ready(PDO $db): bool
+{
+    try {
+        return $db->query('SELECT review_notes FROM resource_submissions LIMIT 0') !== false;
+    } catch (PDOException) {
+        return false;
+    }
+}
+
+function llama_resource_submission_queue(PDO $db, ?bool $updates = null, int $limit = 0): array
+{
+    if (!llama_resource_submissions_ready($db)) {
+        return [];
+    }
+
+    $sql = "SELECT rs.id, rs.name AS place_name, rs.status, rs.target_resource_id,
+                   rs.created_at AS submitted_at, u.display_name, u.username,
+                   COALESCE(NULLIF(u.display_name, ''), u.username, 'Former Llama Scout Member') AS contributor_name,
+                   1 AS is_resource
+            FROM resource_submissions rs
+            LEFT JOIN users u ON u.id = rs.submitted_by
+            WHERE rs.status IN ('pending', 'needs-changes')";
+    if ($updates !== null) {
+        $sql .= $updates ? ' AND rs.target_resource_id IS NOT NULL' : ' AND rs.target_resource_id IS NULL';
+    }
+    $sql .= ' ORDER BY rs.created_at ASC, rs.id ASC';
+    if ($limit > 0) {
+        $sql .= ' LIMIT ' . $limit;
+    }
+    return $db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function llama_resource_merge_queue(array $places, array $resources): array
+{
+    $items = array_merge($places, $resources);
+    usort($items, static fn (array $a, array $b): int => strcmp($a['submitted_at'], $b['submitted_at']));
+    return $items;
+}
+
 function llama_resource_submission_input(array $input): array
 {
     $fields = array_flip([
@@ -59,7 +98,8 @@ function llama_resource_submit(
     int $userId,
     array $input,
     int $resourceId = 0,
-    string $baseSnapshot = ''
+    string $baseSnapshot = '',
+    int $revisionId = 0
 ): void
 {
     if ($userId < 1 || !llama_resource_submissions_ready($db)) {
@@ -82,33 +122,69 @@ function llama_resource_submit(
     $resource = llama_resource_prepare_input($db, $resourceId, $data);
     $identity = $resourceId > 0 ? 'resource:' . $resourceId : 'new:' . $resource['slug'];
     $key = hash('sha256', $userId . ':' . $identity);
-    $statement = $db->prepare(
-        'INSERT INTO resource_submissions (submitted_by, name, target_resource_id, base_snapshot, pending_key, form_data)
-         VALUES (?, ?, ?, ?, ?, ?)'
-    );
+    if ($revisionId > 0) {
+        if (!llama_resource_review_notes_ready($db)) {
+            throw new RuntimeException('Resource revisions are currently unavailable.');
+        }
+        $target = $resourceId > 0 ? 'target_resource_id = ?' : 'target_resource_id IS NULL';
+        $statement = $db->prepare(
+            "UPDATE resource_submissions
+             SET name = ?, form_data = ?, pending_key = ?, status = 'pending', reviewed_by = NULL, reviewed_at = NULL,
+                 review_notes = NULL
+             WHERE id = ? AND submitted_by = ? AND status = 'needs-changes'
+               AND COALESCE(base_snapshot, '') = ? AND {$target}"
+        );
+        $values = [$resource['name'], $payload, $key, $revisionId, $userId, $baseSnapshot];
+        if ($resourceId > 0) {
+            $values[] = $resourceId;
+        }
+    } else {
+        $statement = $db->prepare(
+            'INSERT INTO resource_submissions (submitted_by, name, target_resource_id, base_snapshot, pending_key, form_data)
+             VALUES (?, ?, ?, ?, ?, ?)'
+        );
+        $values = [$userId, $resource['name'], $resourceId ?: null, $resourceId ? $baseSnapshot : null, $key, $payload];
+    }
     try {
-        $statement->execute([
-            $userId, $resource['name'], $resourceId ?: null, $resourceId ? $baseSnapshot : null, $key, $payload,
-        ]);
+        $statement->execute($values);
     } catch (PDOException $exception) {
         if ((int) ($exception->errorInfo[1] ?? 0) === 1062) {
             throw new InvalidArgumentException('You already submitted this Resource for review.', 0, $exception);
         }
         throw $exception;
     }
+    if ($revisionId > 0 && $statement->rowCount() !== 1) {
+        throw new InvalidArgumentException('This Resource submission is no longer waiting for your changes.');
+    }
 }
 
-function llama_resource_review(PDO $db, int $actorId, int $submissionId, ?array $approvedInput): int
-{
+function llama_resource_review(
+    PDO $db,
+    int $actorId,
+    int $submissionId,
+    ?array $approvedInput,
+    string $notes = '',
+    bool $requestChanges = false,
+    ?string $expectedForm = null
+): int {
+    $notes = mb_substr(trim($notes), 0, 4000);
+    $notesReady = llama_resource_review_notes_ready($db);
+    if ($requestChanges && (!$notesReady || $notes === '' || $approvedInput !== null)) {
+        throw new InvalidArgumentException('Add review notes before requesting changes.');
+    }
     $db->beginTransaction();
     try {
         $statement = $db->prepare(
-            "SELECT submitted_by, target_resource_id, base_snapshot FROM resource_submissions WHERE id = ? AND status = 'pending' FOR UPDATE"
+            "SELECT submitted_by, target_resource_id, base_snapshot, form_data FROM resource_submissions WHERE id = ? AND status = 'pending' FOR UPDATE"
         );
         $statement->execute([$submissionId]);
         $submission = $statement->fetch(PDO::FETCH_ASSOC);
         if (!$submission) {
             throw new InvalidArgumentException('This Resource submission has already been reviewed or does not exist.');
+        }
+
+        if ($expectedForm !== null && !hash_equals(hash('sha256', $submission['form_data']), $expectedForm)) {
+            throw new InvalidArgumentException('The contributor revised this submission. Reload it before reviewing.');
         }
 
         $targetId = (int) $submission['target_resource_id'];
@@ -128,12 +204,20 @@ function llama_resource_review(PDO $db, int $actorId, int $submissionId, ?array 
                 $author->execute([(int) $submission['submitted_by'], $resourceId]);
             }
         }
+        $status = $requestChanges ? 'needs-changes' : ($resourceId === null ? 'rejected' : 'approved');
+        $notesSql = $notesReady ? ', review_notes = ?' : '';
+        $pendingSql = $requestChanges ? '' : ', pending_key = NULL';
         $review = $db->prepare(
-            'UPDATE resource_submissions
-             SET status = ?, resource_id = ?, reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP, pending_key = NULL
-             WHERE id = ?'
+            "UPDATE resource_submissions
+             SET status = ?, resource_id = ?, reviewed_by = ?, reviewed_at = CURRENT_TIMESTAMP{$pendingSql}{$notesSql}
+             WHERE id = ?"
         );
-        $review->execute([$resourceId === null ? 'rejected' : 'approved', $resourceId, $actorId, $submissionId]);
+        $values = [$status, $resourceId, $actorId];
+        if ($notesReady) {
+            $values[] = $notes;
+        }
+        $values[] = $submissionId;
+        $review->execute($values);
         $db->commit();
         return $resourceId ?? 0;
     } catch (Throwable $exception) {

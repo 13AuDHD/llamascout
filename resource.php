@@ -356,6 +356,10 @@ require __DIR__ . '/partials/header.php';
             </div>
 
             <div class="place-detail-actions">
+                <a class="place-detail-action-button" href="/resource-contribution.php?resource_id=<?= $resourceId ?>">
+                    <i aria-hidden="true"><?= llama_icon('edit') ?></i>
+                    Update Resource
+                </a>
 
                 <?php if ($directionsUrl !== ''): ?>
                     <a
