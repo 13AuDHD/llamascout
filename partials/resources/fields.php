@@ -29,9 +29,16 @@ foreach (
     }
 }
 
-if (is_array($form['services'] ?? null) && $postFailed) {
-    $selectedServices = $form['services'];
+if ($postFailed) {
+    $selectedServices = is_array($form['services'] ?? null) ? $form['services'] : [];
 }
+
+$serviceTypes = llama_resource_service_types();
+$enabledServices = array_filter(
+    $serviceTypes,
+    static fn (string $type): bool => !empty($selectedServices[$type][$postFailed ? 'enabled' : 'is_active']),
+    ARRAY_FILTER_USE_KEY
+);
 
 $coordinatesValue =
     trim(
@@ -172,28 +179,6 @@ $datetimeLocal =
                     <option
                         value="<?= $e($value) ?>"
                         <?= (string) ($form['resource_type'] ?? '') === $value
-                            ? 'selected'
-                            : '' ?>
-                    >
-                        <?= $e($label) ?>
-                    </option>
-                    <?php endforeach; ?>
-                </select>
-            </label>
-
-            <label>
-                <span>Primary service</span>
-                <select name="marker_service_type">
-                    <option value="">
-                        Auto: first enabled Service
-                    </option>
-                    <?php foreach (
-                        llama_resource_service_types()
-                        as $value => $label
-                    ): ?>
-                    <option
-                        value="<?= $e($value) ?>"
-                        <?= (string) ($form['marker_service_type'] ?? '') === $value
                             ? 'selected'
                             : '' ?>
                     >
@@ -466,129 +451,48 @@ $datetimeLocal =
 
         </div>
 
-        <h3 class="admin-resource-section-title">Services</h3>
+        <section class="resource-services" data-resource-services>
+            <h3 class="admin-resource-section-title">Services</h3>
+            <div class="resource-service-picker" data-resource-service-picker hidden>
+                <select aria-label="Service to add">
+                    <option value="">Choose a service</option>
+                    <?php foreach ($serviceTypes as $serviceType => $serviceLabel): ?>
+                        <option value="<?= $e($serviceType) ?>"><?= $e($serviceLabel) ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <button type="button" class="resource-service-button" data-resource-service-add>Add service</button>
+            </div>
 
-        <p class="admin-resource-section-copy">
-            A Resource can provide more than one Service. Check every Service
-            available at this exact location.
-        </p>
-
-        <div class="admin-integration-table-wrap">
-            <table class="admin-integration-table admin-resource-service-table">
-                <thead>
-                <tr>
-                    <th>Service</th>
-                    <th>Status</th>
-                    <th>Fee</th>
-                    <th>Fee details</th>
-                    <th>Access / notes</th>
-                </tr>
-                </thead>
-
-                <tbody>
-                <?php foreach (
-                    llama_resource_service_types()
-                    as $serviceType => $serviceLabel
-                ): ?>
-                <?php
-                $service =
-                    is_array(
-                        $selectedServices[$serviceType]
-                        ?? null
-                    )
-                        ? $selectedServices[$serviceType]
-                        : [];
-
-                $enabled =
-                    $postFailed
-                        ? !empty($service['enabled'])
-                        : !empty($service['is_active']);
-                ?>
-                <tr>
-                    <td data-label="Service">
-                        <label>
-                            <input
-                                type="checkbox"
-                                name="services[<?= $e($serviceType) ?>][enabled]"
-                                value="1"
-                                <?= $enabled ? 'checked' : '' ?>
-                            >
-                            <strong><?= $e($serviceLabel) ?></strong>
-                        </label>
-                    </td>
-
-                    <td data-label="Status">
-                        <select
-                            name="services[<?= $e($serviceType) ?>][status]"
-                        >
-                            <?php foreach (
-                                llama_resource_statuses()
-                                as $value => $label
-                            ): ?>
-                            <option
-                                value="<?= $e($value) ?>"
-                                <?= (string) ($service['status'] ?? 'unknown') === $value
-                                    ? 'selected'
-                                    : '' ?>
-                            >
-                                <?= $e($label) ?>
-                            </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </td>
-
-                    <td data-label="Fee">
-                        <select
-                            name="services[<?= $e($serviceType) ?>][fee_status]"
-                        >
-                            <?php foreach (
-                                llama_resource_fee_statuses()
-                                as $value => $label
-                            ): ?>
-                            <option
-                                value="<?= $e($value) ?>"
-                                <?= (string) ($service['fee_status'] ?? 'unknown') === $value
-                                    ? 'selected'
-                                    : '' ?>
-                            >
-                                <?= $e($label) ?>
-                            </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </td>
-
-                    <td data-label="Fee details">
-                        <input
-                            type="text"
-                            name="services[<?= $e($serviceType) ?>][fee_description]"
-                            maxlength="255"
-                            value="<?= $e($service['fee_description'] ?? '') ?>"
-                            placeholder="$10, free with fuel, etc."
-                        >
-                    </td>
-
-                    <td data-label="Access / notes">
-                        <div class="admin-resource-service-notes">
-                        <input
-                            type="text"
-                            name="services[<?= $e($serviceType) ?>][access_notes]"
-                            value="<?= $e($service['access_notes'] ?? '') ?>"
-                            placeholder="Ask cashier for key, rear lot, etc."
-                        >
-
-                        <input
-                            type="text"
-                            name="services[<?= $e($serviceType) ?>][notes]"
-                            value="<?= $e($service['notes'] ?? '') ?>"
-                            placeholder="Service-specific notes"
-                        >
-                        </div>
-                    </td>
-                </tr>
+            <p class="resource-services-empty" data-resource-services-empty <?= $enabledServices ? 'hidden' : '' ?>>
+                No services added yet.
+            </p>
+            <div class="resource-service-cards" data-resource-service-cards <?= $enabledServices ? '' : 'hidden' ?>>
+                <?php foreach ($enabledServices as $serviceType => $serviceLabel): ?>
+                    <?php $service = $selectedServices[$serviceType]; require __DIR__ . '/service-card.php'; ?>
                 <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
+            </div>
+
+            <label class="resource-primary-service" data-resource-primary-service <?= $enabledServices ? '' : 'hidden' ?>>
+                <span>Primary service</span>
+                <select name="marker_service_type">
+                    <option value="">Auto: first enabled service</option>
+                    <?php foreach ($enabledServices as $serviceType => $serviceLabel): ?>
+                        <option value="<?= $e($serviceType) ?>" <?= ($form['marker_service_type'] ?? '') === $serviceType ? 'selected' : '' ?>>
+                            <?= $e($serviceLabel) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+
+            <template data-resource-service-template>
+                <?php
+                $serviceType = '__type__';
+                $serviceLabel = '';
+                $service = [];
+                require __DIR__ . '/service-card.php';
+                ?>
+            </template>
+        </section>
 
         <h3 class="admin-resource-section-title"><?= $resourceStaffFields ? 'Resource notes and source' : 'Resource notes' ?></h3>
 
