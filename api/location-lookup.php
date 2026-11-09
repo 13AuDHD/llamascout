@@ -84,6 +84,20 @@ if (
 }
 
 
+if (($_GET['mode'] ?? '') === 'address') {
+    require_once dirname(__DIR__) . '/app/address-autocomplete.php';
+
+    try {
+        $address = llama_address_reverse_lookup($lat, $lng, true);
+        echo json_encode(['success' => true, 'address' => $address], JSON_INVALID_UTF8_SUBSTITUTE);
+    } catch (Throwable $exception) {
+        llama_log_caught_exception($exception, 'api.resource_address_lookup', [], [RuntimeException::class]);
+        http_response_code(503);
+        echo json_encode(['success' => false, 'message' => 'Address lookup is temporarily unavailable.']);
+    }
+    exit;
+}
+
 /*
  * =========================================================
  * SHARED JSON LOOKUP

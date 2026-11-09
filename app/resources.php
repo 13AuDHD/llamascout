@@ -344,6 +344,18 @@ function llama_resource_services(
     return $rows;
 }
 
+function llama_resource_has_county(PDO $db): bool
+{
+    try {
+        return $db->query('SELECT county FROM resources LIMIT 0') !== false;
+    } catch (PDOException $exception) {
+        if ($exception->getCode() === '42S22' || str_contains($exception->getMessage(), 'no such column: county')) {
+            return false;
+        }
+        throw $exception;
+    }
+}
+
 function llama_resources(
     PDO $db,
     ?int $onlyResourceId = null,
@@ -364,6 +376,7 @@ function llama_resources(
             longitude,
             street_address,
             city,
+            ' . (llama_resource_has_county($db) ? 'county' : 'NULL AS county') . ',
             state_region,
             postal_code,
             country_code,
@@ -698,6 +711,8 @@ function llama_resource_public_view(array $resource): array
                     ?? ''
                 )
             ),
+        'county' => trim((string) ($resource['county'] ?? '')),
+
         'state_region' =>
             trim(
                 (string) (

@@ -1,0 +1,2 @@
+ALTER TABLE resources
+    ADD COLUMN IF NOT EXISTS county VARCHAR(120) NULL AFTER city;

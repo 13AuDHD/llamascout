@@ -122,26 +122,42 @@
     }
 }
 
-.resource-location,
 .resource-target-picker {
     display: grid;
+    margin-bottom: 12px;
     align-items: end;
     gap: 8px;
 }
 
-.resource-location p {
+.resource-editor > .contribution-section {
+    margin-block: 0 10px;
+    background: var(--background);
+}
+
+.resource-editor .contribution-section-body {
+    background: var(--surface);
+    border-radius: 0 0 12px 12px;
+}
+
+.resource-editor .add-place-location-status {
     margin: 0;
 }
 
-.resource-location button {
-    justify-self: start;
+.resource-editor .add-place-locate-button svg,
+.contribution-resource-panel > summary svg {
+    width: 1em;
+    height: 1em;
+}
+
+.resource-editor .resource-services {
+    padding-top: 16px;
 }
 
 .contribution-resource-form {
     min-width: 0;
 }
 
-.contribution-resource-form :is(input:not([type="checkbox"]), select, textarea) {
+.contribution-resource-form :is(.resource-service-picker, .resource-primary-service, .resource-service-card) :is(input:not([type="checkbox"]), select, textarea) {
     min-height: 42px;
     padding: 8px;
     border: 1px solid var(--border);
@@ -151,12 +167,14 @@
     font: inherit;
 }
 
-.contribution-resource-form > button {
-    margin-top: 14px;
-}
-
-.contribution-resource-panel .contribution-section-body {
+.contribution-resource-panel > .contribution-section-body {
     display: grid;
     gap: 14px;
     padding: 16px;
+}
+
+.contribution-resource-form :is(.admin-place-report-savebar, .add-place-submit-bar) button svg {
+    width: 1em;
+    height: 1em;
+    vertical-align: middle;
 }

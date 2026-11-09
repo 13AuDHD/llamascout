@@ -376,7 +376,7 @@ $e =
         <p>Resource submission #<?= (int) $resourceSubmission['id'] ?> from Member #<?= (int) $resourceSubmission['submitted_by'] ?></p>
     <?php endif; ?>
     <form
-        class="admin-user-action-box"
+        class="admin-user-action-box resource-editor"
         method="post" data-resource-editor
     >
         <input

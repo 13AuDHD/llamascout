@@ -533,6 +533,7 @@ function llama_resource_prepare_input(PDO $db, int $resourceId, array $input): a
     $fields = [
         'street_address' => 255,
         'city' => 120,
+        'county' => 120,
         'state_region' => 120,
         'postal_code' => 32,
         'phone' => 64,
@@ -590,6 +591,11 @@ function admin_resource_save(
         throw new InvalidArgumentException(
             'Resource not found.'
         );
+    }
+
+    $writeCounty = array_key_exists('county', $input) && llama_resource_has_county($db);
+    if (!$writeCounty && $clean['county'] !== '') {
+        throw new RuntimeException('Run the Resource county database migration before saving a county.');
     }
 
     $ownsTransaction = !$db->inTransaction();
@@ -736,6 +742,11 @@ function admin_resource_save(
                 $actorUserId > 0 ? $actorUserId : null,
                 $resourceId,
             ]);
+        }
+
+        if ($writeCounty) {
+            $county = $db->prepare('UPDATE resources SET county = ? WHERE id = ?');
+            $county->execute([$clean['county'] ?: null, $resourceId]);
         }
 
         $disable =

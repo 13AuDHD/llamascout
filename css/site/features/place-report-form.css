@@ -473,17 +473,17 @@
 }
 
 /* The two location actions use the same colors and shape as the fields. */
-.place-report-form .add-place-coordinate-row {
+:is(.place-report-form, .resource-editor) .add-place-coordinate-row {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 8px;
 }
 
-.place-report-form .add-place-coordinate-row input {
+:is(.place-report-form, .resource-editor) .add-place-coordinate-row input {
     font-variant-numeric: tabular-nums;
 }
 
-.place-report-form :is(.add-place-locate-button, .add-place-coordinate-search) {
+:is(.place-report-form, .resource-editor) :is(.add-place-locate-button, .add-place-coordinate-search) {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -500,7 +500,7 @@
     cursor: pointer;
 }
 
-.place-report-form :is(.add-place-locate-button, .add-place-coordinate-search):disabled {
+:is(.place-report-form, .resource-editor) :is(.add-place-locate-button, .add-place-coordinate-search):disabled {
     opacity: .55;
     cursor: wait;
 }

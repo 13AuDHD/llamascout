@@ -19,7 +19,7 @@ function llama_resource_submission_input(array $input): array
     $fields = array_flip([
         'name', 'resource_type', 'marker_service_type', 'status', 'coordinates',
         'hours_mode', 'fixed_open_hour', 'fixed_close_hour', 'weekly_hours',
-        'street_address', 'city', 'state_region', 'postal_code', 'country_code',
+        'street_address', 'city', 'county', 'state_region', 'postal_code', 'country_code',
         'phone', 'website_url', 'services', 'notes',
     ]);
     $data = array_intersect_key($input, $fields);
@@ -48,6 +48,9 @@ function llama_resource_active_record(PDO $db, int $resourceId): array
 function llama_resource_snapshot(array $resource): string
 {
     unset($resource['images'], $resource['featured_image']);
+    if (($resource['county'] ?? '') === '') {
+        unset($resource['county']);
+    }
     return hash('sha256', json_encode($resource, JSON_THROW_ON_ERROR));
 }
 

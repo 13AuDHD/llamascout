@@ -80,6 +80,108 @@
         sync();
     }
 
+    function setupLocation(form) {
+        const locate = form.querySelector('[data-resource-locate]');
+        const search = form.querySelector('[data-resource-search]');
+        const status = form.querySelector('[data-resource-location-status]');
+        if (!locate || !search || !status) return;
+
+        const coordinates = form.elements.coordinates;
+        const addressFields = {
+            street_address: 'address_line_1',
+            city: 'city',
+            county: 'county',
+            state_region: 'state_name',
+            postal_code: 'postal_code',
+            country_code: 'country_code',
+        };
+
+        function showStatus(message, kind) {
+            status.textContent = message;
+            status.classList.remove('is-info', 'is-warning', 'is-success', 'is-error');
+            status.classList.add(`is-${kind}`);
+        }
+
+        function parseCoordinates(value) {
+            const parts = value.trim().split(',').map(part => part.trim());
+            const [lat, lng] = parts.map(Number);
+            if (parts.length !== 2 || parts.some(part => !/^[+-]?(?:\d+\.?\d*|\.\d+)$/.test(part))
+                || Math.abs(lat) > 90 || Math.abs(lng) > 180 || (lat === 0 && lng === 0)) {
+                throw new Error('Enter valid latitude and longitude separated by a comma.');
+            }
+            return [lat, lng];
+        }
+
+        async function lookup(readCoordinates) {
+            locate.disabled = search.disabled = true;
+            const originalCoordinates = coordinates.value;
+            const initialFields = new Map(
+                Object.keys(addressFields).map(name => [name, form.elements[name].value])
+            );
+            try {
+                const [lat, lng] = await readCoordinates();
+                if (coordinates.value !== originalCoordinates) {
+                    showStatus('Coordinates changed. Tap Search to look up the new location.', 'info');
+                    return;
+                }
+                const searched = `${lat.toFixed(7)}, ${lng.toFixed(7)}`;
+                coordinates.value = searched;
+                showStatus('Looking up the address and county…', 'info');
+                const params = new URLSearchParams({ mode: 'address', lat, lng });
+                const response = await fetch(`/api/location-lookup.php?${params}`, {
+                    headers: { Accept: 'application/json' },
+                    credentials: 'same-origin',
+                });
+                const result = await response.json();
+                if (coordinates.value !== searched) {
+                    showStatus('Coordinates changed. Tap Search to look up the new location.', 'info');
+                    return;
+                }
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || 'Address lookup is temporarily unavailable.');
+                }
+                const address = result.address;
+                for (const [name, key] of Object.entries(addressFields)) {
+                    const field = form.elements[name];
+                    const value = address?.[key];
+                    if (typeof value === 'string' && value.trim() && field.value === initialFields.get(name)) {
+                        field.value = field.maxLength > 0 ? value.slice(0, field.maxLength) : value;
+                    }
+                }
+                if (address?.address_line_1 && address?.county) {
+                    showStatus('Address and county found. Check the details before saving.', 'success');
+                } else {
+                    showStatus('The lookup returned limited details. Fill in any missing address or county before saving.', 'warning');
+                }
+            } catch (error) {
+                showStatus(error instanceof SyntaxError ? 'Address lookup is temporarily unavailable.' : error.message, 'error');
+            } finally {
+                search.disabled = false;
+                locate.disabled = !navigator.geolocation;
+            }
+        }
+
+        search.disabled = false;
+        locate.disabled = !navigator.geolocation;
+        search.addEventListener('click', () => lookup(() => parseCoordinates(coordinates.value)));
+        coordinates.addEventListener('keydown', event => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                if (!search.disabled) search.click();
+            }
+        });
+        locate.addEventListener('click', () => {
+            showStatus('Finding your location…', 'info');
+            lookup(() => new Promise((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(
+                    ({ coords }) => resolve([coords.latitude, coords.longitude]),
+                    () => reject(new Error('Location unavailable. Try again or enter coordinates and tap Search.')),
+                    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+                );
+            }));
+        });
+    }
+
     for (const form of document.querySelectorAll('[data-resource-editor]')) {
         setupServices(form.querySelector('[data-resource-services]'));
 
@@ -98,22 +200,13 @@
         mode?.addEventListener('change', sync);
         if (mode) sync();
 
-        const locate = form.querySelector('[data-resource-locate]');
-        const status = form.querySelector('[data-resource-location-status]');
-        if (!locate || !status || !navigator.geolocation) continue;
-
-        locate.hidden = false;
-        locate.addEventListener('click', () => {
-            locate.disabled = true;
-            status.textContent = 'Finding your location…';
-            navigator.geolocation.getCurrentPosition(({ coords }) => {
-                form.elements.coordinates.value = `${coords.latitude.toFixed(7)}, ${coords.longitude.toFixed(7)}`;
-                status.textContent = `Estimated GPS accuracy ±${Math.round(coords.accuracy)} m`;
-                locate.disabled = false;
-            }, () => {
-                status.textContent = 'Location unavailable. Try again or enter coordinates.';
-                locate.disabled = false;
-            }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
-        });
+        setupLocation(form);
+        form.addEventListener('invalid', event => {
+            let details = event.target.closest('details');
+            while (details) {
+                details.open = true;
+                details = details.parentElement.closest('details');
+            }
+        }, true);
     }
 })();
