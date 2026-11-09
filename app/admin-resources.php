@@ -54,7 +54,11 @@ function admin_resources_list(PDO $db, string $search = '', string $type = '', s
                 r.resource_type, r.status, r.is_active, r.verified_at,
                 (SELECT ri.src FROM resource_images ri WHERE ri.resource_id = r.id
                  ORDER BY ri.is_featured DESC, ri.sort_order ASC, ri.id ASC LIMIT 1) AS featured_image,
-                (SELECT COUNT(*) FROM resource_images ri WHERE ri.resource_id = r.id) AS image_count
+                (SELECT COUNT(*) FROM resource_images ri WHERE ri.resource_id = r.id) AS image_count,
+                (SELECT rs.service_type FROM resource_services rs WHERE rs.resource_id = r.id AND rs.is_active = 1
+                 ORDER BY rs.sort_order ASC, rs.service_type ASC, rs.id ASC LIMIT 1) AS first_service,
+                (SELECT rs.service_type FROM resource_services rs WHERE rs.resource_id = r.id AND rs.is_active = 1
+                 ORDER BY rs.sort_order ASC, rs.service_type ASC, rs.id ASC LIMIT 1 OFFSET 1) AS second_service
          FROM resources r
          WHERE ' . implode(' AND ', $where) . '
          ORDER BY r.name ASC, r.id ASC'
