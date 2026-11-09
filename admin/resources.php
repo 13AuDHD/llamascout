@@ -6,6 +6,7 @@ require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/mail.php';
 require_once dirname(__DIR__) . '/app/admin-users.php';
 require_once dirname(__DIR__) . '/app/resource-submissions.php';
+require_once dirname(__DIR__) . '/app/contribution-presentation.php';
 require_once __DIR__ . '/_dashboard.php';
 
 $adminUser = moderation_require_admin();
@@ -281,11 +282,6 @@ if (
     $notice = 'Resource hero photo updated.';
 }
 
-$resources =
-    $tablesReady
-        ? admin_resources_list($db)
-        : [];
-
 $resource =
     $tablesReady
     && $resourceId > 0
@@ -296,7 +292,6 @@ $resource =
         : [];
 
 $resourceSubmission = null;
-$pendingResourceSubmissions = $submissionId > 0 ? [] : llama_resource_submission_queue($db, null, 50);
 if ($submissionsReady && $submissionId > 0) {
     $lookup = $db->prepare("SELECT * FROM resource_submissions WHERE id = ? AND status IN ('pending', 'needs-changes')");
     $lookup->execute([$submissionId]);
@@ -313,6 +308,46 @@ if ($resourceSubmission && (int) $resourceSubmission['target_resource_id'] > 0) 
 }
 $editing =
     !empty($resource);
+
+$showInventory = $tablesReady && !$editing && !$resourceSubmission;
+if ($showInventory) {
+    $search = trim((string) ($_GET['q'] ?? ''));
+    $filterValue = trim((string) ($_GET['type'] ?? ''));
+    $state = trim((string) ($_GET['state'] ?? ''));
+    $inventoryName = 'Resource';
+    $inventoryUrl = '/resources.php';
+    $submissionsUrl = '/submissions.php?kind=resource';
+    $searchPlaceholder = 'Name, address, city, state, or ID';
+    $filterName = 'type';
+    $filterLabel = 'Type';
+    $filterPlaceholder = 'All types';
+    $filterOptions = llama_resource_types();
+    $states = admin_resources_states($db);
+    $resources = admin_resources_list($db, $search, $filterValue, $state);
+    $stockImage = $resources ? llama_contribution_photo_url($db) : '';
+    $statuses = llama_resource_statuses();
+
+    $inventoryRows = array_map(static fn (array $row): array => [
+        'id' => $row['id'],
+        'name' => (string) $row['name'],
+        'status' => !empty($row['is_active']) ? ($statuses[$row['status']] ?? 'Unknown') : 'Inactive',
+        'image_url' => trim((string) ($row['featured_image'] ?? '')) === ''
+            ? $stockImage
+            : llama_photo_public_url((string) $row['featured_image']),
+        'location' => [$row['street_address'], $row['city'], $row['state_region']],
+        'facts' => [
+            ['icon' => 'photo', 'text' => number_format((int) $row['image_count'])],
+            ['text' => llama_resource_type_label($row['resource_type'])],
+            ['text' => 'Last checked: ' . (!empty($row['verified_at'])
+                ? llama_format_viewer_datetime((string) $row['verified_at'])
+                : 'Never')],
+        ],
+        'manage_url' => '/resources.php?id=' . (int) $row['id'],
+        'view_url' => !empty($row['is_active']) && !empty($row['slug'])
+            ? 'https://llamascout.com/resource.php?slug=' . rawurlencode($row['slug'])
+            : '',
+    ], $resources);
+}
 
 $postedReviewMatches = !$resourceSubmission
     || hash_equals(hash('sha256', $resourceSubmission['form_data']), (string) ($_POST['review_form'] ?? ''));
@@ -366,19 +401,6 @@ $e =
 </div>
 <?php endif; ?>
 
-<?php if ($pendingResourceSubmissions): ?>
-<section class="admin-panel">
-    <header class="admin-panel-header">
-        <div><p>Moderation</p><h2>Pending Resource Submissions</h2></div>
-    </header>
-    <ul>
-        <?php foreach ($pendingResourceSubmissions as $pending): ?>
-            <li><a href="/resources.php?submission=<?= (int) $pending['id'] ?>"><?= $e($pending['place_name']) ?></a></li>
-        <?php endforeach; ?>
-    </ul>
-</section>
-<?php endif; ?>
-
 <?php if (!$tablesReady): ?>
 
 <section class="admin-panel">
@@ -415,6 +437,9 @@ $e =
             </h2>
         </div>
 
+        <?php if ($editing && !$resourceSubmission): ?>
+            <a class="admin-button is-muted" href="/resources.php">Back to Resources</a>
+        <?php endif; ?>
     </header>
 
     <?php if ($returnPlaceId > 0): ?>
@@ -714,146 +739,9 @@ $e =
 </section>
 <?php endif; ?>
 
-<section class="admin-panel">
-    <header class="admin-panel-header">
-        <div>
-            <p>Standalone map data</p>
-            <h2>Resources</h2>
-        </div>
-
-        <span><?= number_format(count($resources)) ?></span>
-    </header>
-
-    <?php if (!$resources): ?>
-    <div class="admin-empty-state">
-        <h3>No Resources yet.</h3>
-        <p>
-            Create the first standalone Resource above.
-        </p>
-    </div>
-    <?php else: ?>
-
-    <div class="admin-integration-table-wrap">
-        <table class="admin-integration-table">
-            <thead>
-            <tr>
-                <th>Resource</th>
-                <th>Type</th>
-                <th>Services</th>
-                <th>Status</th>
-                <th>GPS</th>
-                <th>Manage</th>
-            </tr>
-            </thead>
-
-            <tbody>
-            <?php foreach ($resources as $row): ?>
-            <?php
-            $serviceNames =
-                array_values(
-                    array_filter(
-                        array_map(
-                            static fn (array $service): string =>
-                                trim(
-                                    (string) (
-                                        $service['service_type_label']
-                                        ?? ''
-                                    )
-                                ),
-                            (array) (
-                                $row['services']
-                                ?? []
-                            )
-                        )
-                    )
-                );
-            ?>
-            <tr class="<?= empty($row['is_active']) ? 'admin-resource-inactive' : '' ?>">
-                <td data-label="Resource">
-                    <strong><?= $e($row['name'] ?? 'Resource') ?></strong>
-                </td>
-
-                <td data-label="Type">
-                    <?= $e(
-                        $row['resource_type_label']
-                        ?? $row['resource_type']
-                        ?? ''
-                    ) ?>
-                </td>
-
-                <td data-label="Services">
-                    <?= $e(
-                        $serviceNames
-                            ? implode(', ', $serviceNames)
-                            : 'None'
-                    ) ?>
-                </td>
-
-                <td data-label="Status">
-                    <span class="admin-status-pill">
-                        <?= $e(
-                            !empty($row['is_active'])
-                                ? (
-                                    llama_resource_statuses()[
-                                        (string) (
-                                            $row['status']
-                                            ?? 'unknown'
-                                        )
-                                    ]
-                                    ?? ucfirst(
-                                        (string) (
-                                            $row['status']
-                                            ?? 'unknown'
-                                        )
-                                    )
-                                )
-                                : 'Inactive'
-                        ) ?>
-                    </span>
-                </td>
-
-                <td
-                    data-label="GPS"
-                    class="admin-resource-gps"
-                >
-                    <?php if (!empty($row['has_coordinates'])): ?>
-                        <?= $e(
-                            number_format(
-                                (float) $row['latitude'],
-                                6,
-                                '.',
-                                ''
-                            )
-                        ) ?>,
-                        <?= $e(
-                            number_format(
-                                (float) $row['longitude'],
-                                6,
-                                '.',
-                                ''
-                            )
-                        ) ?>
-                    <?php else: ?>
-                        Missing
-                    <?php endif; ?>
-                </td>
-
-                <td data-label="Manage">
-                    <a
-                        class="admin-button"
-                        href="/resources.php?id=<?= (int) $row['id'] ?>"
-                    >
-                        Edit
-                    </a>
-                </td>
-            </tr>
-            <?php endforeach; ?>
-            </tbody>
-        </table>
-    </div>
-
-    <?php endif; ?>
-</section>
+<?php if ($showInventory): ?>
+    <?php require __DIR__ . '/partials/place-inventory.php'; ?>
+<?php endif; ?>
 
 <?php endif; ?>
 

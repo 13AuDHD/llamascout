@@ -7,15 +7,6 @@
    Standalone V3 Resource + Service editor.
    ========================================================= */
 
-.admin-resource-gps {
-    white-space: nowrap;
-    font-variant-numeric: tabular-nums;
-}
-
-.admin-resource-inactive {
-    opacity: .68;
-}
-
 /* Resource page photos */
 
 .admin-resource-photo-grid {
