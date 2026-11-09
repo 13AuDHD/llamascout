@@ -65,7 +65,11 @@
 
 <div class="admin-place-list">
 <?php foreach ($inventoryRows as $row): ?>
-    <article class="admin-place-list-card">
+    <?php
+    $services = $row['services'] ?? [];
+    $location = implode(' · ', array_filter($row['location']));
+    ?>
+    <article class="admin-place-list-card<?= $services ? ' has-service-pills' : '' ?>">
         <div class="admin-place-list-image">
             <?php if ($row['image_url'] !== ''): ?>
                 <img src="<?= moderation_e($row['image_url']) ?>" alt="" loading="lazy">
@@ -80,10 +84,25 @@
                     <span><?= moderation_e($inventoryName) ?> #<?= (int) $row['id'] ?></span>
                     <h2><?= moderation_e($row['name']) ?></h2>
                 </div>
-                <span class="admin-status-pill"><?= moderation_e($row['status']) ?></span>
+                <?php if (isset($row['status_tone'])): ?>
+                    <div class="admin-resource-list-badges">
+                        <span class="admin-status-pill" data-status-tone="<?= moderation_e($row['status_tone']) ?>">
+                            <?= moderation_e($row['status']) ?>
+                        </span>
+                        <?php if ($services): ?>
+                            <ul class="admin-resource-list-services" aria-label="Services">
+                                <?php foreach ($services as $service): ?>
+                                    <li title="<?= moderation_e($service) ?>"><?= moderation_e($service) ?></li>
+                                <?php endforeach; ?>
+                            </ul>
+                        <?php endif; ?>
+                    </div>
+                <?php else: ?>
+                    <span class="admin-status-pill"><?= moderation_e($row['status']) ?></span>
+                <?php endif; ?>
             </div>
 
-            <p><?= moderation_e(implode(' · ', array_filter($row['location']))) ?></p>
+            <p<?= $services && $location !== '' ? ' title="' . moderation_e($location) . '"' : '' ?>><?= moderation_e($location) ?></p>
 
             <div class="admin-place-list-facts">
                 <?php foreach ($row['facts'] as $fact): ?>

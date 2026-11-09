@@ -325,12 +325,19 @@ if ($showInventory) {
     $states = admin_resources_states($db);
     $resources = admin_resources_list($db, $search, $filterValue, $state);
     $stockImage = $resources ? llama_contribution_photo_url($db) : '';
-    $statuses = llama_resource_statuses();
+    $statuses = array_replace(llama_resource_statuses(), ['closed' => 'Unavailable']);
 
     $inventoryRows = array_map(static fn (array $row): array => [
         'id' => $row['id'],
         'name' => (string) $row['name'],
         'status' => !empty($row['is_active']) ? ($statuses[$row['status']] ?? 'Unknown') : 'Inactive',
+        'status_tone' => empty($row['is_active']) ? 'red' : match ($row['status']) {
+            'available' => 'green',
+            'temporarily_unavailable', 'seasonal' => 'yellow',
+            'closed' => 'red',
+            default => 'neutral',
+        },
+        'services' => array_filter(array_map('llama_resource_service_type_label', [$row['first_service'], $row['second_service']])),
         'image_url' => trim((string) ($row['featured_image'] ?? '')) === ''
             ? $stockImage
             : llama_photo_public_url((string) $row['featured_image']),

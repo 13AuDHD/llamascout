@@ -140,3 +140,76 @@
         gap: 7px;
     }
 }
+
+/* Keep the service stack out of the shared card's grid sizing. */
+.admin-resource-list-badges {
+    position: relative;
+    display: flex;
+    flex: none;
+}
+
+.admin-resource-list-badges [data-status-tone="green"] {
+    --status-color: light-dark(#1c663e, #83d9a3);
+}
+
+.admin-resource-list-badges [data-status-tone="yellow"] {
+    --status-color: light-dark(#785500, #f0cd6a);
+}
+
+.admin-resource-list-badges [data-status-tone="red"] {
+    --status-color: light-dark(#9b2929, #f29a96);
+}
+
+.admin-resource-list-badges .admin-status-pill {
+    color: var(--status-color, var(--text-muted));
+    border-color: color-mix(in srgb, var(--status-color, var(--border)) 60%, var(--border));
+}
+
+.has-service-pills {
+    --service-pill-width: 6rem;
+}
+
+.admin-resource-list-services {
+    position: absolute;
+    inset-block-start: calc(100% + 2px);
+    inset-inline-end: 0;
+    display: grid;
+    justify-items: end;
+    gap: 2px;
+    width: var(--service-pill-width);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.admin-resource-list-services li {
+    box-sizing: border-box;
+    max-width: 100%;
+    overflow: hidden;
+    padding: 1px 6px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--text-muted);
+    font-size: .6rem;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.has-service-pills .admin-place-list-main > p {
+    padding-inline-end: var(--service-pill-width);
+}
+
+@media (max-width: 700px) {
+    .has-service-pills .admin-place-list-main > p {
+        padding-inline-end: 0;
+        /* Clear space on the first line without rewrapping the address. */
+        mask-image:
+            linear-gradient(to left, transparent var(--service-pill-width), #000 calc(var(--service-pill-width) + 8px)),
+            linear-gradient(#000, #000);
+        mask-size: 100% 1lh, 100% calc(100% - 1lh);
+        mask-position: top, bottom;
+        mask-repeat: no-repeat;
+    }
+}
