@@ -148,23 +148,6 @@
     flex: none;
 }
 
-.admin-resource-list-badges [data-status-tone="green"] {
-    --status-color: light-dark(#1c663e, #83d9a3);
-}
-
-.admin-resource-list-badges [data-status-tone="yellow"] {
-    --status-color: light-dark(#785500, #f0cd6a);
-}
-
-.admin-resource-list-badges [data-status-tone="red"] {
-    --status-color: light-dark(#9b2929, #f29a96);
-}
-
-.admin-resource-list-badges .admin-status-pill {
-    color: var(--status-color, var(--text-muted));
-    border-color: color-mix(in srgb, var(--status-color, var(--border)) 60%, var(--border));
-}
-
 .has-service-pills {
     --service-pill-width: 6rem;
 }

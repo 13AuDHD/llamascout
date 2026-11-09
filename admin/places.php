@@ -60,6 +60,14 @@ $inventoryRows = array_map(static fn (array $place): array => [
     'id' => $place['id'],
     'name' => (string) $place['name'],
     'status' => ucfirst((string) $place['status']),
+    'status_tone' => match ($place['status']) {
+        'draft', 'unlisted' => 'yellow',
+        'active' => 'green',
+        'featured' => 'blue',
+        'removed' => 'red',
+        'archived' => 'gray',
+        default => 'neutral',
+    },
     'image_url' => empty($place['featured_image']) ? '' : llama_photo_public_url((string) $place['featured_image']),
     'location' => [$place['city'] ?? null, $place['county'] ?? null, $place['state'] ?? null, $place['land_manager'] ?? null],
     'facts' => [

@@ -84,21 +84,19 @@
                     <span><?= moderation_e($inventoryName) ?> #<?= (int) $row['id'] ?></span>
                     <h2><?= moderation_e($row['name']) ?></h2>
                 </div>
-                <?php if (isset($row['status_tone'])): ?>
+                <?php if ($services): ?>
                     <div class="admin-resource-list-badges">
-                        <span class="admin-status-pill" data-status-tone="<?= moderation_e($row['status_tone']) ?>">
-                            <?= moderation_e($row['status']) ?>
-                        </span>
-                        <?php if ($services): ?>
-                            <ul class="admin-resource-list-services" aria-label="Services">
-                                <?php foreach ($services as $service): ?>
-                                    <li title="<?= moderation_e($service) ?>"><?= moderation_e($service) ?></li>
-                                <?php endforeach; ?>
-                            </ul>
-                        <?php endif; ?>
+                <?php endif; ?>
+                <span class="admin-status-pill" data-status-tone="<?= moderation_e($row['status_tone']) ?>">
+                    <?= moderation_e($row['status']) ?>
+                </span>
+                <?php if ($services): ?>
+                        <ul class="admin-resource-list-services" aria-label="Services">
+                            <?php foreach ($services as $service): ?>
+                                <li title="<?= moderation_e($service) ?>"><?= moderation_e($service) ?></li>
+                            <?php endforeach; ?>
+                        </ul>
                     </div>
-                <?php else: ?>
-                    <span class="admin-status-pill"><?= moderation_e($row['status']) ?></span>
                 <?php endif; ?>
             </div>
 

@@ -127,6 +127,31 @@
     text-transform: uppercase;
 }
 
+.admin-place-list-heading [data-status-tone="green"] {
+    --status-color: light-dark(#1c663e, #83d9a3);
+}
+
+.admin-place-list-heading [data-status-tone="yellow"] {
+    --status-color: light-dark(#785500, #f0cd6a);
+}
+
+.admin-place-list-heading [data-status-tone="red"] {
+    --status-color: light-dark(#9b2929, #f29a96);
+}
+
+.admin-place-list-heading [data-status-tone="blue"] {
+    --status-color: light-dark(#215a99, #9ac7ff);
+}
+
+.admin-place-list-heading [data-status-tone="gray"] {
+    --status-color: light-dark(#5c616a, #b0b6c0);
+}
+
+.admin-place-list-heading .admin-status-pill[data-status-tone] {
+    color: var(--status-color, var(--text-muted));
+    border-color: color-mix(in srgb, var(--status-color, var(--border)) 60%, var(--border));
+}
+
 .admin-place-list-heading h2 {
     margin: 2px 0 0;
 
