@@ -241,8 +241,8 @@ function admin_shell_nav_class(string $key, string $active): string
             'features' => ['list-filters.css'],
         ],
         'resources.php' => [
-            'pages' => ['resources.css'],
-            'features' => [],
+            'pages' => ['places.css', 'resources.css'],
+            'features' => ['list-filters.css'],
         ],
 
         'closed-places.php' => [

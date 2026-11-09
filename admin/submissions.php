@@ -19,13 +19,15 @@ $adminNavCounts = [
     'scout_reviews' => $stats['scout_reviews'],
 ];
 
-$adminPageTitle = 'New Place and Resource Submissions';
+$resourcesOnly = ($_GET['kind'] ?? '') === 'resource';
+$adminPageTitle = $resourcesOnly ? 'New Resource Submissions' : 'New Place and Resource Submissions';
 $adminPageEyebrow = 'Moderation';
 $adminActiveNav = 'submissions';
 
 require __DIR__ . '/_header.php';
 
-$items = llama_resource_merge_queue(moderation_new_place_queue($db), llama_resource_submission_queue($db, false));
+$resources = llama_resource_submission_queue($db, false);
+$items = $resourcesOnly ? $resources : llama_resource_merge_queue(moderation_new_place_queue($db), $resources);
 ?>
 
 <?php
@@ -47,7 +49,7 @@ $resourceReviewNotice = match ($_GET['resource_review'] ?? '') {
         <div class="admin-empty-state">
             <i aria-hidden="true"><?= llama_icon('circle-check') ?></i>
             <h2>Queue clear.</h2>
-            <p>There are no new Place or Resource submissions waiting for review.</p>
+            <p><?= $resourcesOnly ? 'There are no new Resource submissions waiting for review.' : 'There are no new Place or Resource submissions waiting for review.' ?></p>
         </div>
 
     <?php else: ?>

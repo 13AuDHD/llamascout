@@ -27,9 +27,49 @@ function admin_resources_tables_ready(PDO $db): bool
     }
 }
 
-function admin_resources_list(PDO $db): array
+function admin_resources_list(PDO $db, string $search = '', string $type = '', string $state = ''): array
 {
-    return llama_resources($db, null, false);
+    $where = ['1 = 1'];
+    $params = [];
+
+    if ($search !== '') {
+        $where[] = '(r.name LIKE ? OR r.street_address LIKE ? OR r.city LIKE ? OR r.state_region LIKE ?
+            OR r.slug LIKE ? OR CAST(r.id AS CHAR) = ?)';
+        $needle = '%' . $search . '%';
+        array_push($params, $needle, $needle, $needle, $needle, $needle, ltrim($search, '#'));
+    }
+
+    if (isset(llama_resource_types()[$type])) {
+        $where[] = 'r.resource_type = ?';
+        $params[] = $type;
+    }
+
+    if ($state !== '') {
+        $where[] = 'r.state_region = ?';
+        $params[] = $state;
+    }
+
+    $statement = $db->prepare(
+        'SELECT r.id, r.name, r.slug, r.street_address, r.city, r.state_region,
+                r.resource_type, r.status, r.is_active, r.verified_at,
+                (SELECT ri.src FROM resource_images ri WHERE ri.resource_id = r.id
+                 ORDER BY ri.is_featured DESC, ri.sort_order ASC, ri.id ASC LIMIT 1) AS featured_image,
+                (SELECT COUNT(*) FROM resource_images ri WHERE ri.resource_id = r.id) AS image_count
+         FROM resources r
+         WHERE ' . implode(' AND ', $where) . '
+         ORDER BY r.name ASC, r.id ASC'
+    );
+    $statement->execute($params);
+
+    return $statement->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function admin_resources_states(PDO $db): array
+{
+    return $db->query(
+        "SELECT DISTINCT state_region FROM resources
+         WHERE state_region IS NOT NULL AND state_region <> '' ORDER BY state_region ASC"
+    )->fetchAll(PDO::FETCH_COLUMN);
 }
 
 function admin_resource_get(PDO $db, int $resourceId): array
