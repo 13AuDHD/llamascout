@@ -387,7 +387,8 @@ function llama_address_search_bias(
 
 
 function llama_address_result_from_row(
-    array $row
+    array $row,
+    bool $allowLocalityOnly = false
 ): ?array {
     $addressLine1 =
         trim(
@@ -415,6 +416,14 @@ function llama_address_result_from_row(
             );
     }
 
+    if ($allowLocalityOnly) {
+        $street = trim((string) ($row['street'] ?? ''));
+        $number = trim((string) ($row['housenumber'] ?? ''));
+        $addressLine1 = $street === '' ? '' : trim($number . ' ' . $street);
+    }
+
+    $county = trim((string) ($row['county'] ?? ''));
+
     $city =
         trim(
             (string) (
@@ -422,7 +431,7 @@ function llama_address_result_from_row(
                 ?? $row['town']
                 ?? $row['village']
                 ?? $row['municipality']
-                ?? $row['county']
+                ?? ($allowLocalityOnly ? null : $row['county'] ?? null)
                 ?? ''
             )
         );
@@ -498,6 +507,7 @@ function llama_address_result_from_row(
                         [
                             $addressLine1,
                             $city,
+                            $allowLocalityOnly ? $county : null,
                             $state,
                             $postalCode,
                             $country,
@@ -512,7 +522,7 @@ function llama_address_result_from_row(
 
     if (
         $label === ''
-        || $addressLine1 === ''
+        || (!$allowLocalityOnly && $addressLine1 === '')
     ) {
         return null;
     }
@@ -521,6 +531,9 @@ function llama_address_result_from_row(
         'label' => $label,
         'address_line_1' => $addressLine1,
         'city' => $city,
+        'county' => $county,
+        'state_name' => $stateName !== '' ? $stateName : $state,
+        'country_code' => strtoupper($countryCode),
         'state' => $state,
         'postal_code' => $postalCode,
         'country' => $country,
@@ -630,7 +643,8 @@ function llama_address_autocomplete_query(
 
 function llama_address_reverse_lookup(
     float $latitude,
-    float $longitude
+    float $longitude,
+    bool $allowLocalityOnly = false
 ): ?array {
     if (
         $latitude < -90
@@ -668,7 +682,8 @@ function llama_address_reverse_lookup(
 
         $result =
             llama_address_result_from_row(
-                $row
+                $row,
+                $allowLocalityOnly
             );
 
         if ($result !== null) {

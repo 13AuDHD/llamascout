@@ -50,7 +50,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 }
 
 $pageTitle = 'Resource contribution | Llama Scout';
-$pageStyles = ['site/pages/add-place.css', 'site/features/resource-form.css'];
+$pageStyles = ['site/pages/add-place.css', 'site/features/place-report-form.css', 'site/features/resource-form.css'];
 require __DIR__ . '/partials/header.php';
 ?>
 <section class="contribution-page">
