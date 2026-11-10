@@ -3,15 +3,6 @@
 declare(strict_types=1);
 
 /**
- * One public projection for Place contact details and related links.
- *
- * The existing official facility bundle remains read-only. Approved Scout
- * Approved Scout Report corrections supersede official values while source
- * records and their attribution remain intact. This function is pure so public rendering and tests agree.
- *
- * @return array{items: array<string, array{value: string, icon: string, kind: string}>, links: list<array{url: string, title: string, label: string, icon: string}>}
- */
-/**
  * Source-backed defaults for editable Place contact fields. Official records
  * remain intact; a later approved answer may supersede an individual value.
  * Only an explicitly identified homepage may populate the Website field.
@@ -79,7 +70,7 @@ function llama_place_report_contact_editor_projection(
     foreach ($baselines as $key => $baseline) {
         $existing = trim((string) ($currentValues[$key] ?? ''));
         if ($existing !== '' && !in_array($key, $explicitUnknowns, true)) {
-            $sources[$key] = 'Approved Scout Report answer';
+            $sources[$key] = 'Recorded Llama Scout answer';
         } elseif (in_array($key, $explicitUnknowns, true)) {
             $sources[$key] = 'Explicit Unknown answer';
         } elseif ($baseline !== '') {
@@ -113,6 +104,11 @@ function llama_place_report_contact_strip_unchanged_official(
     return $submitted;
 }
 
+/**
+ * Public presentation selects the latest approved contact answers first,
+ * falling back to the untouched official provider facts and named links.
+ * This function is pure so both interfaces can share verified precedence.
+ */
 function llama_place_report_public_contact_cards(
     array $official,
     array $report
@@ -230,6 +226,11 @@ function llama_place_report_public_contact_cards(
     $related = $string($contact, 'related_links');
     $overrideLinks = $related !== '' || in_array('contact_related_links', $unknowns, true);
     $originalLabels = [];
+    $officialHomepage = strtolower(rtrim($officialDefaults['contact_website_url'], '/'));
+    $chosenHomepage = strtolower(rtrim(
+        $effective('contact_website_url', $officialDefaults['contact_website_url'], $string($contact, 'website_url')),
+        '/'
+    ));
     foreach ((array) ($official['links'] ?? []) as $link) {
         if (!is_array($link)) {
             continue;
@@ -237,7 +238,12 @@ function llama_place_report_public_contact_cards(
         $url = $string($link, 'url');
         if ($validUrl($url)) {
             $originalLabels[strtolower(rtrim($url, '/'))] = $string($link, 'title');
-            if (!$overrideLinks) {
+            if (!$overrideLinks
+                && !($officialHomepage !== '' && $chosenHomepage !== ''
+                    && $officialHomepage !== $chosenHomepage
+                    && strtolower(rtrim($url, '/')) === $officialHomepage)) {
+                // The original homepage has been superseded by an approved
+                // Website correction; don't show it as a second stale link.
                 $appendLink($url, $string($link, 'title'), 'Official Links');
             }
         }
