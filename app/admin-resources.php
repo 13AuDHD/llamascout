@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/resources.php';
 require_once __DIR__ . '/photo-upload.php';
+require_once __DIR__ . '/location-photo-policy.php';
 
 function admin_resources_tables_ready(PDO $db): bool
 {
@@ -959,11 +960,11 @@ function admin_resource_add_photos(
         );
 
     $remaining =
-        3 - count($existing);
+        llama_location_gallery_photo_limit('resource') - count($existing);
 
     if ($remaining < 1) {
         throw new InvalidArgumentException(
-            'This Resource already has the maximum of 3 photos.'
+            'This Resource already has the maximum of 10 photos.'
         );
     }
 
