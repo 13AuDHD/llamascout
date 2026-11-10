@@ -18,7 +18,6 @@ function llama_place_report_apply_camping_profiles(
     llama_place_report_set_applicable(
         $fields,
         [
-            'campsite_count',
             'site_hookups_available',
         ],
         [[
