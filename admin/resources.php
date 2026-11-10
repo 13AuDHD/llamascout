@@ -385,6 +385,7 @@ $adminPageEyebrow =
 
 $adminActiveNav =
     'resources';
+$adminNeedsPhotoUploader = true;
 
 require __DIR__ . '/_header.php';
 
@@ -595,7 +596,7 @@ $e =
     $resourcePhotoRemaining =
         max(
             0,
-            3 - count($resourcePhotos)
+            llama_location_gallery_photo_limit('resource') - count($resourcePhotos)
         );
     ?>
 
@@ -739,7 +740,7 @@ $e =
 
     <div class="admin-user-action-box">
         <p>
-            Resource galleries are limited to 3 photos. The first photo is the
+            Resource galleries are limited to 10 photos. The first photo is the
             hero image used on the Resource page and map card.
         </p>
     </div>
