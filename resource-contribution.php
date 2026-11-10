@@ -66,9 +66,24 @@ if ($posted) {
         if (!community_verify_csrf((string) ($_POST['csrf_token'] ?? ''))) {
             throw new InvalidArgumentException('Your session expired. Reload the page and try again.');
         }
-        $contributionResourceInput = llama_resource_submission_input($_POST);
+        // Preserve the original reviewed photo evidence when a contributor
+        // resubmits a corrected Resource form after validation errors.
+        $contributionResourceInput = array_replace(
+            (array) ($contributionResourceInput ?? []),
+            llama_resource_submission_input($_POST)
+        );
         llama_resource_submit(
-            $db, $userId, $contributionResourceInput, $contributionResourceId, $contributionResourceSnapshot, $contributionRevisionId
+            $db,
+            $userId,
+            $contributionResourceInput,
+            $contributionResourceId,
+            $contributionResourceSnapshot,
+            $contributionRevisionId,
+            trim((string) ($_POST['resource_photo_stage_token'] ?? '')),
+            llama_photo_decode_form_photos($_POST['resource_photos_json'] ?? '[]'),
+            is_array($_POST['resource_remove_photos'] ?? null)
+                ? $_POST['resource_remove_photos']
+                : []
         );
         $kind = $revision ? 'resource-resubmitted' : ($isUpdate ? 'resource-update' : 'resource');
         header('Location: https://account.llamascout.com/contributions.php?submitted=' . $kind, true, 303);
