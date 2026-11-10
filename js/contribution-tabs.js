@@ -8,14 +8,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const buttons = [...picker.querySelectorAll('[data-contribution-mode]')];
         const groups = report.querySelectorAll('[data-report-main-section], [data-contribution-place-only]');
         const placePhotoPanel = report.querySelector('[data-contribution-place-photo-panel]');
-        const sitePhotoNotice = report.querySelector('[data-contribution-site-photo-notice]');
+        const firstSitePhotoPanel = report.querySelector('[data-contribution-site-photo-panel]');
         const hasAdminSitePicker = Boolean(report.querySelector('[data-admin-campsite-selector]'));
         let currentMode = null;
 
         const hasStagedPhotos = (form) => {
             if (!form) return false;
             return [...form.querySelectorAll(
-                'input[name="photos_json"], input[name="resource_photos_json"]'
+                'input[name="photos_json"], input[name="site_photos_json"], input[name="resource_photos_json"]'
             )].some((field) => {
                 try {
                     const photos = JSON.parse(field.value || '[]');
@@ -29,9 +29,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const select = (mode) => {
             if (!buttons.some(button => button.dataset.contributionMode === mode && !button.disabled)) return;
 
-            // A staged upload is bound to its current form/target. Never
-            // silently carry those photos from Place to Site or Resource.
-            if (currentMode !== null && currentMode !== mode) {
+            // Place and first Site now have separate staging fields, so
+            // switching between their tabs is safe. Switching between the
+            // Resource form and the Place/Site form stays guarded.
+            if (currentMode !== null && currentMode !== mode
+                && (currentMode === 'resource' || mode === 'resource')) {
                 const activeForm = currentMode === 'resource'
                     ? resource.querySelector('form[data-resource-editor]')
                     : report;
@@ -55,13 +57,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            // New Place submissions have no saved Site photo owner yet.
-            // Hide the Place uploader rather than mislabel it as Site photos.
+            // Place and first Site uploaders stage to different targets;
+            // only one is visible at a time on the shared Add Place form.
             if (placePhotoPanel && !hasAdminSitePicker) {
                 placePhotoPanel.hidden = mode === 'site';
             }
-            if (sitePhotoNotice) {
-                sitePhotoNotice.hidden = mode !== 'site' || hasAdminSitePicker;
+            if (firstSitePhotoPanel) {
+                firstSitePhotoPanel.hidden = mode !== 'site';
             }
 
             currentMode = mode;
