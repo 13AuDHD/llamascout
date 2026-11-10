@@ -1036,6 +1036,51 @@ function moderation_insert_submission_report_data(
     llama_place_report_publish_submission($db, $placeId, $data, $siteId);
 }
 
+/**
+ * Attach the first Site's submitted photos only after its canonical identity
+ * exists. The original contribution files remain until outer approval commit.
+ */
+function moderation_attach_first_site_photos_transactional(
+    PDO $db,
+    int $submissionId,
+    int $placeId,
+    int $siteId,
+    int $contributorId,
+    array $photos,
+    array &$copiedPaths
+): array {
+    require_once __DIR__ . '/place-campsite-media.php';
+    require_once __DIR__ . '/place-report/site-submission-photos.php';
+
+    if (!$db->inTransaction()) {
+        throw new RuntimeException('First Site photo publication requires an active transaction.');
+    }
+    $photos = llama_place_report_first_site_photos(['site_photos' => $photos], $submissionId);
+    if (count(llama_place_campsite_images($db, $placeId, $siteId)) + count($photos)
+        > llama_location_gallery_photo_limit('site')) {
+        throw new RuntimeException('The first Site would exceed its 10-photo gallery.');
+    }
+    $newPaths = [];
+    foreach ($photos as $photo) {
+        $copied = moderation_copy_photo_file(
+            llama_place_report_photo_path($photo),
+            '/uploads/places/' . $placeId . '/sites/' . $siteId,
+            (string) ($photo['filename'] ?? '')
+        );
+        if ($copied === null) {
+            throw new RuntimeException('A first Site photo is missing. Approval was cancelled.');
+        }
+        $copiedPaths[] = $copied;
+        $newPaths[] = $copied;
+        llama_place_campsite_image_insert(
+            $db, $placeId, $siteId, $copied,
+            trim((string) ($photo['alt'] ?? '')) ?: null,
+            null, $contributorId, 'Llama Scout'
+        );
+    }
+    return $newPaths;
+}
+
 function moderation_approve_new_place(
     PDO $db,
     int $submissionId,
@@ -1223,6 +1268,17 @@ $name = trim(
             $copyJournalStart
         );
 
+    $sitePhotos = llama_place_report_first_site_photos($data, $submissionId);
+    $sitePhotoPaths = moderation_attach_first_site_photos_transactional(
+        $db,
+        $submissionId,
+        $placeId,
+        (int) $firstSite['id'],
+        (int) $submission['user_id'],
+        $sitePhotos,
+        $copiedPhotoPaths
+    );
+
     llama_scout_report_record_approved_new_place_bundle(
         $db,
         $submissionId,
@@ -1233,7 +1289,9 @@ $name = trim(
         $reviewedBy,
         $reviewNotes,
         $photos,
-        $reportPhotoPaths
+        $reportPhotoPaths,
+        $sitePhotos,
+        $sitePhotoPaths
     );
 
     moderation_insert_submission_report_data(
