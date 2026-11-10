@@ -232,6 +232,105 @@
     font-weight: 750;
 }
 
+/* Shared Admin Place/Site gallery replaces the old Photo Management forms. */
+.place-report-form [data-admin-photo-sortable] .admin-attached-photo {
+    gap: 8px;
+    align-content: start;
+}
+
+.place-report-form .admin-attached-photo-preview {
+    position: relative;
+    min-width: 0;
+}
+
+.place-report-form .admin-attached-photo-preview img {
+    display: block;
+    width: 100%;
+}
+
+.place-report-form .admin-attached-photo-hero {
+    position: absolute;
+    top: 9px;
+    left: 9px;
+    padding: 5px 9px;
+    border-radius: 999px;
+    font-size: .72rem;
+    font-weight: 800;
+    color: #fff;
+    background: #175a42;
+    box-shadow: 0 1px 8px #0007;
+    pointer-events: none;
+}
+
+.place-report-form .admin-attached-photo-hero[hidden] {
+    display: none;
+}
+
+.place-report-form .admin-attached-photo-handle {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: grid;
+    place-items: center;
+    width: 39px;
+    height: 39px;
+    padding: 0;
+    border: 1px solid #ffffff6b;
+    border-radius: 9px;
+    background: #151515dc;
+    color: #fff;
+    cursor: grab;
+    font-size: 1.65rem;
+    line-height: 1;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.place-report-form .admin-attached-photo-handle:active {
+    cursor: grabbing;
+}
+
+.place-report-form .admin-attached-photo-handle:focus-visible {
+    outline: 3px solid #a3ccac;
+    outline-offset: 2px;
+}
+
+.place-report-form .admin-attached-photo.is-photo-dragging {
+    opacity: .7;
+    outline: 2px solid var(--text-muted);
+    outline-offset: 3px;
+    border-radius: 10px;
+}
+
+.place-report-form .admin-attached-photo.is-photo-removed img {
+    opacity: .38;
+}
+
+.place-report-form .admin-attached-photo-remove {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    min-height: 28px;
+    font-size: .74rem;
+    font-weight: 750;
+}
+
+.place-report-form .admin-attached-photo-caption {
+    box-sizing: border-box;
+    display: block;
+    width: 100%;
+    min-width: 0;
+    min-height: 35px;
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--background);
+    color: var(--text);
+    font: inherit;
+    font-size: .79rem;
+}
+
 .scout-report-header {
     display: flex;
     justify-content: space-between;
