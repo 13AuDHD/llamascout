@@ -1562,6 +1562,17 @@ function llama_place_report_resubmit_new_place(
             )
             : [];
 
+    $knownPlacePhotoPaths = array_values(array_filter(array_map(
+        'llama_place_report_photo_path',
+        $existingPhotos
+    )));
+    foreach ($removePhotos as $path) {
+        if (!in_array($path, $knownPlacePhotoPaths, true)) {
+            throw new InvalidArgumentException(
+                'A selected Place photo does not belong to this Place submission.'
+            );
+        }
+    }
     $keptPhotos = [];
 
     foreach ($existingPhotos as $photo) {
@@ -1621,6 +1632,10 @@ function llama_place_report_resubmit_new_place(
     }
     if (count($keptSitePhotos) + count($submittedSitePhotos) > llama_location_gallery_photo_limit('site')) {
         throw new InvalidArgumentException('The first Site can have up to 10 photos.');
+    }
+
+    if (count($keptPhotos) + count($submittedPhotos) > llama_location_gallery_photo_limit('place')) {
+        throw new InvalidArgumentException('This Place can have up to 10 photos.');
     }
 
     llama_place_report_validate_new_place_minimum(
