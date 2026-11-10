@@ -169,6 +169,19 @@ if (
             JSON_UNESCAPED_SLASHES
             | JSON_UNESCAPED_UNICODE
         );
+
+    $restoredSitePhotos = llama_place_draft_restore_photos(
+        $userId,
+        $draftId,
+        (array) ($draft['form_data']['_draft_site_photos'] ?? []),
+        'add-site',
+        'site'
+    );
+    $_POST['site_photo_stage_token'] = (string) ($restoredSitePhotos['token'] ?? '');
+    $_POST['site_photos_json'] = json_encode(
+        (array) ($restoredSitePhotos['photos'] ?? []),
+        JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+    );
 }
 
 if (
