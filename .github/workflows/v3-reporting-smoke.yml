@@ -29,6 +29,8 @@ on:
       - 'js/place-campsite-detail-media.js'
       - 'js/place-report-seasons.js'
       - 'js/admin/place-map.js'
+      - 'js/admin/place-report-save.js'
+      - 'tools/tests/admin-all-sites-ui.cjs'
       - 'js/admin/place-season-builder.js'
       - 'js/admin/place-report-seasons.js'
       - 'admin/partials/place-map.php'
@@ -37,6 +39,8 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/v3-reporting-smoke.yml'
+      - 'js/admin/place-report-save.js'
+      - 'tools/tests/admin-all-sites-ui.cjs'
       - 'tools/v3-launch-smoke.php'
       - 'app/place-report.php'
       - 'app/place-report/**'
@@ -86,6 +90,7 @@ jobs:
           node --check js/admin/place-season-builder.js
           node --check js/admin/place-report-seasons.js
           node --check js/admin/place-map.js
+          node --check js/admin/place-report-save.js
       - name: Run V3 reporting smoke tests
         run: php tools/v3-launch-smoke.php
       - name: Install isolated DOM test dependency
@@ -96,6 +101,10 @@ jobs:
         env:
           NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules
         run: node tools/tests/season-builder-ui.cjs
+      - name: Exercise All Sites consensus and bulk save persistence
+        env:
+          NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules
+        run: node tools/tests/admin-all-sites-ui.cjs
       - name: Exercise parent-child questions in the shared Scout Report form
         env:
           NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules

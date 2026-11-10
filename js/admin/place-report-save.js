@@ -552,8 +552,14 @@
     const overwritePanel = form.querySelector('[data-admin-overwrite-site-panel]');
     const overwriteToggle = form.querySelector('[data-admin-overwrite-site-answers]');
     let editingAllSites = false;
+    const clearBulkConsensusNotes = () => {
+        form.querySelectorAll('[data-admin-bulk-mixed-note], [data-admin-bulk-summary]')
+            .forEach(note => note.remove());
+    };
+
     const resetBulk = () => {
         bulkTouched.clear();
+        clearBulkConsensusNotes();
         if (overwriteToggle) overwriteToggle.checked = false;
         if (overwritePanel) overwritePanel.hidden = !editingAllSites;
     };
@@ -969,6 +975,86 @@
             ),
         });
 
+    // A bulk editing value is not an answer of its own. It is a projection
+    // of the current effective answer on EVERY Site, including imported,
+    // inherited and locally overridden answers. An unanswered Site differs
+    // from one with an explicit No or Unknown.
+    const comparableSiteValue = (value) => {
+        if (value === null || value === undefined
+            || value === '' || value === campsiteUnanswered) {
+            return 'unanswered';
+        }
+        if (Array.isArray(value)) {
+            return 'list:' + JSON.stringify(value.map(String).sort());
+        }
+        if (typeof value === 'boolean') {
+            return value ? 'value:1' : 'value:0';
+        }
+        return 'value:' + String(value);
+    };
+
+    const sharedSiteAnswers = () => {
+        const common = {};
+        const mixed = new Set();
+        if (!campsiteSites.length) {
+            return {common, mixed};
+        }
+        const allValues = campsiteSites.map(siteEffectiveValues);
+        campsiteFieldKeys.forEach(key => {
+            const firstValue = Object.prototype.hasOwnProperty.call(allValues[0], key)
+                ? allValues[0][key] : undefined;
+            const reference = comparableSiteValue(firstValue);
+            const identical = allValues.every(values =>
+                comparableSiteValue(Object.prototype.hasOwnProperty.call(values, key)
+                    ? values[key] : undefined) === reference
+            );
+            if (!identical) {
+                mixed.add(key);
+            } else if (reference !== 'unanswered'
+                && reference !== 'list:[]') {
+                common[key] = firstValue;
+            }
+        });
+        return {common, mixed};
+    };
+
+    const showMixedSiteNote = (key) => {
+        const container = controlsFor(key)[0]?.closest('[data-report-field]');
+        if (!container) return;
+        const note = document.createElement('small');
+        note.className = 'place-report-answer-context';
+        note.dataset.adminBulkMixedNote = key;
+        note.textContent = 'Mixed across Sites. Select an answer to change it.';
+        container.appendChild(note);
+    };
+
+    // Apply the exact same fill-unanswered/overwrite rule used by PHP to
+    // the browser snapshot only AFTER the transaction succeeded. Recomputing
+    // consensus immediately then matches what a fresh server load will show.
+    const rememberSavedBulkAnswers = (answers, overwrite) => {
+        campsiteSites.forEach(site => {
+            const overrides = {...siteOverrideValues(site)};
+            const imported = site?.imported_values || {};
+            Object.entries(answers).forEach(([key, value]) => {
+                const hasImported = Object.prototype.hasOwnProperty.call(imported, key)
+                    && imported[key] !== null && imported[key] !== ''
+                    && imported[key] !== campsiteUnanswered;
+                if (!overwrite
+                    && (Object.prototype.hasOwnProperty.call(overrides, key)
+                        || hasImported)) {
+                    return;
+                }
+                if (Object.prototype.hasOwnProperty.call(overrides, key)
+                    && comparableSiteValue(overrides[key]) === comparableSiteValue(value)) {
+                    return;
+                }
+                overrides[key] = value;
+            });
+            site.override_values = overrides;
+            site.form_values = siteEffectiveValues(site);
+        });
+    };
+
     const siteChanges =
         (
             site,
@@ -1153,9 +1239,43 @@
         );
     };
 
+    const loadAllSitesSection = () => {
+        // Keep Place-section answers cached, but do not display them as the
+        // answer of every Site. Those Site questions need actual consensus.
+        loadPlaceSiteSection();
+        if (!campsiteSites.length) return;
+
+        clearSiteFields();
+        const {common, mixed} = sharedSiteAnswers();
+        Object.entries(common).forEach(([key, value]) =>
+            setSiteFieldValue(key, value)
+        );
+        mixed.forEach(showMixedSiteNote);
+
+        const sitePicker = campsiteSelect?.closest('[data-admin-site-picker]');
+        if (sitePicker) {
+            const summary = document.createElement('small');
+            summary.className = 'place-report-answer-context';
+            summary.dataset.adminBulkSummary = '1';
+            summary.textContent = 'Common answers are prefilled from all '
+                + campsiteSites.length + ' Sites. Mixed answers are left blank. '
+                + 'Only answers you change will be saved in bulk.';
+            sitePicker.appendChild(summary);
+        }
+
+        editingAllSites = true;
+        form.dispatchEvent(new CustomEvent('llama:campsite-selected', {
+            detail: {campsiteId: '', label: 'All Sites', scope: 'all-sites'}
+        }));
+    };
+
     const loadCampsite = (
         siteId
     ) => {
+        if (String(siteId) === 'all-sites') {
+            loadAllSitesSection();
+            return;
+        }
         const site =
             campsiteSites.find(
                 item =>
@@ -1214,6 +1334,10 @@
                 () => {
                     if (editingAllSites) {
                         bulkTouched.add(key);
+                        form.querySelectorAll('[data-admin-bulk-mixed-note]')
+                            .forEach(note => {
+                                if (note.dataset.adminBulkMixedNote === key) note.remove();
+                            });
                         return;
                     }
                     if (activeCampsiteId !== '') {
@@ -1234,7 +1358,13 @@
     campsiteFieldKeys.forEach(key => {
         controlsFor(key).forEach(control => {
             control.addEventListener('input', () => {
-                if (editingAllSites) bulkTouched.add(key);
+                if (editingAllSites) {
+                    bulkTouched.add(key);
+                    form.querySelectorAll('[data-admin-bulk-mixed-note]')
+                        .forEach(note => {
+                            if (note.dataset.adminBulkMixedNote === key) note.remove();
+                        });
+                }
             });
         });
     });
@@ -1501,7 +1631,9 @@
 
             clearRecoveryCopies();
             if (bulkPayload) {
-                loadPlaceSiteSection();
+                const applied = JSON.parse(bulkPayload);
+                rememberSavedBulkAnswers(applied.answers, applied.overwrite);
+                loadAllSitesSection();
                 window.alert(`Bulk update saved: ${Number(payload.bulk_sites_updated || 0)} Sites, ${Number(payload.bulk_answers_saved || 0)} answers.`);
             }
 

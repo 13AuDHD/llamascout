@@ -39,8 +39,10 @@ jobs:
           NODE_PATH="$RUNNER_TEMP/llama-pricing-ui/node_modules" node tools/tests/place-pricing-assets.cjs
           node --check js/contribution-tabs.js
           node --check js/admin/place-report-photos.js
+          node --check js/admin/place-report-save.js
           node --check js/photo-uploader.js
           NODE_PATH="$RUNNER_TEMP/llama-pricing-ui/node_modules" node tools/tests/photo-tab-routing.cjs
+          NODE_PATH="$RUNNER_TEMP/llama-pricing-ui/node_modules" node tools/tests/admin-all-sites-ui.cjs
       - name: Verify coordinate and Site visibility contract
         if: always()
         run: php tools/coordinate-visibility-smoke.php
