@@ -203,6 +203,86 @@ $check('First Site photos remain separate from new Place photo evidence', static
         'First Site photos are not included in immutable Site report history');
 });
 
+$check('Official Place contact values prefill without becoming new Scout answers', static function () use ($assert): void {
+    require_once dirname(__DIR__) . '/app/place-report/contact-links.php';
+    $official = [
+        'address' => 'P.O. Box 129 · Idaho City, ID · 83631',
+        'phone' => '208-392-6681',
+        'email' => 'ranger@example.gov',
+        'reservation_url' => 'https://www.recreation.gov/camping/campgrounds/123',
+        'source_provider' => 'Recreation.gov / RIDB',
+        'source_updated_at' => '2026-09-14',
+        'links' => [
+            ['url' => 'https://example.gov/forest', 'title' => 'Official Website'],
+            ['url' => 'https://example.gov/alerts', 'title' => 'Alerts and Notices'],
+        ],
+    ];
+    $source = llama_place_report_official_contact_baselines($official);
+    $assert($source['contact_phone'] === '208-392-6681'
+        && $source['contact_email'] === 'ranger@example.gov'
+        && $source['contact_mailing_address'] === $official['address'],
+        'Official contact fields are not available as form fallbacks');
+    $assert($source['contact_website_url'] === 'https://example.gov/forest',
+        'Website fallback must require an explicitly titled homepage');
+    $assert($source['contact_related_links'] === "https://example.gov/forest\nhttps://example.gov/alerts",
+        'Official named link URLs did not prefill related links');
+    $projection = llama_place_report_contact_editor_projection([], $official);
+    $assert($projection['values']['contact_phone'] === $official['phone'],
+        'Admin editor did not prefill sourced phone number');
+    $assert(str_contains($projection['sources']['contact_phone'], 'Recreation.gov / RIDB'),
+        'Source attribution disappeared from the editor');
+    $submitted = array_merge($projection['values'], ['name' => 'Another Name']);
+    $untouched = llama_place_report_contact_strip_unchanged_official($submitted, [], $official);
+    $assert($untouched === ['name' => 'Another Name'],
+        'Saving unrelated Place fields must not create new Scout contact answers');
+
+    $corrected = array_merge($projection['values'], [
+        'contact_phone' => '208-111-2222',
+        'contact_mailing_address' => 'New P.O. Box 77',
+        'contact_related_links' => 'https://example.gov/alerts',
+    ]);
+    $changes = llama_place_report_contact_strip_unchanged_official($corrected, [], $official);
+    $assert(count($changes) === 3 && $changes['contact_phone'] === '208-111-2222',
+        'Actual Admin corrections were incorrectly stripped');
+    $public = llama_place_report_public_contact_cards($official, [
+        'contact' => [
+            'phone' => $changes['contact_phone'],
+            'mailing_address' => $changes['contact_mailing_address'],
+            'related_links' => $changes['contact_related_links'],
+        ],
+    ]);
+    $assert($public['items']['Phone Number']['value'] === '208-111-2222'
+        && $public['items']['Official Address']['value'] === 'New P.O. Box 77',
+        'Newer approved contact answers did not take public precedence');
+    $assert(count($public['links']) === 1
+        && $public['links'][0]['title'] === 'Alerts and Notices',
+        'Edited related links still include obsolete official URLs or lose matching titles');
+
+    $unchangedPublic = llama_place_report_public_contact_cards($official, []);
+    $assert($unchangedPublic['items']['Phone Number']['value'] === $official['phone']
+        && count($unchangedPublic['links']) === 2,
+        'Existing official facts must remain publicly visible without a Scout correction');
+
+    $recorded = llama_place_report_contact_editor_projection(
+        ['contact_phone' => '208-111-2222'], $official
+    );
+    $assert($recorded['values']['contact_phone'] === '208-111-2222'
+        && $recorded['sources']['contact_phone'] === 'Approved Scout Report answer',
+        'Editor failed to reload an approved correction over official facts');
+
+    $noHomepage = llama_place_report_official_contact_baselines([
+        'links' => [['title' => 'Forest alerts', 'url' => 'https://example.gov/alerts']],
+    ]);
+    $assert($noHomepage['contact_website_url'] === '',
+        'An unrelated official link must not be mistaken for the homepage');
+    $assert(isset(llama_report_questions()['contact_mailing_address']),
+        'Address correction must use the canonical question registry');
+    $editorSource = file_get_contents(dirname(__DIR__) . '/app/admin-place-report.php');
+    $assert(str_contains((string) $editorSource, 'llama_place_report_contact_strip_unchanged_official(')
+        && str_contains((string) $editorSource, 'llama_place_report_current_place_answers('),
+        'Admin contact loading/saving does not honor canonical current answers');
+});
+
 $check('Registry loaded', static function () use ($fields, $assert): void {
     $assert(count($fields) > 100, 'Expected canonical field inventory');
     $assert(isset($fields['daytime_noise'], $fields['nighttime_noise'], $fields['site_length_feet']), 'Missing core questions');
