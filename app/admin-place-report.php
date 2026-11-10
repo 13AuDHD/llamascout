@@ -181,11 +181,13 @@ function admin_place_save_shared_report(PDO $db, int $actorUserId, int $placeId,
             $placeLevelInput['_report_touched'] = array_intersect_key((array) $input['_report_touched'], $allowed);
         }
         $reportData = llama_place_report_build_data($placeLevelInput, $baseData);
+        $changedKeys = llama_place_report_changed_keys(
+            $baseData, $reportData, array_keys($placeLevelInput)
+        );
         admin_place_save_report_metadata($db, $placeId, $place, $input);
-        llama_place_report_publish_data($db, $placeId, $reportData,
-            llama_place_report_changed_keys($baseData, $reportData, array_keys($placeLevelInput)));
+        llama_place_report_publish_data($db, $placeId, $reportData, $changedKeys);
         admin_users_audit($db, $actorUserId, null, 'place.shared_report_updated',
-            'Updated the shared Place Report.', ['place_id' => $placeId, 'field_keys' => array_keys($placeLevelInput)]);
+            'Updated the shared Place Report.', ['place_id' => $placeId, 'field_keys' => $changedKeys]);
         if ($ownsTransaction) { $db->commit(); }
         return $reportData;
     } catch (Throwable $exception) {
