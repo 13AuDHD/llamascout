@@ -38,6 +38,8 @@ function llama_photo_contexts(): array
         'place-report' => ['max' => 5, 'label' => 'Report photos'],
         'admin-place' => ['max' => llama_location_gallery_photo_limit('place'), 'label' => 'Admin Place and Site photos'],
         'admin-resource' => ['max' => llama_location_gallery_photo_limit('resource'), 'label' => 'Resource photos'],
+        'add-resource' => ['max' => llama_location_gallery_photo_limit('resource'), 'label' => 'New Resource photos'],
+        'update-resource' => ['max' => llama_location_gallery_photo_limit('resource'), 'label' => 'Resource update photos'],
         'profile-images' => ['max' => 5, 'label' => 'Profile images'],
         'shop-products' => ['max' => 20, 'label' => 'Product photos'],
         'badges' => ['max' => 1, 'label' => 'Badge image'],
@@ -66,6 +68,8 @@ function llama_photo_context_allowed(string $context, int $userId): bool
 
     $contributionCapability = match ($context) {
         'add-place' => 'submit_place',
+        'add-resource' => 'submit_place',
+        'update-resource' => 'submit_update',
         'update-place' => 'submit_update',
         'place-report' => 'report_problem',
         default => null,
