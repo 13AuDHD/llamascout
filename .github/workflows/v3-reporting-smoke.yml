@@ -22,6 +22,9 @@ on:
       - 'partials/place-report/read-only.php'
       - 'js/place-campsites.js'
       - 'js/place-report-form.js'
+      - 'js/place-report-warnings.js'
+      - 'css/site/features/scout-warning-compact.css'
+      - 'tools/tests/quick-warning-ui.cjs'
       - 'js/place-report-section-completion.js'
       - 'partials/place-report/form.php'
       - 'css/site/features/place-report-form.css'
@@ -106,6 +109,7 @@ jobs:
       - name: JavaScript syntax check
         run: |
           node --check js/place-report-form.js
+          node --check js/place-report-warnings.js
           node --check js/place-report-section-completion.js
           node --check js/place-campsites.js
           node --check js/place-campsite-detail-media.js
@@ -140,6 +144,10 @@ jobs:
         env:
           NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules
         run: node tools/tests/admin-resource-gallery-ui.cjs
+      - name: Verify compact, contrast-safe Quick Warning cards
+        env:
+          NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules
+        run: node tools/tests/quick-warning-ui.cjs
       - name: Exercise parent-child questions in the shared Scout Report form
         env:
           NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules
