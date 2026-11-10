@@ -1303,33 +1303,13 @@ foreach (
 
         <?php if ($placeReportReadMode === 'scout-report' && $sectionKey === 'basic'): ?>
             <?php
-            $officialContact = [
-                'Official Address' => [
-                    'value' => trim((string) ($publicFacility['address'] ?? '')),
-                    'icon' => 'map-pin',
-                    'kind' => 'text',
-                ],
-                'Phone Number' => [
-                    'value' => trim((string) ($publicFacility['phone'] ?? '')),
-                    'icon' => 'phone',
-                    'kind' => 'phone',
-                ],
-                'Email Address' => [
-                    'value' => trim((string) ($publicFacility['email'] ?? '')),
-                    'icon' => 'mail',
-                    'kind' => 'email',
-                ],
-                'Published Fees' => [
-                    'value' => trim((string) ($publicFacility['fee_description'] ?? '')),
-                    'icon' => 'receipt',
-                    'kind' => 'text',
-                ],
-                'Reservations' => [
-                    'value' => trim((string) ($publicFacility['reservation_url'] ?? '')),
-                    'icon' => 'calendar',
-                    'kind' => 'url',
-                ],
-            ];
+            require_once dirname(__DIR__, 2) . '/app/place-report/contact-links.php';
+            $contactPresentation = llama_place_report_public_contact_cards(
+                $publicFacility,
+                $placeReportData
+            );
+            $officialContact = $contactPresentation['items'];
+
             ?>
             <div class="scout-report-grid scout-report-basic-grid">
                 <?php foreach (['name', 'type'] as $key): ?>
@@ -1362,7 +1342,7 @@ foreach (
                         <?= llama_icon($contact['icon'], ['class' => 'scout-report-value-icon']) ?>
                     </div>
                 <?php endforeach; ?>
-                <?php foreach ((array) ($publicFacility['links'] ?? []) as $officialLink): ?>
+                <?php foreach ((array) ($contactPresentation['links'] ?? []) as $officialLink): ?>
                     <?php
                     $linkUrl = trim((string) ($officialLink['url'] ?? ''));
                     if (!preg_match('~^https?://~i', $linkUrl)) continue;
@@ -1370,7 +1350,7 @@ foreach (
                     ?>
                     <div class="scout-report-item scout-report-value-item">
                         <div class="scout-report-value-content">
-                            <span>Official Links</span>
+                            <span><?= $e($officialLink['label'] ?? 'Official Links') ?></span>
                             <strong><a href="<?= $e($linkUrl) ?>" target="_blank" rel="noopener noreferrer"><?= $e($linkTitle !== '' ? $linkTitle : $linkUrl) ?></a></strong>
                         </div>
                         <?= llama_icon('external-link', ['class' => 'scout-report-value-icon']) ?>
@@ -1378,7 +1358,11 @@ foreach (
                 <?php endforeach; ?>
                 <?php foreach ($publicReportGroups['basic'][1] as $key): ?>
                     <?php
-                    if ($key !== 'name' && $key !== 'type' && isset($reportedFields[$key])) {
+                    if (!in_array($key, [
+                        'name', 'type', 'contact_phone', 'contact_email',
+                        'contact_website_url', 'facility_map_url',
+                        'contact_reservations_url', 'contact_related_links',
+                    ], true) && isset($reportedFields[$key])) {
                         $renderValue($key, $reportedFields[$key]);
                     }
                     ?>
