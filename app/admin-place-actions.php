@@ -291,34 +291,52 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
                     }
                 }
 
-                $removePaths = is_array($_POST['remove_existing_photos'] ?? null)
-                    ? array_values(array_unique(array_filter(array_map('strval', $_POST['remove_existing_photos']))))
-                    : [];
-
-                if ($removePaths) {
-                    foreach (
-                        admin_place_report_target_images(
-                            $db,
-                            $placeId,
-                            $photoTarget
-                        )
-                        as $image
-                    ) {
-                        if (!in_array((string) ($image['src'] ?? ''), $removePaths, true)) {
-                            continue;
-                        }
-
-                        $path = admin_place_delete_image_in_report_transaction(
-                            $db,
-                            $actorUserId,
-                            $placeId,
-                            (int) $image['id'],
-                            $photoTarget
+                // Admin tiles submit unique image IDs. This matters when two
+                // records have the same src (for example an imported duplicate).
+                // Older static forms with path checkboxes are accepted only
+                // when the path identifies exactly one image on this target.
+                $rawIds = $_POST['remove_existing_photo_ids'] ?? [];
+                $rawPaths = $_POST['remove_existing_photos'] ?? [];
+                if (!is_array($rawIds) || !is_array($rawPaths)) {
+                    throw new InvalidArgumentException('Invalid photo removal selection.');
+                }
+                $removeIds = [];
+                foreach ($rawIds as $id) {
+                    if ((!is_int($id) && !is_string($id))
+                        || !ctype_digit((string) $id)
+                        || (int) $id < 1) {
+                        throw new InvalidArgumentException('Invalid photo ID for removal.');
+                    }
+                    $removeIds[(int) $id] = true;
+                }
+                $existingGallery = admin_place_report_target_images($db, $placeId, $photoTarget);
+                $byId = [];
+                $byPath = [];
+                foreach ($existingGallery as $image) {
+                    $id = (int) ($image['id'] ?? 0);
+                    $src = (string) ($image['src'] ?? '');
+                    $byId[$id] = true;
+                    $byPath[$src][] = $id;
+                }
+                foreach ($rawPaths as $path) {
+                    if (!is_string($path) || count($byPath[$path] ?? []) !== 1) {
+                        throw new InvalidArgumentException(
+                            'This photo path is ambiguous. Reload the photo editor to remove one image.'
                         );
-
-                        if ($path !== '') {
-                            $deferredPhotoDeletes[] = $path;
-                        }
+                    }
+                    $removeIds[$byPath[$path][0]] = true;
+                }
+                foreach (array_keys($removeIds) as $imageId) {
+                    if (!isset($byId[$imageId])) {
+                        throw new InvalidArgumentException(
+                            'A selected photo does not belong to this gallery.'
+                        );
+                    }
+                    $path = admin_place_delete_image_in_report_transaction(
+                        $db, $actorUserId, $placeId, $imageId, $photoTarget
+                    );
+                    if ($path !== '') {
+                        $deferredPhotoDeletes[] = $path;
                     }
                 }
 
@@ -403,6 +421,11 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
             }
 
             foreach (array_unique($deferredPhotoDeletes) as $path) {
+                // Multiple owned gallery rows may reference one image file.
+                // Delete the selected row, not another photo's underlying bytes.
+                if (admin_place_gallery_photo_path_in_use($db, (string) $path)) {
+                    continue;
+                }
                 if (!llama_photo_delete_owned_permanent_path((string) $path, ['uploads/places'])) {
                     error_log('Llama Scout could not remove committed photo file: ' . (string) $path);
                 }
