@@ -226,6 +226,7 @@
 
     grid.dataset.adminPhotoSortable = '1';
     grid.setAttribute('aria-label', 'Attached photos, drag a handle to reorder');
+    let renderedTargetKey = null;
 
     // The visible gallery is the only photo editor. No separate form,
     // sort-order inputs, featured buttons or metadata save buttons.
@@ -233,8 +234,8 @@
         Array.from(grid.querySelectorAll('[data-admin-photo-id]'));
 
     const photoEdits = () => {
-        const targetKey = currentTargetKey();
-        const target = currentTarget();
+        const targetKey = renderedTargetKey;
+        const target = targetKey ? targets[targetKey] : null;
         if (!targetKey || !target || target.supported === false) return null;
         const cards = existingPhotoCards();
         const original = Array.isArray(target.photos) ? target.photos : [];
@@ -648,6 +649,8 @@
                 currentTarget();
 
             grid.replaceChildren();
+            renderedTargetKey = currentTargetKey();
+            galleryField.value = '';
 
             if (!target) {
                 setUploaderSupported(
@@ -716,7 +719,7 @@
                 grid.appendChild(
                     empty
                 );
-
+                syncGalleryEdits();
                 return;
             }
 
@@ -739,6 +742,8 @@
                     );
                 }
             );
+
+            refreshHero();
         };
 
     let previousArea =
@@ -773,7 +778,8 @@
                 return;
             }
 
-            if (stagedPhotoCount() > 0) {
+            if (stagedPhotoCount() > 0 || (hasPendingGalleryEdits()
+                && !window.confirm('Discard unsaved photo ordering, captions and removals before switching?'))) {
                 restoring =
                     true;
 
@@ -790,10 +796,11 @@
 
                 event.stopImmediatePropagation();
 
-                window.alert(
-                    'Save or remove these photos before switching to another Place, Area, or Site.'
-                );
-
+                if (stagedPhotoCount() > 0) {
+                    window.alert(
+                        'Save or remove staged photos before switching to another Place, Area, or Site.'
+                    );
+                }
                 return;
             }
 
@@ -820,14 +827,44 @@
         if (event.detail?.context === 'admin-place') render();
     });
 
+    // Stop tab switches *before* the shared tab controller changes the
+    // selected owner. Otherwise unsaved photo edits would be discarded.
+    shell?.addEventListener('click', event => {
+        const button = event.target?.closest?.('[data-contribution-mode]');
+        if (!button || button.getAttribute('aria-pressed') === 'true') return;
+        if (hasPendingGalleryEdits()
+            && !window.confirm('Discard unsaved photo ordering, captions and removals before switching?')) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+        }
+    }, true);
+
     shell?.addEventListener('llama:contribution-mode', () => {
         queueMicrotask(render);
+    });
+
+    // Include only actual edits in the normal atomic Place Report save.
+    form.addEventListener('llama:admin-place-report-save-starting', syncGalleryEdits);
+    form.addEventListener('llama:photo-gallery-saved', event => {
+        const key = String(event.detail?.target || '');
+        if (key && targets[key] && Array.isArray(event.detail?.gallery)) {
+            targets[key].photos = event.detail.gallery;
+        }
+        galleryField.value = '';
+        render();
+    });
+
+    window.addEventListener('beforeunload', event => {
+        if (!hasPendingGalleryEdits()) return;
+        event.preventDefault();
+        event.returnValue = '';
     });
 
     window.addEventListener(
         'llama:admin-place-report-saved',
         () => {
-            render();
+            // The committed gallery is refreshed by photo-gallery-saved.
+            // The generic success event must not undo pending photo edits.
         }
     );
 
