@@ -76,6 +76,10 @@
     galleryField.name = 'admin_photo_gallery_json';
     galleryField.value = '';
     form.appendChild(galleryField);
+    const photoOwnerField = document.createElement('input');
+    photoOwnerField.type = 'hidden';
+    photoOwnerField.name = 'admin_photo_owner';
+    form.appendChild(photoOwnerField);
 
     const uploader =
         form.querySelector(
@@ -228,113 +232,28 @@
     grid.setAttribute('aria-label', 'Attached photos, drag a handle to reorder');
     let renderedTargetKey = null;
 
-    // The visible gallery is the only photo editor. No separate form,
-    // sort-order inputs, featured buttons or metadata save buttons.
-    const existingPhotoCards = () =>
-        Array.from(grid.querySelectorAll('[data-admin-photo-id]'));
-
+    // Place, Site and Resource now use the same mounted gallery controls
+    // and continuous pointer reorder behavior. Only persistence differs.
+    const gallery = window.LlamaPhotoGallery?.mount(grid, {
+        removeName: 'remove_existing_photo_ids[]',
+        onChange: () => syncGalleryEdits(),
+    });
+    if (!gallery) return;
     const photoEdits = () => {
         const targetKey = renderedTargetKey;
         const target = targetKey ? targets[targetKey] : null;
         if (!targetKey || !target || target.supported === false) return null;
-        const cards = existingPhotoCards();
-        const original = Array.isArray(target.photos) ? target.photos : [];
-        const entries = cards.map(card => ({
-            id: Number(card.dataset.adminPhotoId),
-            alt: String(card.querySelector('[data-admin-photo-caption]')?.value || ''),
-            removed: Boolean(card.querySelector('[name="remove_existing_photo_ids[]"]')?.checked),
-        }));
-        const items = entries.filter(item => !item.removed)
-            .map(({id, alt}) => ({id, alt}));
-
-        const dirty = original.length !== entries.length
-            || entries.some((item, index) =>
-                Number(original[index]?.id) !== item.id
-                || String(original[index]?.alt || '') !== item.alt
-                || item.removed
-            );
-        return {target: targetKey, items, dirty};
+        const snapshot = gallery.snapshot(target.photos);
+        return {target: targetKey, items: snapshot.items, dirty: snapshot.dirty};
     };
-
     const syncGalleryEdits = () => {
         const edits = photoEdits();
+        photoOwnerField.value = renderedTargetKey || '';
         galleryField.value = edits?.dirty
             ? JSON.stringify({target: edits.target, items: edits.items})
             : '';
     };
-
     const hasPendingGalleryEdits = () => Boolean(photoEdits()?.dirty);
-
-    const refreshHero = () => {
-        let first = true;
-        existingPhotoCards().forEach(card => {
-            const removed = Boolean(
-                card.querySelector('[name="remove_existing_photo_ids[]"]')?.checked
-            );
-            card.classList.toggle('is-photo-removed', removed);
-            const badge = card.querySelector('[data-admin-photo-hero]');
-            if (badge) badge.hidden = removed || !first;
-            if (!removed) first = false;
-        });
-        syncGalleryEdits();
-    };
-
-    const movePhoto = (card, next, after = false) => {
-        if (!card || !next || card === next) return;
-        grid.insertBefore(card, after ? next.nextSibling : next);
-        refreshHero();
-    };
-
-    // Pointer Events work on touch screens as well as desktops. Limiting
-    // touch-action to the actual handle preserves normal page scrolling.
-    const attachHandle = (handle, card) => {
-        let startX = 0;
-        let startY = 0;
-        let moving = false;
-        const stop = (event) => {
-            if (!handle.hasPointerCapture?.(event.pointerId)) return;
-            handle.releasePointerCapture(event.pointerId);
-            card.classList.remove('is-photo-dragging');
-            moving = false;
-            refreshHero();
-        };
-        handle.addEventListener('pointerdown', event => {
-            if (event.button !== 0 || savingPhotos) return;
-            startX = event.clientX;
-            startY = event.clientY;
-            moving = false;
-            handle.setPointerCapture?.(event.pointerId);
-            event.preventDefault();
-        });
-        handle.addEventListener('pointermove', event => {
-            if (!handle.hasPointerCapture?.(event.pointerId)) return;
-            if (!moving && Math.hypot(event.clientX - startX, event.clientY - startY) < 8) return;
-            moving = true;
-            card.classList.add('is-photo-dragging');
-            const hit = document.elementFromPoint(event.clientX, event.clientY);
-            const other = hit?.closest('[data-admin-photo-id]');
-            if (!other || other === card || other.parentElement !== grid) return;
-            const bounds = other.getBoundingClientRect();
-            const after = event.clientY > bounds.top + bounds.height / 2
-                || (Math.abs(event.clientY - (bounds.top + bounds.height / 2)) < bounds.height / 3
-                    && event.clientX > bounds.left + bounds.width / 2);
-            movePhoto(card, other, after);
-        });
-        handle.addEventListener('pointerup', stop);
-        handle.addEventListener('pointercancel', stop);
-        handle.addEventListener('keydown', event => {
-            if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
-            event.preventDefault();
-            const cards = existingPhotoCards();
-            const current = cards.indexOf(card);
-            const delta = event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 1;
-            const destination = cards[current + delta];
-            if (!destination) return;
-            movePhoto(card, destination, delta > 0);
-            handle.focus();
-        });
-    };
-
     // The shared uploader initializes in the Admin footer, after this
     // controller. Resolve its controls at use time, not before they exist.
     const photoInput = () =>
@@ -420,6 +339,7 @@
         payload.set('place_admin_action', 'save-report');
         payload.set('admin_photo_only', '1');
         payload.set('place_id', String(placeId));
+        payload.set('admin_photo_owner', String(targetKey));
         payload.set('csrf_token', String(csrfField?.value || ''));
         payload.set('photo_stage_token', String(tokenField?.value || ''));
         payload.set('photos_json', String(photosField?.value || '[]'));
@@ -506,62 +426,6 @@
             updatePhotoSaveButton();
         }
     });
-
-    const makePhoto =
-        (photo) => {
-            const card = document.createElement('article');
-            card.className = 'add-place-existing-photo admin-attached-photo';
-            card.dataset.adminPhotoId = String(Number(photo.id) || 0);
-
-            const preview = document.createElement('div');
-            preview.className = 'admin-attached-photo-preview';
-
-            const image = document.createElement('img');
-            image.src = String(photo.url || photo.src || '');
-            image.alt = String(photo.alt || '');
-            image.loading = 'lazy';
-
-            const hero = document.createElement('span');
-            hero.className = 'admin-attached-photo-hero';
-            hero.textContent = 'Hero';
-            hero.dataset.adminPhotoHero = '1';
-            hero.hidden = true;
-
-            const handle = document.createElement('button');
-            handle.type = 'button';
-            handle.className = 'admin-attached-photo-handle';
-            handle.textContent = '⠿';
-            handle.title = 'Drag photo to reorder; arrow keys also work';
-            handle.setAttribute('aria-label', 'Move photo in gallery');
-            handle.setAttribute('aria-keyshortcuts', 'ArrowLeft ArrowRight ArrowUp ArrowDown');
-            preview.append(image, hero, handle);
-
-            const row = document.createElement('label');
-            row.className = 'admin-attached-photo-remove';
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.name = 'remove_existing_photo_ids[]';
-            checkbox.value = String(Number(photo.id) || 0);
-            row.append(checkbox, document.createTextNode(' Remove this photo'));
-            checkbox.addEventListener('change', refreshHero);
-
-            const caption = document.createElement('input');
-            caption.type = 'text';
-            caption.className = 'admin-attached-photo-caption';
-            caption.dataset.adminPhotoCaption = '1';
-            caption.value = String(photo.alt || '');
-            caption.maxLength = 300;
-            caption.placeholder = 'Photo description';
-            caption.setAttribute('aria-label', 'Photo description');
-            caption.addEventListener('input', () => {
-                image.alt = caption.value;
-                syncGalleryEdits();
-            });
-
-            card.append(preview, row, caption);
-            attachHandle(handle, card);
-            return card;
-        };
 
     const setUploaderSupported =
         (
@@ -650,6 +514,7 @@
 
             grid.replaceChildren();
             renderedTargetKey = currentTargetKey();
+            photoOwnerField.value = renderedTargetKey || '';
             galleryField.value = '';
 
             if (!target) {
@@ -716,34 +581,14 @@
                         ? 'No photos are attached to this reporting target yet.'
                         : 'No photo gallery is available for this selection yet.';
 
-                grid.appendChild(
-                    empty
-                );
+                gallery.render([]);
+                grid.appendChild(empty);
                 syncGalleryEdits();
                 return;
             }
 
-            photos.forEach(
-                (photo) => {
-                    if (
-                        !photo
-                        || !String(
-                            photo.src
-                            || ''
-                        ).trim()
-                    ) {
-                        return;
-                    }
-
-                    grid.appendChild(
-                        makePhoto(
-                            photo
-                        )
-                    );
-                }
-            );
-
-            refreshHero();
+            gallery.render(photos);
+            syncGalleryEdits();
         };
 
     let previousArea =
