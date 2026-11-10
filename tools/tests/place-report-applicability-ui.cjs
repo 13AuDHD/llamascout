@@ -307,7 +307,10 @@ async function testAdminSiteEditing(overrides = null) {
         assert.equal(question('independent_site_question').hidden, false, 'A selected Site reveals its own questions');
         assert.equal(input('tent_pad').disabled, false, 'Imported Site answers are editable');
         assert.equal(input('generator_restrictions').disabled, false, 'Place answers stay editable with a Site selected');
-        assert.equal(question('tent_pad_width_feet').hidden, false, 'Imported parent answer reveals its child');
+        assert.equal(input('tent_pad').value, '0', 'Successful bulk overwrite stays visible when reopening an individual Site');
+        assert.equal(question('tent_pad_width_feet').hidden, true, 'Bulk-updated parent No keeps its child hidden');
+        update(input('tent_pad'), '1');
+        assert.equal(question('tent_pad_width_feet').hidden, false, 'Changing the parent back to Yes reveals its child');
         update(input('tent_pad'), '0');
         assert.equal(question('tent_pad_width_feet').hidden, true, 'Parent change still hides its child');
         update(input('generator_restrictions'), '1');
@@ -317,7 +320,8 @@ async function testAdminSiteEditing(overrides = null) {
         get('[data-place-report-admin-save]').click();
         assert.equal(saved.get('selected_campsite_id'), site.id);
         const savedAnswers = JSON.parse(saved.get('admin_site_answers_json'));
-        assert.deepEqual(savedAnswers, {tent_pad: '0', ...siteLists});
+        assert.deepEqual(savedAnswers, {...siteLists},
+            'A previously bulk-saved Site answer is not rewritten during an unrelated individual Site edit');
         assert.equal(saved.get('generator_restrictions'), '1', 'Place answer remains in the Place payload');
         await new Promise(resolve => setImmediate(resolve));
         update(picker, '');
