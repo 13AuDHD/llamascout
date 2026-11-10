@@ -1359,7 +1359,7 @@ foreach (
                 <?php foreach ($publicReportGroups['basic'][1] as $key): ?>
                     <?php
                     if (!in_array($key, [
-                        'name', 'type', 'contact_phone', 'contact_email',
+                        'name', 'type', 'contact_mailing_address', 'contact_phone', 'contact_email',
                         'contact_website_url', 'facility_map_url',
                         'contact_reservations_url', 'contact_related_links',
                     ], true) && isset($reportedFields[$key])) {

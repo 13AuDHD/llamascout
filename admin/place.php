@@ -343,11 +343,20 @@ $e = static fn (mixed $value): string => htmlspecialchars(
     'UTF-8'
 );
 
+$officialFacility = llama_place_facility_public_data($db, $placeId);
+$contactProjection = llama_place_report_contact_editor_projection(
+    llama_place_report_form_input_from_data($reportData),
+    $officialFacility,
+    llama_place_report_unknown_fields($reportData)
+);
+// The same effective values and official-source badges appear on reload,
+// but a failed POST keeps the Admin's actual unsaved corrections.
 $placeReportValues = (
     ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST'
     && $action === 'save-report'
     && $error !== ''
-) ? $_POST : llama_place_report_form_input_from_data($reportData);
+) ? $_POST : $contactProjection['values'];
+$placeReportValueSources = $contactProjection['sources'];
 
 // Load old flat, mapped and class rates into the same editor without writing.
 if (!(($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && $error !== '')) {

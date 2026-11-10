@@ -16,6 +16,11 @@ $placeReportValues =
         ? $placeReportValues
         : [];
 
+$placeReportValueSources =
+    is_array($placeReportValueSources ?? null)
+        ? $placeReportValueSources
+        : [];
+
 // Older submitted rate-card lists use the same editor and server adapter.
 if (isset($placeReportValues['place_rate_cards_json']) && is_string($placeReportValues['place_rate_cards_json']) && trim($placeReportValues['place_rate_cards_json']) !== '') {
     require_once dirname(__DIR__, 2) . '/app/place-pricing.php';
@@ -561,7 +566,8 @@ $renderField =
         $renderSelect,
         $placeReportMode,
         $placeReportShowNameSuggestion,
-        $placeReportShowFieldHelp
+        $placeReportShowFieldHelp,
+        $placeReportValueSources
     ): void {
         $key =
             (string) $field['key'];
@@ -1214,6 +1220,12 @@ $renderField =
                 </small>
             <?php endif; ?>
 
+
+            <?php if (!empty($placeReportValueSources[$key])): ?>
+                <small class="place-report-answer-context" data-place-report-source>
+                    Source: <?= $e($placeReportValueSources[$key]) ?>
+                </small>
+            <?php endif; ?>
 
         </<?= $fieldContainerTag ?>>
 
