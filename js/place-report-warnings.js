@@ -124,42 +124,34 @@
                     status
                 );
 
+                // A CSS mask uses the icon's silhouette, rather than the
+                // source SVG's fixed paint color. The same icon is visible
+                // against both light and dark backgrounds.
                 const icon =
-                    document.createElement(
-                        'img'
-                    );
+                    document.createElement('span');
+
+                const iconName = safeIcon(warning.icon);
 
                 icon.className =
-                    'scout-report-value-icon';
+                    'scout-report-value-icon scout-report-warning-icon';
 
-                icon.src =
-                    `/assets/icons/${safeIcon(
-                        warning.icon
-                    )}.svg`;
-
-                icon.alt = '';
-                icon.setAttribute(
-                    'aria-hidden',
-                    'true'
+                icon.style.setProperty(
+                    '--scout-warning-icon-image',
+                    `url("/assets/icons/${iconName}.svg")`
                 );
 
-                icon.addEventListener(
-                    'error',
-                    () => {
-                        if (
-                            !icon.src.endsWith(
-                                '/alert-triangle.svg'
-                            )
-                        ) {
-                            icon.src =
-                                '/assets/icons/alert-triangle.svg';
-                        }
-                    },
-                    {
-                        once:
-                            true,
-                    }
-                );
+                icon.setAttribute('aria-hidden', 'true');
+
+                // Preserve the old missing-icon fallback. A failed asset
+                // probe replaces only the mask, not the text or warning.
+                const probe = document.createElement('img');
+                probe.addEventListener('error', () => {
+                    icon.style.setProperty(
+                        '--scout-warning-icon-image',
+                        'url("/assets/icons/alert-triangle.svg")'
+                    );
+                }, {once: true});
+                probe.src = `/assets/icons/${iconName}.svg`;
 
                 item.append(
                     content,
