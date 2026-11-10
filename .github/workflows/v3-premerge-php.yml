@@ -9,6 +9,9 @@ on:
       - 'js/place-report-warnings.js'
       - 'css/site/features/scout-warning-compact.css'
       - 'tools/tests/quick-warning-ui.cjs'
+      - 'js/place-explorer.js'
+      - 'css/site/features/place-explorer.css'
+      - 'tools/tests/place-explorer-colors-ui.cjs'
   workflow_dispatch:
 
 permissions:
@@ -42,6 +45,8 @@ jobs:
           NODE_PATH="$RUNNER_TEMP/llama-pricing-ui/node_modules" node tools/tests/place-pricing-assets.cjs
           node --check js/contribution-tabs.js
           node --check js/place-report-warnings.js
+          node --check js/place-explorer.js
+          NODE_PATH="$RUNNER_TEMP/llama-pricing-ui/node_modules" node tools/tests/place-explorer-colors-ui.cjs
           NODE_PATH="$RUNNER_TEMP/llama-pricing-ui/node_modules" node tools/tests/quick-warning-ui.cjs
           node --check js/admin/place-report-photos.js
           node --check js/photo-gallery-editor.js
