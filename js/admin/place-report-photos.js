@@ -242,7 +242,7 @@
         const entries = cards.map(card => ({
             id: Number(card.dataset.adminPhotoId),
             alt: String(card.querySelector('[data-admin-photo-caption]')?.value || ''),
-            removed: Boolean(card.querySelector('[name="remove_existing_photos[]"]')?.checked),
+            removed: Boolean(card.querySelector('[name="remove_existing_photo_ids[]"]')?.checked),
         }));
         const items = entries.filter(item => !item.removed)
             .map(({id, alt}) => ({id, alt}));
@@ -269,7 +269,7 @@
         let first = true;
         existingPhotoCards().forEach(card => {
             const removed = Boolean(
-                card.querySelector('[name="remove_existing_photos[]"]')?.checked
+                card.querySelector('[name="remove_existing_photo_ids[]"]')?.checked
             );
             card.classList.toggle('is-photo-removed', removed);
             const badge = card.querySelector('[data-admin-photo-hero]');
@@ -540,8 +540,8 @@
             row.className = 'admin-attached-photo-remove';
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
-            checkbox.name = 'remove_existing_photos[]';
-            checkbox.value = String(photo.src || '');
+            checkbox.name = 'remove_existing_photo_ids[]';
+            checkbox.value = String(Number(photo.id) || 0);
             row.append(checkbox, document.createTextNode(' Remove this photo'));
             checkbox.addEventListener('change', refreshHero);
 
