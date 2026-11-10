@@ -39,6 +39,7 @@ jobs:
           NODE_PATH="$RUNNER_TEMP/llama-pricing-ui/node_modules" node tools/tests/place-pricing-assets.cjs
           node --check js/contribution-tabs.js
           node --check js/admin/place-report-photos.js
+          NODE_PATH="$RUNNER_TEMP/llama-pricing-ui/node_modules" node tools/tests/admin-photo-gallery-ui.cjs
           node --check js/admin/place-report-save.js
           node --check js/photo-uploader.js
           NODE_PATH="$RUNNER_TEMP/llama-pricing-ui/node_modules" node tools/tests/photo-tab-routing.cjs
