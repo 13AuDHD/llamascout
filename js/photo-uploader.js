@@ -69,6 +69,7 @@
             root.dataset.photoEndpoint || '/photo-upload.php'
         ).trim();
         const title = String(root.dataset.photoTitle || 'Photos').trim();
+        const saveAction = String(root.dataset.photoSaveAction || 'Save selected photos').trim();
         const help = String(
             root.dataset.photoHelp ||
             'JPEG, PNG, WebP, HEIC, HEIF, or AVIF. Images are resized and location metadata is removed before storage.'
@@ -1144,8 +1145,8 @@
 
                 setStatus(
                     selected.length === 1
-                        ? 'Photo is ready. Review it below, then choose Save selected photos.'
-                        : 'Photos are ready. Review them below, then choose Save selected photos.'
+                        ? `Photo is ready. Review it below, then choose ${saveAction}.`
+                        : `Photos are ready. Review them below, then choose ${saveAction}.`
                 );
             } catch (error) {
                 setStatus(
