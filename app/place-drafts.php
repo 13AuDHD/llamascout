@@ -92,7 +92,7 @@ function llama_place_draft_snapshot_photos(
     string $context = 'add-place',
     string $suffix = ''
 ): array {
-    if (!in_array($context, [$context, 'add-site'], true)
+    if (!in_array($context, ['add-place', 'add-site'], true)
         || !in_array($suffix, ['', 'site'], true)
         || ($context === 'add-site') !== ($suffix === 'site')) {
         throw new InvalidArgumentException('Invalid draft photo owner.');
@@ -284,7 +284,7 @@ function llama_place_draft_restore_photos(
     string $context = 'add-place',
     string $suffix = ''
 ): array {
-    if (!in_array($context, [$context, 'add-site'], true)
+    if (!in_array($context, ['add-place', 'add-site'], true)
         || !in_array($suffix, ['', 'site'], true)
         || ($context === 'add-site') !== ($suffix === 'site')) {
         throw new InvalidArgumentException('Invalid draft photo owner.');
