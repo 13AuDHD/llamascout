@@ -274,6 +274,14 @@ function llama_resource_submit(
                 ['uploads/resource-submissions']
             );
         }
+        if ($exception instanceof PDOException
+            && (int) ($exception->errorInfo[1] ?? 0) === 1062) {
+            throw new InvalidArgumentException(
+                'You already submitted this Resource for review.',
+                0,
+                $exception
+            );
+        }
         throw $exception;
     }
 }
