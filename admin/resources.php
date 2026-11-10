@@ -123,13 +123,46 @@ if (
                 if ($resourceId < 1) {
                     throw new InvalidArgumentException('Use Add a Place to submit a new Resource.');
                 }
-                $resourceId =
-                    admin_resource_save(
+
+                $newPhotos = llama_photo_decode_form_photos(
+                    $_POST['resource_photos_json'] ?? '[]'
+                );
+                $photoToken = trim((string) ($_POST['resource_photo_stage_token'] ?? ''));
+                $committedPhotoPaths = [];
+
+                // The Resource fields, services, and new gallery photos must
+                // succeed or fail as one database transaction.
+                $db->beginTransaction();
+                try {
+                    $resourceId = admin_resource_save(
                         $db,
                         $actorUserId,
                         $resourceId,
                         $_POST
                     );
+                    if ($newPhotos) {
+                        admin_resource_attach_staged_photos(
+                            $db,
+                            $actorUserId,
+                            $resourceId,
+                            $photoToken,
+                            $newPhotos,
+                            $committedPhotoPaths
+                        );
+                    }
+                    $db->commit();
+                } catch (Throwable $exception) {
+                    if ($db->inTransaction()) {
+                        $db->rollBack();
+                    }
+                    foreach ($committedPhotoPaths as $photo) {
+                        llama_photo_delete_owned_permanent_path(
+                            (string) ($photo['path'] ?? ''),
+                            ['uploads/resources']
+                        );
+                    }
+                    throw $exception;
+                }
 
                 $location = $returnPlaceId > 0
                     ? '/place.php?id=' . $returnPlaceId . '&mode=resource&resource_id=' . $resourceId . '&resource_saved=1'
