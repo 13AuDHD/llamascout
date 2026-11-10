@@ -21,10 +21,16 @@ on:
       - 'partials/place/scout-report/index.php'
       - 'partials/place-report/read-only.php'
       - 'js/place-campsites.js'
+      - 'js/place-explorer.js'
+      - 'css/site/features/place-explorer.css'
+      - 'tools/tests/place-explorer-colors-ui.cjs'
       - 'js/place-report-form.js'
       - 'js/place-report-warnings.js'
       - 'css/site/features/scout-warning-compact.css'
       - 'tools/tests/quick-warning-ui.cjs'
+      - 'js/place-explorer.js'
+      - 'css/site/features/place-explorer.css'
+      - 'tools/tests/place-explorer-colors-ui.cjs'
       - 'js/place-report-section-completion.js'
       - 'partials/place-report/form.php'
       - 'css/site/features/place-report-form.css'
@@ -112,6 +118,7 @@ jobs:
           node --check js/place-report-warnings.js
           node --check js/place-report-section-completion.js
           node --check js/place-campsites.js
+          node --check js/place-explorer.js
           node --check js/place-campsite-detail-media.js
           node --check js/place-report-seasons.js
           node --check js/admin/place-season-bulk-status.js
@@ -148,6 +155,10 @@ jobs:
         env:
           NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules
         run: node tools/tests/quick-warning-ui.cjs
+      - name: Verify Place, Site and Area color identities in public explorer
+        env:
+          NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules
+        run: node tools/tests/place-explorer-colors-ui.cjs
       - name: Exercise parent-child questions in the shared Scout Report form
         env:
           NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules

@@ -10,8 +10,9 @@
     const category = String(mapCard.dataset.explorerCategory || 'camping');
     const photo = String(mapCard.dataset.explorerPhoto || '').trim();
     const siteCount = Number(mapCard.dataset.explorerSiteCount || 0);
-    const color = category === 'parking' ? 'blue'
-        : category === 'camping' ? 'green' : 'purple';
+    // Color identifies the record level, not the type of facility.
+    // A parking-type Place is still a Place and must remain green.
+    const placeColor = 'green';
     const slot = section.querySelector('[data-stay-browser-slot]');
     if (!slot) return;
 
@@ -28,7 +29,7 @@
 
     const overview = document.createElement('button');
     overview.type = 'button';
-    overview.className = `place-explorer-overview is-${color}`;
+    overview.className = `place-explorer-overview is-${placeColor}`;
     overview.dataset.explorerOverview = '1';
     const title = document.createElement('strong');
     title.textContent = name;
@@ -62,10 +63,11 @@
         === String(b || '').trim().toLocaleLowerCase();
 
     const reportColor = (kind) => {
-        if (kind === 'place') return color;
+        if (kind === 'place') return placeColor;
         if (kind === 'site' || kind === 'mapped') return 'orange';
         if (kind === 'parking') return 'blue';
-        return 'green';
+        if (kind === 'area') return 'purple';
+        return placeColor;
     };
 
     const restorePlaceReport = () => {
@@ -306,7 +308,7 @@
 
     const buildPlacePinPopup = () => {
         const card = document.createElement('div');
-        card.className = `place-explorer-pin-popup is-${color}`;
+        card.className = `place-explorer-pin-popup is-${placeColor}`;
         if (photo) {
             const image = document.createElement('img');
             image.alt = '';
@@ -420,7 +422,7 @@
             mapCardFor(
                 label,
                 () => selectArea(area, 'map'),
-                parking ? 'blue' : 'green',
+                parking ? 'blue' : 'purple',
                 parking
                     ? 'Parking area'
                     : 'Camping area'

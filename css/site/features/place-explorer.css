@@ -1,17 +1,18 @@
-/* Public Place explorer: colors describe the selected mapped location. */
+/* Public explorer: accents follow the selected record level, not Place type.
+   Place is green, Site orange, Area purple, parking Area blue. */
 .place-overnight-options {
     --explorer-color: #249b56;
 }
 
-.place-overnight-options[data-explorer-color="orange"] {
+.place-overnight-options[data-explorer-scope="site"] {
     --explorer-color: #e58a17;
 }
 
-.place-overnight-options[data-explorer-color="blue"] {
+.place-overnight-options[data-explorer-scope="parking"] {
     --explorer-color: #337bdc;
 }
 
-.place-overnight-options[data-explorer-color="purple"] {
+.place-overnight-options[data-explorer-scope="area"] {
     --explorer-color: #9765cb;
 }
 
@@ -50,7 +51,7 @@
 }
 
 .place-overnight-options .place-campsite-row[data-stay-area-kind="camping"] {
-    border: 2px solid #249b56;
+    border: 2px solid #9765cb;
 }
 
 .place-overnight-options .place-campsite-row[data-stay-area-kind="parking"] {
@@ -78,15 +79,23 @@
     margin: 0;
 }
 
-/* Mirror the current context throughout the Scout Report without changing facts. */
-.scout-report[data-explorer-color] {
+/* The Scout Report reads the selected record's actual scope. This avoids
+   repainting every section blue merely because the parent Place is a
+   vehicle pulloff or a parking facility. */
+.scout-report[data-explorer-scope] {
     --explorer-report-color: #249b56;
 }
-.scout-report[data-explorer-color="orange"] { --explorer-report-color: #e58a17; }
-.scout-report[data-explorer-color="blue"] { --explorer-report-color: #337bdc; }
-.scout-report[data-explorer-color="purple"] { --explorer-report-color: #9765cb; }
+.scout-report[data-explorer-scope="site"] {
+    --explorer-report-color: #e58a17;
+}
+.scout-report[data-explorer-scope="area"] {
+    --explorer-report-color: #9765cb;
+}
+.scout-report[data-explorer-scope="parking"] {
+    --explorer-report-color: #337bdc;
+}
 
-.scout-report[data-explorer-color] .scout-report-section {
+.scout-report[data-explorer-scope] .scout-report-section {
     border-left: 3px solid var(--explorer-report-color);
     padding-left: 12px;
 }
@@ -155,7 +164,7 @@
 
 @media (max-width: 640px) {
     .place-explorer-overview { padding: 13px 15px; }
-    .scout-report[data-explorer-color] .scout-report-section { padding-left: 8px; }
+    .scout-report[data-explorer-scope] .scout-report-section { padding-left: 8px; }
 }
 
 .place-map-card .place-map-feature--camping-site.is-explorer-selected {
@@ -165,7 +174,7 @@
 }
 
 /* One compact thumbnail component for both Place and Site photos. */
-.scout-report[data-explorer-color] .place-selected-campsite-context {
+.scout-report[data-explorer-scope] .place-selected-campsite-context {
     border-left: 3px solid var(--explorer-report-color);
     padding-left: 10px;
 }
