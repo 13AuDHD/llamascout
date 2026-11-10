@@ -446,7 +446,8 @@ function llama_place_report_field_icon(
         'connectivity_other_cell' => 'at-signal',
         'connectivity_starlink' => 'at-satellite-signal',
         'connectivity_starlink_tested' => 'satellite',
-        'connectivity_starlink_note' => 'at-satellite-signal',
+        'connectivity_starlink_note' => 'at-signal',
+        'connectivity_services_tested' => 'at-satellite-signal',
         'warning_no_cell_service' => 'antenna-bars-off',
 
         'landscape_primary' => 'at-landscape',
