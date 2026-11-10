@@ -6,6 +6,7 @@ require_once __DIR__ . '/resources.php';
 require_once __DIR__ . '/photo-upload.php';
 require_once __DIR__ . '/location-photo-policy.php';
 require_once __DIR__ . '/photo-staging.php';
+require_once __DIR__ . '/photo-gallery-management.php';
 
 function admin_resources_tables_ready(PDO $db): bool
 {
@@ -1101,6 +1102,102 @@ function admin_resource_add_photos(
     }
 
     return $inserted;
+}
+
+/**
+ * Apply checked removals, captions and photo order inside the same
+ * transaction as the Resource save. Image IDs are checked against this
+ * Resource, so Place/Site/other Resource galleries cannot be changed.
+ *
+ * @return list<string> paths eligible for post-commit cleanup
+ */
+function admin_resource_apply_gallery_edits(
+    PDO $db,
+    int $resourceId,
+    int $actorUserId,
+    string $raw,
+    mixed $selectedRemovals
+): array {
+    if (!$db->inTransaction()) {
+        throw new RuntimeException('Resource photo editing requires a transaction.');
+    }
+    if (!is_array($selectedRemovals)) {
+        throw new InvalidArgumentException('Invalid Resource photo removal selection.');
+    }
+    if ($raw === '' && $selectedRemovals === []) {
+        return [];
+    }
+
+    $existing = llama_resource_images($db, $resourceId);
+    $byId = [];
+    foreach ($existing as $row) {
+        $byId[(int) $row['id']] = $row;
+    }
+    $removed = [];
+    foreach ($selectedRemovals as $idValue) {
+        if ((!is_int($idValue) && !is_string($idValue))
+            || !ctype_digit((string) $idValue) || (int) $idValue < 1
+            || !isset($byId[(int) $idValue])) {
+            throw new InvalidArgumentException('This Resource photo does not belong to this Resource.');
+        }
+        $removed[(int) $idValue] = true;
+    }
+
+    $remaining = array_values(array_filter(
+        $existing,
+        static fn (array $row): bool => !isset($removed[(int) $row['id']])
+    ));
+    $items = llama_photo_gallery_validate_snapshot(
+        $raw,
+        'resource:resource:' . $resourceId,
+        $remaining
+    );
+    if ($items === null) {
+        $items = array_map(
+            static fn (array $row): array => [
+                'id' => (int) $row['id'],
+                'alt' => (string) ($row['alt_text'] ?? ''),
+            ],
+            $remaining
+        );
+    }
+
+    // Validate before deleting anything, including the Resource's identity
+    // and every survivor ID. Any exception rolls back the outer transaction.
+    $delete = $db->prepare(
+        'DELETE FROM resource_images WHERE id = ? AND resource_id = ?'
+    );
+    $removedPaths = [];
+    foreach (array_keys($removed) as $imageId) {
+        $delete->execute([$imageId, $resourceId]);
+        if ($delete->rowCount() !== 1) {
+            throw new RuntimeException('Could not remove the selected Resource photo.');
+        }
+        $removedPaths[] = (string) ($byId[$imageId]['src'] ?? '');
+    }
+
+    $update = $db->prepare(
+        'UPDATE resource_images
+         SET sort_order = ?, is_featured = ?, alt_text = ?
+         WHERE id = ? AND resource_id = ?'
+    );
+    foreach ($items as $index => $item) {
+        $update->execute([
+            $index,
+            $index === 0 ? 1 : 0,
+            $item['alt'] !== '' ? $item['alt'] : null,
+            $item['id'],
+            $resourceId,
+        ]);
+    }
+
+    admin_users_audit(
+        $db, $actorUserId, null, 'resource.photo_gallery_updated',
+        'Updated Resource photo order, hero, captions or removals.',
+        ['resource_id' => $resourceId, 'photo_ids' => array_column($items, 'id'),
+            'removed_photo_ids' => array_keys($removed)]
+    );
+    return $removedPaths;
 }
 
 function admin_resource_delete_photo(
