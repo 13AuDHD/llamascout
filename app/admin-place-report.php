@@ -457,6 +457,134 @@ function admin_place_report_target_images(
 
 
 /**
+ * Persist the in-form gallery order and captions on its existing owner.
+ * This runs after requested removals and before attaching staged new photos,
+ * so a newly uploaded photo simply appends to the ordered gallery.
+ *
+ * Reject stale, duplicated or foreign photo IDs. Never create a second
+ * photo list or infer the owner from an image path.
+ */
+function admin_place_save_gallery_in_report_transaction(
+    PDO $db,
+    int $actorUserId,
+    int $placeId,
+    array $target,
+    string $raw
+): void {
+    if ($raw === '') {
+        return;
+    }
+    if (!$db->inTransaction()) {
+        throw new RuntimeException('Gallery changes require the report transaction.');
+    }
+    if (strlen($raw) > 65536) {
+        throw new InvalidArgumentException('The photo gallery update is too large.');
+    }
+    $payload = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+    if (!is_array($payload)
+        || !isset($payload['target'], $payload['items'])
+        || !is_string($payload['target'])
+        || !is_array($payload['items'])
+        || !array_is_list($payload['items'])) {
+        throw new InvalidArgumentException('Invalid gallery order or captions.');
+    }
+
+    $scope = (string) ($target['scope'] ?? '');
+    $source = (string) ($target['source'] ?? '');
+    $targetId = (int) ($target['id'] ?? 0);
+    $expectedOwner = $scope . ':' . $source . ':' . $targetId;
+    if (!hash_equals($expectedOwner, $payload['target'])
+        || !in_array($scope, ['place', 'site', 'area'], true)
+        || $targetId < 1) {
+        throw new InvalidArgumentException('The photo gallery belongs to a different Place or Site.');
+    }
+    $current = admin_place_report_target_images($db, $placeId, $target);
+    $existingIds = array_map(static fn (array $image): int => (int) $image['id'], $current);
+
+    $byId = [];
+    foreach ($payload['items'] as $item) {
+        if (!is_array($item)
+            || !isset($item['id'])
+            || (!is_int($item['id']) && !ctype_digit((string) $item['id']))
+            || (int) $item['id'] < 1
+            || !isset($item['alt'])
+            || !is_string($item['alt'])) {
+            throw new InvalidArgumentException('Invalid photo ID or caption.');
+        }
+        $id = (int) $item['id'];
+        if (isset($byId[$id])) {
+            throw new InvalidArgumentException('The same photo appeared twice in the gallery.');
+        }
+        $caption = trim($item['alt']);
+        if (mb_strlen($caption) > 300) {
+            throw new InvalidArgumentException('A photo caption exceeds 300 characters.');
+        }
+        $byId[$id] = $caption;
+    }
+
+    $requestedIds = array_keys($byId);
+    $sortedExisting = $existingIds;
+    $sortedRequested = $requestedIds;
+    sort($sortedExisting);
+    sort($sortedRequested);
+    if ($sortedExisting !== $sortedRequested) {
+        throw new InvalidArgumentException(
+            'The photo gallery changed since you opened it. Reload before saving its order.'
+        );
+    }
+    $needsChanges = false;
+    foreach ($current as $index => $image) {
+        $id = (int) $image['id'];
+        $newIndex = array_search($id, $requestedIds, true);
+        $oldCaption = trim((string) ($image['alt_text'] ?? ''));
+        if ($newIndex !== $index
+            || $oldCaption !== $byId[$id]
+            || (int) ($image['is_featured'] ?? 0) !== ($index === 0 ? 1 : 0)
+            || (int) ($image['sort_order'] ?? -1) !== $index) {
+            $needsChanges = true;
+            break;
+        }
+    }
+    if (!$needsChanges) {
+        return;
+    }
+
+    $table = match ($scope) {
+        'place' => 'place_images',
+        'site' => 'place_campsite_images',
+        'area' => 'place_area_images',
+    };
+    $ownerColumn = match ($scope) {
+        'place' => null,
+        'site' => 'campsite_id',
+        'area' => 'area_feature_id',
+    };
+    $sql = 'UPDATE ' . $table . '
+            SET alt_text = ?, sort_order = ?, is_featured = ?
+            WHERE id = ? AND place_id = ?';
+    if ($ownerColumn !== null) {
+        $sql .= ' AND ' . $ownerColumn . ' = ?';
+    }
+    $stmt = $db->prepare($sql);
+    foreach ($requestedIds as $index => $id) {
+        $args = [$byId[$id] !== '' ? $byId[$id] : null,
+            $index, $index === 0 ? 1 : 0, $id, $placeId];
+        if ($ownerColumn !== null) {
+            $args[] = $targetId;
+        }
+        $stmt->execute($args);
+    }
+
+    admin_users_audit(
+        $db, $actorUserId, null, 'place.photo_gallery_updated',
+        'Reordered photos or updated captions.',
+        ['place_id' => $placeId, 'scope' => $scope,
+            'target_id' => $targetId, 'photo_ids' => $requestedIds]
+    );
+}
+
+
+/**
  * Add photos while the outer Place Report transaction is active.
  *
  * Site photos use the existing campsite-media persistence layer.
