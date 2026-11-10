@@ -282,6 +282,7 @@ $check('Mixed accommodation answers preserve Unknown and explicit guest permissi
 
     // Imported RIDB raw/normalized types remain baseline facts. No cabin
     // classification should be invented from a broad RV/tent source label.
+    require_once dirname(__DIR__) . '/app/place-report/campsite-baseline.php';
     $source = [
         'site_type' => 'rv_site',
         'raw_site_type' => 'RV ONLY',
