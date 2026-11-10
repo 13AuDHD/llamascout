@@ -456,6 +456,7 @@
             supported,
             target
         ) => {
+            uploader.dataset.photoTargetSupported = supported ? 'true' : 'false';
             const input = photoInput();
             const drop = photoDrop();
             if (input) {
@@ -703,6 +704,10 @@
         },
         true
     );
+
+    form.addEventListener('llama:photo-uploader-ready', (event) => {
+        if (event.detail?.context === 'admin-place') render();
+    });
 
     shell?.addEventListener('llama:contribution-mode', () => {
         queueMicrotask(render);
