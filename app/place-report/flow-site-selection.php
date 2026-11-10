@@ -48,14 +48,6 @@ function llama_place_report_apply_site_selection_metadata(
         'other-parking',
     ];
 
-    if (isset($fields['campsite_count'])) {
-        $fields['campsite_count']['label'] =
-            'Number of campsites / overnight spaces';
-
-        $fields['campsite_count']['help'] =
-            'Enter the number of individual overnight Sites when this Place or Area has defined campsites, RV spaces, or other assigned overnight spaces. Leave unanswered when there are no individually defined Sites.';
-    }
-
     if (isset($fields['site_number'])) {
         $fields['site_number']['label'] =
             'Site / space number or name';
