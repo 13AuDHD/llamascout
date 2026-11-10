@@ -291,6 +291,8 @@ $check('Official Place contact values prefill without becoming new Scout answers
     $assert(str_contains((string) $editorSource, 'llama_place_report_contact_strip_unchanged_official(')
         && str_contains((string) $editorSource, 'llama_place_report_current_place_answers('),
         'Admin contact loading/saving does not honor canonical current answers');
+    $assert(str_contains((string) $editorSource, "'field_keys' => \$changedKeys"),
+        'Admin audit should attribute only truly changed values');
 });
 
 $check('Registry loaded', static function () use ($fields, $assert): void {
