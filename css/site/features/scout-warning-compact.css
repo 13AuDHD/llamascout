@@ -1,72 +1,90 @@
-/* =========================================================
-   LLAMA SCOUT
-   QUICK WARNING CARD COMPACT OVERRIDES
+/* Quick warnings use the same card sizing as the Scout Report grid.
+   Only their border, status, and icon receive warning emphasis. */
 
-   Keeps the existing Scout Report card style while reducing
-   vertical height and making the Warning label stand out.
-   ========================================================= */
+.scout-report-warning-section {
+    /* Dark enough against white cards in the light theme. */
+    --scout-warning-color: #b42335;
+}
 
-.scout-report-warning-section
-.scout-report-grid {
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .scout-report-warning-section {
+        /* Brighter on charcoal cards for readable contrast. */
+        --scout-warning-color: #ff5967;
+    }
+}
+
+:root[data-theme="dark"] .scout-report-warning-section {
+    --scout-warning-color: #ff5967;
+}
+
+/* auto-fill retains empty columns. auto-fit (the default for ordinary
+   Scout cards) would stretch a lone warning across the entire row. */
+.scout-report-warning-section .scout-report-grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(190px, 100%), 1fr));
     gap: 9px;
 }
 
-.scout-report-warning-item {
+.scout-report-warning-section .scout-report-warning-item {
+    box-sizing: border-box;
     min-height: 78px;
-
     padding: 11px 13px;
-
-    grid-template-rows:
-        auto
-        3px
-        auto;
-
+    border: 2px solid var(--scout-warning-color);
+    grid-template-rows: auto 3px auto;
     row-gap: 4px;
 }
 
 .scout-report-warning-item
-.scout-report-value-content
-> span {
+.scout-report-value-content > span {
     font-size: .86rem;
     line-height: 1.2;
 }
 
 .scout-report-warning-item
-.scout-report-value-content
-> strong {
-    color: #d94a4a;
-
+.scout-report-value-content > strong {
+    color: var(--scout-warning-color);
     font-size: .82rem;
     font-weight: 900;
-
     letter-spacing: .035em;
     text-transform: uppercase;
 }
 
-.scout-report-warning-item
-> i.scout-report-value-icon {
-    font-size: 1.05rem;
+/* External <img> SVGs don't inherit currentColor. Using the SVG as an alpha
+   mask lets the icon inherit the correct warning color in either theme,
+   without recoloring or modifying the source icon asset. */
+.scout-report-warning-item > .scout-report-warning-icon {
+    display: block;
+    grid-area: icon;
+    align-self: end;
+    justify-self: end;
+    width: 30px;
+    height: 30px;
+    background-color: var(--scout-warning-color);
+    -webkit-mask-image: var(--scout-warning-icon-image);
+    mask-image: var(--scout-warning-icon-image);
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
 }
 
-
 @media (max-width: 800px) {
-    .scout-report-warning-item {
+    .scout-report-warning-section .scout-report-warning-item {
         min-height: 72px;
     }
 }
 
-
 @media (max-width: 600px) {
-    .scout-report-warning-item {
+    /* Match the one-column layout of other Scout Report cards on phones. */
+    .scout-report-warning-section .scout-report-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .scout-report-warning-section .scout-report-warning-item {
         min-height: 66px;
-
         padding: 10px 12px;
-
-        grid-template-rows:
-            auto
-            2px
-            auto;
-
+        grid-template-rows: auto 2px auto;
         row-gap: 3px;
     }
 }
