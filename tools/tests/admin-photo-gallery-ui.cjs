@@ -129,6 +129,36 @@ assert.equal(hero().dataset.adminPhotoId, '12');
 assert.equal(query('[name="admin_photo_gallery_json"]').value, '',
     'Saved gallery must not be written again on an unrelated form save');
 
+// Simulate iPad pointer dragging using the actual drag handle, including
+// pointer capture, a hit-tested destination and release.
+const touchCard = cards()[1];
+const touchHandle = touchCard.querySelector('.admin-attached-photo-handle');
+let capturedPointer = null;
+touchHandle.setPointerCapture = id => { capturedPointer = id; };
+touchHandle.hasPointerCapture = id => capturedPointer === id;
+touchHandle.releasePointerCapture = () => { capturedPointer = null; };
+const topCard = cards()[0];
+topCard.getBoundingClientRect = () => ({
+    top: 60, bottom: 160, left: 0, right: 100, height: 100, width: 100,
+});
+d.elementFromPoint = () => topCard.querySelector('img');
+const pointer = (type, x, y) => {
+    const event = new w.MouseEvent(type, {
+        bubbles: true, cancelable: true, button: 0, clientX: x, clientY: y,
+    });
+    Object.defineProperty(event, 'pointerId', {value: 7});
+    touchHandle.dispatchEvent(event);
+};
+pointer('pointerdown', 80, 135);
+pointer('pointermove', 20, 70);
+pointer('pointerup', 20, 70);
+assert.deepEqual(ids(), [13, 12], 'Touch drag must move the card under the pointer');
+assert.equal(hero().dataset.adminPhotoId, '13', 'Touch drag to first must set the Hero pill');
+move(cards()[0], 'ArrowRight');
+assert.deepEqual(ids(), [12, 13], 'Keyboard can restore the original saved order');
+assert.equal(query('[name="admin_photo_gallery_json"]').value, '',
+    'Restoring the saved order should not generate a false edit');
+
 // A fresh Site selection loads its own photos, not the Place gallery.
 const selector = query('[data-admin-campsite-selector]');
 selector.value = 'campsite_record:9';
