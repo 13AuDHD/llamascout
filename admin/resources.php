@@ -132,6 +132,7 @@ if (
                 );
                 $photoToken = trim((string) ($_POST['resource_photo_stage_token'] ?? ''));
                 $committedPhotoPaths = [];
+                $deferredPhotoDeletes = [];
 
                 // The Resource fields, services, and new gallery photos must
                 // succeed or fail as one database transaction.
@@ -142,6 +143,13 @@ if (
                         $actorUserId,
                         $resourceId,
                         $_POST
+                    );
+                    $deferredPhotoDeletes = admin_resource_apply_gallery_edits(
+                        $db,
+                        $resourceId,
+                        $actorUserId,
+                        trim((string) ($_POST['resource_gallery_json'] ?? '')),
+                        $_POST['resource_remove_photo_ids'] ?? []
                     );
                     if ($newPhotos) {
                         admin_resource_attach_staged_photos(
@@ -154,6 +162,13 @@ if (
                         );
                     }
                     $db->commit();
+                    foreach (array_unique($deferredPhotoDeletes) as $path) {
+                        if ($path !== '' && !llama_photo_gallery_path_in_use($db, $path)) {
+                            if (!llama_photo_delete_owned_permanent_path($path, ['uploads/resources'])) {
+                                error_log('Resource photo file could not be cleaned up: ' . $path);
+                            }
+                        }
+                    }
                 } catch (Throwable $exception) {
                     if ($db->inTransaction()) {
                         $db->rollBack();
