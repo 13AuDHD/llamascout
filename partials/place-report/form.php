@@ -1109,7 +1109,7 @@ $renderField =
                                 : (
                                     $type === 'url'
                                         ? 'url'
-                                        : 'text'
+                                        : ($type === 'email' ? 'email' : 'text')
                                 )
                         );
                 ?>

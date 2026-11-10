@@ -56,6 +56,11 @@ function llama_place_report_add_source_context_fields(
             'counts_toward_completion' => false,
             'points_categories' => [],
             'placeholder' => 'https://...',
+            'scope_group' => 'place',
+            'layout_section' => 'place',
+            'layout_group' => 'information_location',
+            'report_group' => 'basic',
+            'report_visibility' => 'public',
         ]
     );
 

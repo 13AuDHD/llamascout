@@ -24,7 +24,7 @@ declare(strict_types=1);
 function llama_place_report_approved_question_groups(): array
 {
     return [
-    'basic' => ['Basic', ['type','name','campsite_count','description']],
+    'basic' => ['Basic', ['type','name','campsite_count','contact_phone','contact_email','contact_website_url','facility_map_url','contact_reservations_url','contact_related_links','description']],
     'location' => ['Location', ['latitude','longitude','elevation_feet','road','city','county','state','land_type','land_manager','region','activities']],
     'amenities' => ['Amenities', ['amenity_toilets','amenity_potable_water','amenity_trash','amenity_dump_station','amenity_showers','amenity_picnic_shelter','amenity_wifi','amenity_laundry','amenity_dishwashing_station','amenity_playground','amenity_dog_park','amenity_amphitheater','amenity_campground_host','amenity_camp_store','amenity_trailhead','amenity_river_access','amenity_lake_access','amenity_fishing_pier']],
     'operating' => ['Operating Hours', ['place_open_year_round','place_open_24_hours','place_opening_time','place_closing_time','place_entrance_gate','place_gate_access_type','place_gate_opening_time','place_gate_closing_time']],
@@ -83,6 +83,12 @@ function llama_place_report_approved_question_visibility(): array
         'land_type',
         'land_manager',
         'region',
+        'contact_phone',
+        'contact_email',
+        'contact_website_url',
+        'facility_map_url',
+        'contact_reservations_url',
+        'contact_related_links',
     ];
 
     $groups =
@@ -563,11 +569,11 @@ function llama_place_report_approved_registry_issues(): array
         }
     }
 
-    if ($count !== 263) {
+    if ($count !== 269) {
         $issues[] =
             'Current approved-question projection contains '
             . $count
-            . ' slots; expected 263 (260 reviewed questions, RIDB Loop and Type of Use, plus Reported Total Sites).';
+            . ' slots; expected 269 (the existing 263 questions plus six approved Place Contact & Links entries).';
     }
 
     $assignedGroups = [];

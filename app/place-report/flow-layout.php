@@ -169,7 +169,9 @@ function llama_place_report_layout_assignments(): array
         ],
 
         'place:information_location' => [
-            'type', 'name', 'campsite_count', 'description', 'latitude', 'longitude',
+            'type', 'name', 'campsite_count', 'contact_phone', 'contact_email',
+            'contact_website_url', 'facility_map_url', 'contact_reservations_url',
+            'contact_related_links', 'description', 'latitude', 'longitude',
             'elevation_feet', 'road', 'city', 'county', 'state', 'land_type',
             'land_manager', 'region',
         ],
@@ -212,7 +214,6 @@ function llama_place_report_layout_assignments(): array
             'amenity_fishing_pier',
             'amenity_trailhead',
             'amenity_camp_store',
-            'facility_map_url',
         ],
 
         'place:activities_recreation' => [

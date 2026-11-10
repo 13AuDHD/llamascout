@@ -114,6 +114,34 @@ function llama_place_report_parse_answer(array $field, mixed $raw): array
                 $invalid('Enter a valid month and day as MM-DD.');
             }
         }
+        if ($type === 'email' && !filter_var($text, FILTER_VALIDATE_EMAIL)) {
+            $invalid('Enter a valid email address.');
+        }
+        if ($key === 'contact_phone') {
+            if (preg_match('/[\x00-\x1F\x7F<>]/', $text) === 1
+                || strlen(preg_replace('/\\D/', '', $text)) < 7) {
+                $invalid('Enter a valid public phone number.');
+            }
+        }
+        if ($key === 'contact_related_links') {
+            $links = [];
+            foreach (preg_split('/\\r\\n|\\r|\\n/', $text) ?: [] as $line) {
+                $url = trim($line);
+                if ($url === '') {
+                    continue;
+                }
+                if (!filter_var($url, FILTER_VALIDATE_URL)
+                    || !in_array(strtolower((string) parse_url($url, PHP_URL_SCHEME)), ['http', 'https'], true)
+                    || strlen($url) > 1000) {
+                    $invalid('Enter one complete http or https URL per line.');
+                }
+                $links[$url] = true;
+            }
+            if (count($links) > 8) {
+                $invalid('Enter no more than eight related links.');
+            }
+            $text = implode("\n", array_keys($links));
+        }
         if ($type === 'url' && (!filter_var($text, FILTER_VALIDATE_URL)
             || !in_array(strtolower((string) parse_url($text, PHP_URL_SCHEME)), ['http','https'], true))) {
             $invalid('Enter a complete http or https URL.');
