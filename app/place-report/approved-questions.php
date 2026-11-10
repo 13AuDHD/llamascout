@@ -24,7 +24,7 @@ declare(strict_types=1);
 function llama_place_report_approved_question_groups(): array
 {
     return [
-    'basic' => ['Basic', ['type','name','description']],
+    'basic' => ['Basic', ['type','name','campsite_count','description']],
     'location' => ['Location', ['latitude','longitude','elevation_feet','road','city','county','state','land_type','land_manager','region','activities']],
     'amenities' => ['Amenities', ['amenity_toilets','amenity_potable_water','amenity_trash','amenity_dump_station','amenity_showers','amenity_picnic_shelter','amenity_wifi','amenity_laundry','amenity_dishwashing_station','amenity_playground','amenity_dog_park','amenity_amphitheater','amenity_campground_host','amenity_camp_store','amenity_trailhead','amenity_river_access','amenity_lake_access','amenity_fishing_pier']],
     'operating' => ['Operating Hours', ['place_open_year_round','place_open_24_hours','place_opening_time','place_closing_time','place_entrance_gate','place_gate_access_type','place_gate_opening_time','place_gate_closing_time']],
@@ -563,11 +563,11 @@ function llama_place_report_approved_registry_issues(): array
         }
     }
 
-    if ($count !== 262) {
+    if ($count !== 263) {
         $issues[] =
             'Current approved-question projection contains '
             . $count
-            . ' slots; expected 262 (260 reviewed questions plus RIDB Loop and Type of Use).';
+            . ' slots; expected 263 (260 reviewed questions, RIDB Loop and Type of Use, plus Reported Total Sites).';
     }
 
     $assignedGroups = [];
