@@ -407,6 +407,39 @@ function admin_place_report_photo_target(
 
 
 /**
+ * Select photo storage independently from the Scout Report's last Site picker.
+ * For example, the user can be editing Place photos with a Site ID still
+ * selected for Site questions. The gallery owner is explicit and checked
+ * server-side against this Place before any image can change.
+ */
+function admin_place_report_photo_target_from_owner(
+    PDO $db,
+    int $placeId,
+    string $owner
+): array {
+    if (!preg_match('/^(place|site|area):(place|campsite_record|map_feature):([1-9][0-9]*)$/D', $owner, $match)) {
+        throw new InvalidArgumentException('The selected photo gallery is invalid. Reload the editor.');
+    }
+    $scope = $match[1];
+    $source = $match[2];
+    $id = (int) $match[3];
+    if ($scope === 'place' && $source === 'place' && $id === $placeId) {
+        return ['scope' => 'place', 'source' => 'place', 'id' => $placeId, 'label' => 'Entire Place'];
+    }
+    if ($scope === 'site' && $source === 'campsite_record') {
+        return admin_place_report_photo_target($db, $placeId, [
+            'selected_campsite_id' => 'campsite_record:' . $id,
+        ]);
+    }
+    if ($scope === 'area' && $source === 'map_feature') {
+        return admin_place_report_photo_target($db, $placeId, [
+            'selected_area_id' => 'map_feature:' . $id,
+        ]);
+    }
+    throw new InvalidArgumentException('The photo gallery does not belong to the selected Place.');
+}
+
+/**
  * Return the gallery owned by one reporting target.
  */
 function admin_place_report_target_images(
