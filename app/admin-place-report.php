@@ -10,6 +10,8 @@ require_once __DIR__ . '/admin-place-sites.php';
 require_once __DIR__ . '/place-campsite-media.php';
 require_once __DIR__ . '/place-area-media.php';
 require_once __DIR__ . '/location-photo-policy.php';
+require_once __DIR__ . '/ridb-facility-details.php';
+require_once __DIR__ . '/place-report/contact-links.php';
 
 /**
  * Shared Admin Place Report service.
@@ -97,14 +99,39 @@ function admin_place_shared_report_data(
             $placeId
         );
 
-    return
-        llama_place_report_data_from_published_place(
-            $place,
-            llama_place_report_published_answer_state(
-                $db,
-                $placeId
-            )
-        );
+    $data = llama_place_report_data_from_published_place(
+        $place,
+        llama_place_report_published_answer_state($db, $placeId)
+    );
+
+    // The public page already projects V3 current answers. Admin must also
+    // reload an approved contact correction from that same canonical store,
+    // even though imported official facts are held in separate source tables.
+    $contactFields = array_fill_keys(
+        array_keys(llama_place_report_official_contact_baselines([])),
+        true
+    );
+    $current = llama_place_report_current_place_answers($db, $placeId);
+    $unknown = array_fill_keys(llama_place_report_unknown_fields($data), true);
+    foreach ($contactFields as $key => $_) {
+        $answer = $current[$key] ?? null;
+        if (!is_array($answer) || empty($answer['recorded'])) {
+            continue;
+        }
+        $field = llama_report_question($key);
+        if (!is_array($field)) {
+            continue;
+        }
+        if (($answer['state'] ?? '') === 'unknown') {
+            $unknown[$key] = true;
+            llama_place_report_set_path($data, (string) $field['storage'], null);
+        } else {
+            unset($unknown[$key]);
+            llama_place_report_set_path($data, (string) $field['storage'], $answer['value']);
+        }
+    }
+    $data['_answer_state'] = array_keys($unknown);
+    return $data;
 }
 
 
@@ -142,6 +169,14 @@ function admin_place_save_shared_report(PDO $db, int $actorUserId, int $placeId,
         $placeLevelInput = admin_place_without_campsite_fields(llama_place_report_expand_presence($input));
         $allowed = llama_place_report_fields_for_scope('place');
         $placeLevelInput = array_intersect_key($placeLevelInput, $allowed);
+        // Do not silently promote displayed RIDB facts into user-authored
+        // answers when Admin saves an unrelated field. A changed value is
+        // handled by the ordinary canonical current-answer publisher.
+        $placeLevelInput = llama_place_report_contact_strip_unchanged_official(
+            $placeLevelInput,
+            llama_place_report_form_input_from_data($baseData),
+            llama_place_facility_public_data($db, $placeId)
+        );
         if (isset($input['_report_touched'])) {
             $placeLevelInput['_report_touched'] = array_intersect_key((array) $input['_report_touched'], $allowed);
         }
