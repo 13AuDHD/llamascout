@@ -1714,11 +1714,36 @@ if ($placeReportShowPhotos):
 
     </details>
 
-    <p class="contribution-message" data-contribution-site-photo-notice hidden>
-        Site photos need a saved individual Site. Use the Site photo uploader
-        from that Site's report after its record is created; photos on a new
-        Place submission belong to the Place gallery.
-    </p>
+    <?php if ($placeReportPhotoContext === 'add-place'): ?>
+    <details class="contribution-section" data-contribution-site-photo-panel hidden open>
+        <summary><span><?= llama_icon('camera') ?> First Site Photos</span></summary>
+        <div class="contribution-section-body">
+            <p>Photos here belong to the first Site on this Place, not the Place gallery.
+               They will follow the first Site through review and publication.
+               Up to 10 photos. The Place still needs its own current photo.</p>
+            <?php foreach ((array) ($placeReportExistingSitePhotos ?? []) as $sitePhoto): ?>
+                <?php $sitePhotoPath = llama_place_report_photo_path($sitePhoto); ?>
+                <?php if ($sitePhotoPath !== ''): ?>
+                    <label class="add-place-existing-photo">
+                        <img src="<?= $e(llama_place_report_photo_url($sitePhoto)) ?>"
+                             alt="<?= $e((string) ($sitePhoto['alt'] ?? 'Site photo')) ?>" loading="lazy">
+                        <span><input type="checkbox" name="remove_existing_site_photos[]"
+                                     value="<?= $e($sitePhotoPath) ?>"> Remove this Site photo</span>
+                    </label>
+                <?php endif; ?>
+            <?php endforeach; ?>
+            <div data-photo-uploader
+                 data-photo-context="add-site"
+                 data-photo-max="<?= max(1, 10 - count((array) ($placeReportExistingSitePhotos ?? []))) ?>"
+                 data-photo-token-field="site_photo_stage_token"
+                 data-photo-field="site_photos_json"
+                 data-photo-csrf="<?= $e($placeReportPhotoCsrf) ?>"
+                 data-photo-title="Photos of this Site"
+                 data-photo-save-action="Submit for Review"
+                 data-photo-help="Show this Site, its setup, facilities, and useful details. These photos are reviewed before publication."></div>
+        </div>
+    </details>
+    <?php endif; ?>
 <?php endif; ?>
 
 <script defer src="https://llamascout.com/js/place-report-season-picker.js?v=<?= (int) filemtime(dirname(__DIR__, 2) . '/js/place-report-season-picker.js') ?>"></script>
