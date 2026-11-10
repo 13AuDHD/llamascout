@@ -48,6 +48,7 @@ $resourcePhotoRemaining = max(0, $resourcePhotoLimit - count($resourceSavedPhoto
              data-photo-csrf="<?= $e(llama_photo_csrf_token()) ?>"
              data-photo-endpoint="/photo-upload.php"
              data-photo-title="Photos of <?= $e((string) ($resource['name'] ?? 'this Resource')) ?>"
+             data-photo-save-action="Save Resource"
              data-photo-help="Upload photos here, then save the Resource to attach them. You may add <?= (int) $resourcePhotoRemaining ?> more."></div>
         <?php else: ?>
         <p>This Resource has reached its 10-photo limit. Remove an existing photo before adding another.</p>
