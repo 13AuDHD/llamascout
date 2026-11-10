@@ -491,6 +491,9 @@ $e =
         <?php
         $resourceStaffFields = true;
         require dirname(__DIR__) . '/partials/resources/fields.php';
+        if ($editing && !$resourceSubmission) {
+            require dirname(__DIR__) . '/partials/resources/photo-uploader.php';
+        }
         ?>
 
         <?php if ($resourceSubmission && $reviewNotesReady): ?>
@@ -689,54 +692,10 @@ $e =
     </div>
     <?php endif; ?>
 
-    <?php if ($resourcePhotoRemaining > 0): ?>
-    <form
-        class="admin-user-action-box"
-        method="post"
-        enctype="multipart/form-data"
-    >
-        <input
-            type="hidden"
-            name="csrf_token"
-            value="<?= $e(moderation_csrf_token()) ?>"
-        >
-        <input
-            type="hidden"
-            name="resource_action"
-            value="upload_photos"
-        >
-        <input
-            type="hidden"
-            name="resource_id"
-            value="<?= (int) $resourceId ?>"
-        >
-
-        <label class="admin-resource-photo-upload">
-            <span>
-                Add up to
-                <?= (int) $resourcePhotoRemaining ?>
-                more photo<?= $resourcePhotoRemaining === 1 ? '' : 's' ?>
-            </span>
-
-            <input
-                type="file"
-                name="resource_photos[]"
-                accept="image/*"
-                multiple
-                required
-            >
-        </label>
-
-        <div class="admin-user-form-actions">
-            <button
-                class="admin-button"
-                type="submit"
-            >
-                Upload Resource photos
-            </button>
-        </div>
-    </form>
-    <?php endif; ?>
+    <div class="admin-user-action-box">
+        <p>Upload new photos from the Resource Photos section in the editor above.
+        Use the controls here to choose a hero photo or delete an existing photo.</p>
+    </div>
 
     <div class="admin-user-action-box">
         <p>
