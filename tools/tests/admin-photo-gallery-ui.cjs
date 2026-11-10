@@ -99,7 +99,7 @@ let caption = cards()[0].querySelector('[data-admin-photo-caption]');
 caption.value = 'Updated site road';
 caption.dispatchEvent(new w.Event('input', {bubbles: true}));
 assert.equal(payload().items[0].alt, 'Updated site road');
-assert.equal(query('.admin-attached-photo-preview img').getAttribute('alt'), 'Entrance',
+assert.equal(cards()[1].querySelector('img').getAttribute('alt'), 'Entrance',
     'Untouched image alt remains tied to its photo ID');
 
 const checkbox = cards()[1].querySelector('[name="remove_existing_photos[]"]');
