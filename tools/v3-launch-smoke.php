@@ -269,8 +269,16 @@ $check('Official Place contact values prefill without becoming new Scout answers
         ['contact_phone' => '208-111-2222'], $official
     );
     $assert($recorded['values']['contact_phone'] === '208-111-2222'
-        && $recorded['sources']['contact_phone'] === 'Approved Scout Report answer',
+        && $recorded['sources']['contact_phone'] === 'Recorded Llama Scout answer',
         'Editor failed to reload an approved correction over official facts');
+
+    $correctedWebsite = llama_place_report_public_contact_cards($official, [
+        'contact' => ['website_url' => 'https://example.gov/updated'],
+    ]);
+    $assert(($correctedWebsite['items']['Website']['value'] ?? '') === 'https://example.gov/updated'
+        && count($correctedWebsite['links']) === 1
+        && $correctedWebsite['links'][0]['url'] === 'https://example.gov/alerts',
+        'An outdated official homepage was still shown beside a corrected Website URL');
 
     $noHomepage = llama_place_report_official_contact_baselines([
         'links' => [['title' => 'Forest alerts', 'url' => 'https://example.gov/alerts']],
