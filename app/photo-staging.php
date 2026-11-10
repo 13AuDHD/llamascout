@@ -34,6 +34,7 @@ function llama_photo_contexts(): array
 {
     return [
         'add-place' => ['max' => llama_location_gallery_photo_limit('place'), 'label' => 'Place photos'],
+        'add-site' => ['max' => llama_location_gallery_photo_limit('site'), 'label' => 'First Site photos'],
         'update-place' => ['max' => 5, 'label' => 'Update photos'],
         'place-report' => ['max' => 5, 'label' => 'Report photos'],
         'admin-place' => ['max' => llama_location_gallery_photo_limit('place'), 'label' => 'Admin Place and Site photos'],
@@ -68,6 +69,7 @@ function llama_photo_context_allowed(string $context, int $userId): bool
 
     $contributionCapability = match ($context) {
         'add-place' => 'submit_place',
+        'add-site' => 'submit_place',
         'add-resource' => 'submit_place',
         'update-resource' => 'submit_update',
         'update-place' => 'submit_update',

@@ -637,7 +637,9 @@ function llama_scout_report_record_approved_new_place_bundle(
     int $reviewedBy,
     string $reviewNotes,
     array $submittedPhotos,
-    array $permanentPhotoPaths
+    array $permanentPhotoPaths,
+    array $submittedSitePhotos = [],
+    array $permanentSitePhotoPaths = []
 ): array {
     $contributorId = (int) ($submission['user_id'] ?? 0);
     $siteId = (int) ($site['id'] ?? 0);
@@ -698,8 +700,8 @@ function llama_scout_report_record_approved_new_place_bundle(
         is_array($answers['site_answers'] ?? null) ? $answers['site_answers'] : [],
         $reviewedBy,
         $reviewNotes,
-        [],
-        [],
+        $submittedSitePhotos,
+        $permanentSitePhotoPaths,
         $eventMetadata,
         true
     );

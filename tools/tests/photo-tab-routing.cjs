@@ -26,7 +26,7 @@ function start({ admin = false } = {}) {
             <details data-report-main-section="site"></details>
             ${selector}
             <section data-contribution-place-photo-panel><input type="hidden" name="photos_json" value="[]"></section>
-            <p data-contribution-site-photo-notice hidden></p>
+            ${admin ? '' : '<section data-contribution-site-photo-panel hidden><input type="hidden" name="site_photos_json" value="[]"></section>'}
         </form>
         <div data-contribution-resource hidden>
             <form data-resource-editor>
@@ -49,7 +49,7 @@ function start({ admin = false } = {}) {
     return {
         window, shell, click, active, stage,
         panel: shell.querySelector('[data-contribution-place-photo-panel]'),
-        notice: shell.querySelector('[data-contribution-site-photo-notice]'),
+        sitePanel: shell.querySelector('[data-contribution-site-photo-panel]'),
         report: shell.querySelector('[data-contribution-report]'),
         resource: shell.querySelector('[data-contribution-resource]'),
         alertCount: () => alerts,
@@ -61,14 +61,22 @@ assert.equal(member.active('place'), true, 'Place should initially own new-Place
 member.click('site');
 assert.equal(member.active('site'), true);
 assert.equal(member.panel.hidden, true, 'Place uploader must not appear as a Site uploader on Add Place');
-assert.equal(member.notice.hidden, false, 'New Site should explain that a saved Site is needed');
+assert.equal(member.sitePanel.hidden, false, 'New Site must have its own visible uploader');
 member.click('place');
 assert.equal(member.panel.hidden, false);
-member.stage('photos_json', [{ path: '/uploads/staging/placeholder.jpg' }]);
+assert.equal(member.sitePanel.hidden, true);
+member.stage('photos_json', [{ path: '/uploads/staging/place.jpg' }]);
 member.click('site');
-assert.equal(member.active('place'), true, 'Cannot switch with pending Place photos');
-assert.equal(member.alertCount(), 1, 'A blocked switch must be explained');
+assert.equal(member.active('site'), true, 'Place and Site staging are separate');
+member.stage('site_photos_json', [{ path: '/uploads/staging/site.jpg' }]);
+member.click('place');
+assert.equal(member.active('place'), true, 'Place and Site uploads survive tab switches');
+assert.equal(member.sitePanel.hidden, true);
+member.click('resource');
+assert.equal(member.active('place'), true, 'Switching to another form cannot abandon Place/Site photos');
+assert.equal(member.alertCount(), 1);
 member.stage('photos_json', []);
+member.stage('site_photos_json', []);
 member.click('resource');
 assert.equal(member.resource.hidden, false);
 assert.equal(member.report.hidden, true);
@@ -82,6 +90,6 @@ assert.equal(member.active('place'), true);
 const admin = start({ admin: true });
 admin.click('site');
 assert.equal(admin.panel.hidden, false, 'Saved Admin Site reports share the photo uploader');
-assert.equal(admin.notice.hidden, true, 'Saved Admin Site does not require new Place notice');
+assert.equal(admin.sitePanel, null, 'Admin Site uses its existing target-aware gallery');
 
 console.log('PASS: contribution photo tabs keep staged files bound to the intended form');

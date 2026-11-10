@@ -57,6 +57,9 @@ function llama_place_draft_clean_form_data(array $input): array
     unset(
         $clean['photo_stage_token'],
         $clean['photos_json'],
+        $clean['site_photo_stage_token'],
+        $clean['site_photos_json'],
+        $clean['_draft_site_photos'],
         $clean['draft_id']
     );
 
@@ -88,10 +91,18 @@ function llama_place_draft_snapshot_photos(
     int $userId,
     int $draftId,
     string $stageToken,
-    array $submittedPhotos
+    array $submittedPhotos,
+    string $context = 'add-place',
+    string $suffix = ''
 ): array {
-    $destinationRelative = llama_place_draft_photo_relative_dir($userId, $draftId);
-    $destinationAbsolute = llama_place_draft_photo_absolute_dir($userId, $draftId);
+    if (!in_array($context, ['add-place', 'add-site'], true)
+        || !in_array($suffix, ['', 'site'], true)
+        || ($context === 'add-site') !== ($suffix === 'site')) {
+        throw new InvalidArgumentException('Invalid draft photo owner.');
+    }
+    $destinationRelative = llama_place_draft_photo_relative_dir($userId, $draftId)
+        . ($suffix !== '' ? '/' . $suffix : '');
+    $destinationAbsolute = dirname(__DIR__) . $destinationRelative;
 
     /*
      * The server-side staging manifest is the source of truth for a live
@@ -115,7 +126,7 @@ function llama_place_draft_snapshot_photos(
     }
 
     $stageToken = llama_photo_stage_token($stageToken);
-    $manifest = llama_photo_read_manifest('add-place', $userId, $stageToken);
+    $manifest = llama_photo_read_manifest($context, $userId, $stageToken);
     $manifestByPath = [];
 
     foreach ($manifest as $photo) {
@@ -137,7 +148,7 @@ function llama_place_draft_snapshot_photos(
         llama_photo_remove_tree($destinationAbsolute);
 
         try {
-            llama_photo_stage_abandon('add-place', $userId, $stageToken);
+            llama_photo_stage_abandon($context, $userId, $stageToken);
         } catch (Throwable) {
         }
 
@@ -174,7 +185,7 @@ function llama_place_draft_snapshot_photos(
         );
     }
 
-    $expectedPrefix = llama_photo_stage_relative_dir('add-place', $userId, $stageToken) . '/';
+    $expectedPrefix = llama_photo_stage_relative_dir($context, $userId, $stageToken) . '/';
     $tmpAbsolute = $destinationAbsolute . '-tmp-' . bin2hex(random_bytes(5));
 
     if (!mkdir($tmpAbsolute, 0755, true) && !is_dir($tmpAbsolute)) {
@@ -260,7 +271,7 @@ function llama_place_draft_snapshot_photos(
             throw $exception;
         }
 
-        llama_photo_stage_abandon('add-place', $userId, $stageToken);
+        llama_photo_stage_abandon($context, $userId, $stageToken);
 
         return $saved;
     } catch (Throwable $exception) {
@@ -272,15 +283,22 @@ function llama_place_draft_snapshot_photos(
 function llama_place_draft_restore_photos(
     int $userId,
     int $draftId,
-    array $savedPhotos
+    array $savedPhotos,
+    string $context = 'add-place',
+    string $suffix = ''
 ): array {
+    if (!in_array($context, ['add-place', 'add-site'], true)
+        || !in_array($suffix, ['', 'site'], true)
+        || ($context === 'add-site') !== ($suffix === 'site')) {
+        throw new InvalidArgumentException('Invalid draft photo owner.');
+    }
     if (!$savedPhotos) {
         return ['token' => '', 'photos' => []];
     }
 
     $token = llama_photo_stage_token();
-    $stageRelative = llama_photo_stage_relative_dir('add-place', $userId, $token);
-    $stageAbsolute = llama_photo_stage_absolute_dir('add-place', $userId, $token);
+    $stageRelative = llama_photo_stage_relative_dir($context, $userId, $token);
+    $stageAbsolute = llama_photo_stage_absolute_dir($context, $userId, $token);
 
     if (!mkdir($stageAbsolute, 0755, true) && !is_dir($stageAbsolute)) {
         throw new RuntimeException('The draft photos could not be prepared for editing.');
@@ -289,7 +307,8 @@ function llama_place_draft_restore_photos(
     $restored = [];
 
     try {
-        $allowedPrefix = llama_place_draft_photo_relative_dir($userId, $draftId) . '/';
+        $allowedPrefix = llama_place_draft_photo_relative_dir($userId, $draftId)
+            . ($suffix !== '' ? '/' . $suffix : '') . '/';
 
         foreach ($savedPhotos as $photo) {
             if (!is_array($photo)) {
@@ -331,7 +350,7 @@ function llama_place_draft_restore_photos(
             return ['token' => '', 'photos' => []];
         }
 
-        llama_photo_write_manifest('add-place', $userId, $token, $restored);
+        llama_photo_write_manifest($context, $userId, $token, $restored);
 
         return ['token' => $token, 'photos' => $restored];
     } catch (Throwable $exception) {
@@ -634,8 +653,15 @@ function llama_place_draft_save(PDO $db, int $userId, int $draftId, array $input
             }
         }
 
+        $previousDraftSitePhotos = [];
         if ($draftId > 0) {
-            if (!llama_place_draft_for_user($db, $userId, $draftId)) {
+            $previousDraft = llama_place_draft_for_user($db, $userId, $draftId);
+            if ($previousDraft) {
+                $previousDraftSitePhotos = (array) (
+                    $previousDraft['form_data']['_draft_site_photos'] ?? []
+                );
+            }
+            if (!$previousDraft) {
                 throw new RuntimeException('That saved Place could not be found.');
             }
 
@@ -715,17 +741,56 @@ function llama_place_draft_save(PDO $db, int $userId, int $draftId, array $input
             );
         }
 
+        // Keep the first Site's independent photo set with this same draft.
+        // Form data holds only snapshot metadata; the files live alongside
+        // the Place draft photos under a distinct /site/ directory.
+        $siteStageToken = trim((string) ($input['site_photo_stage_token'] ?? ''));
+        $siteSubmittedPhotos = llama_photo_decode_form_photos(
+            $input['site_photos_json'] ?? '[]'
+        );
+        $siteStageHasManifest = false;
+        if ($siteStageToken !== '') {
+            try {
+                $siteStageToken = llama_photo_stage_token($siteStageToken);
+                $siteStageHasManifest = llama_photo_stage_manifest_exists(
+                    'add-site', $userId, $siteStageToken
+                );
+            } catch (Throwable) {
+                $siteStageHasManifest = false;
+            }
+        }
+
+        if (!$siteStageHasManifest && $previousDraftSitePhotos) {
+            $savedSitePhotos = $previousDraftSitePhotos;
+        } elseif (!$siteStageHasManifest && $siteSubmittedPhotos) {
+            throw new RuntimeException(
+                'The Site photo upload session is no longer available. Reload this Place and try again.'
+            );
+        } else {
+            $savedSitePhotos = llama_place_draft_snapshot_photos(
+                $userId, $draftId, $siteStageToken, $siteSubmittedPhotos,
+                'add-site', 'site'
+            );
+        }
+        if (count($savedSitePhotos) > llama_location_gallery_photo_limit('site')) {
+            throw new InvalidArgumentException('The first Site has more than 10 draft photos.');
+        }
+        $formData['_draft_site_photos'] = $savedSitePhotos;
         $photosJson = json_encode(
             $savedPhotos,
+            JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR
+        );
+        $formJson = json_encode(
+            $formData,
             JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR
         );
 
         $stmt = $db->prepare(
             'UPDATE place_drafts
-         SET photos_json = ?, updated_at = UTC_TIMESTAMP()
+         SET photos_json = ?, form_data = ?, updated_at = UTC_TIMESTAMP()
          WHERE id = ? AND user_id = ?'
-    );
-        $stmt->execute([$photosJson, $draftId, $userId]);
+        );
+        $stmt->execute([$photosJson, $formJson, $draftId, $userId]);
 
         return $draftId;
 

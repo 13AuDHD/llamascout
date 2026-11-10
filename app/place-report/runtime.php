@@ -1333,6 +1333,8 @@ function llama_place_report_validate_scout_submission(
 }
 
 
+require_once __DIR__ . '/site-submission-photos.php';
+
 function llama_place_report_submit_new_place(
     int $userId,
     array $input
@@ -1373,6 +1375,17 @@ function llama_place_report_submit_new_place(
         throw new InvalidArgumentException(
             'The photo upload session is missing. Please upload the photos again.'
         );
+    }
+
+    $sitePhotoToken = trim((string) ($input['site_photo_stage_token'] ?? ''));
+    $submittedSitePhotos = llama_photo_decode_form_photos($input['site_photos_json'] ?? '[]');
+    if ($submittedSitePhotos && $sitePhotoToken === '') {
+        throw new InvalidArgumentException(
+            'The first Site photo session is missing. Upload the Site photos again.'
+        );
+    }
+    if (count($submittedSitePhotos) > llama_location_gallery_photo_limit('site')) {
+        throw new InvalidArgumentException('The first Site can have up to 10 photos.');
     }
 
     llama_place_report_validate_new_place_minimum(
@@ -1448,6 +1461,26 @@ function llama_place_report_submit_new_place(
                     | JSON_UNESCAPED_UNICODE
                     | JSON_THROW_ON_ERROR
                 ),
+                $submissionId,
+            ]);
+        }
+
+        if ($submittedSitePhotos) {
+            $data['site_photos'] = llama_place_report_normalize_committed_photos(
+                llama_photo_commit_stage(
+                    'add-site',
+                    $userId,
+                    $sitePhotoToken,
+                    $submittedSitePhotos,
+                    '/uploads/place-submissions/' . $submissionId . '/site-photos'
+                )
+            );
+            $data['site_photos'] = llama_place_report_first_site_photos($data, $submissionId);
+            $save = $db->prepare(
+                'UPDATE place_submissions SET submission_data = ? WHERE id = ?'
+            );
+            $save->execute([
+                json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
                 $submissionId,
             ]);
         }
@@ -1529,6 +1562,17 @@ function llama_place_report_resubmit_new_place(
             )
             : [];
 
+    $knownPlacePhotoPaths = array_values(array_filter(array_map(
+        'llama_place_report_photo_path',
+        $existingPhotos
+    )));
+    foreach ($removePhotos as $path) {
+        if (!in_array($path, $knownPlacePhotoPaths, true)) {
+            throw new InvalidArgumentException(
+                'A selected Place photo does not belong to this Place submission.'
+            );
+        }
+    }
     $keptPhotos = [];
 
     foreach ($existingPhotos as $photo) {
@@ -1567,12 +1611,40 @@ function llama_place_report_resubmit_new_place(
             ?? '[]'
         );
 
+    $existingSitePhotos = llama_place_report_first_site_photos($existingData, $submissionId);
+    $removeSitePhotos = is_array($input['remove_existing_site_photos'] ?? null)
+        ? array_values(array_map('strval', $input['remove_existing_site_photos']))
+        : [];
+    $sitePhotoPaths = array_column($existingSitePhotos, 'path');
+    foreach ($removeSitePhotos as $path) {
+        if (!in_array($path, $sitePhotoPaths, true)) {
+            throw new InvalidArgumentException('A selected Site photo does not belong to this submission.');
+        }
+    }
+    $keptSitePhotos = array_values(array_filter(
+        $existingSitePhotos,
+        static fn (array $photo): bool => !in_array($photo['path'], $removeSitePhotos, true)
+    ));
+    $sitePhotoToken = trim((string) ($input['site_photo_stage_token'] ?? ''));
+    $submittedSitePhotos = llama_photo_decode_form_photos($input['site_photos_json'] ?? '[]');
+    if ($submittedSitePhotos && $sitePhotoToken === '') {
+        throw new InvalidArgumentException('The first Site photo session is missing. Upload the Site photos again.');
+    }
+    if (count($keptSitePhotos) + count($submittedSitePhotos) > llama_location_gallery_photo_limit('site')) {
+        throw new InvalidArgumentException('The first Site can have up to 10 photos.');
+    }
+
+    if (count($keptPhotos) + count($submittedPhotos) > llama_location_gallery_photo_limit('place')) {
+        throw new InvalidArgumentException('This Place can have up to 10 photos.');
+    }
+
     llama_place_report_validate_new_place_minimum(
         $data,
         count($keptPhotos) + count($submittedPhotos)
     );
 
     $newPhotos = [];
+    $newSitePhotos = [];
     $db = db();
 
     llama_place_report_validate_scout_submission(
@@ -1605,6 +1677,22 @@ function llama_place_report_resubmit_new_place(
                     $newPhotos
                 )
             );
+
+        if ($submittedSitePhotos) {
+            $newSitePhotos = llama_place_report_normalize_committed_photos(
+                llama_photo_commit_stage(
+                    'add-site',
+                    $userId,
+                    $sitePhotoToken,
+                    $submittedSitePhotos,
+                    '/uploads/place-submissions/' . $submissionId . '/site-photos'
+                )
+            );
+        }
+        $data['site_photos'] = llama_place_report_first_site_photos(
+            ['site_photos' => array_merge($keptSitePhotos, $newSitePhotos)],
+            $submissionId
+        );
 
         $stmt = $db->prepare(
             'UPDATE place_submissions
@@ -1648,6 +1736,13 @@ function llama_place_report_resubmit_new_place(
             $db->rollBack();
         }
 
+        foreach ($newSitePhotos as $photo) {
+            $path = llama_place_report_photo_path($photo);
+            if (str_starts_with($path, '/uploads/place-submissions/' . $submissionId . '/site-photos/')) {
+                llama_photo_delete_owned_permanent_path($path, ['uploads/place-submissions/' . $submissionId . '/site-photos']);
+            }
+        }
+
         foreach ($newPhotos as $photo) {
             $path =
                 llama_place_report_photo_path(
@@ -1666,6 +1761,13 @@ function llama_place_report_resubmit_new_place(
         }
 
         throw $exception;
+    }
+
+    foreach ($removeSitePhotos as $path) {
+        llama_photo_delete_owned_permanent_path(
+            $path,
+            ['uploads/place-submissions/' . $submissionId . '/site-photos']
+        );
     }
 
     foreach ($removePhotos as $path) {

@@ -137,6 +137,72 @@ $check('Resource contributor photos use moderated evidence and existing ten-phot
         'Approved Resource photos do not reach the existing Resource gallery');
 });
 
+$check('First Site photos remain separate from new Place photo evidence', static function () use ($assert): void {
+    require_once dirname(__DIR__) . '/app/place-report/site-submission-photos.php';
+    require_once dirname(__DIR__) . '/app/photo-staging.php';
+    require_once dirname(__DIR__) . '/app/place-drafts.php';
+
+    $assert((int) llama_photo_context_config('add-site')['max'] === 10,
+        'The first Site staging context must allow 10 photos');
+    $assert((int) llama_photo_context_config('add-place')['max'] === 10,
+        'The Place uploader cap changed');
+    $sitePhoto = '/uploads/place-submissions/42/site-photos/one.jpg';
+    $photos = llama_place_report_first_site_photos([
+        'photos' => [['path' => '/uploads/place-submissions/42/place.jpg']],
+        'site_photos' => [['path' => $sitePhoto, 'alt' => 'Vehicle setup']],
+    ], 42);
+    $assert(count($photos) === 1 && ($photos[0]['alt'] ?? '') === 'Vehicle setup',
+        'Site photo attribution was lost');
+    $assert(llama_place_report_first_site_photos([], 42) === [],
+        'Old Place submissions must remain valid without Site photos');
+
+    foreach ([
+        [['path' => '/uploads/place-submissions/42/place.jpg']],
+        [['path' => '/uploads/place-submissions/43/site-photos/one.jpg']],
+        [['path' => '/uploads/place-submissions/42/site-photos/../place.jpg']],
+        [['path' => $sitePhoto], ['path' => $sitePhoto]],
+        array_fill(0, 11, ['path' => $sitePhoto]),
+    ] as $invalidPhotos) {
+        $rejected = false;
+        try {
+            llama_place_report_first_site_photos(['site_photos' => $invalidPhotos], 42);
+        } catch (InvalidArgumentException $exception) {
+            $rejected = true;
+        }
+        $assert($rejected, 'First Site accepted unsafe or oversized photo evidence');
+    }
+
+    $emptySiteDraft = llama_place_draft_restore_photos(
+        13, 42, [], 'add-site', 'site'
+    );
+    $assert($emptySiteDraft === ['token' => '', 'photos' => []],
+        'Site draft restore did not preserve empty photo state');
+    $rejectedWrongOwner = false;
+    try {
+        llama_place_draft_restore_photos(13, 42, [], 'add-site', '');
+    } catch (InvalidArgumentException $exception) {
+        $rejectedWrongOwner = true;
+    }
+    $assert($rejectedWrongOwner, 'A Site draft could write into Place photo storage');
+
+    $reportForm = file_get_contents(dirname(__DIR__) . '/partials/place-report/form.php');
+    $placeRuntime = file_get_contents(dirname(__DIR__) . '/app/place-report/runtime.php');
+    $moderation = file_get_contents(dirname(__DIR__) . '/app/moderation.php');
+    $history = file_get_contents(dirname(__DIR__) . '/app/place-report/immutable-history.php');
+    $assert(str_contains((string) $reportForm, 'data-photo-context="add-site"')
+        && str_contains((string) $reportForm, 'data-photo-field="site_photos_json"'),
+        'Add Place lacks a Site-specific photo uploader');
+    $assert(str_contains((string) $placeRuntime, "'add-site'")
+        && str_contains((string) $placeRuntime, "'site_photos'"),
+        'First Site photo evidence is not saved with the submission');
+    $assert(str_contains((string) $moderation, 'llama_place_campsite_image_insert(')
+        && str_contains((string) $moderation, 'moderation_attach_first_site_photos_transactional('),
+        'Approval does not attach photos to the actual Site record');
+    $assert(str_contains((string) $history, '$submittedSitePhotos')
+        && str_contains((string) $history, '$permanentSitePhotoPaths'),
+        'First Site photos are not included in immutable Site report history');
+});
+
 $check('Registry loaded', static function () use ($fields, $assert): void {
     $assert(count($fields) > 100, 'Expected canonical field inventory');
     $assert(isset($fields['daytime_noise'], $fields['nighttime_noise'], $fields['site_length_feet']), 'Missing core questions');
