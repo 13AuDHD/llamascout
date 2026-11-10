@@ -461,43 +461,6 @@
     font-size: 9px;
 }
 
-.admin-place-photo-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 12px;
-}
-
-.admin-place-photo-card {
-    min-width: 0;
-    overflow: hidden;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    background: var(--background);
-}
-
-.admin-place-photo-card img {
-    width: 100%;
-    aspect-ratio: 4 / 3;
-    object-fit: cover;
-    display: block;
-}
-
-.admin-place-photo-card-body {
-    display: grid;
-    gap: 9px;
-    padding: 10px;
-}
-
-.admin-place-photo-card-body form {
-    display: grid;
-    gap: 8px;
-}
-
-.admin-place-photo-card-body input {
-    width: 100%;
-    box-sizing: border-box;
-}
-
 .admin-place-photo-actions {
     display: flex;
     flex-wrap: wrap;
@@ -632,10 +595,6 @@
         grid-column: auto;
     }
 
-    .admin-place-photo-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
     .admin-place-map {
         height: 360px;
     }
@@ -670,12 +629,6 @@
         right: auto;
         max-width: calc(100% - 16px);
         flex-wrap: wrap;
-    }
-}
-
-@media (max-width: 560px) {
-    .admin-place-photo-grid {
-        grid-template-columns: 1fr;
     }
 }
 

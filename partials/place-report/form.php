@@ -1587,6 +1587,7 @@ if ($placeReportShowPhotos):
     <details
         class="contribution-section"
         data-contribution-place-photo-panel
+        <?= $placeReportMode === 'moderator' ? 'id="photos"' : '' ?>
         open
     >
 

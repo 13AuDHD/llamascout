@@ -30,7 +30,9 @@ on:
       - 'js/place-report-seasons.js'
       - 'js/admin/place-map.js'
       - 'js/admin/place-report-save.js'
+      - 'js/admin/place-report-photos.js'
       - 'tools/tests/admin-all-sites-ui.cjs'
+      - 'tools/tests/admin-photo-gallery-ui.cjs'
       - 'js/admin/place-season-builder.js'
       - 'js/admin/place-report-seasons.js'
       - 'admin/partials/place-map.php'
@@ -40,7 +42,9 @@ on:
     paths:
       - '.github/workflows/v3-reporting-smoke.yml'
       - 'js/admin/place-report-save.js'
+      - 'js/admin/place-report-photos.js'
       - 'tools/tests/admin-all-sites-ui.cjs'
+      - 'tools/tests/admin-photo-gallery-ui.cjs'
       - 'tools/v3-launch-smoke.php'
       - 'app/place-report.php'
       - 'app/place-report/**'
@@ -91,6 +95,7 @@ jobs:
           node --check js/admin/place-report-seasons.js
           node --check js/admin/place-map.js
           node --check js/admin/place-report-save.js
+          node --check js/admin/place-report-photos.js
       - name: Run V3 reporting smoke tests
         run: php tools/v3-launch-smoke.php
       - name: Install isolated DOM test dependency
@@ -105,6 +110,10 @@ jobs:
         env:
           NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules
         run: node tools/tests/admin-all-sites-ui.cjs
+      - name: Exercise inline Place and Site photo gallery editing
+        env:
+          NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules
+        run: node tools/tests/admin-photo-gallery-ui.cjs
       - name: Exercise parent-child questions in the shared Scout Report form
         env:
           NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules

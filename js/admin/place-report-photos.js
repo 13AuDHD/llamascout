@@ -69,6 +69,14 @@
             '[name="csrf_token"]'
         );
 
+    // One atomic gallery payload for order, hero and alt/caption updates.
+    // The actual removals continue to use the existing checked paths.
+    const galleryField = document.createElement('input');
+    galleryField.type = 'hidden';
+    galleryField.name = 'admin_photo_gallery_json';
+    galleryField.value = '';
+    form.appendChild(galleryField);
+
     const uploader =
         form.querySelector(
             '[data-photo-uploader]'
@@ -216,6 +224,117 @@
         return;
     }
 
+    grid.dataset.adminPhotoSortable = '1';
+    grid.setAttribute('aria-label', 'Attached photos, drag a handle to reorder');
+    let renderedTargetKey = null;
+
+    // The visible gallery is the only photo editor. No separate form,
+    // sort-order inputs, featured buttons or metadata save buttons.
+    const existingPhotoCards = () =>
+        Array.from(grid.querySelectorAll('[data-admin-photo-id]'));
+
+    const photoEdits = () => {
+        const targetKey = renderedTargetKey;
+        const target = targetKey ? targets[targetKey] : null;
+        if (!targetKey || !target || target.supported === false) return null;
+        const cards = existingPhotoCards();
+        const original = Array.isArray(target.photos) ? target.photos : [];
+        const entries = cards.map(card => ({
+            id: Number(card.dataset.adminPhotoId),
+            alt: String(card.querySelector('[data-admin-photo-caption]')?.value || ''),
+            removed: Boolean(card.querySelector('[name="remove_existing_photo_ids[]"]')?.checked),
+        }));
+        const items = entries.filter(item => !item.removed)
+            .map(({id, alt}) => ({id, alt}));
+
+        const dirty = original.length !== entries.length
+            || entries.some((item, index) =>
+                Number(original[index]?.id) !== item.id
+                || String(original[index]?.alt || '') !== item.alt
+                || item.removed
+            );
+        return {target: targetKey, items, dirty};
+    };
+
+    const syncGalleryEdits = () => {
+        const edits = photoEdits();
+        galleryField.value = edits?.dirty
+            ? JSON.stringify({target: edits.target, items: edits.items})
+            : '';
+    };
+
+    const hasPendingGalleryEdits = () => Boolean(photoEdits()?.dirty);
+
+    const refreshHero = () => {
+        let first = true;
+        existingPhotoCards().forEach(card => {
+            const removed = Boolean(
+                card.querySelector('[name="remove_existing_photo_ids[]"]')?.checked
+            );
+            card.classList.toggle('is-photo-removed', removed);
+            const badge = card.querySelector('[data-admin-photo-hero]');
+            if (badge) badge.hidden = removed || !first;
+            if (!removed) first = false;
+        });
+        syncGalleryEdits();
+    };
+
+    const movePhoto = (card, next, after = false) => {
+        if (!card || !next || card === next) return;
+        grid.insertBefore(card, after ? next.nextSibling : next);
+        refreshHero();
+    };
+
+    // Pointer Events work on touch screens as well as desktops. Limiting
+    // touch-action to the actual handle preserves normal page scrolling.
+    const attachHandle = (handle, card) => {
+        let startX = 0;
+        let startY = 0;
+        let moving = false;
+        const stop = (event) => {
+            if (!handle.hasPointerCapture?.(event.pointerId)) return;
+            handle.releasePointerCapture(event.pointerId);
+            card.classList.remove('is-photo-dragging');
+            moving = false;
+            refreshHero();
+        };
+        handle.addEventListener('pointerdown', event => {
+            if (event.button !== 0 || savingPhotos) return;
+            startX = event.clientX;
+            startY = event.clientY;
+            moving = false;
+            handle.setPointerCapture?.(event.pointerId);
+            event.preventDefault();
+        });
+        handle.addEventListener('pointermove', event => {
+            if (!handle.hasPointerCapture?.(event.pointerId)) return;
+            if (!moving && Math.hypot(event.clientX - startX, event.clientY - startY) < 8) return;
+            moving = true;
+            card.classList.add('is-photo-dragging');
+            const hit = document.elementFromPoint(event.clientX, event.clientY);
+            const other = hit?.closest('[data-admin-photo-id]');
+            if (!other || other === card || other.parentElement !== grid) return;
+            const bounds = other.getBoundingClientRect();
+            const after = event.clientY > bounds.top + bounds.height / 2
+                || (Math.abs(event.clientY - (bounds.top + bounds.height / 2)) < bounds.height / 3
+                    && event.clientX > bounds.left + bounds.width / 2);
+            movePhoto(card, other, after);
+        });
+        handle.addEventListener('pointerup', stop);
+        handle.addEventListener('pointercancel', stop);
+        handle.addEventListener('keydown', event => {
+            if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
+            event.preventDefault();
+            const cards = existingPhotoCards();
+            const current = cards.indexOf(card);
+            const delta = event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 1;
+            const destination = cards[current + delta];
+            if (!destination) return;
+            movePhoto(card, destination, delta > 0);
+            handle.focus();
+        });
+    };
+
     // The shared uploader initializes in the Admin footer, after this
     // controller. Resolve its controls at use time, not before they exist.
     const photoInput = () =>
@@ -271,6 +390,11 @@
 
     photoSaveButton.addEventListener('click', async () => {
         if (savingPhotos) {
+            return;
+        }
+        if (hasPendingGalleryEdits()) {
+            photoSaveStatus.textContent =
+                'Save Place Report first to apply the photo order, captions, or removals.';
             return;
         }
 
@@ -385,70 +509,58 @@
 
     const makePhoto =
         (photo) => {
-            const label =
-                document.createElement(
-                    'label'
-                );
+            const card = document.createElement('article');
+            card.className = 'add-place-existing-photo admin-attached-photo';
+            card.dataset.adminPhotoId = String(Number(photo.id) || 0);
 
-            label.className =
-                'add-place-existing-photo';
+            const preview = document.createElement('div');
+            preview.className = 'admin-attached-photo-preview';
 
-            const image =
-                document.createElement(
-                    'img'
-                );
+            const image = document.createElement('img');
+            image.src = String(photo.url || photo.src || '');
+            image.alt = String(photo.alt || '');
+            image.loading = 'lazy';
 
-            image.src =
-                String(
-                    photo.url
-                    || photo.src
-                    || ''
-                );
+            const hero = document.createElement('span');
+            hero.className = 'admin-attached-photo-hero';
+            hero.textContent = 'Hero';
+            hero.dataset.adminPhotoHero = '1';
+            hero.hidden = true;
 
-            image.alt =
-                String(
-                    photo.alt
-                    || ''
-                );
+            const handle = document.createElement('button');
+            handle.type = 'button';
+            handle.className = 'admin-attached-photo-handle';
+            handle.textContent = '⠿';
+            handle.title = 'Drag photo to reorder; arrow keys also work';
+            handle.setAttribute('aria-label', 'Move photo in gallery');
+            handle.setAttribute('aria-keyshortcuts', 'ArrowLeft ArrowRight ArrowUp ArrowDown');
+            preview.append(image, hero, handle);
 
-            image.loading =
-                'lazy';
+            const row = document.createElement('label');
+            row.className = 'admin-attached-photo-remove';
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.name = 'remove_existing_photo_ids[]';
+            checkbox.value = String(Number(photo.id) || 0);
+            row.append(checkbox, document.createTextNode(' Remove this photo'));
+            checkbox.addEventListener('change', refreshHero);
 
-            const row =
-                document.createElement(
-                    'span'
-                );
+            const caption = document.createElement('input');
+            caption.type = 'text';
+            caption.className = 'admin-attached-photo-caption';
+            caption.dataset.adminPhotoCaption = '1';
+            caption.value = String(photo.alt || '');
+            caption.maxLength = 300;
+            caption.placeholder = 'Photo description';
+            caption.setAttribute('aria-label', 'Photo description');
+            caption.addEventListener('input', () => {
+                image.alt = caption.value;
+                syncGalleryEdits();
+            });
 
-            const checkbox =
-                document.createElement(
-                    'input'
-                );
-
-            checkbox.type =
-                'checkbox';
-
-            checkbox.name =
-                'remove_existing_photos[]';
-
-            checkbox.value =
-                String(
-                    photo.src
-                    || ''
-                );
-
-            row.append(
-                checkbox,
-                document.createTextNode(
-                    ' Remove this photo'
-                )
-            );
-
-            label.append(
-                image,
-                row
-            );
-
-            return label;
+            card.append(preview, row, caption);
+            attachHandle(handle, card);
+            return card;
         };
 
     const setUploaderSupported =
@@ -537,6 +649,8 @@
                 currentTarget();
 
             grid.replaceChildren();
+            renderedTargetKey = currentTargetKey();
+            galleryField.value = '';
 
             if (!target) {
                 setUploaderSupported(
@@ -605,7 +719,7 @@
                 grid.appendChild(
                     empty
                 );
-
+                syncGalleryEdits();
                 return;
             }
 
@@ -628,6 +742,8 @@
                     );
                 }
             );
+
+            refreshHero();
         };
 
     let previousArea =
@@ -662,7 +778,8 @@
                 return;
             }
 
-            if (stagedPhotoCount() > 0) {
+            if (stagedPhotoCount() > 0 || (hasPendingGalleryEdits()
+                && !window.confirm('Discard unsaved photo ordering, captions and removals before switching?'))) {
                 restoring =
                     true;
 
@@ -679,10 +796,11 @@
 
                 event.stopImmediatePropagation();
 
-                window.alert(
-                    'Save or remove these photos before switching to another Place, Area, or Site.'
-                );
-
+                if (stagedPhotoCount() > 0) {
+                    window.alert(
+                        'Save or remove staged photos before switching to another Place, Area, or Site.'
+                    );
+                }
                 return;
             }
 
@@ -709,14 +827,44 @@
         if (event.detail?.context === 'admin-place') render();
     });
 
+    // Stop tab switches *before* the shared tab controller changes the
+    // selected owner. Otherwise unsaved photo edits would be discarded.
+    shell?.addEventListener('click', event => {
+        const button = event.target?.closest?.('[data-contribution-mode]');
+        if (!button || button.getAttribute('aria-pressed') === 'true') return;
+        if (hasPendingGalleryEdits()
+            && !window.confirm('Discard unsaved photo ordering, captions and removals before switching?')) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+        }
+    }, true);
+
     shell?.addEventListener('llama:contribution-mode', () => {
         queueMicrotask(render);
+    });
+
+    // Include only actual edits in the normal atomic Place Report save.
+    form.addEventListener('llama:admin-place-report-save-starting', syncGalleryEdits);
+    form.addEventListener('llama:photo-gallery-saved', event => {
+        const key = String(event.detail?.target || '');
+        if (key && targets[key] && Array.isArray(event.detail?.gallery)) {
+            targets[key].photos = event.detail.gallery;
+        }
+        galleryField.value = '';
+        render();
+    });
+
+    window.addEventListener('beforeunload', event => {
+        if (!hasPendingGalleryEdits()) return;
+        event.preventDefault();
+        event.returnValue = '';
     });
 
     window.addEventListener(
         'llama:admin-place-report-saved',
         () => {
-            render();
+            // The committed gallery is refreshed by photo-gallery-saved.
+            // The generic success event must not undo pending photo edits.
         }
     );
 
