@@ -260,8 +260,10 @@ $check('Official Place contact values prefill without becoming new Scout answers
 
     $unchangedPublic = llama_place_report_public_contact_cards($official, []);
     $assert($unchangedPublic['items']['Phone Number']['value'] === $official['phone']
-        && count($unchangedPublic['links']) === 2,
-        'Existing official facts must remain publicly visible without a Scout correction');
+        && $unchangedPublic['items']['Website']['value'] === 'https://example.gov/forest'
+        && count($unchangedPublic['links']) === 1
+        && $unchangedPublic['links'][0]['url'] === 'https://example.gov/alerts',
+        'Official homepage and named links must stay visible once each without a Scout correction');
 
     $recorded = llama_place_report_contact_editor_projection(
         ['contact_phone' => '208-111-2222'], $official
@@ -380,7 +382,7 @@ $check('Place Contact and Links use the canonical Place report', static function
     }
 });
 
-$check('Official contact remains read-only and contributor links deduplicate', static function () use ($assert): void {
+$check('Official contact is preserved while approved overrides take precedence and links deduplicate', static function () use ($assert): void {
     require_once dirname(__DIR__) . '/app/place-report/contact-links.php';
     $display = llama_place_report_public_contact_cards([
         'phone' => '(407) 555-0100',
@@ -403,12 +405,12 @@ $check('Official contact remains read-only and contributor links deduplicate', s
         ],
         'details' => ['facility_map_url' => 'https://maps.example/map.pdf'],
     ]);
-    $assert(($display['items']['Phone Number']['value'] ?? '') === '(407) 555-0100',
-        'Community phone overwrote official phone');
+    $assert(($display['items']['Phone Number']['value'] ?? '') === '(407) 555-0900',
+        'Approved phone correction did not take precedence over imported phone');
     $assert(($display['items']['Email Address']['value'] ?? '') === 'hello@camp.example',
         'Missing official email did not fall back to approved report');
-    $assert(($display['items']['Reservations']['value'] ?? '') === 'https://official.example/book',
-        'Community reservation link overwrote official URL');
+    $assert(($display['items']['Reservations']['value'] ?? '') === 'https://community.example/book',
+        'Approved reservation correction did not take precedence over imported URL');
     $assert(($display['items']['Official Map']['value'] ?? '') === 'https://maps.example/map.pdf',
         'Existing facility map not shown as contact link');
     $assert(count($display['links']) === 1
