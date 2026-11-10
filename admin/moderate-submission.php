@@ -589,6 +589,8 @@ $photos =
         ? $data['photos']
         : [];
 
+$sitePhotos = llama_place_report_first_site_photos($data, $submissionId);
+
 $pointInput =
     llama_place_report_scoring_input_from_data(
         $data
@@ -791,13 +793,18 @@ require __DIR__
         </div>
 
         <div>
-            <span>Submitted photos</span>
+            <span>Submitted Place photos</span>
 
             <strong>
                 <?= number_format(
                     count($photos)
                 ) ?>
             </strong>
+        </div>
+
+        <div>
+            <span>Submitted first Site photos</span>
+            <strong><?= number_format(count($sitePhotos)) ?></strong>
         </div>
     </div>
 
@@ -875,6 +882,21 @@ require __DIR__
                         ) ?>"
                     >
                 <?php endif; ?>
+            <?php endforeach; ?>
+        </div>
+    </div>
+<?php endif; ?>
+
+<?php if ($sitePhotos): ?>
+    <div class="admin-moderation-detail">
+        <h2>First Site Photos</h2>
+        <p>These photos belong to the first Site, not the Place gallery.
+           They are published to that Site only when the Place is approved.</p>
+        <div class="admin-moderation-photo-grid">
+            <?php foreach ($sitePhotos as $sitePhoto): ?>
+                <img src="<?= moderation_e(llama_place_report_photo_url($sitePhoto)) ?>"
+                     alt="<?= moderation_e((string) ($sitePhoto['alt'] ?? 'First Site photo')) ?>"
+                     loading="lazy">
             <?php endforeach; ?>
         </div>
     </div>
