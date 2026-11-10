@@ -1732,15 +1732,19 @@ if ($placeReportShowPhotos):
                     </label>
                 <?php endif; ?>
             <?php endforeach; ?>
+            <?php if (count((array) ($placeReportExistingSitePhotos ?? [])) < 10): ?>
             <div data-photo-uploader
                  data-photo-context="add-site"
-                 data-photo-max="<?= max(1, 10 - count((array) ($placeReportExistingSitePhotos ?? []))) ?>"
+                 data-photo-max="<?= 10 - count((array) ($placeReportExistingSitePhotos ?? [])) ?>"
                  data-photo-token-field="site_photo_stage_token"
                  data-photo-field="site_photos_json"
                  data-photo-csrf="<?= $e($placeReportPhotoCsrf) ?>"
                  data-photo-title="Photos of this Site"
                  data-photo-save-action="Submit for Review"
                  data-photo-help="Show this Site, its setup, facilities, and useful details. These photos are reviewed before publication."></div>
+            <?php else: ?>
+                <p>This Site already has 10 submitted photos. Remove an existing Site photo and resubmit before adding more.</p>
+            <?php endif; ?>
         </div>
     </details>
     <?php endif; ?>
