@@ -72,6 +72,9 @@ $resourceEditorUrl = $resourceStaffFields
                         <input type="hidden" name="return_draft" value="<?= (int) ($contributionReturnDraft ?? 0) ?>">
                     <?php endif; ?>
                     <?php require __DIR__ . '/fields.php'; ?>
+                    <?php if ($resourceStaffFields): ?>
+                        <?php require __DIR__ . '/photo-uploader.php'; ?>
+                    <?php endif; ?>
                     <div class="<?= $resourceStaffFields ? 'admin-place-report-savebar' : 'contribution-actions add-place-submit-bar' ?>">
                         <button class="<?= $resourceStaffFields ? 'admin-button' : 'contribution-submit' ?>" type="submit">
                             <?= llama_icon($resourceStaffFields ? 'device-floppy' : 'send') ?>
