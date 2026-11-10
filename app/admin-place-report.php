@@ -9,6 +9,7 @@ require_once __DIR__ . '/photo-upload.php';
 require_once __DIR__ . '/admin-place-sites.php';
 require_once __DIR__ . '/place-campsite-media.php';
 require_once __DIR__ . '/place-area-media.php';
+require_once __DIR__ . '/location-photo-policy.php';
 
 /**
  * Shared Admin Place Report service.
@@ -452,14 +453,9 @@ function admin_place_add_photos_in_report_transaction(
             $target
         );
 
-    $limit =
-        in_array(
-            $scope,
-            ['site', 'area'],
-            true
-        )
-            ? 10
-            : 30;
+    $limit = $scope === 'area'
+        ? 10
+        : llama_location_gallery_photo_limit($scope);
 
     $remaining =
         max(
@@ -475,7 +471,7 @@ function admin_place_add_photos_in_report_transaction(
                 'area' =>
                     'This Area already has the maximum of 10 photos.',
                 default =>
-                    'This Place already has the maximum of 30 photos.',
+                    'This Place already has the maximum of 10 photos.',
             }
         );
     }
