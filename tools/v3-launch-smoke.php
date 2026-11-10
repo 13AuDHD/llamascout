@@ -66,6 +66,20 @@ $check('Only approved questions appear in the shared catalog', static function (
         }
     }
 });
+$check('Reported Total Sites is a shared Place question', static function () use ($assert): void {
+    $catalog = llama_report_questions();
+    $field = $catalog['campsite_count'] ?? null;
+    $assert(is_array($field), 'Reported Total Sites is missing from the canonical catalog');
+    $assert(($field['label'] ?? '') === 'Reported Total Sites', 'Site count label is incorrect');
+    $assert(($field['storage'] ?? '') === 'details.campsite_count', 'Site count storage was duplicated or changed');
+    $assert(($field['type'] ?? '') === 'number', 'Reported Total Sites is not numeric');
+    $assert(in_array('place', (array) ($field['report_scopes'] ?? []), true), 'Reported Total Sites is not Place-owned');
+    $assert(!in_array('site', (array) ($field['report_scopes'] ?? []), true), 'Reported Total Sites leaked into individual Sites');
+    $assert(($field['approved_report_page'] ?? '') === 'place', 'Reported Total Sites is missing from the Place page');
+    $assert((array) ($field['applicable_if'] ?? []) === [], 'Reported Total Sites depends on a Place Type');
+    $assert((array) (llama_place_report_approved_question_groups()['basic'][1] ?? []) === ['type', 'name', 'campsite_count', 'description'], 'Basic question ordering changed unexpectedly');
+    $assert(llama_place_report_approved_registry_issues() === [], 'Approved question inventory integrity failed');
+});
 $check('Normal reviewed applicability is active', static function () use ($assert): void {
     $assert(!llama_place_report_full_inventory_review_enabled(),
         'Temporary inventory review bypass is still enabled');
