@@ -166,6 +166,12 @@ $serializePhotos =
                             $photo['alt_text']
                             ?? ''
                         ),
+
+                    'sort_order' =>
+                        (int) ($photo['sort_order'] ?? 0),
+
+                    'is_featured' =>
+                        (int) ($photo['is_featured'] ?? 0),
                 ],
                 $photos
             )
