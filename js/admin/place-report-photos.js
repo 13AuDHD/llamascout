@@ -432,17 +432,20 @@
             supported,
             target
         ) => {
-            uploader.dataset.photoTargetSupported = supported ? 'true' : 'false';
+            const savedCount = Array.isArray(target?.photos) ? target.photos.length : 0;
+            const max = Math.max(1, Number(target?.max || 10));
+            const canAdd = supported && savedCount < max;
+            uploader.dataset.photoTargetSupported = canAdd ? 'true' : 'false';
             const input = photoInput();
             const drop = photoDrop();
             if (input) {
-                input.disabled = !supported;
+                input.disabled = !canAdd;
             }
 
             if (drop) {
                 drop.setAttribute(
                     'aria-disabled',
-                    supported
+                    canAdd
                         ? 'false'
                         : 'true'
                 );
@@ -473,28 +476,12 @@
 
             if (description) {
                 if (supported) {
-                    const max =
-                        Math.max(
-                            1,
-                            Number(
-                                target?.max
-                                || (
-                                    target?.scope === 'site'
-                                        ? 10
-                                        : 30
-                                )
-                            )
-                        );
-
-                    description.textContent =
-                        'Add photos to '
-                        + String(
-                            target?.label
-                            || 'the selected target'
-                        )
-                        + '. Up to '
-                        + max
-                        + ' saved photos are supported for this gallery.';
+                    description.textContent = canAdd
+                        ? savedCount + ' attached. Add up to '
+                            + (max - savedCount) + ' more photo(s) to '
+                            + String(target?.label || 'this gallery') + '.'
+                        : savedCount + ' photos already attached. The limit is '
+                            + max + '; remove photos and save before adding more.';
                 } else {
                     description.textContent =
                         String(
@@ -539,6 +526,11 @@
                 supported,
                 target
             );
+            const title = existingShell.querySelector('strong');
+            if (title) {
+                title.textContent = 'Photos already attached ('
+                    + (Array.isArray(target.photos) ? target.photos.length : 0) + ')';
+            }
             updatePhotoSaveButton();
 
             if (help) {
@@ -550,7 +542,7 @@
                                 target.label
                                 || 'this reporting target'
                             )
-                            + '.'
+                            + '. Drag handles reorder them; the first photo becomes Hero.'
                         )
                         : String(
                             target.reason
