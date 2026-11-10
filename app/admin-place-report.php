@@ -457,6 +457,37 @@ function admin_place_report_target_images(
 
 
 /**
+ * Physical-file cleanup is safe only when no other gallery row still
+ * references the same path. Imported photos can legitimately be shared.
+ * A failed check retains the file rather than breaking someone else's image.
+ */
+function admin_place_gallery_photo_path_in_use(PDO $db, string $path): bool
+{
+    $path = trim($path);
+    if ($path === '') {
+        return true;
+    }
+    foreach (['place_images', 'place_campsite_images', 'place_area_images'] as $table) {
+        try {
+            $stmt = $db->prepare('SELECT 1 FROM ' . $table . ' WHERE src = ? LIMIT 1');
+            $stmt->execute([$path]);
+            if ($stmt->fetchColumn()) {
+                return true;
+            }
+        } catch (PDOException $exception) {
+            // An older deployment may not have Area gallery storage yet.
+            // Missing tables cannot own additional images. Fail closed for
+            // any other database or schema error.
+            if (!in_array((string) ($exception->errorInfo[1] ?? ''), ['1146', '42S02'], true)) {
+                error_log('Llama Scout photo reference check failed: ' . $exception->getMessage());
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+/**
  * Persist the in-form gallery order and captions on its existing owner.
  * This runs after requested removals and before attaching staged new photos,
  * so a newly uploaded photo simply appends to the ordered gallery.
