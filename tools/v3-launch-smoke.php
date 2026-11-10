@@ -1354,6 +1354,39 @@ $check('Site Accessibility dependencies match owner review', static function () 
     }
 });
 
+$check('Public Scout Report uses approved icons and note card widths', static function () use ($assert): void {
+    $fields = llama_place_report_fields();
+    $assert(empty($fields['connectivity_services_tested']['wide']),
+        'Service Tested should use a standard-width public card');
+    $assert(!empty($fields['site_amenities_notes']['wide']),
+        'Amenities Notes should span the Scout Report row');
+    $assert(!empty($fields['connectivity_starlink_note']['wide']),
+        'Connectivity Notes should remain full width');
+
+    foreach ([
+        'connectivity_services_tested' => 'at-satellite-signal',
+        'connectivity_starlink_note' => 'at-signal',
+    ] as $key => $icon) {
+        $assert(llama_place_report_field_icon($key, $fields[$key]) === $icon,
+            'Incorrect public Scout field icon: ' . $key);
+    }
+
+    $publicSource = file_get_contents(dirname(__DIR__) . '/partials/place-report/read-only.php');
+    $assert(is_string($publicSource), 'Public Scout Report template missing');
+    foreach ([
+        "'connectivity_public' => 'antenna-bars-5'",
+        "'daytime' => 'sun'",
+        "'nighttime' => 'moon-stars'",
+    ] as $mapping) {
+        $assert(str_contains($publicSource, $mapping),
+            'Public Scout Report group icon mapping missing: ' . $mapping);
+    }
+    foreach (['antenna-bars-5', 'at-satellite-signal', 'at-signal', 'sun', 'moon-stars'] as $icon) {
+        $assert(is_file(dirname(__DIR__) . '/assets/icons/' . $icon . '.svg'),
+            'Requested icon asset is missing: ' . $icon);
+    }
+});
+
 $check('Connectivity stays provider-neutral and notes stay independent', static function () use ($assert): void {
     $raw = [
         'connectivity_satellite' => [

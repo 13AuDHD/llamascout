@@ -504,6 +504,7 @@ function llama_place_report_add_site_fields(
     ]);
 
     $add('site_amenities_notes', 'Amenities Notes', 'site_vehicle', 'textarea', 'details.site_amenities_notes', [
+        'wide' => true,
         'help' => 'Additional details about amenities at this individual campsite.',
         'points_categories' => ['site_vehicle'],
     ]);
