@@ -47,6 +47,13 @@ function llama_place_report_parse_answer(array $field, mixed $raw): array
             }
             $values[(string) $item] = true;
         }
+        // An explicitly inapplicable guest setup cannot coexist with a
+        // positive permitted setup. Validate on the server, not only via UI.
+        if ($key === 'site_allowed_setups'
+            && isset($values['not_applicable'])
+            && count($values) > 1) {
+            $invalid('Not applicable cannot be combined with camping setups.');
+        }
         // An explicit empty set is a recorded scoped answer and stops inheritance.
         return ['state' => 'answered', 'value' => array_keys($values)];
     }

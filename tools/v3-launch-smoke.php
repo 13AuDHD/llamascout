@@ -188,6 +188,117 @@ $check('Official contact remains read-only and contributor links deduplicate', s
         'Approved community reservations URL was not used as fallback');
 });
 
+$check('Site accommodation and guest setups use one scoped canonical catalog', static function () use ($assert): void {
+    $catalog = llama_report_questions();
+    $site = llama_report_questions_for_scope('site');
+    $place = llama_report_questions_for_scope('place');
+    $area = llama_report_questions_for_scope('area');
+    $published = llama_report_public_question_groups();
+    $siteInfo = (array) ($published['site_info'][1] ?? []);
+
+    foreach (['site_accommodation_type', 'site_allowed_setups'] as $key) {
+        $field = $catalog[$key] ?? null;
+        $assert(is_array($field), 'Accommodation question not registered: ' . $key);
+        $assert(isset($site[$key]) && !isset($place[$key]) && !isset($area[$key]),
+            'Accommodation question is not Site-only: ' . $key);
+        $assert(($field['report_scope_group'] ?? '') === 'site'
+            && ($field['report_scopes'] ?? []) === ['site'],
+            'Accommodation ownership disagrees with the canonical scope engine: ' . $key);
+        $assert(($field['approved_question_group'] ?? '') === 'site_info'
+            && ($field['approved_report_page'] ?? '') === 'site',
+            'Accommodation is missing from the Site Info page: ' . $key);
+        $assert(($field['layout_section'] ?? '') === 'site'
+            && ($field['layout_group'] ?? '') === 'selection_type',
+            'Accommodation form uses an alternate layout: ' . $key);
+        $assert(($field['approved_visibility'] ?? '') === 'public',
+            'Accommodation question is not available on authorized public Site reports: ' . $key);
+        $assert(($field['applicable_if'] ?? []) === [],
+            'Accommodation is incorrectly tied to Place Type or another parent: ' . $key);
+        $assert(!empty($field['scoped_only_storage'])
+            && llama_place_report_storage_definition($field) === null,
+            'Accommodation requires a duplicate legacy SQL column: ' . $key);
+        $assert(empty($field['counts_toward_completion']),
+            'Optional accommodation question changed the completion denominator: ' . $key);
+        $assert(count(array_keys($siteInfo, $key, true)) === 1,
+            'Public Site Info must contain the accommodation exactly once: ' . $key);
+    }
+    $assert(($catalog['site_accommodation_type']['type'] ?? '') === 'select',
+        'Accommodation type must be a single choice');
+    $assert(($catalog['site_allowed_setups']['type'] ?? '') === 'multiselect',
+        'Allowed camping setups must be multiple choice');
+    $assert(array_search('site_accommodation_type', $siteInfo, true)
+        < array_search('site_allowed_setups', $siteInfo, true),
+        'Accommodation Type must precede Allowed Camping Setups');
+    $assert(($catalog['site_type_of_use']['storage'] ?? '') === 'details.site_type_of_use',
+        'Existing RIDB Type of Use storage was changed');
+    $assert(($catalog['site_reservation_method']['storage'] ?? '') === 'details.site_reservation_method',
+        'Existing Site booking method storage was changed');
+    $assert(llama_place_report_approved_registry_issues() === [],
+        'Approved PDF registry was inadvertently changed');
+});
+
+$check('Mixed accommodation answers preserve Unknown and explicit guest permissions', static function () use ($assert): void {
+    $type = llama_report_question('site_accommodation_type');
+    $setups = llama_report_question('site_allowed_setups');
+    $assert(is_array($type) && is_array($setups), 'Missing new canonical Site questions');
+
+    foreach (['rv_space', 'tent_campsite', 'cabin', 'yurt', 'glamping_tent', 'tiny_home',
+        'treehouse', 'vehicle_van_space', 'mixed_campsite'] as $kind) {
+        $parsed = llama_place_report_parse_answer($type, $kind);
+        $assert(($parsed['state'] ?? '') === 'answered' && ($parsed['value'] ?? '') === $kind,
+            'Accommodation option failed validation: ' . $kind);
+    }
+    $rvAndVan = llama_place_report_parse_answer($setups, ['campervan', 'motorhome', 'ground_tent']);
+    $assert(($rvAndVan['state'] ?? '') === 'answered'
+        && ($rvAndVan['value'] ?? []) === ['campervan', 'motorhome', 'ground_tent'],
+        'Mixed RV/van/tent permissions lost their distinct answers');
+    $providedLodging = llama_place_report_parse_answer($setups, ['not_applicable']);
+    $assert(($providedLodging['value'] ?? []) === ['not_applicable'],
+        'Provided lodging cannot explicitly rule out guest camping setups');
+    $empty = llama_place_report_parse_answer($setups, []);
+    $assert(($empty['state'] ?? '') === 'answered' && ($empty['value'] ?? null) === [],
+        'An explicit empty setup list must remain distinguishable from unanswered');
+    $unknown = llama_place_report_parse_answer($setups, llama_place_report_unknown_token());
+    $assert(($unknown['state'] ?? '') === 'unknown',
+        'Unknown is not preserved for allowed camping setups');
+    $unanswered = llama_place_report_parse_answer($setups, null);
+    $assert(($unanswered['state'] ?? '') === 'unanswered',
+        'Unanswered is incorrectly interpreted as Not applicable');
+
+    foreach ([
+        [$type, 'RV ONLY'],
+        [$type, 'not-a-site-type'],
+        [$setups, ['unrecognized-rig']],
+        [$setups, ['not_applicable', 'campervan']],
+    ] as [$field, $value]) {
+        $rejected = false;
+        try {
+            llama_place_report_parse_answer($field, $value);
+        } catch (InvalidArgumentException $exception) {
+            $rejected = true;
+        }
+        $assert($rejected, 'Invalid Site classification was accepted');
+    }
+
+    // Imported RIDB raw/normalized types remain baseline facts. No cabin
+    // classification should be invented from a broad RV/tent source label.
+    require_once dirname(__DIR__) . '/app/place-report/campsite-baseline.php';
+    $source = [
+        'site_type' => 'rv_site',
+        'raw_site_type' => 'RV ONLY',
+        'site_code' => 'RV 7',
+    ];
+    $rawValues = llama_place_report_campsite_answers($source);
+    $assert(!array_key_exists('site_accommodation_type', $rawValues)
+        && !array_key_exists('site_allowed_setups', $rawValues),
+        'Imported RV Site silently acquired unverified accommodation answers');
+    $overridden = llama_place_report_campsite_answers($source, [
+        'site_accommodation_type' => 'cabin',
+    ]);
+    $assert(($overridden['site_accommodation_type'] ?? '') === 'cabin',
+        'Explicit Site accommodation observation was not preserved');
+});
+
 $check('Normal reviewed applicability is active', static function () use ($assert): void {
     $assert(!llama_place_report_full_inventory_review_enabled(),
         'Temporary inventory review bypass is still enabled');
