@@ -21,6 +21,46 @@ function llama_place_report_add_basic_location_fields(
         'help' => 'Choose what the Place is, not the land-management agency that owns or manages it.',
     ]);
 
+    /*
+     * Public contact details supplied by a contributor are moderated Scout
+     * observations, not official imported facility facts. They use the same
+     * canonical answer store and cannot overwrite official source fields.
+     */
+    $contactFieldMeta = [
+        'scope_group' => 'place',
+        'layout_section' => 'place',
+        'layout_group' => 'information_location',
+        'report_group' => 'basic',
+        'report_visibility' => 'public',
+        'counts_toward_completion' => false,
+        'points_categories' => [],
+    ];
+
+    $add('contact_phone', 'Phone Number', 'basic', 'text', 'contact.phone', array_merge($contactFieldMeta, [
+        'maxlength' => 60,
+        'placeholder' => '(407) 555-0123',
+    ]));
+    $add('contact_email', 'Email Address', 'basic', 'email', 'contact.email', array_merge($contactFieldMeta, [
+        'maxlength' => 254,
+        'placeholder' => 'office@example.com',
+    ]));
+    $add('contact_website_url', 'Website', 'basic', 'url', 'contact.website_url', array_merge($contactFieldMeta, [
+        'maxlength' => 1000,
+        'placeholder' => 'https://...',
+    ]));
+    $add('contact_reservations_url', 'Reservations Link', 'basic', 'url', 'contact.reservations_url', array_merge($contactFieldMeta, [
+        'maxlength' => 1000,
+        'placeholder' => 'https://...',
+        'help' => 'Link to the Place reservation page. Individual Site booking rules remain on the Site report.',
+    ]));
+    $add('contact_related_links', 'Other Related Links', 'basic', 'textarea', 'contact.related_links', array_merge($contactFieldMeta, [
+        'wide' => true,
+        'rows' => 3,
+        'maxlength' => 2500,
+        'placeholder' => "https://...\nhttps://...",
+        'help' => 'One full website URL per line, up to eight links. Use this for rules, brochures, or other useful Place resources.',
+    ]));
+
     $add('description', 'Description', 'basic', 'textarea', 'description', [
         'required' => true,
         'wide' => true,
