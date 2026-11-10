@@ -102,14 +102,14 @@ assert.equal(payload().items[0].alt, 'Updated site road');
 assert.equal(cards()[1].querySelector('img').getAttribute('alt'), 'Entrance',
     'Untouched image alt remains tied to its photo ID');
 
-const checkbox = cards()[1].querySelector('[name="remove_existing_photos[]"]');
+const checkbox = cards()[1].querySelector('[name="remove_existing_photo_ids[]"]');
 checkbox.checked = true;
 checkbox.dispatchEvent(new w.Event('change', {bubbles: true}));
 assert.deepEqual(payload().items.map(item => item.id), [12, 13],
     'Checked removal must exclude the photo from the reordered survivors');
-assert.deepEqual(Array.from(new w.FormData(form).getAll('remove_existing_photos[]')),
-    ['/uploads/places/12/place-11.jpg'],
-    'Existing removal checkbox must still submit a target-owned source path');
+assert.deepEqual(Array.from(new w.FormData(form).getAll('remove_existing_photo_ids[]')),
+    ['11'],
+    'Photo removal must identify exactly one target-owned image ID, even when paths repeat');
 
 // Saving the report serializes gallery edits without updating the original
 // catalog until the server has confirmed its database transaction.
