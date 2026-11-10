@@ -80,7 +80,10 @@ if (
                     $decision === 'approved' ? $_POST : null,
                     $notes,
                     $decision === 'needs-changes',
-                    (string) ($_POST['review_form'] ?? '')
+                    (string) ($_POST['review_form'] ?? ''),
+                    is_array($_POST['exclude_resource_photos'] ?? null)
+                        ? $_POST['exclude_resource_photos']
+                        : []
                 );
 
                 try {
@@ -336,6 +339,19 @@ if ($submissionsReady && $submissionId > 0) {
 $waitingForChanges = ($resourceSubmission['status'] ?? '') === 'needs-changes';
 
 $submittedResource = [];
+$resourceReviewPhotos = [];
+if ($resourceSubmission) {
+    $reviewDocument = json_decode(
+        (string) ($resourceSubmission['form_data'] ?? '{}'),
+        true
+    );
+    if (is_array($reviewDocument)) {
+        $resourceReviewPhotos = llama_resource_submission_photos(
+            $reviewDocument,
+            (int) $resourceSubmission['id']
+        );
+    }
+}
 if ($resourceSubmission && (int) $resourceSubmission['target_resource_id'] > 0) {
     $submittedResource = admin_resource_get($db, (int) $resourceSubmission['target_resource_id']);
 }
@@ -528,6 +544,27 @@ $e =
             require dirname(__DIR__) . '/partials/resources/photo-uploader.php';
         }
         ?>
+
+        <?php if ($resourceSubmission && $resourceReviewPhotos): ?>
+            <section class="contribution-section">
+                <h3>Submitted Resource photos (<?= count($resourceReviewPhotos) ?>)</h3>
+                <p>Only approved pictures will be published. Uncheck any inappropriate
+                   or irrelevant photos before approving this Resource.</p>
+                <div class="add-place-existing-photo-grid">
+                    <?php foreach ($resourceReviewPhotos as $reviewPhoto): ?>
+                        <label class="add-place-existing-photo">
+                            <img src="<?= $e(llama_photo_public_url($reviewPhoto['path'])) ?>"
+                                 alt="<?= $e($reviewPhoto['alt']) ?>" loading="lazy">
+                            <span>
+                                <input type="checkbox" name="exclude_resource_photos[]"
+                                       value="<?= $e($reviewPhoto['path']) ?>">
+                                Exclude from public gallery
+                            </span>
+                        </label>
+                    <?php endforeach; ?>
+                </div>
+            </section>
+        <?php endif; ?>
 
         <?php if ($resourceSubmission && $reviewNotesReady): ?>
             <label>

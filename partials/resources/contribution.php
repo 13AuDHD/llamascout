@@ -74,6 +74,8 @@ $resourceEditorUrl = $resourceStaffFields
                     <?php require __DIR__ . '/fields.php'; ?>
                     <?php if ($resourceStaffFields): ?>
                         <?php require __DIR__ . '/photo-uploader.php'; ?>
+                    <?php else: ?>
+                        <?php require __DIR__ . '/contributor-photos.php'; ?>
                     <?php endif; ?>
                     <div class="<?= $resourceStaffFields ? 'admin-place-report-savebar' : 'contribution-actions add-place-submit-bar' ?>">
                         <button class="<?= $resourceStaffFields ? 'admin-button' : 'contribution-submit' ?>" type="submit">
