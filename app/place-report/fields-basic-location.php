@@ -37,6 +37,12 @@ function llama_place_report_add_basic_location_fields(
         'scoped_only_storage' => true,
     ];
 
+    // Official imported mailing address is the default; corrections become
+    // canonical approved answers without rewriting the RIDB source record.
+    $add('contact_mailing_address', 'Official Address', 'basic', 'text', 'contact.mailing_address', array_merge($contactFieldMeta, [
+        'maxlength' => 500,
+        'placeholder' => 'Mailing address',
+    ]));
     $add('contact_phone', 'Phone Number', 'basic', 'text', 'contact.phone', array_merge($contactFieldMeta, [
         'maxlength' => 60,
         'placeholder' => '(407) 555-0123',
