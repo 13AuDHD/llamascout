@@ -326,7 +326,10 @@ async function testAdminSiteEditing(overrides = null) {
         await new Promise(resolve => setImmediate(resolve));
         update(picker, '');
         assert.equal(question('independent_site_question').hidden, true, 'Clearing the Site hides its questions again');
-        return savedAnswers;
+        // The mock response represents a successful bulk write without a
+        // real database between the two DOM sessions. Carry that approved
+        // bulk override into the next direct-link fixture as persisted state.
+        return {tent_pad: '0', ...savedAnswers};
     } finally {
         w.close();
     }
