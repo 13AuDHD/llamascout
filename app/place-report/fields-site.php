@@ -39,11 +39,12 @@ function llama_place_report_add_site_fields(
     };
 
     /* Site and vehicle */
-    $add('campsite_count', 'Number of campsites', 'campground', 'number', 'details.campsite_count', [
+    $add('campsite_count', 'Reported Total Sites', 'campground', 'number', 'details.campsite_count', [
         'step' => '1',
-        'min' => '1',
+        'min' => '0',
         'max' => '10000',
         'allow_unknown' => true,
+        'help' => 'Enter the total number of Sites reported for this Place, including RV spaces, tent sites, cabins, yurts, and glamping accommodations. This is not the count of individual Site records currently mapped in Llama Scout.',
         'points_categories' => ['site_vehicle'],
     ]);
 
