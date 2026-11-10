@@ -57,7 +57,7 @@ function llama_report_register_custom_questions(callable $add): void
         'Accommodation Type',
         'site_vehicle',
         'select',
-        'details.site_accommodation_type',
+        'site_accommodation.type',
         array_merge($siteAccommodationMeta, [
             'report_order' => 100,
             'layout_order' => 100,
@@ -84,7 +84,7 @@ function llama_report_register_custom_questions(callable $add): void
         'Allowed Camping Setups',
         'site_vehicle',
         'multiselect',
-        'details.site_allowed_setups',
+        'site_accommodation.allowed_setups',
         array_merge($siteAccommodationMeta, [
             'report_order' => 101,
             'layout_order' => 101,
