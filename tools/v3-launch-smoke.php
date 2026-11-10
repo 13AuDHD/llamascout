@@ -76,6 +76,7 @@ $check('Reported Total Sites is a shared Place question', static function () use
     $assert(in_array('place', (array) ($field['report_scopes'] ?? []), true), 'Reported Total Sites is not Place-owned');
     $assert(!in_array('site', (array) ($field['report_scopes'] ?? []), true), 'Reported Total Sites leaked into individual Sites');
     $assert(($field['approved_report_page'] ?? '') === 'place', 'Reported Total Sites is missing from the Place page');
+    $assert(($field['layout_section'] ?? '') === 'place' && ($field['layout_group'] ?? '') === 'information_location', 'Reported Total Sites is not routed to Place information');
     $assert((array) ($field['applicable_if'] ?? []) === [], 'Reported Total Sites depends on a Place Type');
     $assert((array) (llama_place_report_approved_question_groups()['basic'][1] ?? []) === ['type', 'name', 'campsite_count', 'description'], 'Basic question ordering changed unexpectedly');
     $assert(llama_place_report_approved_registry_issues() === [], 'Approved question inventory integrity failed');
