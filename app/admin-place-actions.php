@@ -322,6 +322,16 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
                     }
                 }
 
+                // Reorder the remaining attached images after removals;
+                // newly staged images then append without disrupting hero.
+                admin_place_save_gallery_in_report_transaction(
+                    $db,
+                    $actorUserId,
+                    $placeId,
+                    $photoTarget,
+                    trim((string) ($_POST['admin_photo_gallery_json'] ?? ''))
+                );
+
                 $photoToken = trim((string) ($_POST['photo_stage_token'] ?? ''));
                 $newPhotos = llama_photo_decode_form_photos($_POST['photos_json'] ?? '[]');
 
@@ -410,18 +420,19 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
                         )
                         : 0;
 
-                // Return the committed gallery so the Photos section can
-                // refresh without discarding unsaved report-field changes.
+                // Return the committed gallery for both Save Place Report
+                // and photo-only uploads. The editor can update hero and
+                // captions without reloading or losing unsaved fields.
                 $gallery = [];
-                if ($photoOnly) {
-                    foreach (admin_place_report_target_images($db, $placeId, $photoTarget) as $image) {
-                        $gallery[] = [
-                            'id' => (int) ($image['id'] ?? 0),
-                            'src' => (string) ($image['src'] ?? ''),
-                            'url' => admin_place_photo_url($image),
-                            'alt' => (string) ($image['alt_text'] ?? ''),
-                        ];
-                    }
+                foreach (admin_place_report_target_images($db, $placeId, $photoTarget) as $image) {
+                    $gallery[] = [
+                        'id' => (int) ($image['id'] ?? 0),
+                        'src' => (string) ($image['src'] ?? ''),
+                        'url' => admin_place_photo_url($image),
+                        'alt' => (string) ($image['alt_text'] ?? ''),
+                        'sort_order' => (int) ($image['sort_order'] ?? 0),
+                        'is_featured' => (int) ($image['is_featured'] ?? 0),
+                    ];
                 }
 
                 admin_place_background_save_respond(200, [
@@ -429,6 +440,9 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
                     'message' => $photoOnly ? 'Photos saved.' : 'Place Report saved.',
                     'photos_added' => $photosAdded,
                     'gallery' => $gallery,
+                    'gallery_target' => (string) ($photoTarget['scope'] ?? '')
+                        . ':' . (string) ($photoTarget['source'] ?? '')
+                        . ':' . (int) ($photoTarget['id'] ?? 0),
                     'bulk_sites_updated' => $bulkResult['sites'],
                     'bulk_answers_saved' => $bulkResult['answers'],
                     'photo_total' => $photoTargetTotal,
