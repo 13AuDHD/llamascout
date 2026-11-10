@@ -117,8 +117,16 @@ if ($placeReportReadMode === 'scout-report') {
     $publicReportGroups['location'][1] = array_diff($publicReportGroups['location'][1], ['activities']);
 
     $placeReportSections = [];
+    $publicGroupIcons = [
+        'connectivity_public' => 'antenna-bars-5',
+        'daytime' => 'sun',
+        'nighttime' => 'moon-stars',
+    ];
     foreach ($publicReportGroups as $groupKey => [$groupLabel, $keys]) {
-        $placeReportSections[$groupKey] = ['label' => $groupLabel, 'icon' => 'info-circle'];
+        $placeReportSections[$groupKey] = [
+            'label' => $groupLabel,
+            'icon' => $publicGroupIcons[$groupKey] ?? 'info-circle',
+        ];
         foreach ($keys as $key) {
             // Keep the first occurrence of a shared field to avoid duplicate cards.
             $publicFieldGroups[$key] ??= $groupKey;
