@@ -1674,6 +1674,16 @@
                 )
             );
 
+            // The gallery editor shares the same successful database
+            // transaction. Reconcile its order, captions and Hero state from
+            // the committed server response without reloading other fields.
+            form.dispatchEvent(new CustomEvent('llama:photo-gallery-saved', {
+                detail: {
+                    target: String(payload.gallery_target || ''),
+                    gallery: Array.isArray(payload.gallery) ? payload.gallery : []
+                }
+            }));
+
             setButtonState(
                 'saved'
             );
