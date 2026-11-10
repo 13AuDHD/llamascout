@@ -285,13 +285,16 @@ function llama_resource_review(
     ?array $approvedInput,
     string $notes = '',
     bool $requestChanges = false,
-    ?string $expectedForm = null
+    ?string $expectedForm = null,
+    array $excludedPhotos = []
 ): int {
     $notes = mb_substr(trim($notes), 0, 4000);
     $notesReady = llama_resource_review_notes_ready($db);
     if ($requestChanges && (!$notesReady || $notes === '' || $approvedInput !== null)) {
         throw new InvalidArgumentException('Add review notes before requesting changes.');
     }
+    $copiedPhotoPaths = [];
+    $allSubmittedPhotos = [];
     $db->beginTransaction();
     try {
         $statement = $db->prepare(
@@ -307,6 +310,11 @@ function llama_resource_review(
             throw new InvalidArgumentException('The contributor revised this submission. Reload it before reviewing.');
         }
 
+        $reviewData = json_decode((string) $submission['form_data'], true, 512, JSON_THROW_ON_ERROR);
+        if (!is_array($reviewData)) {
+            throw new InvalidArgumentException('Invalid Resource submission.');
+        }
+        $allSubmittedPhotos = llama_resource_submission_photos($reviewData, $submissionId);
         $targetId = (int) $submission['target_resource_id'];
         $resourceId = null;
         if ($approvedInput !== null) {
@@ -323,6 +331,18 @@ function llama_resource_review(
                 $author = $db->prepare('UPDATE resources SET created_by = ? WHERE id = ?');
                 $author->execute([(int) $submission['submitted_by'], $resourceId]);
             }
+            $selectedPhotos = llama_resource_review_selected_photos(
+                $allSubmittedPhotos,
+                $excludedPhotos
+            );
+            llama_resource_publish_submission_photos(
+                $db,
+                $submissionId,
+                $resourceId,
+                (int) $submission['submitted_by'],
+                $selectedPhotos,
+                $copiedPhotoPaths
+            );
         }
         $status = $requestChanges ? 'needs-changes' : ($resourceId === null ? 'rejected' : 'approved');
         $notesSql = $notesReady ? ', review_notes = ?' : '';
@@ -339,9 +359,23 @@ function llama_resource_review(
         $values[] = $submissionId;
         $review->execute($values);
         $db->commit();
+        if (!$requestChanges) {
+            // Keep photo evidence through corrections, but remove private
+            // submission copies after an approved or rejected final review.
+            try {
+                llama_resource_submission_cleanup_photos($allSubmittedPhotos, $submissionId);
+            } catch (Throwable $cleanupError) {
+                error_log('Resource submission photo cleanup failed: ' . $cleanupError->getMessage());
+            }
+        }
         return $resourceId ?? 0;
     } catch (Throwable $exception) {
-        $db->rollBack();
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+        foreach ($copiedPhotoPaths as $copiedPath) {
+            llama_photo_delete_owned_permanent_path($copiedPath, ['uploads/resources']);
+        }
         throw $exception;
     }
 }
