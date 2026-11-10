@@ -388,7 +388,7 @@
                 busy ? 'true' : 'false'
             );
 
-            fileInput.disabled = busy;
+            fileInput.disabled = busy || root.dataset.photoTargetSupported === 'false';
 
             updateSubmitControls();
         };
@@ -1075,6 +1075,11 @@
                 return;
             }
 
+            if (root.dataset.photoTargetSupported === 'false' || fileInput.disabled) {
+                setStatus('Select a valid saved photo destination before uploading.', true);
+                return;
+            }
+
             if (
                 photos.length +
                 selected.length >
@@ -1294,5 +1299,8 @@
             };
 
         loadExistingStage();
+        form.dispatchEvent(new CustomEvent('llama:photo-uploader-ready', {
+            detail: { context }
+        }));
     });
 })();
