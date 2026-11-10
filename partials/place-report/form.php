@@ -1574,6 +1574,7 @@ if ($placeReportShowPhotos):
 
     <details
         class="contribution-section"
+        data-contribution-place-photo-panel
         open
     >
 
@@ -1713,6 +1714,11 @@ if ($placeReportShowPhotos):
 
     </details>
 
+    <p class="contribution-message" data-contribution-site-photo-notice hidden>
+        Site photos need a saved individual Site. Use the Site photo uploader
+        from that Site's report after its record is created; photos on a new
+        Place submission belong to the Place gallery.
+    </p>
 <?php endif; ?>
 
 <script defer src="https://llamascout.com/js/place-report-season-picker.js?v=<?= (int) filemtime(dirname(__DIR__, 2) . '/js/place-report-season-picker.js') ?>"></script>

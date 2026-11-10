@@ -69,6 +69,7 @@
             root.dataset.photoEndpoint || '/photo-upload.php'
         ).trim();
         const title = String(root.dataset.photoTitle || 'Photos').trim();
+        const saveAction = String(root.dataset.photoSaveAction || 'Save selected photos').trim();
         const help = String(
             root.dataset.photoHelp ||
             'JPEG, PNG, WebP, HEIC, HEIF, or AVIF. Images are resized and location metadata is removed before storage.'
@@ -387,7 +388,7 @@
                 busy ? 'true' : 'false'
             );
 
-            fileInput.disabled = busy;
+            fileInput.disabled = busy || root.dataset.photoTargetSupported === 'false';
 
             updateSubmitControls();
         };
@@ -1074,6 +1075,11 @@
                 return;
             }
 
+            if (root.dataset.photoTargetSupported === 'false' || fileInput.disabled) {
+                setStatus('Select a valid saved photo destination before uploading.', true);
+                return;
+            }
+
             if (
                 photos.length +
                 selected.length >
@@ -1144,8 +1150,8 @@
 
                 setStatus(
                     selected.length === 1
-                        ? 'Photo is ready. Review it below, then choose Save selected photos.'
-                        : 'Photos are ready. Review them below, then choose Save selected photos.'
+                        ? `Photo is ready. Review it below, then choose ${saveAction}.`
+                        : `Photos are ready. Review them below, then choose ${saveAction}.`
                 );
             } catch (error) {
                 setStatus(
@@ -1293,5 +1299,8 @@
             };
 
         loadExistingStage();
+        form.dispatchEvent(new CustomEvent('llama:photo-uploader-ready', {
+            detail: { context }
+        }));
     });
 })();

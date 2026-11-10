@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/location-photo-policy.php';
+
 /* =========================================================
    LLAMA SCOUT
    SHARED STAGED PHOTO WORKFLOW
@@ -31,10 +33,11 @@ function llama_photo_verify_csrf(string $token): bool
 function llama_photo_contexts(): array
 {
     return [
-        'add-place' => ['max' => 10, 'label' => 'Place photos'],
+        'add-place' => ['max' => llama_location_gallery_photo_limit('place'), 'label' => 'Place photos'],
         'update-place' => ['max' => 5, 'label' => 'Update photos'],
         'place-report' => ['max' => 5, 'label' => 'Report photos'],
-        'admin-place' => ['max' => 10, 'label' => 'Admin Place photos'],
+        'admin-place' => ['max' => llama_location_gallery_photo_limit('place'), 'label' => 'Admin Place and Site photos'],
+        'admin-resource' => ['max' => llama_location_gallery_photo_limit('resource'), 'label' => 'Resource photos'],
         'profile-images' => ['max' => 5, 'label' => 'Profile images'],
         'shop-products' => ['max' => 20, 'label' => 'Product photos'],
         'badges' => ['max' => 1, 'label' => 'Badge image'],

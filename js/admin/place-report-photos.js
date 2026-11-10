@@ -99,16 +99,26 @@
             }
         };
 
+    const shell = form.closest('[data-contribution-tabs]');
+    const currentMode = () => String(
+        shell?.querySelector('[data-contribution-mode][aria-pressed="true"]')?.dataset.contributionMode
+        || 'place'
+    );
+
     const currentTargetKey =
         () => {
+            const mode = currentMode();
+            if (mode === 'resource') return null;
             const siteValue =
                 String(
                     siteSelector?.value
                     || ''
                 ).trim();
 
-            if (siteValue.startsWith('campsite_record:')) {
-                return 'site:' + siteValue;
+            if (mode === 'site') {
+                return siteValue.startsWith('campsite_record:')
+                    ? 'site:' + siteValue
+                    : null;
             }
 
             const areaValue =
@@ -128,6 +138,8 @@
         () => {
             const key =
                 currentTargetKey();
+
+            if (!key) return null;
 
             /*
              * Never fall back to the Place gallery when an Area or Site is
@@ -444,6 +456,7 @@
             supported,
             target
         ) => {
+            uploader.dataset.photoTargetSupported = supported ? 'true' : 'false';
             const input = photoInput();
             const drop = photoDrop();
             if (input) {
@@ -532,8 +545,9 @@
                 );
 
                 if (help) {
-                    help.textContent =
-                        'No valid reporting target is selected.';
+                    help.textContent = currentMode() === 'site'
+                        ? 'Choose a saved Site before adding photos. Nothing will be added to the Place gallery.'
+                        : 'No valid reporting target is selected.';
                 }
 
                 return;
@@ -690,6 +704,14 @@
         },
         true
     );
+
+    form.addEventListener('llama:photo-uploader-ready', (event) => {
+        if (event.detail?.context === 'admin-place') render();
+    });
+
+    shell?.addEventListener('llama:contribution-mode', () => {
+        queueMicrotask(render);
+    });
 
     window.addEventListener(
         'llama:admin-place-report-saved',

@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/location-photo-policy.php';
+
 function llama_resource_image_url(mixed $value): string
 {
     $src = trim((string) $value);
@@ -124,9 +126,9 @@ function llama_resource_image_insert(
             $resourceId
         );
 
-    if (count($existing) >= 3) {
+    if (count($existing) >= llama_location_gallery_photo_limit('resource')) {
         throw new InvalidArgumentException(
-            'A Resource can have up to 3 photos.'
+            'A Resource can have up to 10 photos.'
         );
     }
 

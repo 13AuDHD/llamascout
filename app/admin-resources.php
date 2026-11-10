@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/resources.php';
 require_once __DIR__ . '/photo-upload.php';
+require_once __DIR__ . '/location-photo-policy.php';
+require_once __DIR__ . '/photo-staging.php';
 
 function admin_resources_tables_ready(PDO $db): bool
 {
@@ -934,6 +936,70 @@ function admin_resource_deactivate(
 }
 
 
+/**
+ * Commit photos staged by the same UI component used on Place and Site.
+ *
+ * The Resource editor owns the transaction. Files committed before a failed
+ * database write are returned for cleanup after the caller rolls back.
+ */
+function admin_resource_attach_staged_photos(
+    PDO $db,
+    int $actorUserId,
+    int $resourceId,
+    string $stageToken,
+    array $photos,
+    array &$committedForCleanup
+): int {
+    if (!$photos) {
+        return 0;
+    }
+    if (!$db->inTransaction()) {
+        throw new RuntimeException('Resource photo attachment requires a transaction.');
+    }
+    if ($stageToken === '') {
+        throw new InvalidArgumentException('The Resource photo session is missing. Upload the photos again.');
+    }
+    if (!admin_resource_get($db, $resourceId)) {
+        throw new InvalidArgumentException('This Resource does not exist.');
+    }
+
+    $existing = llama_resource_images($db, $resourceId);
+    $remaining = max(
+        0,
+        llama_location_gallery_photo_limit('resource') - count($existing)
+    );
+    if (count($photos) > $remaining) {
+        throw new InvalidArgumentException(
+            'This Resource has room for only ' . $remaining . ' more photos.'
+        );
+    }
+
+    $committed = llama_photo_commit_stage(
+        'admin-resource',
+        $actorUserId,
+        $stageToken,
+        $photos,
+        '/uploads/resources/' . $resourceId
+    );
+    $committedForCleanup = $committed;
+
+    foreach ($committed as $photo) {
+        llama_resource_image_insert(
+            $db,
+            $resourceId,
+            (string) $photo['path'],
+            trim((string) ($photo['alt'] ?? '')) ?: null,
+            $actorUserId
+        );
+    }
+
+    if (count($committed) !== count($photos)) {
+        throw new RuntimeException('Not every Resource photo was attached.');
+    }
+
+    return count($committed);
+}
+
 function admin_resource_add_photos(
     PDO $db,
     int $actorUserId,
@@ -959,11 +1025,11 @@ function admin_resource_add_photos(
         );
 
     $remaining =
-        3 - count($existing);
+        llama_location_gallery_photo_limit('resource') - count($existing);
 
     if ($remaining < 1) {
         throw new InvalidArgumentException(
-            'This Resource already has the maximum of 3 photos.'
+            'This Resource already has the maximum of 10 photos.'
         );
     }
 

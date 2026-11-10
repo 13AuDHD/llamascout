@@ -123,13 +123,46 @@ if (
                 if ($resourceId < 1) {
                     throw new InvalidArgumentException('Use Add a Place to submit a new Resource.');
                 }
-                $resourceId =
-                    admin_resource_save(
+
+                $newPhotos = llama_photo_decode_form_photos(
+                    $_POST['resource_photos_json'] ?? '[]'
+                );
+                $photoToken = trim((string) ($_POST['resource_photo_stage_token'] ?? ''));
+                $committedPhotoPaths = [];
+
+                // The Resource fields, services, and new gallery photos must
+                // succeed or fail as one database transaction.
+                $db->beginTransaction();
+                try {
+                    $resourceId = admin_resource_save(
                         $db,
                         $actorUserId,
                         $resourceId,
                         $_POST
                     );
+                    if ($newPhotos) {
+                        admin_resource_attach_staged_photos(
+                            $db,
+                            $actorUserId,
+                            $resourceId,
+                            $photoToken,
+                            $newPhotos,
+                            $committedPhotoPaths
+                        );
+                    }
+                    $db->commit();
+                } catch (Throwable $exception) {
+                    if ($db->inTransaction()) {
+                        $db->rollBack();
+                    }
+                    foreach ($committedPhotoPaths as $photo) {
+                        llama_photo_delete_owned_permanent_path(
+                            (string) ($photo['path'] ?? ''),
+                            ['uploads/resources']
+                        );
+                    }
+                    throw $exception;
+                }
 
                 $location = $returnPlaceId > 0
                     ? '/place.php?id=' . $returnPlaceId . '&mode=resource&resource_id=' . $resourceId . '&resource_saved=1'
@@ -385,6 +418,7 @@ $adminPageEyebrow =
 
 $adminActiveNav =
     'resources';
+$adminNeedsPhotoUploader = true;
 
 require __DIR__ . '/_header.php';
 
@@ -490,6 +524,9 @@ $e =
         <?php
         $resourceStaffFields = true;
         require dirname(__DIR__) . '/partials/resources/fields.php';
+        if ($editing && !$resourceSubmission) {
+            require dirname(__DIR__) . '/partials/resources/photo-uploader.php';
+        }
         ?>
 
         <?php if ($resourceSubmission && $reviewNotesReady): ?>
@@ -595,7 +632,7 @@ $e =
     $resourcePhotoRemaining =
         max(
             0,
-            3 - count($resourcePhotos)
+            llama_location_gallery_photo_limit('resource') - count($resourcePhotos)
         );
     ?>
 
@@ -688,58 +725,14 @@ $e =
     </div>
     <?php endif; ?>
 
-    <?php if ($resourcePhotoRemaining > 0): ?>
-    <form
-        class="admin-user-action-box"
-        method="post"
-        enctype="multipart/form-data"
-    >
-        <input
-            type="hidden"
-            name="csrf_token"
-            value="<?= $e(moderation_csrf_token()) ?>"
-        >
-        <input
-            type="hidden"
-            name="resource_action"
-            value="upload_photos"
-        >
-        <input
-            type="hidden"
-            name="resource_id"
-            value="<?= (int) $resourceId ?>"
-        >
-
-        <label class="admin-resource-photo-upload">
-            <span>
-                Add up to
-                <?= (int) $resourcePhotoRemaining ?>
-                more photo<?= $resourcePhotoRemaining === 1 ? '' : 's' ?>
-            </span>
-
-            <input
-                type="file"
-                name="resource_photos[]"
-                accept="image/*"
-                multiple
-                required
-            >
-        </label>
-
-        <div class="admin-user-form-actions">
-            <button
-                class="admin-button"
-                type="submit"
-            >
-                Upload Resource photos
-            </button>
-        </div>
-    </form>
-    <?php endif; ?>
+    <div class="admin-user-action-box">
+        <p>Upload new photos from the Resource Photos section in the editor above.
+        Use the controls here to choose a hero photo or delete an existing photo.</p>
+    </div>
 
     <div class="admin-user-action-box">
         <p>
-            Resource galleries are limited to 3 photos. The first photo is the
+            Resource galleries are limited to 10 photos. The first photo is the
             hero image used on the Resource page and map card.
         </p>
     </div>

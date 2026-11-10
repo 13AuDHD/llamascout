@@ -58,7 +58,7 @@ $placeNotes = admin_place_notes($db, $placeId);
 $placeAuditHistory = admin_place_audit_history($db, $placeId);
 $llamaScouted = admin_place_llama_scouted_state($db, $placeId);
 $operationalCounts = admin_place_operational_counts($db, $placeId);
-$remainingPhotos = max(0, 30 - count($images));
+$remainingPhotos = max(0, llama_location_gallery_photo_limit('place') - count($images));
 $siteIdentityState =
     llama_place_site_identity_normalize_place(
         $db,
@@ -180,7 +180,7 @@ $adminPlacePhotoTargets[
     'source' => 'place',
     'id' => $placeId,
     'supported' => true,
-    'max' => 30,
+    'max' => llama_location_gallery_photo_limit('place'),
     'photos' =>
         $serializePhotos(
             $images
@@ -302,7 +302,7 @@ foreach ($adminPlaceCampsites as $site) {
                 ),
 
             'supported' => true,
-            'max' => 10,
+            'max' => llama_location_gallery_photo_limit('site'),
             'photos' =>
                 $serializePhotos(
                     $photos
