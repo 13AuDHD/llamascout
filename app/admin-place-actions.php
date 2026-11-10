@@ -215,12 +215,13 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
             // A single transaction covers Place, Area, Site, photos and audit.
             $db->beginTransaction();
             try {
+                // The photo gallery's owner is independent of the form's
+                // selected Site/Area, which may still be set from another tab.
+                $explicitPhotoOwner = trim((string) ($_POST['admin_photo_owner'] ?? ''));
                 if ($photoOnly) {
-                    $photoTarget = admin_place_report_photo_target(
-                        $db,
-                        $placeId,
-                        $_POST
-                    );
+                    $photoTarget = $explicitPhotoOwner !== ''
+                        ? admin_place_report_photo_target_from_owner($db, $placeId, $explicitPhotoOwner)
+                        : admin_place_report_photo_target($db, $placeId, $_POST);
                 } else {
                     // Validate the separate Area payload before changing Place data.
                     $areaTarget = trim((string) ($_POST['selected_area_id'] ?? ''));
@@ -269,12 +270,9 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
                             . $siteId;
                     }
 
-                    $photoTarget =
-                        admin_place_report_photo_target(
-                            $db,
-                            $placeId,
-                            $_POST
-                        );
+                    $photoTarget = $explicitPhotoOwner !== ''
+                        ? admin_place_report_photo_target_from_owner($db, $placeId, $explicitPhotoOwner)
+                        : admin_place_report_photo_target($db, $placeId, $_POST);
 
                     admin_place_save_shared_report($db, $actorUserId, $placeId, $_POST);
                     admin_place_save_selected_campsite_answers($db, $actorUserId, $placeId, $_POST);
@@ -289,6 +287,13 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
                             ['place_id' => $placeId, 'area_id' => $areaId, 'answers_saved' => $saved]
                         );
                     }
+                }
+
+                if (trim((string) ($_POST['admin_photo_gallery_json'] ?? '')) !== ''
+                    && $explicitPhotoOwner === '') {
+                    throw new InvalidArgumentException(
+                        'Reload this page before saving photos so their owner can be verified.'
+                    );
                 }
 
                 // Admin tiles submit unique image IDs. This matters when two
