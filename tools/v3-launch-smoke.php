@@ -81,6 +81,109 @@ $check('Reported Total Sites is a shared Place question', static function () use
     $assert((array) (llama_place_report_approved_question_groups()['basic'][1] ?? []) === ['type', 'name', 'campsite_count', 'description'], 'Basic question ordering changed unexpectedly');
     $assert(llama_place_report_approved_registry_issues() === [], 'Approved question inventory integrity failed');
 });
+$check('Place Contact and Links use the canonical Place report', static function () use ($assert): void {
+    $catalog = llama_report_questions();
+    $keys = [
+        'contact_phone',
+        'contact_email',
+        'contact_website_url',
+        'facility_map_url',
+        'contact_reservations_url',
+        'contact_related_links',
+    ];
+    $groups = llama_place_report_approved_question_groups();
+    $basic = (array) $groups['basic'][1];
+
+    foreach ($keys as $key) {
+        $field = $catalog[$key] ?? null;
+        $assert(is_array($field), 'Missing Place Contact question: ' . $key);
+        $assert(($field['approved_question_group'] ?? '') === 'basic',
+            'Contact question not in Basic: ' . $key);
+        $assert(($field['approved_visibility'] ?? '') === 'public',
+            'Contact question not public: ' . $key);
+        $assert(($field['report_scopes'] ?? []) === ['place'],
+            'Contact question is not Place-only: ' . $key);
+        $assert(($field['layout_section'] ?? '') === 'place'
+            && ($field['layout_group'] ?? '') === 'information_location',
+            'Contact question uses a parallel layout: ' . $key);
+        $assert(($field['applicable_if'] ?? []) === [],
+            'Place Type incorrectly hides contact question: ' . $key);
+        $assert(array_search($key, $basic, true) < array_search('description', $basic, true),
+            'Contact question must precede Description: ' . $key);
+        $assert(empty($field['counts_toward_completion']),
+            'Optional contact question should not block completion: ' . $key);
+    }
+
+    $assert(($catalog['facility_map_url']['storage'] ?? '') === 'details.facility_map_url',
+        'Existing facility map path was duplicated or migrated');
+    $assert(($catalog['contact_website_url']['storage'] ?? '') === 'contact.website_url',
+        'Contributed website must use the canonical V3 answer store');
+    $assert(($catalog['contact_reservations_url']['storage'] ?? '') === 'contact.reservations_url',
+        'Place reservations must not overwrite Site booking URLs');
+    $assert(llama_place_report_approved_registry_issues() === [],
+        'Approved Contact question inventory has validation issues');
+
+    $email = llama_place_report_parse_answer($catalog['contact_email'], 'contact@example.com');
+    $assert(($email['value'] ?? '') === 'contact@example.com', 'Valid contact email rejected');
+
+    foreach ([
+        ['contact_email', 'not-an-email'],
+        ['contact_website_url', 'javascript:alert(1)'],
+        ['contact_related_links', "https://ok.example\\njavascript:alert(1)"],
+    ] as [$key, $value]) {
+        $rejected = false;
+        try {
+            llama_place_report_parse_answer($catalog[$key], $value);
+        } catch (InvalidArgumentException $exception) {
+            $rejected = true;
+        }
+        $assert($rejected, 'Invalid contact value accepted: ' . $key);
+    }
+});
+
+$check('Official contact remains read-only and contributor links deduplicate', static function () use ($assert): void {
+    require_once dirname(__DIR__) . '/app/place-report/contact-links.php';
+    $display = llama_place_report_public_contact_cards([
+        'phone' => '(407) 555-0100',
+        'email' => '',
+        'reservation_url' => 'https://official.example/book',
+        'links' => [
+            ['url' => 'https://operator.example', 'title' => 'Operator website'],
+        ],
+    ], [
+        'contact' => [
+            'phone' => '(407) 555-0900',
+            'email' => 'hello@camp.example',
+            'website_url' => 'https://operator.example',
+            'reservations_url' => 'https://community.example/book',
+            'related_links' => "https://operator.example\\nhttps://rules.example\\njavascript:alert(1)",
+        ],
+        'details' => ['facility_map_url' => 'https://maps.example/map.pdf'],
+    ]);
+    $assert(($display['items']['Phone Number']['value'] ?? '') === '(407) 555-0100',
+        'Community phone overwrote official phone');
+    $assert(($display['items']['Email Address']['value'] ?? '') === 'hello@camp.example',
+        'Missing official email did not fall back to approved report');
+    $assert(($display['items']['Reservations']['value'] ?? '') === 'https://official.example/book',
+        'Community reservation link overwrote official URL');
+    $assert(($display['items']['Official Map']['value'] ?? '') === 'https://maps.example/map.pdf',
+        'Existing facility map not shown as contact link');
+    $assert(count($display['links']) === 1
+        && ($display['links'][0]['url'] ?? '') === 'https://rules.example',
+        'Duplicate or unsafe related link leaked into the public projection');
+
+    $fallback = llama_place_report_public_contact_cards([], [
+        'contact' => [
+            'phone' => '555-123-4567',
+            'reservations_url' => 'https://community.example/book',
+        ],
+    ]);
+    $assert(($fallback['items']['Phone Number']['value'] ?? '') === '555-123-4567',
+        'Approved community phone was not used as fallback');
+    $assert(($fallback['items']['Reservations']['value'] ?? '') === 'https://community.example/book',
+        'Approved community reservations URL was not used as fallback');
+});
+
 $check('Normal reviewed applicability is active', static function () use ($assert): void {
     $assert(!llama_place_report_full_inventory_review_enabled(),
         'Temporary inventory review bypass is still enabled');
