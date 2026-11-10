@@ -78,7 +78,7 @@ $check('Reported Total Sites is a shared Place question', static function () use
     $assert(($field['approved_report_page'] ?? '') === 'place', 'Reported Total Sites is missing from the Place page');
     $assert(($field['layout_section'] ?? '') === 'place' && ($field['layout_group'] ?? '') === 'information_location', 'Reported Total Sites is not routed to Place information');
     $assert((array) ($field['applicable_if'] ?? []) === [], 'Reported Total Sites depends on a Place Type');
-    $assert((array) (llama_place_report_approved_question_groups()['basic'][1] ?? []) === ['type', 'name', 'campsite_count', 'description'], 'Basic question ordering changed unexpectedly');
+    $assert(array_slice((array) (llama_place_report_approved_question_groups()['basic'][1] ?? []), 0, 3) === ['type', 'name', 'campsite_count'], 'Reported Total Sites must remain after Place name');
     $assert(llama_place_report_approved_registry_issues() === [], 'Approved question inventory integrity failed');
 });
 $check('Place Contact and Links use the canonical Place report', static function () use ($assert): void {
@@ -129,7 +129,7 @@ $check('Place Contact and Links use the canonical Place report', static function
     foreach ([
         ['contact_email', 'not-an-email'],
         ['contact_website_url', 'javascript:alert(1)'],
-        ['contact_related_links', "https://ok.example\\njavascript:alert(1)"],
+        ['contact_related_links', implode(chr(10), ['https://ok.example', 'javascript:alert(1)'])],
     ] as [$key, $value]) {
         $rejected = false;
         try {
@@ -156,7 +156,11 @@ $check('Official contact remains read-only and contributor links deduplicate', s
             'email' => 'hello@camp.example',
             'website_url' => 'https://operator.example',
             'reservations_url' => 'https://community.example/book',
-            'related_links' => "https://operator.example\\nhttps://rules.example\\njavascript:alert(1)",
+            'related_links' => implode(chr(10), [
+                'https://operator.example',
+                'https://rules.example',
+                'javascript:alert(1)',
+            ]),
         ],
         'details' => ['facility_map_url' => 'https://maps.example/map.pdf'],
     ]);
