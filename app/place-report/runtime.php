@@ -1333,6 +1333,8 @@ function llama_place_report_validate_scout_submission(
 }
 
 
+require_once __DIR__ . '/site-submission-photos.php';
+
 function llama_place_report_submit_new_place(
     int $userId,
     array $input
@@ -1373,6 +1375,17 @@ function llama_place_report_submit_new_place(
         throw new InvalidArgumentException(
             'The photo upload session is missing. Please upload the photos again.'
         );
+    }
+
+    $sitePhotoToken = trim((string) ($input['site_photo_stage_token'] ?? ''));
+    $submittedSitePhotos = llama_photo_decode_form_photos($input['site_photos_json'] ?? '[]');
+    if ($submittedSitePhotos && $sitePhotoToken === '') {
+        throw new InvalidArgumentException(
+            'The first Site photo session is missing. Upload the Site photos again.'
+        );
+    }
+    if (count($submittedSitePhotos) > llama_location_gallery_photo_limit('site')) {
+        throw new InvalidArgumentException('The first Site can have up to 10 photos.');
     }
 
     llama_place_report_validate_new_place_minimum(
@@ -1448,6 +1461,26 @@ function llama_place_report_submit_new_place(
                     | JSON_UNESCAPED_UNICODE
                     | JSON_THROW_ON_ERROR
                 ),
+                $submissionId,
+            ]);
+        }
+
+        if ($submittedSitePhotos) {
+            $data['site_photos'] = llama_place_report_normalize_committed_photos(
+                llama_photo_commit_stage(
+                    'add-site',
+                    $userId,
+                    $sitePhotoToken,
+                    $submittedSitePhotos,
+                    '/uploads/place-submissions/' . $submissionId . '/site-photos'
+                )
+            );
+            $data['site_photos'] = llama_place_report_first_site_photos($data, $submissionId);
+            $save = $db->prepare(
+                'UPDATE place_submissions SET submission_data = ? WHERE id = ?'
+            );
+            $save->execute([
+                json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
                 $submissionId,
             ]);
         }
