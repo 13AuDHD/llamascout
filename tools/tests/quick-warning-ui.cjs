@@ -33,7 +33,7 @@ assert.equal(section.hidden, false, 'Site warnings should appear when present');
 assert.equal(grid.children.length, 1, 'One warning must create one card');
 const card = grid.firstElementChild;
 assert.ok(card.classList.contains('scout-report-warning-item'));
-assert.equal(card.querySelector('span.scout-report-value-content > span').textContent,
+assert.equal(card.querySelector('.scout-report-value-content > span').textContent,
     'No cell service');
 assert.equal(card.querySelector('strong').textContent, 'Warning');
 const icon = card.querySelector('span.scout-report-warning-icon');
