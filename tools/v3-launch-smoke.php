@@ -44,6 +44,36 @@ $assertNoAnswerDependencies = static function (
     }
 };
 $fields = llama_place_report_fields();
+$check('Location galleries use one permanent 10-photo limit', static function () use ($assert): void {
+    require_once dirname(__DIR__) . '/app/location-photo-policy.php';
+    require_once dirname(__DIR__) . '/app/photo-staging.php';
+    foreach (['place', 'site', 'resource'] as $scope) {
+        $assert(llama_location_gallery_photo_limit($scope) === 10,
+            'Gallery photo limit changed for ' . $scope);
+    }
+    foreach (['add-place', 'admin-place', 'admin-resource'] as $context) {
+        $assert((int) llama_photo_context_config($context)['max'] === 10,
+            'Staging cap does not match the gallery cap: ' . $context);
+    }
+    $rejected = false;
+    try {
+        llama_location_gallery_photo_limit('unknown');
+    } catch (InvalidArgumentException $exception) {
+        $rejected = true;
+    }
+    $assert($rejected, 'Unsupported photo owners should not inherit the Place cap');
+
+    $resourceMedia = file_get_contents(dirname(__DIR__) . '/app/resource-media.php');
+    $adminResources = file_get_contents(dirname(__DIR__) . '/app/admin-resources.php');
+    $adminPlaces = file_get_contents(dirname(__DIR__) . '/app/admin-place-report.php');
+    $assert(is_string($resourceMedia) && str_contains($resourceMedia, "llama_location_gallery_photo_limit('resource')"),
+        'Resource DB insert does not enforce shared photo cap');
+    $assert(is_string($adminResources) && str_contains($adminResources, "llama_location_gallery_photo_limit('resource')"),
+        'Resource photo processing does not enforce shared photo cap');
+    $assert(is_string($adminPlaces) && str_contains($adminPlaces, "llama_location_gallery_photo_limit(\$scope)"),
+        'Place and Site gallery saves do not enforce the shared photo cap');
+});
+
 $check('Registry loaded', static function () use ($fields, $assert): void {
     $assert(count($fields) > 100, 'Expected canonical field inventory');
     $assert(isset($fields['daytime_noise'], $fields['nighttime_noise'], $fields['site_length_feet']), 'Missing core questions');
