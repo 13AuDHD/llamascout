@@ -88,10 +88,18 @@ function llama_place_draft_snapshot_photos(
     int $userId,
     int $draftId,
     string $stageToken,
-    array $submittedPhotos
+    array $submittedPhotos,
+    string $context = 'add-place',
+    string $suffix = ''
 ): array {
-    $destinationRelative = llama_place_draft_photo_relative_dir($userId, $draftId);
-    $destinationAbsolute = llama_place_draft_photo_absolute_dir($userId, $draftId);
+    if (!in_array($context, [$context, 'add-site'], true)
+        || !in_array($suffix, ['', 'site'], true)
+        || ($context === 'add-site') !== ($suffix === 'site')) {
+        throw new InvalidArgumentException('Invalid draft photo owner.');
+    }
+    $destinationRelative = llama_place_draft_photo_relative_dir($userId, $draftId)
+        . ($suffix !== '' ? '/' . $suffix : '');
+    $destinationAbsolute = dirname(__DIR__) . $destinationRelative;
 
     /*
      * The server-side staging manifest is the source of truth for a live
@@ -115,7 +123,7 @@ function llama_place_draft_snapshot_photos(
     }
 
     $stageToken = llama_photo_stage_token($stageToken);
-    $manifest = llama_photo_read_manifest('add-place', $userId, $stageToken);
+    $manifest = llama_photo_read_manifest($context, $userId, $stageToken);
     $manifestByPath = [];
 
     foreach ($manifest as $photo) {
@@ -137,7 +145,7 @@ function llama_place_draft_snapshot_photos(
         llama_photo_remove_tree($destinationAbsolute);
 
         try {
-            llama_photo_stage_abandon('add-place', $userId, $stageToken);
+            llama_photo_stage_abandon($context, $userId, $stageToken);
         } catch (Throwable) {
         }
 
@@ -174,7 +182,7 @@ function llama_place_draft_snapshot_photos(
         );
     }
 
-    $expectedPrefix = llama_photo_stage_relative_dir('add-place', $userId, $stageToken) . '/';
+    $expectedPrefix = llama_photo_stage_relative_dir($context, $userId, $stageToken) . '/';
     $tmpAbsolute = $destinationAbsolute . '-tmp-' . bin2hex(random_bytes(5));
 
     if (!mkdir($tmpAbsolute, 0755, true) && !is_dir($tmpAbsolute)) {
@@ -260,7 +268,7 @@ function llama_place_draft_snapshot_photos(
             throw $exception;
         }
 
-        llama_photo_stage_abandon('add-place', $userId, $stageToken);
+        llama_photo_stage_abandon($context, $userId, $stageToken);
 
         return $saved;
     } catch (Throwable $exception) {
@@ -272,15 +280,22 @@ function llama_place_draft_snapshot_photos(
 function llama_place_draft_restore_photos(
     int $userId,
     int $draftId,
-    array $savedPhotos
+    array $savedPhotos,
+    string $context = 'add-place',
+    string $suffix = ''
 ): array {
+    if (!in_array($context, [$context, 'add-site'], true)
+        || !in_array($suffix, ['', 'site'], true)
+        || ($context === 'add-site') !== ($suffix === 'site')) {
+        throw new InvalidArgumentException('Invalid draft photo owner.');
+    }
     if (!$savedPhotos) {
         return ['token' => '', 'photos' => []];
     }
 
     $token = llama_photo_stage_token();
-    $stageRelative = llama_photo_stage_relative_dir('add-place', $userId, $token);
-    $stageAbsolute = llama_photo_stage_absolute_dir('add-place', $userId, $token);
+    $stageRelative = llama_photo_stage_relative_dir($context, $userId, $token);
+    $stageAbsolute = llama_photo_stage_absolute_dir($context, $userId, $token);
 
     if (!mkdir($stageAbsolute, 0755, true) && !is_dir($stageAbsolute)) {
         throw new RuntimeException('The draft photos could not be prepared for editing.');
@@ -289,7 +304,8 @@ function llama_place_draft_restore_photos(
     $restored = [];
 
     try {
-        $allowedPrefix = llama_place_draft_photo_relative_dir($userId, $draftId) . '/';
+        $allowedPrefix = llama_place_draft_photo_relative_dir($userId, $draftId)
+            . ($suffix !== '' ? '/' . $suffix : '') . '/';
 
         foreach ($savedPhotos as $photo) {
             if (!is_array($photo)) {
@@ -331,7 +347,7 @@ function llama_place_draft_restore_photos(
             return ['token' => '', 'photos' => []];
         }
 
-        llama_photo_write_manifest('add-place', $userId, $token, $restored);
+        llama_photo_write_manifest($context, $userId, $token, $restored);
 
         return ['token' => $token, 'photos' => $restored];
     } catch (Throwable $exception) {
