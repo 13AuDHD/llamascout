@@ -27,7 +27,7 @@ function llama_place_report_add_experience_fields(
     }
 
     $add('connectivity_services_tested', 'Service Tested', 'connectivity', 'multiselect', 'connectivity.services_tested', [
-        'wide' => true,
+        'wide' => false,
         'summary' => 'Select services tested',
         'options' => [
             'starlink' => 'Starlink',
