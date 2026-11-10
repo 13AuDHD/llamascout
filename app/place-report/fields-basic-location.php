@@ -34,6 +34,7 @@ function llama_place_report_add_basic_location_fields(
         'report_visibility' => 'public',
         'counts_toward_completion' => false,
         'points_categories' => [],
+        'scoped_only_storage' => true,
     ];
 
     $add('contact_phone', 'Phone Number', 'basic', 'text', 'contact.phone', array_merge($contactFieldMeta, [
