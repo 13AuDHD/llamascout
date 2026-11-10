@@ -71,7 +71,7 @@ function llama_place_report_contract_issues(): array
         if (isset($storages[$path])) { $issues[] = 'Duplicate storage: ' . $path; }
         $storages[$path] = $key;
         if (empty($field['report_scopes'])) { $issues[] = 'Missing ownership: ' . $key; }
-        if (!in_array($field['type'], ['tri','checkbox','rating','permission','number','select','multiselect','text','textarea','date','url'], true)) {
+        if (!in_array($field['type'], ['tri','checkbox','rating','permission','number','select','multiselect','text','textarea','date','url','email'], true)) {
             $issues[] = 'Unsupported answer type: ' . $key;
         }
         if (in_array($field['type'], ['tri','permission','rating'], true) && empty($field['allow_unknown'])) {
