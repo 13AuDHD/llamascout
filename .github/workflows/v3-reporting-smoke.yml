@@ -31,6 +31,14 @@ on:
       - 'js/admin/place-map.js'
       - 'js/admin/place-report-save.js'
       - 'js/admin/place-report-photos.js'
+      - 'js/photo-gallery-editor.js'
+      - 'js/admin/resources.js'
+      - 'app/photo-gallery-management.php'
+      - 'app/admin-resources.php'
+      - 'app/admin-place-report.php'
+      - 'admin/resources.php'
+      - 'partials/resources/photo-uploader.php'
+      - 'tools/tests/admin-resource-gallery-ui.cjs'
       - 'tools/tests/admin-all-sites-ui.cjs'
       - 'tools/tests/admin-photo-gallery-ui.cjs'
       - 'js/admin/place-season-builder.js'
@@ -43,6 +51,14 @@ on:
       - '.github/workflows/v3-reporting-smoke.yml'
       - 'js/admin/place-report-save.js'
       - 'js/admin/place-report-photos.js'
+      - 'js/photo-gallery-editor.js'
+      - 'js/admin/resources.js'
+      - 'app/photo-gallery-management.php'
+      - 'app/admin-resources.php'
+      - 'app/admin-place-report.php'
+      - 'admin/resources.php'
+      - 'partials/resources/photo-uploader.php'
+      - 'tools/tests/admin-resource-gallery-ui.cjs'
       - 'tools/tests/admin-all-sites-ui.cjs'
       - 'tools/tests/admin-photo-gallery-ui.cjs'
       - 'tools/v3-launch-smoke.php'
@@ -69,6 +85,10 @@ jobs:
           php -l app/place-report/season-answer-contract.php
           php -l app/place-report/season-answers.php
           php -l app/admin-place-actions.php
+          php -l app/photo-gallery-management.php
+          php -l app/admin-place-report.php
+          php -l app/admin-resources.php
+          php -l admin/resources.php
           php -l admin/place.php
           php -l admin/partials/place-report-seasons.php
           php -l admin/partials/place-summary-report.php
@@ -96,6 +116,8 @@ jobs:
           node --check js/admin/place-map.js
           node --check js/admin/place-report-save.js
           node --check js/admin/place-report-photos.js
+          node --check js/photo-gallery-editor.js
+          node --check js/admin/resources.js
       - name: Run V3 reporting smoke tests
         run: php tools/v3-launch-smoke.php
       - name: Install isolated DOM test dependency
@@ -114,6 +136,10 @@ jobs:
         env:
           NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules
         run: node tools/tests/admin-photo-gallery-ui.cjs
+      - name: Exercise Resource photo gallery reuse and long-distance iPad dragging
+        env:
+          NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules
+        run: node tools/tests/admin-resource-gallery-ui.cjs
       - name: Exercise parent-child questions in the shared Scout Report form
         env:
           NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules
