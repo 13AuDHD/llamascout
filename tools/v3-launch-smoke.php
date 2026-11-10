@@ -74,6 +74,69 @@ $check('Location galleries use one permanent 10-photo limit', static function ()
         'Place and Site gallery saves do not enforce the shared photo cap');
 });
 
+$check('Resource contributor photos use moderated evidence and existing ten-photo gallery', static function () use ($assert): void {
+    require_once dirname(__DIR__) . '/app/resource-submission-photos.php';
+
+    $assert((int) llama_photo_context_config('add-resource')['max'] === 10,
+        'New Resource staging must support 10 photos');
+    $assert((int) llama_photo_context_config('update-resource')['max'] === 10,
+        'Resource Update staging must support 10 photos');
+
+    $first = '/uploads/resource-submissions/42/example-1.jpg';
+    $second = '/uploads/resource-submissions/42/example-2.jpg';
+    $photos = llama_resource_submission_photos([
+        '_photos' => [
+            ['path' => $first, 'alt' => 'Pump and water station'],
+            ['path' => $second, 'alt' => 'Bathroom'],
+        ],
+    ], 42);
+    $assert(count($photos) === 2 && $photos[0]['alt'] === 'Pump and water station',
+        'Resource contributor photo evidence did not preserve captions');
+    $chosen = llama_resource_review_selected_photos($photos, [$second]);
+    $assert(count($chosen) === 1 && $chosen[0]['path'] === $first,
+        'Moderation cannot exclude selected Resource photos');
+
+    foreach ([
+        ['_photos' => [['path' => '/uploads/places/42/unreviewed.jpg']]],
+        ['_photos' => [['path' => '/uploads/resource-submissions/43/other.jpg']]],
+        ['_photos' => [['path' => '/uploads/resource-submissions/42/../path.jpg']]],
+        ['_photos' => [['path' => $first], ['path' => $first]]],
+        ['_photos' => array_fill(0, 11, ['path' => $first])],
+    ] as $bad) {
+        $rejected = false;
+        try {
+            llama_resource_submission_photos($bad, 42);
+        } catch (InvalidArgumentException $exception) {
+            $rejected = true;
+        }
+        $assert($rejected, 'Unsafe or oversized Resource photo evidence was accepted');
+    }
+
+    $invalidSelection = false;
+    try {
+        llama_resource_review_selected_photos($photos, ['/uploads/other.jpg']);
+    } catch (InvalidArgumentException $exception) {
+        $invalidSelection = true;
+    }
+    $assert($invalidSelection, 'Moderator could exclude an unrelated photo path');
+
+    $contribution = file_get_contents(dirname(__DIR__) . '/partials/resources/contribution.php');
+    $memberUploader = file_get_contents(dirname(__DIR__) . '/partials/resources/contributor-photos.php');
+    $moderation = file_get_contents(dirname(__DIR__) . '/admin/resources.php');
+    $model = file_get_contents(dirname(__DIR__) . '/app/resource-submissions.php');
+    $assert(str_contains((string) $contribution, "require __DIR__ . '/contributor-photos.php'"),
+        'Resource contributor form does not use shared photo uploader');
+    $assert(str_contains((string) $memberUploader, 'data-photo-uploader')
+        && str_contains((string) $memberUploader, 'resource_photos_json'),
+        'Resource member photo staging is not wired into the shared component');
+    $assert(str_contains((string) $moderation, 'exclude_resource_photos[]')
+        && str_contains((string) $moderation, 'resourceReviewPhotos'),
+        'Moderator cannot inspect and select submitted Resource photos');
+    $assert(str_contains((string) $model, 'llama_resource_publish_submission_photos(')
+        && str_contains((string) $model, "'_photos'"),
+        'Approved Resource photos do not reach the existing Resource gallery');
+});
+
 $check('Registry loaded', static function () use ($fields, $assert): void {
     $assert(count($fields) > 100, 'Expected canonical field inventory');
     $assert(isset($fields['daytime_noise'], $fields['nighttime_noise'], $fields['site_length_feet']), 'Missing core questions');
