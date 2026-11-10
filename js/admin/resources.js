@@ -182,8 +182,48 @@
         });
     }
 
+    function setupPhotoGallery(form) {
+        const grid = form.querySelector('[data-resource-photo-gallery]');
+        const catalog = form.querySelector('[data-resource-photo-catalog]');
+        const output = form.querySelector('[name="resource_gallery_json"]');
+        if (!grid || !catalog || !output || !window.LlamaPhotoGallery) return;
+        let photos;
+        try {
+            photos = JSON.parse(catalog.textContent || '[]');
+        } catch (_) {
+            photos = [];
+        }
+        if (!Array.isArray(photos)) return;
+        const resourceId = Number(grid.dataset.resourceGalleryId);
+        if (!Number.isInteger(resourceId) || resourceId < 1) return;
+        const owner = 'resource:resource:' + resourceId;
+        const gallery = window.LlamaPhotoGallery.mount(grid, {
+            removeName: 'resource_remove_photo_ids[]',
+            onChange: () => sync(),
+        });
+        if (!gallery) return;
+        const sync = () => {
+            const snapshot = gallery.snapshot(photos);
+            output.value = snapshot.dirty
+                ? JSON.stringify({target: owner, items: snapshot.items}) : '';
+        };
+        gallery.render(photos);
+        sync();
+        let submitting = false;
+        form.addEventListener('submit', () => {
+            sync();
+            submitting = true;
+        });
+        window.addEventListener('beforeunload', event => {
+            if (submitting || !gallery.snapshot(photos).dirty) return;
+            event.preventDefault();
+            event.returnValue = '';
+        });
+    }
+
     for (const form of document.querySelectorAll('[data-resource-editor]')) {
         setupServices(form.querySelector('[data-resource-services]'));
+        setupPhotoGallery(form);
 
         const mode = form.querySelector('[data-resource-hours-mode]');
         const panels = form.querySelectorAll('[data-resource-hours-panel]');

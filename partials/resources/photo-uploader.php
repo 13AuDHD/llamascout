@@ -25,16 +25,22 @@ $resourcePhotoRemaining = max(0, $resourcePhotoLimit - count($resourceSavedPhoto
             photos attached to this Resource. Photos of services, entrances,
             facilities, and helpful signs belong here.
         </p>
-        <?php if ($resourceSavedPhotos): ?>
-        <div class="add-place-existing-photo-grid">
-            <?php foreach ($resourceSavedPhotos as $photo): ?>
-                <div class="add-place-existing-photo">
-                    <img src="<?= $e(llama_resource_image_url($photo['src'] ?? '')) ?>"
-                         alt="<?= $e($photo['alt_text'] ?? 'Resource photo') ?>" loading="lazy">
-                </div>
-            <?php endforeach; ?>
-        </div>
-        <?php endif; ?>
+        <p>Drag photos to reorder. The first remaining photo becomes Hero.
+           Changes to descriptions, order and removals save with the Resource.</p>
+        <script type="application/json" data-resource-photo-catalog><?=
+            json_encode(array_map(static fn (array $photo): array => [
+                'id' => (int) $photo['id'],
+                'src' => (string) $photo['src'],
+                'url' => llama_resource_image_url($photo['src']),
+                'alt' => (string) ($photo['alt_text'] ?? ''),
+                'sort_order' => (int) ($photo['sort_order'] ?? 0),
+                'is_featured' => (int) ($photo['is_featured'] ?? 0),
+            ], $resourceSavedPhotos), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS
+                | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)
+        ?></script>
+        <input type="hidden" name="resource_gallery_json" value="">
+        <div class="add-place-existing-photo-grid admin-resource-gallery"
+             data-resource-photo-gallery data-resource-gallery-id="<?= (int) $resourcePhotoTargetId ?>"></div>
         <?php if ($resourcePhotoRemaining > 0): ?>
         <input type="hidden" name="resource_photo_stage_token"
                value="<?= $e($_POST['resource_photo_stage_token'] ?? '') ?>">

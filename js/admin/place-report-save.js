@@ -1526,6 +1526,16 @@
 
         try {
             const saveData = new FormData(form);
+            // The Site selector can retain its previous value after changing
+            // back to the Place tab. Do not save hidden Site answers or route
+            // a Place-only save through that stale Site target.
+            const activeReportMode = form.closest('[data-contribution-tabs]')
+                ?.querySelector('[data-contribution-mode][aria-pressed="true"]')
+                ?.dataset.contributionMode || (activeCampsiteId !== '' ? 'site' : 'place');
+            if (activeReportMode !== 'site' && !bulkPayload) {
+                saveData.delete('selected_campsite_id');
+                saveData.delete('admin_site_answers_json');
+            }
             if (bulkPayload) {
                 saveData.delete('selected_campsite_id');
                 saveData.set('admin_bulk_site_answers_json', bulkPayload);

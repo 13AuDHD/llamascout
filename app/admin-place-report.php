@@ -10,6 +10,7 @@ require_once __DIR__ . '/admin-place-sites.php';
 require_once __DIR__ . '/place-campsite-media.php';
 require_once __DIR__ . '/place-area-media.php';
 require_once __DIR__ . '/location-photo-policy.php';
+require_once __DIR__ . '/photo-gallery-management.php';
 require_once __DIR__ . '/ridb-facility-details.php';
 require_once __DIR__ . '/place-report/contact-links.php';
 
@@ -407,6 +408,39 @@ function admin_place_report_photo_target(
 
 
 /**
+ * Select photo storage independently from the Scout Report's last Site picker.
+ * For example, the user can be editing Place photos with a Site ID still
+ * selected for Site questions. The gallery owner is explicit and checked
+ * server-side against this Place before any image can change.
+ */
+function admin_place_report_photo_target_from_owner(
+    PDO $db,
+    int $placeId,
+    string $owner
+): array {
+    if (!preg_match('/^(place|site|area):(place|campsite_record|map_feature):([1-9][0-9]*)$/D', $owner, $match)) {
+        throw new InvalidArgumentException('The selected photo gallery is invalid. Reload the editor.');
+    }
+    $scope = $match[1];
+    $source = $match[2];
+    $id = (int) $match[3];
+    if ($scope === 'place' && $source === 'place' && $id === $placeId) {
+        return ['scope' => 'place', 'source' => 'place', 'id' => $placeId, 'label' => 'Entire Place'];
+    }
+    if ($scope === 'site' && $source === 'campsite_record') {
+        return admin_place_report_photo_target($db, $placeId, [
+            'selected_campsite_id' => 'campsite_record:' . $id,
+        ]);
+    }
+    if ($scope === 'area' && $source === 'map_feature') {
+        return admin_place_report_photo_target($db, $placeId, [
+            'selected_area_id' => 'map_feature:' . $id,
+        ]);
+    }
+    throw new InvalidArgumentException('The photo gallery does not belong to the selected Place.');
+}
+
+/**
  * Return the gallery owned by one reporting target.
  */
 function admin_place_report_target_images(
@@ -463,28 +497,7 @@ function admin_place_report_target_images(
  */
 function admin_place_gallery_photo_path_in_use(PDO $db, string $path): bool
 {
-    $path = trim($path);
-    if ($path === '') {
-        return true;
-    }
-    foreach (['place_images', 'place_campsite_images', 'place_area_images'] as $table) {
-        try {
-            $stmt = $db->prepare('SELECT 1 FROM ' . $table . ' WHERE src = ? LIMIT 1');
-            $stmt->execute([$path]);
-            if ($stmt->fetchColumn()) {
-                return true;
-            }
-        } catch (PDOException $exception) {
-            // An older deployment may not have Area gallery storage yet.
-            // Missing tables cannot own additional images. Fail closed for
-            // any other database or schema error.
-            if (!in_array((string) ($exception->errorInfo[1] ?? ''), ['1146', '42S02'], true)) {
-                error_log('Llama Scout photo reference check failed: ' . $exception->getMessage());
-                return true;
-            }
-        }
-    }
-    return false;
+    return llama_photo_gallery_path_in_use($db, $path);
 }
 
 /**
@@ -508,61 +521,20 @@ function admin_place_save_gallery_in_report_transaction(
     if (!$db->inTransaction()) {
         throw new RuntimeException('Gallery changes require the report transaction.');
     }
-    if (strlen($raw) > 65536) {
-        throw new InvalidArgumentException('The photo gallery update is too large.');
-    }
-    $payload = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
-    if (!is_array($payload)
-        || !isset($payload['target'], $payload['items'])
-        || !is_string($payload['target'])
-        || !is_array($payload['items'])
-        || !array_is_list($payload['items'])) {
-        throw new InvalidArgumentException('Invalid gallery order or captions.');
-    }
-
     $scope = (string) ($target['scope'] ?? '');
     $source = (string) ($target['source'] ?? '');
     $targetId = (int) ($target['id'] ?? 0);
+    if (!in_array($scope, ['place', 'site', 'area'], true) || $targetId < 1) {
+        throw new InvalidArgumentException('Choose a valid photo gallery.');
+    }
     $expectedOwner = $scope . ':' . $source . ':' . $targetId;
-    if (!hash_equals($expectedOwner, $payload['target'])
-        || !in_array($scope, ['place', 'site', 'area'], true)
-        || $targetId < 1) {
-        throw new InvalidArgumentException('The photo gallery belongs to a different Place or Site.');
-    }
     $current = admin_place_report_target_images($db, $placeId, $target);
-    $existingIds = array_map(static fn (array $image): int => (int) $image['id'], $current);
-
-    $byId = [];
-    foreach ($payload['items'] as $item) {
-        if (!is_array($item)
-            || !isset($item['id'])
-            || (!is_int($item['id']) && !ctype_digit((string) $item['id']))
-            || (int) $item['id'] < 1
-            || !isset($item['alt'])
-            || !is_string($item['alt'])) {
-            throw new InvalidArgumentException('Invalid photo ID or caption.');
-        }
-        $id = (int) $item['id'];
-        if (isset($byId[$id])) {
-            throw new InvalidArgumentException('The same photo appeared twice in the gallery.');
-        }
-        $caption = trim($item['alt']);
-        if (mb_strlen($caption) > 300) {
-            throw new InvalidArgumentException('A photo caption exceeds 300 characters.');
-        }
-        $byId[$id] = $caption;
+    $items = llama_photo_gallery_validate_snapshot($raw, $expectedOwner, $current);
+    if ($items === null) {
+        return;
     }
-
-    $requestedIds = array_keys($byId);
-    $sortedExisting = $existingIds;
-    $sortedRequested = $requestedIds;
-    sort($sortedExisting);
-    sort($sortedRequested);
-    if ($sortedExisting !== $sortedRequested) {
-        throw new InvalidArgumentException(
-            'The photo gallery changed since you opened it. Reload before saving its order.'
-        );
-    }
+    $requestedIds = array_column($items, 'id');
+    $byId = array_column($items, 'alt', 'id');
     $needsChanges = false;
     foreach ($current as $index => $image) {
         $id = (int) $image['id'];

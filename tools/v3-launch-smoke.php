@@ -295,6 +295,66 @@ $check('Official Place contact values prefill without becoming new Scout answers
         'Admin audit should attribute only truly changed values');
 });
 
+$check('One owner-verified photo gallery editor for Places, Sites and Resources', static function () use ($assert): void {
+    require_once dirname(__DIR__) . '/app/photo-gallery-management.php';
+    $rows = [
+        ['id' => 12, 'alt_text' => 'Entrance'],
+        ['id' => 13, 'alt_text' => 'Forest'],
+    ];
+    $raw = json_encode([
+        'target' => 'place:place:42',
+        'items' => [
+            ['id' => 13, 'alt' => 'New hero'],
+            ['id' => 12, 'alt' => 'Entrance'],
+        ],
+    ], JSON_THROW_ON_ERROR);
+    $validated = llama_photo_gallery_validate_snapshot($raw, 'place:place:42', $rows);
+    $assert($validated[0]['id'] === 13 && $validated[0]['alt'] === 'New hero',
+        'Reordering the first image must be preserved as the new hero');
+    $assert(llama_photo_gallery_validate_snapshot('', 'place:place:42', $rows) === null,
+        'Untouched galleries must not write updates');
+    foreach ([
+        [str_replace('place:place:42', 'site:campsite_record:9', $raw), 'place:place:42'],
+        [$raw, 'resource:resource:42'],
+        [json_encode(['target' => 'place:place:42', 'items' => [
+            ['id' => 12, 'alt' => 'Duplicate'],
+            ['id' => 12, 'alt' => 'Duplicate'],
+        ]], JSON_THROW_ON_ERROR), 'place:place:42'],
+        [json_encode(['target' => 'place:place:42', 'items' => [
+            ['id' => 12, 'alt' => 'Entrance'],
+        ]], JSON_THROW_ON_ERROR), 'place:place:42'],
+        [json_encode(['target' => 'place:place:42', 'items' => [
+            ['id' => 12, 'alt' => 'Entrance'],
+            ['id' => 14, 'alt' => 'Other gallery'],
+        ]], JSON_THROW_ON_ERROR), 'place:place:42'],
+    ] as [$bad, $owner]) {
+        $rejected = false;
+        try {
+            llama_photo_gallery_validate_snapshot($bad, $owner, $rows);
+        } catch (InvalidArgumentException $exception) {
+            $rejected = true;
+        }
+        $assert($rejected, 'Photo editor accepted an invalid owner, stale list or duplicate image');
+    }
+    foreach ([
+        'app/admin-place-report.php' => 'llama_photo_gallery_validate_snapshot(',
+        'app/admin-resources.php' => 'llama_photo_gallery_validate_snapshot(',
+        'app/admin-place-actions.php' => 'admin_place_report_photo_target_from_owner(',
+        'js/admin/place-report-photos.js' => 'admin_photo_owner',
+        'js/admin/resources.js' => 'LlamaPhotoGallery.mount(',
+        'partials/resources/photo-uploader.php' => 'data-resource-photo-gallery',
+        'admin/place.php' => 'js/photo-gallery-editor.js',
+        'admin/_footer.php' => 'js/photo-gallery-editor.js',
+    ] as $filename => $required) {
+        $contents = file_get_contents(dirname(__DIR__) . '/' . $filename);
+        $assert(is_string($contents) && str_contains($contents, $required),
+            'Shared gallery missing from ' . $filename);
+    }
+    $resourcePage = file_get_contents(dirname(__DIR__) . '/admin/resources.php');
+    $assert(is_string($resourcePage) && !str_contains($resourcePage, 'Make hero'),
+        'Legacy Resource hero buttons must not duplicate the gallery editor');
+});
+
 $check('Registry loaded', static function () use ($fields, $assert): void {
     $assert(count($fields) > 100, 'Expected canonical field inventory');
     $assert(isset($fields['daytime_noise'], $fields['nighttime_noise'], $fields['site_length_feet']), 'Missing core questions');

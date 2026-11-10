@@ -232,23 +232,35 @@
     font-weight: 750;
 }
 
-/* Shared Admin Place/Site gallery replaces the old Photo Management forms. */
-.place-report-form [data-admin-photo-sortable] .admin-attached-photo {
-    gap: 8px;
-    align-content: start;
+/* One reusable photo gallery for Place, Site, Area and Resource. */
+.admin-photo-gallery {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
 }
-
-.place-report-form .admin-attached-photo-preview {
+.admin-photo-gallery .admin-attached-photo {
+    display: grid;
+    min-width: 0;
+    align-content: start;
+    gap: 8px;
+    border-radius: 10px;
+}
+.admin-photo-gallery .admin-attached-photo-preview,
+.admin-photo-drag-ghost .admin-attached-photo-preview {
     position: relative;
     min-width: 0;
 }
-
-.place-report-form .admin-attached-photo-preview img {
+.admin-photo-gallery .admin-attached-photo-preview img,
+.admin-photo-drag-ghost .admin-attached-photo-preview img {
     display: block;
     width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    border: 1px solid var(--border);
+    border-radius: 10px;
 }
-
-.place-report-form .admin-attached-photo-hero {
+.admin-photo-gallery .admin-attached-photo-hero,
+.admin-photo-drag-ghost .admin-attached-photo-hero {
     position: absolute;
     top: 9px;
     left: 9px;
@@ -261,53 +273,39 @@
     box-shadow: 0 1px 8px #0007;
     pointer-events: none;
 }
-
-.place-report-form .admin-attached-photo-hero[hidden] {
-    display: none;
-}
-
-.place-report-form .admin-attached-photo-handle {
+.admin-attached-photo-hero[hidden] { display: none !important; }
+.admin-photo-gallery .admin-attached-photo-handle,
+.admin-photo-drag-ghost .admin-attached-photo-handle {
     position: absolute;
     top: 8px;
     right: 8px;
     display: grid;
     place-items: center;
-    width: 39px;
-    height: 39px;
+    width: 42px;
+    height: 42px;
     padding: 0;
-    border: 1px solid #ffffff6b;
+    border: 1px solid #ffffff75;
     border-radius: 9px;
-    background: #151515dc;
+    background: #151515ed;
     color: #fff;
     cursor: grab;
-    font-size: 1.65rem;
+    font-size: 1.7rem;
     line-height: 1;
     touch-action: none;
     user-select: none;
     -webkit-user-select: none;
 }
-
-.place-report-form .admin-attached-photo-handle:active {
+.admin-photo-gallery .admin-attached-photo-handle:active {
     cursor: grabbing;
 }
-
-.place-report-form .admin-attached-photo-handle:focus-visible {
+.admin-photo-gallery .admin-attached-photo-handle:focus-visible {
     outline: 3px solid #a3ccac;
     outline-offset: 2px;
 }
-
-.place-report-form .admin-attached-photo.is-photo-dragging {
-    opacity: .7;
-    outline: 2px solid var(--text-muted);
-    outline-offset: 3px;
-    border-radius: 10px;
-}
-
-.place-report-form .admin-attached-photo.is-photo-removed img {
+.admin-photo-gallery .admin-attached-photo.is-photo-removed img {
     opacity: .38;
 }
-
-.place-report-form .admin-attached-photo-remove {
+.admin-photo-gallery .admin-attached-photo-remove {
     display: flex;
     gap: 8px;
     align-items: center;
@@ -315,8 +313,8 @@
     font-size: .74rem;
     font-weight: 750;
 }
-
-.place-report-form .admin-attached-photo-caption {
+.admin-photo-gallery .admin-attached-photo-caption,
+.admin-photo-drag-ghost .admin-attached-photo-caption {
     box-sizing: border-box;
     display: block;
     width: 100%;
@@ -329,6 +327,59 @@
     color: var(--text);
     font: inherit;
     font-size: .79rem;
+}
+.admin-photo-gallery .admin-attached-photo.is-photo-drop-target {
+    position: relative;
+    border: 2px dashed #99a4ac;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--surface) 80%, #447c65 20%);
+}
+.admin-photo-gallery .admin-attached-photo.is-photo-drop-target > * {
+    visibility: hidden;
+}
+.admin-photo-gallery .admin-attached-photo.is-photo-drop-target::after {
+    content: 'Drop here to move photo';
+    position: absolute;
+    inset: 8px;
+    display: grid;
+    place-items: center;
+    text-align: center;
+    padding: 15px;
+    border-left: 4px solid #72d78c;
+    color: var(--text-muted);
+    font-size: .84rem;
+    font-weight: 750;
+    pointer-events: none;
+}
+.admin-photo-drag-ghost {
+    position: fixed !important;
+    z-index: 100000;
+    display: grid;
+    gap: 6px;
+    padding: 0;
+    margin: 0;
+    opacity: .96;
+    pointer-events: none;
+    transform: rotate(-2deg) scale(1.035);
+    transform-origin: center;
+    box-shadow: 0 20px 42px #000b;
+    background: var(--surface);
+    border: 2px solid #d4dbdf;
+    border-radius: 12px;
+}
+.admin-photo-drag-ghost .admin-attached-photo-remove {
+    display: none;
+}
+.admin-photo-drag-ghost .admin-attached-photo-caption {
+    pointer-events: none;
+}
+@media (max-width: 700px) {
+    .admin-photo-gallery {
+        grid-template-columns: 1fr;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .admin-photo-drag-ghost { transform: none; }
 }
 
 .scout-report-header {

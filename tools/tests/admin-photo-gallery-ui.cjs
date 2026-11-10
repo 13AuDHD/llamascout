@@ -10,6 +10,9 @@ const {JSDOM} = require('jsdom');
 const source = fs.readFileSync(
     path.resolve(__dirname, '../../js/admin/place-report-photos.js'), 'utf8'
 );
+const sharedGallery = fs.readFileSync(
+    path.resolve(__dirname, '../../js/photo-gallery-editor.js'), 'utf8'
+);
 
 const photo = (id, owner, alt, featured = false) => ({
     id, src: '/uploads/places/12/' + owner + '-' + id + '.jpg',
@@ -75,7 +78,10 @@ const hero = () => cards().find(card => !card.querySelector('[data-admin-photo-h
 let alerts = [];
 w.confirm = () => false;
 w.alert = text => alerts.push(text);
+w.eval(sharedGallery);
 w.eval(source);
+assert.equal(query('[name="admin_photo_owner"]').value, placeKey,
+    'The Place photo gallery needs a separate, explicit server owner');
 
 assert.deepEqual(ids(), [11, 12, 13], 'Initial Place order must reflect DB order');
 assert.equal(hero().dataset.adminPhotoId, '11', 'First Place image must show Hero');
@@ -129,15 +135,18 @@ assert.equal(hero().dataset.adminPhotoId, '12');
 assert.equal(query('[name="admin_photo_gallery_json"]').value, '',
     'Saved gallery must not be written again on an unrelated form save');
 
-// Simulate iPad pointer dragging using the actual drag handle, including
-// pointer capture, a hit-tested destination and release.
+// A hidden Site selector may still contain a value while the Place tab is
+// active. Saving Place photos must use the visible photo owner instead.
+query('[data-admin-campsite-selector]').value = 'campsite_record:9';
+form.dispatchEvent(new w.CustomEvent('llama:admin-place-report-save-starting'));
+assert.equal(query('[name="admin_photo_owner"]').value, placeKey,
+    'Stale Site selection cannot redirect Place photo edits');
+
+// Simulate a continuous iPad pointer drag via window-level tracking, with
+// a floating clone and destination hit-test rather than pointer capture.
 const touchCard = cards()[1];
 const touchHandle = touchCard.querySelector('.admin-attached-photo-handle');
-let capturedPointer = null;
-touchHandle.setPointerCapture = id => { capturedPointer = id; };
-touchHandle.hasPointerCapture = id => capturedPointer === id;
-touchHandle.releasePointerCapture = () => { capturedPointer = null; };
-const topCard = cards()[0];
+ const topCard = cards()[0];
 topCard.getBoundingClientRect = () => ({
     top: 60, bottom: 160, left: 0, right: 100, height: 100, width: 100,
 });
@@ -147,11 +156,15 @@ const pointer = (type, x, y) => {
         bubbles: true, cancelable: true, button: 0, clientX: x, clientY: y,
     });
     Object.defineProperty(event, 'pointerId', {value: 7});
-    touchHandle.dispatchEvent(event);
+    (type === 'pointerdown' ? touchHandle : w).dispatchEvent(event);
 };
 pointer('pointerdown', 80, 135);
 pointer('pointermove', 20, 70);
+assert.equal(d.querySelectorAll('.admin-photo-drag-ghost').length, 1,
+    'Touch dragging should show a floating image preview');
 pointer('pointerup', 20, 70);
+assert.equal(d.querySelectorAll('.admin-photo-drag-ghost').length, 0,
+    'Floating image preview must be cleaned up on drop');
 assert.deepEqual(ids(), [13, 12], 'Touch drag must move the card under the pointer');
 assert.equal(hero().dataset.adminPhotoId, '13', 'Touch drag to first must set the Hero pill');
 move(cards()[0], 'ArrowRight');
@@ -168,7 +181,7 @@ query('[data-contribution-tabs]').dispatchEvent(new w.CustomEvent('llama:contrib
 Promise.resolve().then(() => {
     assert.deepEqual(ids(), [81, 82], 'Site gallery must load only Site photos');
     assert.equal(hero().dataset.adminPhotoId, '81', 'Site has its own hero');
-    assert.equal(query('[data-admin-photo-hero]').textContent, 'Hero');
+    assert.ok(query('[data-admin-photo-hero]').textContent.includes('Hero'));
 
     const siteCaption = cards()[1].querySelector('[data-admin-photo-caption]');
     siteCaption.value = 'New Site caption';
