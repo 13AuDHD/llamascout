@@ -204,7 +204,7 @@
     line-height: 1.5;
 }
 
-.place-report-form .add-place-existing-photo-grid {
+.place-report-form .add-place-existing-photo-grid:not(.admin-photo-gallery) {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 10px;
@@ -511,7 +511,7 @@
         font-size: .58rem;
     }
 
-    .place-report-form .add-place-existing-photo-grid {
+    .place-report-form .add-place-existing-photo-grid:not(.admin-photo-gallery) {
         grid-template-columns: 1fr;
     }
 
