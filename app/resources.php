@@ -217,6 +217,7 @@ function llama_resource_service_types(): array
         'recycling' => 'Recycling',
         'ev_charging' => 'EV charging',
         'propane' => 'Propane',
+        'firewood' => 'Firewood',
         'laundry' => 'Laundry',
         'fuel' => 'Fuel',
         'air' => 'Air',

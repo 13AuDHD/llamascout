@@ -7,6 +7,12 @@
     overflow: hidden;
 }
 
+/* Resource identity stays purple even when using shared Place components. */
+.resource-page .place-detail-title-block {
+    border-inline-start: 4px solid var(--resource-accent);
+    padding-inline-start: 16px;
+}
+
 .resource-detail-body {
     padding-top: 34px;
     padding-bottom: 54px;
@@ -65,6 +71,7 @@
     min-width: 0;
     padding: 18px;
     border: 1px solid var(--border);
+    border-inline-start: 4px solid var(--resource-accent);
     border-radius: 15px;
     background: var(--surface);
 }
@@ -179,6 +186,11 @@
 .resource-photo-section {
     border-top: 1px solid var(--border);
     border-bottom: 0;
+}
+
+/* The shared Place gallery is green by default; Resource photos are purple. */
+.resource-photo-section .place-photo-thumb {
+    border-inline-start: 4px solid var(--resource-accent);
 }
 
 .resource-link-button {

@@ -36,6 +36,7 @@ foreach ([
     'dump_station',
     'toilet',
     'propane',
+    'firewood',
     'ev_charging',
 ] as $service) {
     resource_model_assert(

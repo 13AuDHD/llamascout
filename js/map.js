@@ -1033,7 +1033,7 @@ popupAnchor: [0, -42]
                                 >
                             `
                             : `
-                                <span class="map-popup-fallback is-resource ${resourceTypeClass(resource)}">
+                                <span class="map-popup-fallback is-resource ${resourceTypeClass(resource)} ${resourceMarkerServiceClass(resource)}">
                                     <i class="map-resource-fallback-icon"></i>
                                 </span>
                             `
@@ -1184,7 +1184,7 @@ popupAnchor: [0, -42]
                             >
                         `
                         : `
-                            <span class="map-result-card-fallback is-resource ${resourceTypeClass(resource)}">
+                            <span class="map-result-card-fallback is-resource ${resourceTypeClass(resource)} ${resourceMarkerServiceClass(resource)}">
                                 <i class="map-resource-fallback-icon"></i>
                             </span>
                         `

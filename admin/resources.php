@@ -495,7 +495,7 @@ $e =
 <?php else: ?>
 
 <?php if ($editing || $resourceSubmission): ?>
-<section class="admin-panel">
+<section class="admin-panel admin-resource-panel">
     <header class="admin-panel-header">
         <div>
             <p><?= $resourceSubmission

@@ -1331,6 +1331,13 @@ html[data-reduced-motion="true"] .map-locate-button.is-locating .map-locate-icon
     --resource-icon: url('/assets/icons/gas-station.svg');
 }
 
+.map-resource-marker.is-service-firewood,
+.map-resource-legend-icon.is-service-firewood,
+.map-popup-fallback.is-resource.is-service-firewood,
+.map-result-card-fallback.is-resource.is-service-firewood {
+    --resource-icon: url('/assets/icons/at-fire-wood.svg');
+}
+
 .map-resource-marker.is-service-air {
     --resource-icon: url('/assets/icons/at-strong-wind.svg');
 }
@@ -1357,7 +1364,7 @@ html[data-reduced-motion="true"] .map-locate-button.is-locating .map-locate-icon
     height: 34px;
     border: 3px solid #fff;
     border-radius: 10px;
-    background: #7931a9;
+    background: var(--resource-accent);
     box-shadow: 0 3px 9px rgba(0, 0, 0, .35);
 }
 
@@ -1421,7 +1428,7 @@ html[data-reduced-motion="true"] .map-locate-button.is-locating .map-locate-icon
     width: 26px;
     height: 26px;
     border-radius: 50%;
-    background: #7931a9;
+    background: var(--resource-accent);
 }
 
 .map-resource-legend-icon {
