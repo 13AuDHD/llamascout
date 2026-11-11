@@ -70,6 +70,46 @@ function llama_report_questions_for_scope(
     return $result;
 }
 
+/**
+ * A field declaring facility_kinds belongs only to a matching facility
+ * Area. Shared Area questions continue to apply to any mapped Area.
+ * The target must come from the server's verified Place-scoped catalog.
+ */
+function llama_report_question_applies_to_area_target(
+    array $field,
+    array $target
+): bool {
+    if (
+        ($target['scope'] ?? null) !== 'area'
+        || ($target['source'] ?? null) !== 'map_feature'
+        || !in_array('area', (array) ($field['report_scopes'] ?? []), true)
+    ) {
+        return false;
+    }
+
+    if (!array_key_exists('facility_kinds', $field)) {
+        return true;
+    }
+
+    $kinds = $field['facility_kinds'];
+    if (!is_array($kinds) || $kinds === []) {
+        return false;
+    }
+
+    return ($target['feature_type'] ?? null) === 'facility_area'
+        && in_array((string) ($target['facility_kind'] ?? ''), $kinds, true);
+}
+
+/** The normal Area inventory, filtered by verified facility identity. */
+function llama_report_questions_for_area_target(array $target): array
+{
+    return array_filter(
+        llama_report_questions_for_scope('area', true),
+        static fn (array $field): bool =>
+            llama_report_question_applies_to_area_target($field, $target)
+    );
+}
+
 /** Use one layout/group ordering projection for all reporting pages. */
 function llama_report_question_groups(
     string $scope,

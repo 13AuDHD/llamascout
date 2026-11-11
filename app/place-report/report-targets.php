@@ -158,6 +158,7 @@ function llama_report_targets(
                 mf.id,
                 mf.feature_type,
                 mf.label,
+                mf.metadata_json AS map_feature_metadata_json,
 
                 sd.camping_area_feature_id,
                 sd.site_code AS mapped_site_code,
@@ -267,6 +268,14 @@ function llama_report_targets(
             );
 
         if ($isArea) {
+            $metadata = json_decode(
+                (string) ($row['map_feature_metadata_json'] ?? '{}'),
+                true
+            );
+            $facilityKind = $featureType === 'facility_area'
+                && is_array($metadata)
+                ? trim((string) ($metadata['facility_kind'] ?? ''))
+                : '';
             $targets[] = [
                 'scope' =>
                     'area',
@@ -282,6 +291,10 @@ function llama_report_targets(
 
                 'map_feature_id' =>
                     (int) $featureId,
+
+                // Server-owned classification, not browser input.
+                'feature_type' => $featureType,
+                'facility_kind' => $facilityKind,
 
                 'label' =>
                     $mappedLabel !== ''

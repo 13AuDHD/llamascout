@@ -131,6 +131,9 @@ jobs:
           node --check js/admin/resources.js
       - name: Run V3 reporting smoke tests
         run: php tools/v3-launch-smoke.php
+
+      - name: Verify facility Area question eligibility
+        run: php tools/tests/facility-area-question-eligibility.php
       - name: Install isolated DOM test dependency
         run: |
           mkdir -p "$RUNNER_TEMP/llama-season-ui-tests"
