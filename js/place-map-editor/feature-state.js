@@ -931,10 +931,9 @@
                         || []
                     );
 
-                    const points =
-                        geometryToPoints(
-                            feature.geometry
-                        );
+                    const points = feature.geometry?.type === 'Point'
+                        ? []
+                        : geometryToPoints(feature.geometry);
 
                     const metadata =
                         metadataForFeature(

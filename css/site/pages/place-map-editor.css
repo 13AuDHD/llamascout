@@ -1264,3 +1264,15 @@
         bottom: 46px;
     }
 }
+
+/* Point-only facilities share the existing Site coordinate form language. */
+.mapped-area-editor-facility-panel {
+    display: grid;
+    gap: 12px;
+}
+.mapped-area-editor-facility-panel[hidden] { display: none; }
+.mapped-area-editor-facility-panel > h3,
+.mapped-area-editor-facility-panel > p { margin: 0; }
+.mapped-area-editor-facility-panel > label { display: grid; gap: 6px; }
+.mapped-area-editor-facility-panel input { width: 100%; box-sizing: border-box; }
+.mapped-area-editor-facility-panel [data-facility-pick] { justify-self: start; }

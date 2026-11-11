@@ -162,8 +162,8 @@ require __DIR__ . '/partials/header.php';
             <div>
                 <h2>Edit selection</h2>
                 <p>
-                    Choose what you are editing. Place and Area use boundaries;
-                    Sites use one exact GPS point.
+                    Choose Place boundaries, Area boundaries or facility points,
+                    and exact Site locations.
                 </p>
             </div>
 
@@ -206,6 +206,7 @@ require __DIR__ . '/partials/header.php';
                     <select data-area-feature-type>
                         <option value="camping_area">Camping area</option>
                         <option value="parking_area">Parking area</option>
+                        <option value="facility_area">Facility / amenity point</option>
                     </select>
                 </label>
             </div>
@@ -261,6 +262,19 @@ require __DIR__ . '/partials/header.php';
             </div>
         </div>
 
+        <section class="mapped-area-editor-site-point-panel mapped-area-editor-facility-panel" data-facility-panel hidden>
+            <h3>Facility / amenity</h3>
+            <p>Add a named facility inside this Place, such as a bathhouse, water spigot or laundry building.</p>
+            <label>Facility name
+                <input type="text" maxlength="120" placeholder="Bathhouse A" data-facility-name>
+            </label>
+            <div class="mapped-area-editor-site-coordinates">
+                <label>Latitude <input type="text" inputmode="decimal" data-facility-latitude></label>
+                <label>Longitude <input type="text" inputmode="decimal" data-facility-longitude></label>
+            </div>
+            <button type="button" data-facility-pick>Place Area point on map</button>
+            <p class="mapped-area-editor-help" data-facility-status role="status">Tap the map, or enter the GPS coordinates.</p>
+        </section>
         <div class="mapped-area-editor-site-point-panel" data-site-point-panel hidden>
             <div class="mapped-area-editor-object-fields">
                 <div class="mapped-area-editor-object-identity">
@@ -404,6 +418,7 @@ require __DIR__ . '/partials/header.php';
                 <button type="button" class="is-danger" data-delete-feature disabled>Delete</button>
                 <button type="button" class="is-primary" data-save-feature disabled>Save changes</button>
                 <button type="button" class="is-primary" data-save-site-point hidden>Save Site point</button>
+                <button type="button" class="is-primary" data-facility-save hidden>Save Area point</button>
             </div>
         </div>
     </section>

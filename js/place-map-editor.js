@@ -77,6 +77,17 @@
         editor.querySelector(
             '[data-site-point-panel]'
         );
+    const facilityPanel = editor.querySelector('[data-facility-panel]');
+    const facilityName = editor.querySelector('[data-facility-name]');
+    const facilityLat = editor.querySelector('[data-facility-latitude]');
+    const facilityLng = editor.querySelector('[data-facility-longitude]');
+    const facilityPickButton = editor.querySelector('[data-facility-pick]');
+    const facilitySaveButton = editor.querySelector('[data-facility-save]');
+    const facilityStatus = editor.querySelector('[data-facility-status]');
+    let facilityPicking = false;
+    let facilityPreview = null;
+    const facilityMode = () => editorMode === 'area'
+        && areaFeatureType?.value === 'facility_area';
 
     const shapeTools =
         editor.querySelector(
@@ -402,6 +413,7 @@
             fillColor:
                 '#2563eb'
         },
+        facility_area: { color: '#7931a9', fillColor: '#7931a9' },
 
         camping_site: {
             color:
@@ -1172,6 +1184,47 @@
             syncSiteTarget();
         };
 
+    const clearFacilityPreview = () => {
+        if (facilityPreview) map.removeLayer(facilityPreview);
+        facilityPreview = null;
+    };
+    const setFacilityPoint = (lat, lng, pan = false) => {
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)
+            || lat < -90 || lat > 90 || lng < -180 || lng > 180
+            || (lat === 0 && lng === 0)) {
+            setStatus('Enter a valid Area GPS point.', true);
+            return;
+        }
+        facilityLat.value = lat.toFixed(7);
+        facilityLng.value = lng.toFixed(7);
+        clearFacilityPreview();
+        facilityPreview = L.circleMarker([lat, lng], {
+            radius: 9, color: '#7931a9', weight: 3,
+            fillColor: '#7931a9', fillOpacity: .88
+        }).addTo(map);
+        facilityPreview.bringToFront();
+        if (pan) map.setView([lat, lng], Math.max(17, map.getZoom()));
+        setDirty(true);
+        facilityStatus.textContent = 'Point selected. Save when ready.';
+    };
+    const syncFacilityControls = () => {
+        const facility = facilityMode();
+        if (facilityPanel) facilityPanel.hidden = !facility;
+        if (polygonEditor) polygonEditor.hidden = editorMode === 'site' || facility;
+        if (shapeTools) shapeTools.hidden = editorMode === 'site' || facility;
+        for (const btn of [drawButton, finishButton, undoButton, saveButton, newButton]) {
+            if (btn) btn.hidden = editorMode === 'site' || facility;
+        }
+        if (facilitySaveButton) facilitySaveButton.hidden = !facility;
+        if (!facility) {
+            facilityPicking = false;
+            clearFacilityPreview();
+        }
+        if (facility) {
+            geometry?.clearGeometry();
+            setHelp('Tap Place Area point on map, or enter GPS coordinates.');
+        }
+    };
     const setMode =
         (
             mode,
@@ -1221,6 +1274,7 @@
                 sitePointPanel.hidden =
                     !siteMode;
             }
+            syncFacilityControls();
 
             if (shapeTools) {
                 shapeTools.hidden =
@@ -1348,7 +1402,8 @@
                     : 'Draw the Area boundary inside the Place, or use Device GPS to collect its points.'
             );
 
-            geometry?.renderEditableShape();
+            if (!facilityMode()) geometry?.renderEditableShape();
+            syncFacilityControls();
             renderExistingLayers();
         };
 
@@ -1390,6 +1445,10 @@
                         L.geoJSON(
                             feature.geometry,
                             {
+                                pointToLayer: (_, latlng) => L.circleMarker(latlng, {
+                                    radius: 9, color: '#7931a9', weight: 3,
+                                    fillColor: '#7931a9', fillOpacity: .88
+                                }),
                                 style: {
                                     color:
                                         style.color,
@@ -1411,6 +1470,9 @@
                             map
                         );
 
+                    if (feature.feature_type === 'facility_area') {
+                        layer.bindTooltip(String(feature.label || 'Facility Area'));
+                    }
                     layer.on(
                         'click',
                         () => {
@@ -1646,10 +1708,11 @@
                         return;
                     }
 
-                    geometry
-                        .addGpsPoint(
-                            position
-                        );
+                    if (facilityMode()) {
+                        setFacilityPoint(position.lat, position.lng, true);
+                        return;
+                    }
+                    geometry.addGpsPoint(position);
                 }
         });
 
@@ -1761,6 +1824,7 @@
                     if (
                         type === 'camping_area'
                         || type === 'parking_area'
+                        || type === 'facility_area'
                     ) {
                         if (areaFeatureType) {
                             areaFeatureType.value =
@@ -1778,6 +1842,14 @@
                                     || {}
                             }
                         );
+                        if (type === 'facility_area' && feature.geometry?.type === 'Point') {
+                            const [lng, lat] = feature.geometry.coordinates || [];
+                            if (Number.isFinite(Number(lat)) && Number.isFinite(Number(lng))) {
+                                setFacilityPoint(Number(lat), Number(lng));
+                                setDirty(false);
+                            }
+                            if (facilityName) facilityName.value = String(feature.label || '');
+                        }
                     }
                 },
 
@@ -1867,6 +1939,49 @@
                     ? data.campsites
                     : [];
         };
+
+    const saveFacilityPoint = async () => {
+        if (!facilityMode()) return;
+        const label = String(facilityName?.value || '').trim();
+        const latText = String(facilityLat?.value || '').trim();
+        const lngText = String(facilityLng?.value || '').trim();
+        const lat = Number(latText), lng = Number(lngText);
+        if (!label) {
+            setStatus('Name this facility Area first.', true);
+            facilityName?.focus();
+            return;
+        }
+        if (!latText || !lngText || !Number.isFinite(lat) || !Number.isFinite(lng)
+            || lat < -90 || lat > 90 || lng < -180 || lng > 180
+            || (lat === 0 && lng === 0)) {
+            setStatus('Choose valid Area coordinates.', true);
+            return;
+        }
+        facilitySaveButton.disabled = true;
+        setStatus('Saving Area point...');
+        try {
+            const result = await request({
+                action: 'save',
+                feature_id: selectedFeatureId,
+                feature_type: 'facility_area',
+                label,
+                geometry: {type: 'Point', coordinates: [lng, lat]},
+                area_details: {},
+                source_type: 'manual'
+            });
+            applyApiState(result);
+            clearFacilityPreview();
+            const savedId = Number(result.feature_id || 0);
+            featureState.resetEditor(true);
+            if (savedId) featureState.selectFeature(savedId);
+            setDirty(false);
+            setStatus('Facility Area point saved.');
+        } catch (error) {
+            setStatus(error.message || 'Area point could not be saved.', true);
+        } finally {
+            facilitySaveButton.disabled = false;
+        }
+    };
 
     const saveFeature =
         async () => {
@@ -2345,10 +2460,14 @@
                 return;
             }
 
-            geometry
-                .addManualPoint(
-                    event.latlng
-                );
+            if (facilityMode()) {
+                if (!facilityPicking) return;
+                facilityPicking = false;
+                facilityPickButton?.classList.remove('is-active');
+                setFacilityPoint(event.latlng.lat, event.latlng.lng);
+                return;
+            }
+            geometry.addManualPoint(event.latlng);
         }
     );
 
@@ -2363,6 +2482,23 @@
             'click',
             saveSitePoint
         );
+    facilitySaveButton?.addEventListener('click', saveFacilityPoint);
+    facilityPickButton?.addEventListener('click', () => {
+        if (!facilityMode()) return;
+        facilityPicking = !facilityPicking;
+        facilityPickButton.classList.toggle('is-active', facilityPicking);
+        facilityStatus.textContent = facilityPicking
+            ? 'Tap the facility location on the map.'
+            : 'Point placement canceled.';
+    });
+    for (const field of [facilityLat, facilityLng]) {
+        field?.addEventListener('change', () => {
+            if (String(facilityLat?.value || '').trim() && String(facilityLng?.value || '').trim()) {
+                setFacilityPoint(Number(facilityLat.value), Number(facilityLng.value));
+            }
+        });
+    }
+    facilityName?.addEventListener('input', () => setDirty(true));
 
     deleteButton
         ?.addEventListener(
@@ -2464,11 +2600,9 @@
                     true
                 );
 
-                geometry
-                    .renderEditableShape();
-
-                featureState
-                    .renderFeatureList();
+                syncFacilityControls();
+                if (!facilityMode()) geometry.renderEditableShape();
+                featureState.renderFeatureList();
             }
         );
 
