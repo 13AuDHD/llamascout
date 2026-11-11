@@ -472,6 +472,17 @@ $placeMapEditorUrl =
 
             <button
                 type="button"
+                class="place-map-area-legend-item is-facility-area"
+                data-map-feature-toggle="facility_area"
+                aria-pressed="true"
+                hidden
+            >
+                <i aria-hidden="true"></i>
+                Facilities / amenities
+            </button>
+
+            <button
+                type="button"
                 class="place-map-area-legend-item is-camping-site"
                 data-map-feature-toggle="camping_site"
                 aria-pressed="true"

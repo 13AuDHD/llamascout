@@ -181,6 +181,7 @@ function llama_report_targets(
                AND mf.feature_type IN (
                     'camping_area',
                     'parking_area',
+                    'facility_area',
                     'camping_site'
                )
 
@@ -188,7 +189,8 @@ function llama_report_targets(
                 CASE mf.feature_type
                     WHEN 'camping_area' THEN 0
                     WHEN 'parking_area' THEN 1
-                    ELSE 2
+                    WHEN 'facility_area' THEN 2
+                    ELSE 3
                 END,
                 mf.label,
                 mf.id,
@@ -251,6 +253,7 @@ function llama_report_targets(
                 [
                     'camping_area',
                     'parking_area',
+                    'facility_area',
                 ],
                 true
             );

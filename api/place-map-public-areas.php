@@ -70,6 +70,7 @@ try {
                         [
                             'camping_area',
                             'parking_area',
+                            'facility_area',
                         ],
                         true
                     )
