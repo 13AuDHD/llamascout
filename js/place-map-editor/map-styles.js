@@ -106,6 +106,27 @@
                     activeTileLayer
                         .bringToBack();
 
+                    // Display actionable feedback instead of a silent grey
+                    // map when a third-party imagery server fails.
+                    let tileErrors = 0;
+                    const currentLayer = activeTileLayer;
+                    currentLayer.on('tileerror', () => {
+                        if (currentLayer !== activeTileLayer) return;
+                        tileErrors += 1;
+                        if (tileErrors < 3) return;
+                        const status = editor.querySelector('[data-editor-status]');
+                        if (!status) return;
+                        status.textContent = selectedMapStyle === 'satellite'
+                            ? 'Satellite tiles are unavailable. Try Street or Terrain above.'
+                            : 'Map tiles could not load. Check your connection or try another map style.';
+                    });
+                    currentLayer.on('tileload', () => {
+                        const status = editor.querySelector('[data-editor-status]');
+                        if (status && /tiles are unavailable|tiles could not load/.test(status.textContent)) {
+                            status.textContent = '';
+                        }
+                    });
+
                     editor
                         .querySelectorAll(
                             '[data-map-style]'

@@ -392,6 +392,14 @@
         map
     );
 
+    // Initialize the basemap before geometry/report modules. A failure in
+    // those modules must not leave the entire map as an empty grey box.
+    modules.createMapStyles({
+        editor,
+        map,
+        leaflet: L
+    });
+
     const featureStyles = {
         place_boundary: {
             color:
@@ -1873,13 +1881,6 @@
                     }
                 }
         });
-
-    modules.createMapStyles({
-        editor,
-        map,
-        leaflet:
-            L
-    });
 
     const request =
         async (payload) => {
