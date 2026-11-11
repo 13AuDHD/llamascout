@@ -1772,6 +1772,31 @@ $check('Quick Warnings render only in Site Safety and Hazards', static function 
         'Place-level Quick Warnings summary is still present');
     $assert(strpos($source, $siteWarningText) !== false,
         'Site-level Quick Warnings summary is missing');
+
+    // Public pages must render the derived Quick Warnings section, then
+    // skip the duplicate safety question grid. Other renderer modes must
+    // continue through the standard Safety and Hazards section.
+    $warningBlockEnd = strpos($source, '<?php endif; ?>', $warningPos);
+    $warningRegion = substr(
+        $source, $warningPos,
+        $warningBlockEnd === false ? 0 : $warningBlockEnd - $warningPos
+    );
+    $assert(str_contains($warningRegion, 'continue;'),
+        'Public Site Safety and Hazards still duplicates the Quick Warnings cards');
+    $assert(str_contains($source, "\$placeReportReadMode === 'scout-report'")
+        && $safetyGatePos < $warningBlockEnd,
+        'Safety and Hazards must only be skipped in public Scout Report mode');
+
+    // The source fields remain canonical and available to the Admin form,
+    // and the JS warning UI only shows the section when there is a warning.
+    $groups = llama_report_public_question_groups();
+    $assert(!empty($groups['safety_public'][1]),
+        'Safety and Hazards questions were removed from the canonical registry');
+    $warningsJs = file_get_contents(dirname(__DIR__) . '/js/place-report-warnings.js');
+    $assert(is_string($warningsJs)
+        && str_contains($warningsJs, 'if (!items.length)')
+        && str_contains($warningsJs, 'section.hidden'),
+        'Empty Quick Warnings should remain hidden on the public page');
 });
 
 $check('Final Place Area Site ownership model matches owner review', static function () use ($assert): void {
