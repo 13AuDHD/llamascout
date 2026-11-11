@@ -1360,6 +1360,11 @@ $placeReportVisibleFields = [];
 $hasAdminSitePicker = isset($placeReportSiteOptions);
 
 foreach ($placeReportFields as $fieldKey => $field) {
+    // Area-only questions are rendered under an individual verified Area,
+    // never in the Place or Site report fields.
+    if (($field['report_scope_group'] ?? '') === 'area') {
+        continue;
+    }
     if (isset($placeReportExternalFieldLookup[$fieldKey]) || ($hasAdminSitePicker && $fieldKey === 'site_number')) {
         continue;
     }

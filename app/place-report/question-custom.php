@@ -111,4 +111,49 @@ function llama_report_register_custom_questions(callable $add): void
             'help' => 'Select only guest-owned camping setups explicitly permitted at this Site. For a furnished cabin or yurt with no camping setup allowed, select Not applicable. Do not infer allowed setups from the accommodation type or RV suitability.',
         ])
     );
+
+    /*
+     * Area-only facility observations. These use the canonical scoped
+     * answer store, and the saved facility_kind determines eligibility.
+     */
+    $facilityBase = [
+        'scope_group' => 'area',
+        'layout_section' => 'place',
+        'layout_group' => 'shared_amenities',
+        'report_group' => 'amenities',
+        'report_visibility' => 'community',
+        'scoped_only_storage' => true,
+        'counts_toward_completion' => false,
+        'points_categories' => [],
+        'allow_unknown' => true,
+        'applicable_if' => [],
+    ];
+    $allFacilities = [
+        'restroom', 'shower', 'water', 'dump', 'laundry', 'pool',
+        'playground', 'trash', 'firewood', 'propane', 'recreation', 'other',
+    ];
+    $facilityDefinitions = [
+        ['facility_condition', 'Facility condition', 'rating', $allFacilities, [], 'Condition of this specific facility, from 1 (poor) to 5 (excellent).'],
+        ['facility_accessible', 'Accessible facility?', 'tri', $allFacilities, [], 'Is this individual facility physically accessible?'],
+        ['facility_cleanliness', 'Cleanliness', 'rating', ['restroom', 'shower', 'laundry', 'pool'], [], 'Rate cleanliness, from 1 (poor) to 5 (excellent).'],
+        ['facility_toilet_type', 'Toilet type', 'select', ['restroom'], ['flush' => 'Flush', 'vault' => 'Vault / pit', 'composting' => 'Composting', 'portable' => 'Portable'], 'Type of toilet available at this bathhouse.'],
+        ['facility_toilet_paper', 'Toilet paper provided?', 'tri', ['restroom'], [], 'Is toilet paper usually supplied?'],
+        ['facility_hot_water', 'Hot water available?', 'tri', ['shower'], [], 'Does this shower provide hot water?'],
+        ['facility_shower_privacy', 'Private shower stalls?', 'tri', ['shower'], [], 'Are individual private stalls available?'],
+        ['facility_water_potable', 'Potable drinking water?', 'tri', ['water'], [], 'Only mark Yes when the water is confirmed potable.'],
+        ['facility_water_threaded', 'Threaded hose connection?', 'tri', ['water'], [], 'Does the spigot have a threaded hose connector?'],
+        ['facility_water_flow', 'Water flow', 'select', ['water'], ['weak' => 'Weak', 'moderate' => 'Moderate', 'strong' => 'Strong'], 'Observed flow from the spigot.'],
+        ['facility_washers_operational', 'Working washers available?', 'tri', ['laundry'], [], 'Are working washing machines available?'],
+        ['facility_dryers_operational', 'Working dryers available?', 'tri', ['laundry'], [], 'Are working clothes dryers available?'],
+    ];
+    foreach ($facilityDefinitions as $i => [$key, $label, $type, $kinds, $options, $help]) {
+        $meta = array_merge($facilityBase, [
+            'facility_kinds' => $kinds,
+            'layout_order' => 200 + $i,
+            'report_order' => 200 + $i,
+            'help' => $help,
+        ]);
+        if ($options !== []) $meta['options'] = $options;
+        $add($key, $label, 'amenities', $type, 'facility.' . $key, $meta);
+    }
 }
