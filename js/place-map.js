@@ -802,16 +802,8 @@
                 type
             );
             if (feature.feature_type === 'facility_area' && feature.facility_kind) {
-                const kindNames = {
-                    restroom: 'Restroom / bathhouse', shower: 'Shower facility',
-                    water: 'Water spigot / fill', dump: 'Dump station',
-                    laundry: 'Laundry', pool: 'Swimming pool',
-                    playground: 'Playground', trash: 'Trash / recycling',
-                    firewood: 'Firewood', propane: 'Propane',
-                    recreation: 'Recreation facility', other: 'Other facility'
-                };
                 const kind = document.createElement('span');
-                kind.textContent = kindNames[feature.facility_kind] || 'Facility';
+                kind.textContent = String(feature.facility_kind_label || 'Facility');
                 wrapper.append(kind);
             }
 
