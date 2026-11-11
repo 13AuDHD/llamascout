@@ -1277,6 +1277,13 @@ foreach (
                 data-report-warning-grid
             ></div>
         </section>
+        <?php
+        // The public hazard answers are represented by the derived Quick
+        // Warnings cards above. Keep the complete Safety and Hazards
+        // question inventory in the contributor and Admin views only.
+        // Do not remove answers or change the shared warning rules.
+        continue;
+        ?>
     <?php endif; ?>
 
     <section
