@@ -117,7 +117,20 @@ if ($placeReportReadMode === 'scout-report') {
     $publicReportGroups['location'][1] = array_diff($publicReportGroups['location'][1], ['activities']);
 
     $placeReportSections = [];
+    // Public Scout Report section icons. All names reference inline SVG
+    // assets rendered by llama_icon(), so currentColor follows light/dark mode.
     $publicGroupIcons = [
+        'basic' => 'info-circle',
+        'location' => 'bullseye',
+        'amenities' => 'toilet-paper',
+        'operating' => 'clock',
+        'pricing' => 'credit-card',
+        'road_conditions' => 'road',
+        'vehicle_access' => 'car',
+        'seasonal_access' => 'snowflake',
+        'gate_access' => 'gate',
+        'nearest_services' => 'wrench',
+        'rules_public' => 'file-text',
         'connectivity_public' => 'antenna-bars-5',
         'daytime' => 'sun',
         'nighttime' => 'moon-stars',

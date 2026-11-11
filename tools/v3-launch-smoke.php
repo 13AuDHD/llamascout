@@ -1354,6 +1354,52 @@ $check('Site Accessibility dependencies match owner review', static function () 
     }
 });
 
+$check('Parking clearance Unlimited and public Scout Report section icons', static function () use ($assert): void {
+    $fields = llama_place_report_fields();
+    $parkingOptions = (array) ($fields['parking_clearance_feet']['options'] ?? []);
+    $assert(($parkingOptions['unlimited'] ?? null) === 'Unlimited',
+        'Parking clearance must offer Unlimited without changing its existing choices');
+    $assert(($parkingOptions['30'] ?? null) === '30 ft',
+        'Existing parking-clearance measurements must remain available');
+
+    $publicSource = file_get_contents(dirname(__DIR__) . '/partials/place-report/read-only.php');
+    $assert(is_string($publicSource), 'Public Scout Report renderer missing');
+    $sectionIcons = [
+        'basic' => 'info-circle',
+        'location' => 'bullseye',
+        'amenities' => 'toilet-paper',
+        'operating' => 'clock',
+        'pricing' => 'credit-card',
+        'road_conditions' => 'road',
+        'vehicle_access' => 'car',
+        'seasonal_access' => 'snowflake',
+        'rules_public' => 'file-text',
+        'nearest_services' => 'wrench',
+        'gate_access' => 'gate',
+        'connectivity_public' => 'antenna-bars-5',
+        'daytime' => 'sun',
+        'nighttime' => 'moon-stars',
+    ];
+    foreach ($sectionIcons as $group => $icon) {
+        $assert(str_contains($publicSource, "'" . $group . "' => '" . $icon . "'"),
+            'Incorrect public icon mapping for ' . $group);
+        $assetPath = dirname(__DIR__) . '/assets/icons/' . $icon . '.svg';
+        $assert(is_file($assetPath), 'Missing SVG: ' . $icon);
+        $asset = file_get_contents($assetPath);
+        $assert(is_string($asset) && str_contains($asset, '<svg'),
+            'Invalid SVG asset: ' . $icon);
+    }
+    foreach (['gate', 'wrench'] as $newIcon) {
+        $asset = (string) file_get_contents(
+            dirname(__DIR__) . '/assets/icons/' . $newIcon . '.svg'
+        );
+        $assert(str_contains($asset, 'fill="currentColor"'),
+            'Uploaded icon does not inherit light/dark text color: ' . $newIcon);
+        $assert(!preg_match('/fill=["\\x27](?:#000(?:000)?|black)["\\x27]/i', $asset),
+            'Uploaded icon retains hardcoded black fill: ' . $newIcon);
+    }
+});
+
 $check('Public Scout Report uses approved icons and note card widths', static function () use ($assert): void {
     $fields = llama_place_report_fields();
     $assert(empty($fields['connectivity_services_tested']['wide']),
