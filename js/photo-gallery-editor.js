@@ -53,7 +53,13 @@
                 img.classList.add('is-preview-broken');
                 unavailable.hidden = false;
             });
-            img.src = String(photo.url || photo.src || '');
+            const photoUrl = String(photo.url || photo.src || '').trim();
+            if (photoUrl) {
+                img.src = photoUrl;
+            } else {
+                img.classList.add('is-preview-broken');
+                unavailable.hidden = false;
+            }
 
             const hero = document.createElement('span');
             hero.className = 'admin-attached-photo-hero';
@@ -100,7 +106,7 @@
         const render = photos => {
             grid.replaceChildren();
             (Array.isArray(photos) ? photos : [])
-                .filter(p => p && Number(p.id) > 0 && (p.url || p.src))
+                .filter(p => p && Number(p.id) > 0)
                 .forEach(p => grid.append(createCard(p)));
             refreshHero();
         };
