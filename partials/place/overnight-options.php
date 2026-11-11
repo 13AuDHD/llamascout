@@ -270,6 +270,7 @@ foreach ($stayFeatures as $feature) {
             [
                 'camping_area',
                 'parking_area',
+                'facility_area',
             ],
             true
         )
@@ -289,11 +290,8 @@ foreach ($stayFeatures as $feature) {
             ?? ''
         );
 
-    $overnight =
-        (string) (
-            $details['overnight_status']
-            ?? ''
-        );
+    $overnight = $featureType === 'facility_area'
+        ? '' : (string) ($details['overnight_status'] ?? '');
 
     /*
      * Every mapped Area is a Place child. Do not hide day-use parking Areas
@@ -318,10 +316,14 @@ foreach ($stayFeatures as $feature) {
             )
         );
 
-    $areaKind =
-        $featureType === 'camping_area'
-            ? 'Camping area'
-            : 'Parking area';
+    $facilityKind = $featureType === 'facility_area'
+        ? trim((string) ($feature['metadata']['facility_kind'] ?? ''))
+        : '';
+    $areaKind = match ($featureType) {
+        'camping_area' => 'Camping area',
+        'parking_area' => 'Parking area',
+        default => llama_place_facility_kind_options()[$facilityKind] ?? 'Facility',
+    };
 
     if ($name === '') {
         $name =
@@ -335,11 +337,8 @@ foreach ($stayFeatures as $feature) {
         $areaKind,
     ];
 
-    $fee =
-        (string) (
-            $details['fee_status']
-            ?? ''
-        );
+    $fee = $featureType === 'facility_area'
+        ? '' : (string) ($details['fee_status'] ?? '');
 
     $feeLabel =
         match ($fee) {
@@ -416,7 +415,9 @@ foreach ($stayFeatures as $feature) {
                     string $fieldKey
                 ) use (
                     $stayReportFields,
-                    $stayViewerHasCompleteAccess
+                    $stayViewerHasCompleteAccess,
+                    $featureType,
+                    $facilityKind
                 ): bool {
                     $field =
                         $stayReportFields[
@@ -425,6 +426,12 @@ foreach ($stayFeatures as $feature) {
                         ?? null;
 
                     return is_array($field)
+                        && llama_report_question_applies_to_area_target($field, [
+                            'scope' => 'area',
+                            'source' => 'map_feature',
+                            'feature_type' => $featureType,
+                            'facility_kind' => $facilityKind,
+                        ])
                         && in_array(
                             'area',
                             (array) (
@@ -580,10 +587,12 @@ foreach ($stayFeatures as $feature) {
         'name' =>
             $name,
 
-        'kind' =>
-            $featureType === 'camping_area'
-                ? 'camping'
-                : 'parking',
+        'kind' => match ($featureType) {
+            'camping_area' => 'camping',
+            'parking_area' => 'parking',
+            default => 'facility',
+        },
+        'facility_kind' => $facilityKind,
 
         'summary_parts' =>
             $summaryParts,
@@ -620,6 +629,20 @@ $hasSupplementalStayOptions =
 ?>
 
 
+<?php
+/* Labels, order, and answer options come exclusively from canonical fields. */
+$stayFacilityQuestions = [];
+foreach ($stayReportFields as $fieldKey => $field) {
+    if (($field['report_scope_group'] ?? '') !== 'area'
+        || empty($field['facility_kinds'])) continue;
+    $stayFacilityQuestions[$fieldKey] = [
+        'label' => (string) ($field['label'] ?? $fieldKey),
+        'type' => (string) ($field['type'] ?? ''),
+        'options' => (array) ($field['options'] ?? []),
+        'kinds' => array_values((array) $field['facility_kinds']),
+    ];
+}
+?>
 <script src="/js/place-campsite-horizontal-scroll.js"></script>
 
 <link
@@ -641,16 +664,15 @@ $hasSupplementalStayOptions =
     <header class="place-overnight-options-heading">
         <div>
             <p class="eyebrow">
-                Stay and parking options
+                Sites and Areas
             </p>
 
             <h2 id="place-overnight-options-heading">
-                Where you can park or stay
+                Explore this Place
             </h2>
 
             <p class="place-stay-intro">
-                Browse Sites and mapped Areas, including places where overnight
-                use is prohibited. Select an option to see its details in the Scout Report.
+                Select a Site or Area to view its location, photos, and Scout Report.
             </p>
         </div>
 
@@ -734,6 +756,7 @@ $hasSupplementalStayOptions =
                 data-stay-area-id="<?= (int) $area['id'] ?>"
                 data-stay-area-name="<?= place_h($area['name']) ?>"
                 data-stay-area-kind="<?= place_h($area['kind']) ?>"
+                data-stay-facility-kind="<?= place_h($area['facility_kind']) ?>"
                 data-stay-area-meta="<?= place_h(
                     json_encode(
                         $area['summary_parts'],
@@ -793,11 +816,17 @@ $hasSupplementalStayOptions =
 
     </div>
 
+    <div class="place-area-facility-report" data-stay-facility-report hidden></div>
     <div
         class="place-area-photo-detail"
         data-stay-area-photo-detail
         hidden
     ></div>
+    <script type="application/json" data-stay-facility-question-catalog><?= json_encode(
+        $stayFacilityQuestions, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+        | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
+        | JSON_THROW_ON_ERROR
+    ) ?></script>
 
 </section>
 

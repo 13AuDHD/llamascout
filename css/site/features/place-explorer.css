@@ -256,3 +256,24 @@
         grid-auto-columns: minmax(140px, 57%);
     }
 }
+
+/* Facility points share Site/Area explorer cards and retain the Area color. */
+.place-overnight-options .place-campsite-row[data-stay-area-kind="facility"] {
+    border: 2px solid #9765cb;
+}
+.place-overnight-options .place-campsite-row[data-stay-area-kind="facility"].is-selected {
+    box-shadow: inset 0 0 0 1px #9765cb;
+}
+.place-area-facility-report {
+    margin-top: 18px;
+    padding-left: 12px;
+    border-left: 3px solid #9765cb;
+}
+.place-area-facility-report h3 { margin: 0 0 12px; }
+.place-facility-report-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+    gap: 12px;
+}
+.place-facility-report-card { display: flex; flex-direction: column; gap: 8px; padding: 14px; }
+.place-facility-question-answer { font-size: 1rem; font-weight: 650; }

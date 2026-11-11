@@ -73,6 +73,10 @@ on:
       - 'tools/v3-launch-smoke.php'
       - 'app/place-report.php'
       - 'app/place-report/**'
+      - 'partials/place/overnight-options.php'
+      - 'js/place-stay-selection-map.js'
+      - 'js/place-explorer.js'
+      - 'css/site/features/place-explorer.css'
   workflow_dispatch:
 
 permissions:
@@ -110,6 +114,7 @@ jobs:
           php -l api/place-campsites.php
           php -l api/place-campsite-detail.php
           php -l partials/place/scout-report/index.php
+          php -l partials/place/overnight-options.php
           php -l partials/place-report/read-only.php
           php -l partials/place-report/form.php
       - name: JavaScript syntax check
@@ -119,6 +124,7 @@ jobs:
           node --check js/place-report-section-completion.js
           node --check js/place-campsites.js
           node --check js/place-explorer.js
+          node --check js/place-stay-selection-map.js
           node --check js/place-campsite-detail-media.js
           node --check js/place-report-seasons.js
           node --check js/admin/place-season-bulk-status.js
