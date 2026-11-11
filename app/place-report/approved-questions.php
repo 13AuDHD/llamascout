@@ -569,11 +569,13 @@ function llama_place_report_approved_registry_issues(): array
         }
     }
 
-    if ($count !== 269) {
+    // The owner's Nov 10 safety update restores the former Cliff Exposure
+    // question, using its original key, as one additional approved Site slot.
+    if ($count !== 270) {
         $issues[] =
             'Current approved-question projection contains '
             . $count
-            . ' slots; expected 269 (the existing 263 questions plus six approved Place Contact & Links entries).';
+            . ' slots; expected 270 (269 previous approved slots plus restored Cliff Exposure).';
     }
 
     $assignedGroups = [];
