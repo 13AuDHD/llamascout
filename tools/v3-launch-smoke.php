@@ -1591,6 +1591,7 @@ $check('Cliff Exposure and No Cell Service are derived into Site Quick Warnings'
         && !isset($warnings['warning_no_cell_service']),
         'Explicit Unknown answers should not create Cliff Exposure or No Cell Service warnings');
 
+    require_once dirname(__DIR__) . '/app/place-report/scoped-warnings.php';
     $scoped = llama_scoped_report_quick_warnings([
         'cliff_exposure' => '1',
         'connectivity_overall' => '1',
