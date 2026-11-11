@@ -261,7 +261,11 @@ function llama_place_report_add_experience_fields(
             'allow_unknown' => true,
             // Cliff Exposure describes the actual Site, not the entire Place
             // or an Area. Reuse historical key/storage, but restrict new edits.
-            ...($key === 'cliff_exposure' ? ['scope_group' => 'site'] : []),
+            ...($key === 'cliff_exposure' ? [
+                'scope_group' => 'site',
+                'report_group' => 'safety_public',
+                'report_visibility' => 'community',
+            ] : []),
             'points_categories' => ['safety_warnings'],
         ]);
     }
