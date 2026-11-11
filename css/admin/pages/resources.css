@@ -134,3 +134,15 @@
         mask-repeat: no-repeat;
     }
 }
+
+/* Saved and staged Resource photos share one readable content column. */
+.contribution-resource-photos .contribution-section-body {
+    display: grid;
+    min-width: 0;
+    gap: 12px;
+    padding-top: 16px;
+}
+.contribution-resource-photos .admin-resource-gallery,
+.contribution-resource-photos [data-photo-uploader] {
+    min-width: 0;
+}
