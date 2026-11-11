@@ -96,6 +96,7 @@
     min-width: 0;
     padding: 14px;
     border: 1px solid var(--border);
+    border-inline-start: 4px solid var(--resource-accent);
     border-radius: 12px;
     background: var(--surface);
 }
@@ -127,6 +128,16 @@
     margin-bottom: 12px;
     align-items: end;
     gap: 8px;
+}
+
+/* Resource forms use their own accent across Admin and contributor flows. */
+.contribution-resource-panel,
+.resource-editor > .contribution-section {
+    border-inline-start: 4px solid var(--resource-accent);
+}
+
+.resource-editor .admin-photo-gallery .admin-attached-photo {
+    border-inline-start: 4px solid var(--resource-accent);
 }
 
 .resource-editor > .contribution-section {
