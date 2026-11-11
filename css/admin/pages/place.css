@@ -1108,3 +1108,9 @@
     padding: 2px 8px 2px 2px;
     scrollbar-gutter: stable;
 }
+
+/* Area editing is a separate report target. Never show Place/Getting There
+   sections behind its facility questions. */
+.admin-place-report-form [data-report-main-section][data-contribution-inactive] {
+    display: none !important;
+}
