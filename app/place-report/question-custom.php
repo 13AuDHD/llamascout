@@ -8,7 +8,7 @@ declare(strict_types=1);
  * Example:
  * $add('example_key', 'Example question?', 'site_vehicle', 'tri',
  *      'details.example_key', [
- *          'scope_group' => 'site', // place, place_area, site, all
+ *          'scope_group' => 'site', // place, area, place_area, site, all
  *          'layout_section' => 'site',
  *          'layout_group' => 'selection_type',
  *          'layout_order' => 50, // position within the layout group
@@ -26,6 +26,10 @@ declare(strict_types=1);
  * flow-layout.php, or presentation pages.
  *
  * New questions can use V3 storage without a new legacy SQL column.
+ * Use scope_group=area for mapped-Area-only facts, not place_area.
+ * Facility-only applicability also needs the selected Area feature type,
+ * which is not an ordinary Scout Report answer. Do not add type-dependent
+ * facility questions until that context is enforced by all report consumers.
  * Actual page permissions and membership gating remain server-side.
  */
 function llama_report_register_custom_questions(callable $add): void

@@ -149,7 +149,7 @@ function llama_report_question_catalog_issues(): array
         if (!isset($field['scope_group'])) {
             continue; // Existing audited questions use the legacy inventory.
         }
-        if (!in_array((string) $field['scope_group'], ['place', 'place_area', 'site', 'all'], true)) {
+        if (!in_array((string) $field['scope_group'], ['place', 'area', 'place_area', 'site', 'all'], true)) {
             $issues[] = 'Invalid scope_group on question: ' . $key;
         }
         foreach (['layout_section', 'layout_group', 'report_group', 'report_visibility'] as $meta) {

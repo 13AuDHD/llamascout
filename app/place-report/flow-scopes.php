@@ -7,6 +7,7 @@ declare(strict_types=1);
  *
  * Ownership groups:
  * - place: Place only.
+ * - area: A mapped Area only. Never belongs to a Place or Site.
  * - place_area: Place or Area. A Site may inherit the nearest recorded value
  *   but cannot record its own override for this field.
  * - site: Site only. Never inherits from Place or Area.
@@ -20,6 +21,7 @@ function llama_place_report_scope_groups(): array
     return [
         'place' => ['place'],
         'place_area' => ['place', 'area'],
+        'area' => ['area'],
         'site' => ['site'],
         'all' => ['place', 'area', 'site'],
     ];
@@ -544,7 +546,7 @@ function llama_place_report_apply_flow_scopes(array &$fields): void
             $group;
 
         $field['scope_inheritance'] =
-            $group === 'site'
+            in_array($group, ['site', 'area'], true)
                 ? 'none'
                 : 'nearest_recorded';
 
