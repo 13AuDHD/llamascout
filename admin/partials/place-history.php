@@ -242,7 +242,9 @@ declare(strict_types=1);
                 (<?= count($placeAuditHistory) ?>)
             </h3>
 
-            <div class="admin-place-history-list">
+            <div class="admin-place-history-list admin-place-audit-scroll"
+                 role="region" aria-label="Admin audit history, scroll for older actions"
+                 tabindex="0">
                 <?php foreach ($placeAuditHistory as $audit): ?>
                     <article class="admin-place-history-card">
                         <header>

@@ -77,6 +77,12 @@ on:
       - 'js/place-stay-selection-map.js'
       - 'js/place-explorer.js'
       - 'css/site/features/place-explorer.css'
+      - 'admin/partials/place-summary-report.php'
+      - 'admin/partials/place-report-facility-questions.php'
+      - 'admin/partials/place-history.php'
+      - 'js/admin/place-map.js'
+      - 'js/contribution-tabs.js'
+      - 'css/admin/pages/place.css'
   workflow_dispatch:
 
 permissions:
