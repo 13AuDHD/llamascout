@@ -1051,3 +1051,60 @@
         padding: 12px;
     }
 }
+
+/* Hide unrelated facility types and replace the always-visible guides with
+   small on-demand help popups. Admin Place loads this CSS independently. */
+.admin-place-report-form .admin-facility-questions[hidden],
+.admin-place-report-form .admin-facility-question[hidden] {
+    display: none !important;
+}
+.admin-place-report-form .admin-facility-question-heading {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+.admin-facility-question-help {
+    position: relative;
+    display: inline-flex;
+    flex: 0 0 auto;
+}
+.admin-facility-question-help summary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 19px;
+    height: 19px;
+    border-radius: 50%;
+    color: var(--text-muted);
+    cursor: pointer;
+    list-style: none;
+}
+.admin-facility-question-help summary::-webkit-details-marker { display: none; }
+.admin-facility-question-help summary:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+.admin-facility-question-help-popup {
+    position: absolute;
+    z-index: 100;
+    top: calc(100% + 8px);
+    left: -6px;
+    display: block;
+    width: min(240px, 70vw);
+    padding: 9px 11px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--background);
+    color: var(--text);
+    font-size: .78rem;
+    font-weight: 400;
+    line-height: 1.45;
+    box-shadow: 0 5px 22px rgba(0, 0, 0, .3);
+}
+.admin-place-audit-scroll {
+    max-height: 380px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 2px 8px 2px 2px;
+    scrollbar-gutter: stable;
+}

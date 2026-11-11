@@ -29,7 +29,17 @@ $esc = static fn (string $s): string => htmlspecialchars($s, ENT_QUOTES, 'UTF-8'
         <label class="contribution-field admin-facility-question"
                data-report-field="<?= $esc($key) ?>"
                data-facility-kinds="<?= $esc(implode(',', (array) $field['facility_kinds'])) ?>" hidden>
-            <span class="place-report-field-label"><?= $esc((string) $field['label']) ?></span>
+            <span class="place-report-field-label admin-facility-question-heading">
+                <?= $esc((string) $field['label']) ?>
+                <?php if (!empty($field['help'])): ?>
+                    <details class="admin-facility-question-help">
+                        <summary aria-label="Help for <?= $esc((string) $field['label']) ?>">
+                            <?= llama_icon('info') ?>
+                        </summary>
+                        <span class="admin-facility-question-help-popup"><?= $esc((string) $field['help']) ?></span>
+                    </details>
+                <?php endif; ?>
+            </span>
             <select name="<?= $esc($key) ?>">
                 <option value="">Unanswered</option>
                 <option value="<?= $esc(llama_place_report_unknown_token()) ?>">Unknown</option>
@@ -37,9 +47,6 @@ $esc = static fn (string $s): string => htmlspecialchars($s, ENT_QUOTES, 'UTF-8'
                     <option value="<?= $esc((string) $value) ?>"><?= $esc((string) $label) ?></option>
                 <?php endforeach; ?>
             </select>
-            <?php if (!empty($field['help'])): ?>
-                <small><?= $esc((string) $field['help']) ?></small>
-            <?php endif; ?>
         </label>
     <?php endforeach; ?>
     </div>

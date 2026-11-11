@@ -43,7 +43,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 for (const group of groups) {
                     const site = group.dataset.reportMainSection === 'site';
                     group.toggleAttribute('data-contribution-inactive',
-                        site ? mode !== 'site' : mode === 'site');
+                        mode === 'area' && Boolean(adminAreaPicker)
+                            || (site ? mode !== 'site' : mode === 'site'));
                     if (site && mode === 'site') group.open = true;
                 }
             }

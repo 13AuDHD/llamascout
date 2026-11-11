@@ -244,6 +244,14 @@
     ).style.zIndex =
         '430';
 
+    // Keep facility points aligned with the shared Resource/Area purple.
+    const rootStyles = window.getComputedStyle?.(document.documentElement);
+    const resourceColor = (
+        rootStyles?.getPropertyValue('--resource-color')
+        || rootStyles?.getPropertyValue('--resource_color')
+        || '#9765cb'
+    ).trim();
+
     const styleFor =
         (
             type,
@@ -254,7 +262,10 @@
                     '#22c55e',
 
                 camping_area:
-                    '#a855f7',
+                    resourceColor,
+
+                facility_area:
+                    resourceColor,
 
                 parking_area:
                     '#2563eb',
@@ -298,6 +309,7 @@
             if (
                 type === 'camping_area'
                 || type === 'parking_area'
+                || type === 'facility_area'
             ) {
                 return 'llama-area';
             }
@@ -346,6 +358,14 @@
                                 type,
                                 false
                             ),
+
+                        // Facility points use the same purple identity as
+                        // Area polygons, not Leaflet's default blue map pin.
+                        pointToLayer: (_, latLng) => L.circleMarker(latLng, {
+                            pane: paneFor(type),
+                            radius: 8,
+                            ...styleFor(type, false),
+                        }),
 
                         bubblingMouseEvents:
                             false

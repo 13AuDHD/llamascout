@@ -68,11 +68,6 @@ $placeReportSelectedSite = isset($placeReportSiteOptions[$requestedSite]) ? $req
 <div class="contribution-tab-shell" data-contribution-tabs data-contribution-split
     data-contribution-initial="<?= ($_GET['mode'] ?? '') === 'area' ? 'area' : ($placeReportSelectedSite !== '' ? 'site' : 'place') ?>">
     <?php require dirname(__DIR__, 2) . '/partials/place-report/contribution-tabs.php'; ?>
-    <section class="contribution-area-panel" data-contribution-area-tools hidden>
-        <h3>Edit this Place's Areas</h3>
-        <p>Select an existing Area in the Report area picker below to edit its answers. Use Edit Map to draw or change Area boundaries.</p>
-        <a href="https://llamascout.com/place-map-editor.php?slug=<?= rawurlencode((string) $place['slug']) ?>&amp;from=admin">Edit Map</a>
-    </section>
 <form method="post" class="admin-place-report-form place-report-form" id="place-report" data-contribution-report
     <?php if ($placeReportSelectedSite !== ''): ?>data-admin-site-report-id="<?= $requestedSiteId ?>"<?php endif; ?>>
     <input type="hidden" name="csrf_token" value="<?= $e(moderation_csrf_token()) ?>">
