@@ -35,6 +35,63 @@
         section.querySelector(
             '[data-stay-area-photo-detail]'
         );
+    const facilityDetail = section.querySelector('[data-stay-facility-report]');
+    let facilityQuestions = {};
+    try {
+        facilityQuestions = JSON.parse(section.querySelector(
+            '[data-stay-facility-question-catalog]')?.textContent || '{}');
+    } catch (_) {
+        facilityQuestions = {};
+    }
+    const renderFacilityDetail = row => {
+        if (!facilityDetail) return;
+        facilityDetail.replaceChildren();
+        facilityDetail.hidden = true;
+        if (row?.dataset.stayAreaKind !== 'facility') return;
+        let values = {}, sources = {};
+        try {
+            values = JSON.parse(row.dataset.stayReportValues || '{}');
+            sources = JSON.parse(row.dataset.stayReportSources || '{}');
+        } catch (_) {
+            return;
+        }
+        const kind = row.dataset.stayFacilityKind || '';
+        const heading = document.createElement('h3');
+        heading.textContent = 'Facility Scout Report';
+        const grid = document.createElement('div');
+        grid.className = 'place-facility-report-grid';
+        for (const [key, field] of Object.entries(facilityQuestions)) {
+            if (!field.kinds?.includes(kind)
+                || !Object.prototype.hasOwnProperty.call(values, key)) continue;
+            const value = values[key];
+            if (value == null || value === '') continue;
+            const card = document.createElement('div');
+            card.className = 'scout-report-item place-facility-report-card';
+            const label = document.createElement('strong');
+            label.textContent = String(field.label || key);
+            const display = document.createElement('span');
+            display.className = 'place-facility-question-answer';
+            const raw = String(value);
+            display.textContent = field.type === 'tri'
+                ? raw === '1' ? 'Yes' : raw === '0' ? 'No' : raw
+                : field.type === 'rating' && /^[1-5]$/.test(raw)
+                    ? raw + ' / 5' : String(field.options?.[raw] || raw);
+            card.append(label, display);
+            const source = sources[key];
+            if (source && typeof source === 'object') {
+                const citation = document.createElement('small');
+                citation.className = 'scout-report-answer-source';
+                citation.textContent = [source.dateLabel, source.label]
+                    .filter(Boolean).join(' · ');
+                if (citation.textContent) card.append(citation);
+            }
+            grid.append(card);
+        }
+        const empty = document.createElement('p');
+        empty.textContent = 'No facility-specific answers have been reported yet.';
+        facilityDetail.append(heading, grid.childElementCount ? grid : empty);
+        facilityDetail.hidden = false;
+    };
 
     const canOpenAreaPhotos =
         section.dataset
@@ -1466,6 +1523,7 @@
              * Area rows use the server-resolved Area -> Place effective values.
              */
             if (isArea) {
+                renderFacilityDetail(row);
                 applyAreaReport(
                     row
                 );
@@ -1476,6 +1534,7 @@
                 );
             } else {
                 hideAreaPhotos();
+                renderFacilityDetail(null);
             }
 
             if (isMapSite) {
@@ -1570,6 +1629,7 @@
                 && kind !== 'parking'
             ) {
                 hideAreaPhotos();
+                renderFacilityDetail(null);
             }
         }
     );

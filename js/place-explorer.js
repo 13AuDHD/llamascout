@@ -381,6 +381,7 @@
         if (
             featureType !== 'camping_area'
             && featureType !== 'parking_area'
+            && featureType !== 'facility_area'
         ) {
             return;
         }
@@ -425,7 +426,9 @@
                 parking ? 'blue' : 'purple',
                 parking
                     ? 'Parking area'
-                    : 'Camping area'
+                    : featureType === 'facility_area'
+                        ? 'Facility'
+                        : 'Camping area'
             )
         );
 
