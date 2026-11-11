@@ -20,6 +20,9 @@ function llama_place_report_add_experience_fields(
     ] as $key => [$label, $low, $high, $storage]) {
         $add($key, $label, 'connectivity', 'rating', $storage, [
             'allow_unknown' => true,
+            'help' => $key === 'connectivity_overall'
+                ? 'A rating of 1/5 automatically displays a No cell service Quick Warning on this Site. Satellite internet is measured separately.'
+                : '',
             'low' => $low,
             'high' => $high,
             'points_categories' => ['connectivity'],
