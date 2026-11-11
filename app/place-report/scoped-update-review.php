@@ -1228,16 +1228,27 @@ function llama_scoped_update_approve(
             $copiedPhotoPaths
         );
 
-    moderation_attach_place_photos_transactional(
-        $db,
-        $placeId,
-        (int) $update['user_id'],
-        $photos,
-        '/uploads/place-updates/'
-        . $updateId
-        . '/',
-        $copiedPhotoPaths
-    );
+    if ($scope === 'area' && $source === 'map_feature') {
+        moderation_attach_area_photos_transactional(
+            $db,
+            $placeId,
+            $targetId,
+            (int) $update['user_id'],
+            $updateId,
+            $photos,
+            $copiedPhotoPaths
+        );
+    } else {
+        // Other target types keep their existing publication path.
+        moderation_attach_place_photos_transactional(
+            $db,
+            $placeId,
+            (int) $update['user_id'],
+            $photos,
+            '/uploads/place-updates/' . $updateId . '/',
+            $copiedPhotoPaths
+        );
+    }
 
     $reportPhotoPaths =
         array_slice(

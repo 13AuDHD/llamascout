@@ -594,6 +594,68 @@ function moderation_attach_place_photos_transactional(
 }
 
 
+/**
+ * Publish approved Area evidence into the selected Area gallery.
+ *
+ * Place and Site galleries must never receive Area-specific photographs.
+ * All copies are journaled so the existing rollback cleanup can remove
+ * them if an approval transaction fails.
+ *
+ * @return list<string> Paths added to this Area gallery.
+ */
+function moderation_attach_area_photos_transactional(
+    PDO $db,
+    int $placeId,
+    int $areaId,
+    int $uploadedBy,
+    int $updateId,
+    array $photos,
+    array &$copiedPaths
+): array {
+    require_once __DIR__ . '/place-area-media.php';
+
+    if (!$db->inTransaction()) {
+        throw new RuntimeException('Area photo approval requires an active transaction.');
+    }
+    llama_report_verified_target($db, $placeId, 'area', 'map_feature', $areaId);
+    $newPaths = [];
+    $prefix = '/uploads/place-updates/' . $updateId . '/';
+    foreach ($photos as $photo) {
+        if (!is_array($photo)) {
+            throw new RuntimeException('Invalid Area photo record. Approval was cancelled.');
+        }
+        $source = moderation_photo_path($photo);
+        if ($source === '' || !str_starts_with($source, $prefix)) {
+            throw new RuntimeException(
+                'Area photo is outside its submitted update folder. Approval was cancelled.'
+            );
+        }
+        $copied = moderation_copy_photo_file(
+            $source,
+            '/uploads/places/' . $placeId . '/areas/' . $areaId,
+            (string) ($photo['filename'] ?? '')
+        );
+        if ($copied === null) {
+            throw new RuntimeException('An Area photo file is missing. Approval was cancelled.');
+        }
+
+        // Add the copy to the caller's rollback journal before any insert.
+        $copiedPaths[] = $copied;
+        llama_place_area_image_insert(
+            $db,
+            $placeId,
+            $areaId,
+            $copied,
+            trim((string) ($photo['alt'] ?? '')) ?: null,
+            trim((string) ($photo['caption'] ?? '')) ?: null,
+            $uploadedBy > 0 ? $uploadedBy : null,
+            'Llama Scout'
+        );
+        $newPaths[] = $copied;
+    }
+    return $newPaths;
+}
+
 function moderation_remove_tree(string $absolutePath): void
 {
     if (!is_dir($absolutePath)) {
