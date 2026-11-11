@@ -58,6 +58,19 @@
             '[data-admin-place-map-edit]'
         );
 
+    // Leaflet needs a valid center/zoom before mapped polygons and Site
+    // points are added. Otherwise a Place with saved geometry can fail
+    // before its tiles or map controls finish initializing.
+    const initialLatitude = Number(place.latitude);
+    const initialLongitude = Number(place.longitude);
+    const hasInitialLocation =
+        Number.isFinite(initialLatitude)
+        && Number.isFinite(initialLongitude)
+        && initialLatitude >= -90
+        && initialLatitude <= 90
+        && initialLongitude >= -180
+        && initialLongitude <= 180;
+
     const map =
         L.map(
             mapElement,
@@ -68,6 +81,11 @@
                 maxZoom:
                     20
             }
+        ).setView(
+            hasInitialLocation
+                ? [initialLatitude, initialLongitude]
+                : [0, 0],
+            hasInitialLocation ? 15 : 2
         );
 
     L.control.zoom({
