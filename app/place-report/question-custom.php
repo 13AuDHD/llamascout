@@ -27,9 +27,10 @@ declare(strict_types=1);
  *
  * New questions can use V3 storage without a new legacy SQL column.
  * Use scope_group=area for mapped-Area-only facts, not place_area.
- * Facility-only applicability also needs the selected Area feature type,
- * which is not an ordinary Scout Report answer. Do not add type-dependent
- * facility questions until that context is enforced by all report consumers.
+ * Type-specific facility questions declare facility_kinds as an array of
+ * keys from llama_place_facility_kind_options(). Only verified Area targets
+ * may authorize those answers. UI filtering is a separate implementation
+ * step and must precede exposing any new facility-specific questions.
  * Actual page permissions and membership gating remain server-side.
  */
 function llama_report_register_custom_questions(callable $add): void

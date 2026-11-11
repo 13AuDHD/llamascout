@@ -17,10 +17,14 @@ require_once __DIR__ . '/place-report/report-targets.php';
 require_once __DIR__ . '/place-report/scoped-answers.php';
 
 /** @return array<string, array<string, mixed>> */
-function admin_place_area_fields(): array
+function admin_place_area_fields(?array $verifiedTarget = null): array
 {
+    $fields = $verifiedTarget === null
+        ? llama_report_questions_for_scope('area', true)
+        : llama_report_questions_for_area_target($verifiedTarget);
+
     return array_filter(
-        llama_report_questions_for_scope('area', true),
+        $fields,
         static fn (array $field): bool => empty($field['location_field'])
     );
 }
@@ -73,6 +77,8 @@ function admin_place_area_form_catalog(PDO $db, int $placeId): array
 
         $catalog[] = [
             'id' => 'map_feature:' . $areaId,
+            'feature_type' => (string) ($target['feature_type'] ?? ''),
+            'facility_kind' => (string) ($target['facility_kind'] ?? ''),
             'scope_id' => $areaId,
             'scope_source' => 'map_feature',
             'label' => trim((string) ($target['label'] ?? ''))
@@ -101,7 +107,7 @@ function admin_place_save_area_answers(
     int $areaId,
     array $answers
 ): int {
-    llama_report_verified_target(
+    $verifiedTarget = llama_report_verified_target(
         $db,
         $placeId,
         'area',
@@ -109,7 +115,7 @@ function admin_place_save_area_answers(
         $areaId
     );
 
-    $fields = admin_place_area_fields();
+    $fields = admin_place_area_fields($verifiedTarget);
     $unknownToken = llama_place_report_unknown_token();
     $unansweredToken = llama_place_report_unanswered_token();
     $saved = 0;

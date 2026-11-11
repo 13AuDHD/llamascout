@@ -87,6 +87,16 @@ function llama_scoped_report_save(
     );
 
     $field = llama_scoped_report_field($fieldKey, $scope);
+    if ($scope === 'area' && array_key_exists('facility_kinds', $field)) {
+        $verifiedTarget = llama_report_verified_target(
+            $db, $placeId, 'area', $source, $scopeId
+        );
+        if (!llama_report_question_applies_to_area_target($field, $verifiedTarget)) {
+            throw new InvalidArgumentException(
+                'This facility question does not apply to the selected Area.'
+            );
+        }
+    }
     // Unanswered means no current override. Reuse the single clear path
     // so legacy fallback cannot bring back a supposedly removed answer.
     // Explicit Unknown, false, zero and [] must still be stored as answers.
