@@ -429,6 +429,8 @@ $canEdit =
         $userId,
         'field_report'
     );
+$canEditBoundaries = user_has_role('admin', $userId)
+    || user_has_role('master-scout', $userId);
 
 $mapStats =
     llama_place_map_api_stats(
@@ -710,6 +712,15 @@ try {
                 ?? 0
             );
 
+        $existing = llama_place_map_feature($db, $featureId, $placeId);
+        if ($existing && !$canEditBoundaries
+            && (string) ($existing['feature_type'] ?? '') !== 'facility_area') {
+            llama_place_map_api_json([
+                'ok' => false,
+                'error' => 'Only Master Scouts and Admins may delete boundaries.'
+            ], 403);
+        }
+
         $ownsTransaction =
             !$db->inTransaction();
 
@@ -780,6 +791,20 @@ try {
                 )
             )
         );
+
+    $existingId = (int) ($input['feature_id'] ?? 0);
+    $existing = $existingId > 0
+        ? llama_place_map_feature($db, $existingId, $placeId)
+        : null;
+    if (!$canEditBoundaries && (
+        $featureType !== 'facility_area'
+        || ($existing && (string) ($existing['feature_type'] ?? '') !== 'facility_area')
+    )) {
+        llama_place_map_api_json([
+            'ok' => false,
+            'error' => 'Only Master Scouts and Admins may change boundaries.'
+        ], 403);
+    }
 
     $areaDetails =
         $input['area_details']

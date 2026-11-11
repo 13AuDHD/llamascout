@@ -83,6 +83,8 @@
     const facilityLng = editor.querySelector('[data-facility-longitude]');
     const facilityPickButton = editor.querySelector('[data-facility-pick]');
     const facilitySaveButton = editor.querySelector('[data-facility-save]');
+    const facilityNewButton = editor.querySelector('[data-facility-new]');
+    const canEditBoundaries = editor.dataset.canEditBoundaries === '1';
     const facilityStatus = editor.querySelector('[data-facility-status]');
     let facilityPicking = false;
     let facilityPreview = null;
@@ -1216,6 +1218,11 @@
             if (btn) btn.hidden = editorMode === 'site' || facility;
         }
         if (facilitySaveButton) facilitySaveButton.hidden = !facility;
+        if (!canEditBoundaries && !facility) {
+            for (const btn of [drawButton, finishButton, undoButton, saveButton, deleteButton, newButton]) {
+                if (btn) btn.hidden = true;
+            }
+        }
         if (!facility) {
             facilityPicking = false;
             clearFacilityPreview();
@@ -2483,6 +2490,19 @@
             saveSitePoint
         );
     facilitySaveButton?.addEventListener('click', saveFacilityPoint);
+    facilityNewButton?.addEventListener('click', () => {
+        if (dirty && !window.confirm('Discard unsaved facility changes?')) return;
+        clearFacilityPreview();
+        facilityPicking = false;
+        featureState.resetEditor(true);
+        if (areaFeatureType) areaFeatureType.value = 'facility_area';
+        setMode('area');
+        if (facilityName) facilityName.value = '';
+        if (facilityLat) facilityLat.value = '';
+        if (facilityLng) facilityLng.value = '';
+        setDirty(false);
+        facilityStatus.textContent = 'New facility. Choose a point and give it a name.';
+    });
     facilityPickButton?.addEventListener('click', () => {
         if (!facilityMode()) return;
         facilityPicking = !facilityPicking;

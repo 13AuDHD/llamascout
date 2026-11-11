@@ -74,6 +74,9 @@ $pageStyles = [
     'site/pages/place-map-editor.css',
 ];
 
+$canEditBoundaries = user_has_role('admin', $userId)
+    || user_has_role('master-scout', $userId);
+
 $returnToAdmin = ($_GET['from'] ?? '') === 'admin';
 $returnUrl = $returnToAdmin
     ? 'https://admin.llamascout.com/place.php?id=' . (int) $place['id'] . '#place-report'
@@ -96,6 +99,7 @@ require __DIR__ . '/partials/header.php';
     data-place-longitude="<?= htmlspecialchars((string) $longitude, ENT_QUOTES, 'UTF-8') ?>"
     data-csrf-token="<?= htmlspecialchars(community_csrf_token(), ENT_QUOTES, 'UTF-8') ?>"
     data-map-mode="place"
+    data-can-edit-boundaries="<?= $canEditBoundaries ? '1' : '0' ?>"
 >
     <header class="mapped-area-editor-header">
         <div>
@@ -272,7 +276,10 @@ require __DIR__ . '/partials/header.php';
                 <label>Latitude <input type="text" inputmode="decimal" data-facility-latitude></label>
                 <label>Longitude <input type="text" inputmode="decimal" data-facility-longitude></label>
             </div>
-            <button type="button" data-facility-pick>Place Area point on map</button>
+            <div class="mapped-area-editor-facility-actions">
+                <button type="button" data-facility-pick>Place Area point on map</button>
+                <button type="button" data-facility-new>New facility</button>
+            </div>
             <p class="mapped-area-editor-help" data-facility-status role="status">Tap the map, or enter the GPS coordinates.</p>
         </section>
         <div class="mapped-area-editor-site-point-panel" data-site-point-panel hidden>
