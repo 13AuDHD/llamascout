@@ -122,6 +122,15 @@ try {
                             $feature['area_details']
                             ?? []
                         ),
+                    'facility_kind' =>
+                        (string) (
+                            $feature['metadata']['facility_kind']
+                            ?? ''
+                        ),
+                    'facility_kind_label' =>
+                        llama_place_facility_kind_options()[
+                            (string) ($feature['metadata']['facility_kind'] ?? '')
+                        ] ?? '',
 
                     'geometry' =>
                         (array) (

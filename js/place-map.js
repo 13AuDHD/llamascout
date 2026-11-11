@@ -801,6 +801,11 @@
                 title,
                 type
             );
+            if (feature.feature_type === 'facility_area' && feature.facility_kind) {
+                const kind = document.createElement('span');
+                kind.textContent = String(feature.facility_kind_label || 'Facility');
+                wrapper.append(kind);
+            }
 
             const meta =
                 document.createElement(
