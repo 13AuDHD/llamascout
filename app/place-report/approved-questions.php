@@ -44,7 +44,7 @@ function llama_place_report_approved_question_groups(): array
     'daytime' => ['Daytime', ['daytime_social_interaction','daytime_noise','daytime_traffic','daytime_crowds','daytime_privacy','daytime_light_pollution','daytime_sensory_comfort','felt_safe_daytime_rating']],
     'nighttime' => ['Nighttime', ['nighttime_social_interaction','nighttime_noise','nighttime_traffic','nighttime_crowds','nighttime_privacy','nighttime_light_pollution','nighttime_sensory_comfort','felt_safe_nighttime_rating']],
     'specific_sensory' => ['Specific Sensory', ['sensory_dust_from_traffic','sensory_generator_noise','sensory_aircraft_noise','sensory_train_noise','sensory_dog_barking','sensory_wildlife_noise','sensory_wind_noise','sensory_strong_odors','sensory_smoke_risk','road_exposure','sensory_visual_exposure','sensory_predictability','sensory_summary']],
-    'safety_public' => ['Safety and Hazards', ['warning_possible_downed_trees','fall_hazard','wildlife_risk','wildfire_risk','flash_flood_risk','rockfall_risk','traffic_hazard','warning_blind_turn_traffic_nearby','emergency_access']],
+    'safety_public' => ['Safety and Hazards', ['warning_possible_downed_trees','fall_hazard','cliff_exposure','wildlife_risk','wildfire_risk','flash_flood_risk','rockfall_risk','traffic_hazard','warning_blind_turn_traffic_nearby','emergency_access']],
     'rules_public' => ['Rules and Restrictions', ['overnight_camping_allowed','stay_limit_days','dispersed_camping_allowed','designated_sites_only','pets_allowed','dogs_required_to_be_leashed','generator_restrictions','generator_prohibited','generator_quiet_hours','generator_quiet_hours_begin','generator_quiet_hours_end','generator_run_restrictions','generator_max_run_hours','generator_restriction_details','place_quiet_hours','place_quiet_hours_begin','place_quiet_hours_end','campfire_allowed','collecting_firewood','place_charcoal_grills_allowed','place_propane_fire_pits_allowed','fire_activity_permit_url','current_fire_restrictions_url','food_storage_required','pack_it_in_pack_it_out','place_alcohol_permitted','drone_use_legal','target_shooting_allowed','place_additional_rules']],
     'experience_public' => ['Experience and Recommendations', ['site_rating','condition_rating','location_rating','experience_sunrise_view','experience_sunset_view','experience_overall_scenery','experience_stargazing','experience_sensory_retreat','experience_quiet_evening','recommended_remote_work','recommended_overnight_stop','recommended_extended_stay','recommended_solo_travel','recommended_families','recommended_large_groups','not_recommended_for','experience_summary']],
     'notes_public' => ['Scout Notes', ['scout_note_1','scout_note_2','scout_note_3']],
@@ -569,11 +569,13 @@ function llama_place_report_approved_registry_issues(): array
         }
     }
 
-    if ($count !== 269) {
+    // The owner's Nov 10 safety update restores the former Cliff Exposure
+    // question, using its original key, as one additional approved Site slot.
+    if ($count !== 270) {
         $issues[] =
             'Current approved-question projection contains '
             . $count
-            . ' slots; expected 269 (the existing 263 questions plus six approved Place Contact & Links entries).';
+            . ' slots; expected 270 (269 previous approved slots plus restored Cliff Exposure).';
     }
 
     $assignedGroups = [];

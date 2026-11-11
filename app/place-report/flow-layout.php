@@ -385,6 +385,7 @@ function llama_place_report_layout_assignments(): array
         'site:safety_hazards' => [
             'warning_possible_downed_trees',
             'fall_hazard',
+            'cliff_exposure',
             'wildlife_risk',
             'wildfire_risk',
             'flash_flood_risk',

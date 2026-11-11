@@ -20,6 +20,9 @@ function llama_place_report_add_experience_fields(
     ] as $key => [$label, $low, $high, $storage]) {
         $add($key, $label, 'connectivity', 'rating', $storage, [
             'allow_unknown' => true,
+            'help' => $key === 'connectivity_overall'
+                ? 'A rating of 1/5 automatically displays a No cell service Quick Warning on this Site. Satellite internet is measured separately.'
+                : '',
             'low' => $low,
             'high' => $high,
             'points_categories' => ['connectivity'],
@@ -256,6 +259,13 @@ function llama_place_report_add_experience_fields(
     ] as $key => [$label, $storage]) {
         $add($key, $label, 'safety', 'tri', $storage, [
             'allow_unknown' => true,
+            // Cliff Exposure describes the actual Site, not the entire Place
+            // or an Area. Reuse historical key/storage, but restrict new edits.
+            ...($key === 'cliff_exposure' ? [
+                'scope_group' => 'site',
+                'report_group' => 'safety_public',
+                'report_visibility' => 'community',
+            ] : []),
             'points_categories' => ['safety_warnings'],
         ]);
     }
