@@ -48,21 +48,15 @@ require __DIR__ . '/partials/cell-coverage-update-banner.php';
                 <h1>Know the place before you go.</h1>
 
                 <p class="map-hero-lede">
-                    Looking for your next campsite, an RV-friendly stop, or
-                    simply somewhere to spend the night? Explore campgrounds,
-                    places to park, and helpful stops along the way. Find
-                    practical details like amenities, elevation, and land
-                    management so you can pick a place that fits your plans.
-                    Need water, a dump station, or propane? Look for Resources
-                    on the map, too.
+                    Find campgrounds, places to park, and helpful roadside
+                    stops. Check amenities, elevation, and land management,
+                    or find Resources like water fills, dump stations, fuel,
+                    and laundry.
                 </p>
 
-                <p class="map-hero-lede">
-                    Start exploring below. Search for a town or destination,
-                    use the filters to narrow things down, or move the map to
-                    see what's nearby. No location sharing required. Members
-                    with Complete Access can also explore additional locations
-                    and map layers.
+                <p class="map-hero-tip">
+                    Search for a town, Place, or Resource, or move the map
+                    to explore nearby.
                 </p>
             </div>
 
@@ -399,6 +393,15 @@ require __DIR__ . '/partials/cell-coverage-update-banner.php';
                             <span id="map-location-precision">
                                 Stored Place locations
                             </span>
+                        </div>
+
+                        <div class="map-resource-legend" aria-label="Resource marker icons">
+                            <span class="map-resource-legend-item" title="A water connection or filling point; drinking-water safety is not confirmed"><span class="map-resource-legend-symbol"><i class="map-resource-legend-icon is-service-water_fill" aria-hidden="true"></i></span>Water fill</span>
+                            <span class="map-resource-legend-item" title="RV waste disposal"><span class="map-resource-legend-symbol"><i class="map-resource-legend-icon is-service-dump_station" aria-hidden="true"></i></span>Dump station</span>
+                            <span class="map-resource-legend-item" title="Propane fill"><span class="map-resource-legend-symbol"><i class="map-resource-legend-icon is-service-propane" aria-hidden="true"></i></span>Propane</span>
+                            <span class="map-resource-legend-item" title="Fuel station"><span class="map-resource-legend-symbol"><i class="map-resource-legend-icon is-service-fuel" aria-hidden="true"></i></span>Fuel</span>
+                            <span class="map-resource-legend-item" title="Laundry facilities"><span class="map-resource-legend-symbol"><i class="map-resource-legend-icon is-service-laundry" aria-hidden="true"></i></span>Laundry</span>
+                            <span class="map-resource-legend-item" title="Convenience store or groceries"><span class="map-resource-legend-symbol"><i class="map-resource-legend-icon is-service-groceries" aria-hidden="true"></i></span>Convenience store</span>
                         </div>
                     </div>
 

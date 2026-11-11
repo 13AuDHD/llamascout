@@ -1115,7 +1115,7 @@ popupAnchor: [0, -42]
             className:
                 'map-resource-marker-shell',
             html:
-                `<span class="map-resource-marker ${resourceMarkerServiceClass(resource)}" aria-hidden="true"></span>`,
+                `<span class="map-resource-marker ${resourceTypeClass(resource)} ${resourceMarkerServiceClass(resource)}" aria-hidden="true"></span>`,
             iconSize: [36, 36],
             iconAnchor: [18, 18],
             popupAnchor: [0, -20]

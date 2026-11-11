@@ -8,7 +8,7 @@
 }
 
 .map-eyebrow {
-    margin: 0 0 8px;
+    margin: 0 0 6px;
     color: var(--text-muted);
     font-size: .76rem;
     font-weight: 900;
@@ -17,13 +17,13 @@
 }
 
 .map-hero {
-    padding: 48px 0 30px;
+    padding: 26px 0 12px;
 }
 
 .map-hero-grid {
     display: grid;
     grid-template-columns: minmax(0, 1.4fr) minmax(290px, .6fr);
-    gap: 40px;
+    gap: 20px;
     align-items: end;
 }
 
@@ -34,16 +34,24 @@
 .map-hero h1 {
     max-width: 850px;
     margin: 0;
-    font-size: clamp(2.4rem, 5vw, 4.9rem);
+    font-size: clamp(2.25rem, 4.7vw, 4.5rem);
     line-height: 1;
     letter-spacing: -.05em;
 }
 
 .map-hero-lede {
-    max-width: 760px;
-    margin: 18px 0 0;
+    max-width: 860px;
+    margin: 10px 0 0;
     color: var(--text-muted);
-    line-height: 1.7;
+    line-height: 1.5;
+}
+
+.map-hero-tip {
+    max-width: 860px;
+    margin: 7px 0 0;
+    color: var(--text-muted);
+    font-size: .9rem;
+    line-height: 1.45;
 }
 
 .map-privacy-note {
@@ -74,7 +82,7 @@
 }
 
 .map-explorer {
-    padding: 16px 0 60px;
+    padding: 0 0 60px;
 }
 
 .map-toolbar {
@@ -792,7 +800,16 @@
 
 @media (max-width: 680px) {
     .map-hero {
-        padding-top: 34px;
+        padding: 12px 0 10px;
+    }
+
+    .map-hero h1 {
+        font-size: clamp(2rem, 8vw, 2.5rem);
+        line-height: 1.08;
+    }
+
+    .map-hero-lede {
+        font-size: .95rem;
     }
 
     .map-toolbar {
@@ -800,7 +817,15 @@
     }
 
     .map-search {
-        flex-basis: 100%;
+        flex: 1 1 150px;
+        min-width: 0;
+        min-height: 44px;
+    }
+
+    .map-filter-toggle {
+        flex: 0 0 auto;
+        min-height: 44px;
+        padding: 9px 11px;
     }
 
     .map-filter-panel {
@@ -1205,7 +1230,7 @@ html[data-reduced-motion="true"] .map-locate-button.is-locating .map-locate-icon
 .map-result-card-fallback.is-resource.is-convenience_store,
 .map-popup-fallback.is-resource.is-convenience_store,
 .map-resource-marker.is-convenience_store {
-    --resource-icon: url('/assets/icons/building-store.svg');
+    --resource-icon: url('/assets/icons/basket.svg');
 }
 
 .map-result-card-fallback.is-resource.is-water_station,
@@ -1217,7 +1242,7 @@ html[data-reduced-motion="true"] .map-locate-button.is-locating .map-locate-icon
 .map-result-card-fallback.is-resource.is-dump_station,
 .map-popup-fallback.is-resource.is-dump_station,
 .map-resource-marker.is-dump_station {
-    --resource-icon: url('/assets/icons/trash.svg');
+    --resource-icon: url('/assets/icons/dump-station.svg');
 }
 
 .map-result-card-fallback.is-resource.is-restroom_facility,
@@ -1235,7 +1260,7 @@ html[data-reduced-motion="true"] .map-locate-button.is-locating .map-locate-icon
 .map-result-card-fallback.is-resource.is-laundry,
 .map-popup-fallback.is-resource.is-laundry,
 .map-resource-marker.is-laundry {
-    --resource-icon: url('/assets/icons/basket.svg');
+    --resource-icon: url('/assets/icons/wash-machine.svg');
 }
 
 .map-result-card-fallback.is-resource.is-propane_fill,
@@ -1264,12 +1289,14 @@ html[data-reduced-motion="true"] .map-locate-button.is-locating .map-locate-icon
 
 /* Resource marker icon is driven by the selected Service, not Resource type. */
 .map-resource-marker.is-service-potable_water,
-.map-resource-marker.is-service-water_fill {
+.map-resource-marker.is-service-water_fill,
+.map-resource-legend-icon.is-service-water_fill {
     --resource-icon: url('/assets/icons/at-water-tap.svg');
 }
 
-.map-resource-marker.is-service-dump_station {
-    --resource-icon: url('/assets/icons/trash.svg');
+.map-resource-marker.is-service-dump_station,
+.map-resource-legend-icon.is-service-dump_station {
+    --resource-icon: url('/assets/icons/dump-station.svg');
 }
 
 .map-resource-marker.is-service-toilet {
@@ -1289,15 +1316,18 @@ html[data-reduced-motion="true"] .map-locate-button.is-locating .map-locate-icon
     --resource-icon: url('/assets/icons/charging-pile.svg');
 }
 
-.map-resource-marker.is-service-propane {
+.map-resource-marker.is-service-propane,
+.map-resource-legend-icon.is-service-propane {
     --resource-icon: url('/assets/icons/propane.svg');
 }
 
-.map-resource-marker.is-service-laundry {
-    --resource-icon: url('/assets/icons/basket.svg');
+.map-resource-marker.is-service-laundry,
+.map-resource-legend-icon.is-service-laundry {
+    --resource-icon: url('/assets/icons/wash-machine.svg');
 }
 
-.map-resource-marker.is-service-fuel {
+.map-resource-marker.is-service-fuel,
+.map-resource-legend-icon.is-service-fuel {
     --resource-icon: url('/assets/icons/gas-station.svg');
 }
 
@@ -1309,12 +1339,9 @@ html[data-reduced-motion="true"] .map-locate-button.is-locating .map-locate-icon
     --resource-icon: url('/assets/icons/snowflake.svg');
 }
 
-.map-resource-marker.is-service-groceries {
-    --resource-icon: url('/assets/icons/shopping-cart.svg');
-}
-
-.map-resource-marker.is-service-other {
-    --resource-icon: url('/assets/icons/map-pin.svg');
+.map-resource-marker.is-service-groceries,
+.map-resource-legend-icon.is-service-groceries {
+    --resource-icon: url('/assets/icons/basket.svg');
 }
 
 .map-resource-marker-shell {
@@ -1330,7 +1357,7 @@ html[data-reduced-motion="true"] .map-locate-button.is-locating .map-locate-icon
     height: 34px;
     border: 3px solid #fff;
     border-radius: 10px;
-    background: #8a6511;
+    background: #7931a9;
     box-shadow: 0 3px 9px rgba(0, 0, 0, .35);
 }
 
@@ -1345,6 +1372,86 @@ html[data-reduced-motion="true"] .map-locate-button.is-locating .map-locate-icon
     mask:
         var(--resource-icon)
         center / contain no-repeat;
+}
+
+
+/* Resource legend stays inside the map without pushing it down the page. */
+.map-resource-legend {
+    position: absolute;
+    z-index: 500;
+    right: 12px;
+    bottom: 12px;
+    left: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: calc(100% - 24px);
+    padding: 8px;
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--surface) 94%, transparent);
+    scrollbar-width: none;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.map-resource-legend::-webkit-scrollbar {
+    display: none;
+}
+
+.map-resource-legend-item {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 9px 3px 3px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--text);
+    font-size: .72rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.map-resource-legend-symbol {
+    display: grid;
+    flex: 0 0 26px;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #7931a9;
+}
+
+.map-resource-legend-icon {
+    display: block;
+    width: 18px;
+    height: 18px;
+    background: #fff;
+    -webkit-mask: var(--resource-icon) center / contain no-repeat;
+    mask: var(--resource-icon) center / contain no-repeat;
+}
+
+.map-card .map-count-badge {
+    bottom: 72px;
+}
+
+.map-card .leaflet-bottom.leaflet-right .map-locate-control {
+    margin-bottom: 72px;
+}
+
+@media (max-width: 680px) {
+    .map-resource-legend {
+        right: 8px;
+        bottom: 8px;
+        left: 8px;
+        width: calc(100% - 16px);
+    }
+
+    .map-card .map-count-badge {
+        bottom: 66px;
+    }
 }
 
 @media (max-width: 640px) {
