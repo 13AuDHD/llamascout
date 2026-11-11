@@ -223,14 +223,25 @@ $longitude =
         ? (float) $resource['longitude']
         : null;
 
-$directionsUrl =
-    $latitude !== null
-    && $longitude !== null
-        ? 'https://www.google.com/maps/dir/?api=1&destination='
-            . rawurlencode(
-                $latitude . ',' . $longitude
-            )
-        : '';
+$coordinates = $latitude !== null && $longitude !== null
+    ? $latitude . ',' . $longitude
+    : '';
+$googleDirectionsUrl = $coordinates !== ''
+    ? 'https://www.google.com/maps/dir/?api=1&destination=' . rawurlencode($coordinates)
+    : '';
+$appleDirectionsUrl = $coordinates !== ''
+    ? 'https://maps.apple.com/directions?destination=' . rawurlencode($coordinates) . '&mode=driving'
+    : '';
+$onxMapUrl = 'https://webmap.onxmaps.com/offroad/';
+$phoneRaw = trim((string) ($resource['phone'] ?? ''));
+$phoneDigits = preg_replace('/\D+/', '', $phoneRaw) ?? '';
+$phoneNational = strlen($phoneDigits) === 11 && $phoneDigits[0] === '1'
+    ? substr($phoneDigits, 1)
+    : $phoneDigits;
+$phoneDisplay = strlen($phoneNational) === 10
+    ? '(' . substr($phoneNational, 0, 3) . ')' . substr($phoneNational, 3, 3) . '-' . substr($phoneNational, 6)
+    : $phoneRaw;
+$phoneHref = preg_replace('/[^0-9+]/', '', $phoneRaw) ?? '';
 
 $sourceDateRaw =
     trim(
@@ -361,41 +372,19 @@ require __DIR__ . '/partials/header.php';
                     Update Resource
                 </a>
 
-                <?php if ($directionsUrl !== ''): ?>
-                    <a
-                        class="place-detail-action-button"
-                        href="<?= htmlspecialchars(
-                            $directionsUrl,
-                            ENT_QUOTES,
-                            'UTF-8'
-                        ) ?>"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                    >
+                <?php if ($coordinates !== ''): ?>
+                    <button class="place-detail-action-button" type="button"
+                            data-resource-directions-open
+                            aria-haspopup="dialog" aria-controls="resource-directions-dialog">
                         <i aria-hidden="true"><?= llama_icon('current-location') ?></i>
                         Directions
-                    </a>
+                    </button>
                 <?php endif; ?>
 
-                <?php if (!empty($resource['phone'])): ?>
-                    <a
-                        class="place-detail-action-button"
-                        href="tel:<?= htmlspecialchars(
-                            preg_replace(
-                                '/[^0-9+]/',
-                                '',
-                                (string) $resource['phone']
-                            )
-                            ?? '',
-                            ENT_QUOTES,
-                            'UTF-8'
-                        ) ?>"
-                    >
-                        <?= htmlspecialchars(
-                            (string) $resource['phone'],
-                            ENT_QUOTES,
-                            'UTF-8'
-                        ) ?>
+                <?php if ($phoneRaw !== ''): ?>
+                    <a class="place-detail-action-button"
+                       href="tel:<?= htmlspecialchars($phoneHref, ENT_QUOTES, 'UTF-8') ?>">
+                        <?= htmlspecialchars($phoneDisplay, ENT_QUOTES, 'UTF-8') ?>
                     </a>
                 <?php endif; ?>
 
@@ -572,14 +561,10 @@ require __DIR__ . '/partials/header.php';
             </div>
             <?php endif; ?>
 
-            <?php if (!empty($resource['phone'])): ?>
+            <?php if ($phoneRaw !== ''): ?>
             <div>
                 <dt>Phone</dt>
-                <dd><?= htmlspecialchars(
-                    (string) $resource['phone'],
-                    ENT_QUOTES,
-                    'UTF-8'
-                ) ?></dd>
+                <dd><?= htmlspecialchars($phoneDisplay, ENT_QUOTES, 'UTF-8') ?></dd>
             </div>
             <?php endif; ?>
 
@@ -766,6 +751,71 @@ require __DIR__ . '/partials/header.php';
 </div>
 
 </article>
+
+<?php if ($coordinates !== ''): ?>
+<dialog class="resource-directions-dialog" id="resource-directions-dialog"
+        aria-labelledby="resource-directions-title">
+    <div class="resource-directions-header">
+        <h2 id="resource-directions-title">Open directions in</h2>
+        <button type="button" class="resource-directions-close"
+                data-resource-directions-close aria-label="Close directions menu">×</button>
+    </div>
+    <div class="resource-directions-options">
+        <a href="<?= htmlspecialchars($googleDirectionsUrl, ENT_QUOTES, 'UTF-8') ?>"
+           target="_blank" rel="noopener noreferrer">
+            <i aria-hidden="true"><?= llama_icon('brand-google-maps') ?></i>
+            Google Maps
+        </a>
+        <a href="<?= htmlspecialchars($appleDirectionsUrl, ENT_QUOTES, 'UTF-8') ?>"
+           target="_blank" rel="noopener noreferrer">
+            <i aria-hidden="true"><?= llama_icon('brand-apple') ?></i>
+            Apple Maps
+        </a>
+        <a href="<?= htmlspecialchars($onxMapUrl, ENT_QUOTES, 'UTF-8') ?>"
+           target="_blank" rel="noopener noreferrer">
+            <i aria-hidden="true"><?= llama_icon('brand-onx') ?></i>
+            onX Offroad Maps
+        </a>
+    </div>
+    <p class="resource-directions-note">To add this Resource to onX, copy its coordinates and paste them into onX Search, then save a waypoint.</p>
+    <div class="resource-directions-coordinates">
+        <output id="resource-directions-coordinates"><?= htmlspecialchars($coordinates, ENT_QUOTES, 'UTF-8') ?></output>
+        <button type="button" data-resource-copy-coordinates>Copy coordinates</button>
+    </div>
+    <p class="resource-directions-copy-status" data-resource-copy-status role="status" aria-live="polite"></p>
+</dialog>
+<script>
+(() => {
+    const dialog = document.getElementById('resource-directions-dialog');
+    const open = document.querySelector('[data-resource-directions-open]');
+    if (!dialog || !open) return;
+    const close = dialog.querySelector('[data-resource-directions-close]');
+    const copy = dialog.querySelector('[data-resource-copy-coordinates]');
+    const status = dialog.querySelector('[data-resource-copy-status]');
+    const value = dialog.querySelector('#resource-directions-coordinates');
+    open.addEventListener('click', () => dialog.showModal());
+    close.addEventListener('click', () => dialog.close());
+    dialog.addEventListener('click', event => {
+        if (event.target === dialog) dialog.close();
+    });
+    copy.addEventListener('click', async () => {
+        const coordinates = value.textContent.trim();
+        try {
+            if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
+            await navigator.clipboard.writeText(coordinates);
+            status.textContent = 'Coordinates copied.';
+        } catch (_) {
+            const selection = window.getSelection();
+            const range = document.createRange();
+            range.selectNodeContents(value);
+            selection.removeAllRanges();
+            selection.addRange(range);
+            status.textContent = 'Select and copy the highlighted coordinates.';
+        }
+    });
+})();
+</script>
+<?php endif; ?>
 
 <script src="/js/place-gallery.js"></script>
 
