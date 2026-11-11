@@ -20,7 +20,9 @@ function llama_scoped_report_form_model(PDO $db, int $placeId, string $scope = '
     $targets = llama_report_targets($db, $placeId);
     $id = $scope === 'place' ? $placeId : (int) $scopeId;
     $target = llama_report_verified_target($db, $placeId, $scope, $source, $id);
-    $fields = llama_report_questions_for_scope($scope, true);
+    $fields = $scope === 'area'
+        ? llama_report_questions_for_area_target($target)
+        : llama_report_questions_for_scope($scope, true);
     $parent = null;
     if (!empty($target['parent_area_id'])) {
         $parent = llama_report_verified_target($db, $placeId, 'area', 'map_feature', (int) $target['parent_area_id']);

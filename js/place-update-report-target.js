@@ -125,7 +125,17 @@
     let loadSequence = 0;
 
     function eligible(f) {
-        return !f.derived && !f.location && !f.excluded && f.scopes.includes(scope.value) && supported.has(f.type);
+        if (f.derived || f.location || f.excluded
+            || !f.scopes.includes(scope.value) || !supported.has(f.type)) return false;
+        // Type-specific facility observations are only available for their
+        // server-provided Area kind, never for other Areas or Sites.
+        if (Array.isArray(f.facility_kinds) && f.facility_kinds.length) {
+            const t = labels.get(search.value);
+            return t?.scope === 'area'
+                && t.feature_type === 'facility_area'
+                && f.facility_kinds.includes(String(t.facility_kind || ''));
+        }
+        return true;
     }
 
     function make(tag, className, text) {
