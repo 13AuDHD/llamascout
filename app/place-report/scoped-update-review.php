@@ -181,6 +181,15 @@ function llama_scoped_update_build_payload(
                 $scope
             );
 
+        // A verified target, not posted facility metadata, owns eligibility.
+        // Reject mismatched observations before they reach moderation.
+        if ($scope === 'area'
+            && !llama_report_question_applies_to_area_target($field, $target)) {
+            throw new InvalidArgumentException(
+                'This question does not apply to the selected Area.'
+            );
+        }
+
         if (!$isRevision && !llama_place_update_allows_field($field)) {
             throw new InvalidArgumentException('This question is managed in the Place or Site editor.');
         }

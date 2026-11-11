@@ -1240,6 +1240,26 @@ $e =
             <script defer src="<?= $e($siteUrl . '/js/place-update-report-target.js?v=' . filemtime(dirname(__DIR__) . '/js/place-update-report-target.js')) ?>"></script>
             <div data-place-update-place-fields>
             <?php require dirname(__DIR__) . '/partials/place-report/form.php'; ?>
+            <?php
+            /*
+             * Area-only questions use the same canonical field renderer.
+             * These hidden controls are templates for the existing scoped
+             * report editor, not a second form and not Place answers.
+             */
+            $facilityAreaTemplates = array_filter(
+                llama_report_questions_for_scope('area', true),
+                static fn (array $field): bool =>
+                    ($field['report_scope_group'] ?? '') === 'area'
+                    && !empty($field['facility_kinds'])
+            );
+            ?>
+            <?php if ($facilityAreaTemplates): ?>
+                <div data-scoped-facility-templates hidden>
+                    <?php foreach ($facilityAreaTemplates as $facilityField): ?>
+                        <?php $renderField($facilityField); ?>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
             </div>
             <details class="contribution-section" data-place-update-scoped-fields
                 <?= $initialScopedAnswers ? 'open' : '' ?> hidden>
@@ -1293,6 +1313,7 @@ $e =
                         'type' => (string) $field['type'],
                         'scopes' => array_values((array) ($field['report_scopes'] ?? ['place'])),
                         'options' => (array) ($field['options'] ?? []),
+                        'facility_kinds' => array_values((array) ($field['facility_kinds'] ?? [])),
                         'unknown' => !empty($field['allow_unknown']),
                         'derived' => !empty($field['derived']),
                         'location' => !empty($field['location_field']),
