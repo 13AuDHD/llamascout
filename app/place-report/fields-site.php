@@ -196,10 +196,7 @@ function llama_place_report_add_site_fields(
     ]);
 
     $add('parking_clearance_feet', 'Parking clearance (ft)', 'site_vehicle', 'select', 'details.parking_clearance_feet', [
-        'options' => $feetOptions([
-            ...$range(8, 20),
-            22, 24, 25, 30,
-        ]),
+        'options' => $overheadClearanceOptions,
         'allow_unknown' => true,
         'points_categories' => ['site_vehicle'],
     ]);
