@@ -3,6 +3,15 @@ require __DIR__ . '/access-alert.php';
 require_once dirname(__DIR__, 2) . '/app/place-pricing.php';
 $placePrice = llama_pricing_public_place_overview(db(), $place, llama_pricing_document(db(), $place));
 $placePriceLabel = $placePrice['label'];
+$placeDirectionsCoordinates = (
+    isset($place['latitude'], $place['longitude'])
+    && is_numeric($place['latitude'])
+    && is_numeric($place['longitude'])
+    && (float) $place['latitude'] >= -90
+    && (float) $place['latitude'] <= 90
+    && (float) $place['longitude'] >= -180
+    && (float) $place['longitude'] <= 180
+) ? trim((string) $place['latitude']) . ',' . trim((string) $place['longitude']) : '';
 ?>
 
 <header class="place-detail-hero<?= $heroImage ? ' has-image' : ' no-image' ?>">
@@ -118,6 +127,15 @@ $placePriceLabel = $placePrice['label'];
                     </a>
                 <?php endif; ?>
 
+                <?php if ($placeDirectionsCoordinates !== ''): ?>
+                    <button type="button" class="place-detail-action-button"
+                            data-map-directions-open
+                            aria-haspopup="dialog" aria-controls="map-directions-dialog">
+                        <i aria-hidden="true"><?= llama_icon('current-location') ?></i>
+                        Directions
+                    </button>
+                <?php endif; ?>
+
                 <button
                     class="place-detail-action-button llama-share-button"
                     type="button"
@@ -134,3 +152,18 @@ $placePriceLabel = $placePrice['label'];
         </div>
     </div>
 </header>
+
+<?php if ($placeDirectionsCoordinates !== ''): ?>
+<?php
+$directionsContext = 'place';
+$directionsCoordinates = $placeDirectionsCoordinates;
+$directionsGoogleUrl = 'https://www.google.com/maps/dir/?api=1&destination='
+    . rawurlencode($placeDirectionsCoordinates);
+$directionsAppleUrl = 'https://maps.apple.com/?daddr='
+    . rawurlencode($placeDirectionsCoordinates);
+$directionsOnxUrl = 'https://webmap.onxmaps.com/offroad/map/query/'
+    . rawurlencode(str_replace(',', ',', $placeDirectionsCoordinates))
+    . ',14/overview?mode=dirt';
+require __DIR__ . '/../map-directions-dialog.php';
+?>
+<?php endif; ?>

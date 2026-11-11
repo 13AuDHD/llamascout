@@ -96,6 +96,10 @@ function llama_page_styles(string $scriptName = ''): array
         $styles[] = 'resource-detail.css';
     }
 
+    if (!$isAccount && in_array($basename, ['place.php', 'resource.php'], true)) {
+        $styles[] = 'site/features/map-directions-dialog.css';
+    }
+
     if (!$isAccount && $basename === 'place-history.php') {
         $styles[] = 'site/pages/place-history.css';
         $styles[] = 'scout-report-cards.css';

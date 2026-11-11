@@ -374,8 +374,8 @@ require __DIR__ . '/partials/header.php';
 
                 <?php if ($coordinates !== ''): ?>
                     <button class="place-detail-action-button" type="button"
-                            data-resource-directions-open
-                            aria-haspopup="dialog" aria-controls="resource-directions-dialog">
+                            data-map-directions-open
+                            aria-haspopup="dialog" aria-controls="map-directions-dialog">
                         <i aria-hidden="true"><?= llama_icon('current-location') ?></i>
                         Directions
                     </button>
@@ -753,78 +753,14 @@ require __DIR__ . '/partials/header.php';
 </article>
 
 <?php if ($coordinates !== ''): ?>
-<dialog class="resource-directions-dialog" id="resource-directions-dialog"
-        aria-labelledby="resource-directions-title"
-        aria-describedby="resource-directions-description">
-    <div class="resource-directions-header">
-        <div>
-            <p class="resource-directions-eyebrow">Resource directions</p>
-            <h2 id="resource-directions-title">Choose your maps app</h2>
-            <p id="resource-directions-description">Open this location with your preferred map.</p>
-        </div>
-        <button type="button" class="resource-directions-close"
-                data-resource-directions-close aria-label="Close directions menu"><?= llama_icon('x') ?></button>
-    </div>
-    <div class="resource-directions-options">
-        <a href="<?= htmlspecialchars($googleDirectionsUrl, ENT_QUOTES, 'UTF-8') ?>"
-           target="_blank" rel="noopener noreferrer">
-            <span class="resource-directions-provider-icon" aria-hidden="true"><?= llama_icon('brand-google-maps') ?></span>
-            <span class="resource-directions-provider-label"><strong>Google Maps</strong><small>Driving directions</small></span>
-            <?= llama_icon('arrow-up-right') ?>
-        </a>
-        <a href="<?= htmlspecialchars($appleDirectionsUrl, ENT_QUOTES, 'UTF-8') ?>"
-           target="_blank" rel="noopener noreferrer">
-            <span class="resource-directions-provider-icon" aria-hidden="true"><?= llama_icon('brand-apple') ?></span>
-            <span class="resource-directions-provider-label"><strong>Apple Maps</strong><small>Driving directions</small></span>
-            <?= llama_icon('arrow-up-right') ?>
-        </a>
-        <a href="<?= htmlspecialchars($onxMapUrl, ENT_QUOTES, 'UTF-8') ?>"
-           target="_blank" rel="noopener noreferrer">
-            <span class="resource-directions-provider-icon" aria-hidden="true"><?= llama_icon('brand-onx') ?></span>
-            <span class="resource-directions-provider-label"><strong>onX Offroad</strong><small>Explore in onX Maps</small></span>
-            <?= llama_icon('arrow-up-right') ?>
-        </a>
-    </div>
-    <div class="resource-directions-footer">
-        <p class="resource-directions-note">For onX, copy these coordinates, search for them in the map, then save a waypoint.</p>
-        <div class="resource-directions-coordinates">
-            <output id="resource-directions-coordinates"><?= htmlspecialchars($coordinates, ENT_QUOTES, 'UTF-8') ?></output>
-            <button type="button" data-resource-copy-coordinates><?= llama_icon('copy') ?> Copy</button>
-        </div>
-        <p class="resource-directions-copy-status" data-resource-copy-status role="status" aria-live="polite"></p>
-    </div>
-</dialog>
-<script>
-(() => {
-    const dialog = document.getElementById('resource-directions-dialog');
-    const open = document.querySelector('[data-resource-directions-open]');
-    if (!dialog || !open) return;
-    const close = dialog.querySelector('[data-resource-directions-close]');
-    const copy = dialog.querySelector('[data-resource-copy-coordinates]');
-    const status = dialog.querySelector('[data-resource-copy-status]');
-    const value = dialog.querySelector('#resource-directions-coordinates');
-    open.addEventListener('click', () => dialog.showModal());
-    close.addEventListener('click', () => dialog.close());
-    dialog.addEventListener('click', event => {
-        if (event.target === dialog) dialog.close();
-    });
-    copy.addEventListener('click', async () => {
-        const coordinates = value.textContent.trim();
-        try {
-            if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
-            await navigator.clipboard.writeText(coordinates);
-            status.textContent = 'Coordinates copied.';
-        } catch (_) {
-            const selection = window.getSelection();
-            const range = document.createRange();
-            range.selectNodeContents(value);
-            selection.removeAllRanges();
-            selection.addRange(range);
-            status.textContent = 'Select and copy the highlighted coordinates.';
-        }
-    });
-})();
-</script>
+<?php
+$directionsContext = 'resource';
+$directionsCoordinates = $coordinates;
+$directionsGoogleUrl = $googleDirectionsUrl;
+$directionsAppleUrl = $appleDirectionsUrl;
+$directionsOnxUrl = $onxMapUrl;
+require __DIR__ . '/partials/map-directions-dialog.php';
+?>
 <?php endif; ?>
 
 <script src="/js/place-gallery.js"></script>
