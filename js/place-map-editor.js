@@ -79,6 +79,7 @@
         );
     const facilityPanel = editor.querySelector('[data-facility-panel]');
     const facilityName = editor.querySelector('[data-facility-name]');
+    const facilityKind = editor.querySelector('[data-facility-kind]');
     const facilityLat = editor.querySelector('[data-facility-latitude]');
     const facilityLng = editor.querySelector('[data-facility-longitude]');
     const facilityPickButton = editor.querySelector('[data-facility-pick]');
@@ -1856,6 +1857,7 @@
                                 setDirty(false);
                             }
                             if (facilityName) facilityName.value = String(feature.label || '');
+                            if (facilityKind) facilityKind.value = String(feature.metadata?.facility_kind || '');
                         }
                     }
                 },
@@ -1950,9 +1952,15 @@
     const saveFacilityPoint = async () => {
         if (!facilityMode()) return;
         const label = String(facilityName?.value || '').trim();
+        const kind = String(facilityKind?.value || '').trim();
         const latText = String(facilityLat?.value || '').trim();
         const lngText = String(facilityLng?.value || '').trim();
         const lat = Number(latText), lng = Number(lngText);
+        if (!kind) {
+            setStatus('Choose the type of facility first.', true);
+            facilityKind?.focus();
+            return;
+        }
         if (!label) {
             setStatus('Name this facility Area first.', true);
             facilityName?.focus();
@@ -1974,6 +1982,7 @@
                 label,
                 geometry: {type: 'Point', coordinates: [lng, lat]},
                 area_details: {},
+                metadata: { facility_kind: kind },
                 source_type: 'manual'
             });
             applyApiState(result);
@@ -2498,6 +2507,7 @@
         if (areaFeatureType) areaFeatureType.value = 'facility_area';
         setMode('area');
         if (facilityName) facilityName.value = '';
+        if (facilityKind) facilityKind.value = '';
         if (facilityLat) facilityLat.value = '';
         if (facilityLng) facilityLng.value = '';
         setDirty(false);
@@ -2519,6 +2529,7 @@
         });
     }
     facilityName?.addEventListener('input', () => setDirty(true));
+    facilityKind?.addEventListener('change', () => setDirty(true));
 
     deleteButton
         ?.addEventListener(

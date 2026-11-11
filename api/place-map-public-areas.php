@@ -122,6 +122,11 @@ try {
                             $feature['area_details']
                             ?? []
                         ),
+                    'facility_kind' =>
+                        (string) (
+                            $feature['metadata']['facility_kind']
+                            ?? ''
+                        ),
 
                     'geometry' =>
                         (array) (

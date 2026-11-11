@@ -268,7 +268,15 @@ require __DIR__ . '/partials/header.php';
 
         <section class="mapped-area-editor-site-point-panel mapped-area-editor-facility-panel" data-facility-panel hidden>
             <h3>Facility / amenity</h3>
-            <p>Add a named facility inside this Place, such as a bathhouse, water spigot or laundry building.</p>
+            <p>Add a facility inside this Place. Its condition and service details belong to its Area Scout Report.</p>
+            <label>Facility type
+                <select data-facility-kind>
+                    <option value="">Choose a facility type</option>
+                    <?php foreach (llama_place_facility_kind_options() as $kind => $label): ?>
+                        <option value="<?= htmlspecialchars($kind, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
             <label>Facility name
                 <input type="text" maxlength="120" placeholder="Bathhouse A" data-facility-name>
             </label>

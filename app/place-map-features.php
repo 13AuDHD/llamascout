@@ -23,6 +23,28 @@ function llama_place_map_feature_types(): array
 }
 
 
+/**
+ * Facility types are shared by editor choices, save validation and map labels.
+ * Specific amenity questions belong in the canonical Area report, not here.
+ */
+function llama_place_facility_kind_options(): array
+{
+    return [
+        'restroom' => 'Restroom / bathhouse',
+        'shower' => 'Shower facility',
+        'water' => 'Water spigot / fill',
+        'dump' => 'Dump station',
+        'laundry' => 'Laundry',
+        'pool' => 'Swimming pool',
+        'playground' => 'Playground',
+        'trash' => 'Trash / recycling',
+        'firewood' => 'Firewood',
+        'propane' => 'Propane',
+        'recreation' => 'Recreation facility',
+        'other' => 'Other facility',
+    ];
+}
+
 function llama_place_map_camping_site_type_options(): array
 {
     return [
@@ -1337,11 +1359,23 @@ function llama_place_map_feature_save(
             $accuracyM
         );
 
+    $facilityKind = $isPointArea
+        ? strtolower(trim((string) (
+            is_array($metadata) ? ($metadata['facility_kind'] ?? '') : ''
+        )))
+        : '';
+    if ($isPointArea && $facilityKind !== ''
+        && !array_key_exists($facilityKind, llama_place_facility_kind_options())) {
+        throw new InvalidArgumentException('Choose a valid facility type.');
+    }
     $metadata =
         llama_place_map_feature_validate_metadata(
             $metadata,
             $vertexCount
         );
+    if ($isPointArea && $facilityKind !== '') {
+        $metadata['facility_kind'] = $facilityKind;
+    }
 
     $areaDetails =
         llama_place_map_feature_validate_area_details(
