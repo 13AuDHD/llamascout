@@ -813,11 +813,11 @@
     }
 
     .map-toolbar {
-        flex-wrap: nowrap;
+        flex-wrap: wrap;
     }
 
     .map-search {
-        flex: 1 1 0;
+        flex: 1 1 150px;
         min-width: 0;
         min-height: 44px;
     }
