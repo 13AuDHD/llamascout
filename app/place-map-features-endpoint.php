@@ -70,7 +70,7 @@ function llama_place_map_api_stats(
             COUNT(*) AS active_features,
             SUM(feature_type = "place_boundary")
                 AS place_boundaries,
-            SUM(feature_type IN ("camping_area", "parking_area"))
+            SUM(feature_type IN ("camping_area", "parking_area", "facility_area"))
                 AS areas,
             SUM(feature_type = "camping_site")
                 AS site_features,

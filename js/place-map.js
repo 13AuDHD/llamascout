@@ -561,6 +561,9 @@
         parking_area:
             'Parking area',
 
+        facility_area:
+            'Facility / amenity',
+
         camping_site:
             'Individual campsite'
     };
@@ -1440,6 +1443,14 @@
                             L.geoJSON(
                                 feature.geometry,
                                 {
+                                    pointToLayer: (_, latlng) => L.circleMarker(latlng, {
+                                        radius: 9,
+                                        color: '#7931a9',
+                                        weight: 3,
+                                        fillColor: '#7931a9',
+                                        fillOpacity: .88,
+                                        className: featureClass('facility_area')
+                                    }),
                                     style: {
                                         className:
                                             featureClass(
