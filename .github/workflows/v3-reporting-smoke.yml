@@ -134,6 +134,9 @@ jobs:
 
       - name: Verify facility Area question eligibility
         run: php tools/tests/facility-area-question-eligibility.php
+
+      - name: Verify first facility Area question inventory
+        run: php tools/tests/facility-question-catalog.php
       - name: Install isolated DOM test dependency
         run: |
           mkdir -p "$RUNNER_TEMP/llama-season-ui-tests"
