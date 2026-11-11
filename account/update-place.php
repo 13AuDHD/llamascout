@@ -1056,7 +1056,7 @@ $e =
 
 
         <div class="contribution-tab-shell" data-contribution-tabs
-            data-contribution-initial="<?= ($_GET['mode'] ?? '') === 'resource' ? 'resource' : ($reportTargetIsScoped ? 'site' : 'place') ?>">
+            data-contribution-initial="<?= $reportTargetIsScoped ? ((string) $reportTargetScope === 'area' ? 'area' : 'site') : 'place' ?>">
             <?php if (!$isScopedNeedsChanges): ?>
                 <?php require dirname(__DIR__) . '/partials/place-report/contribution-tabs.php'; ?>
             <?php endif; ?>
@@ -1528,18 +1528,7 @@ $e =
 
         </form>
 
-        <?php if (!$isScopedNeedsChanges): ?>
-            <?php
-            $contributionReturnPlace = $slug;
-            require_once dirname(__DIR__) . '/app/resource-submissions.php';
-            $contributionResourceOptions = [];
-            if (admin_resources_tables_ready($db)) {
-                $contributionResourceOptions = $db->query('SELECT id, name FROM resources WHERE is_active = 1 ORDER BY name, id')->fetchAll(PDO::FETCH_ASSOC);
-                $contributionResource = llama_resource_active_record($db, (int) ($_GET['resource_id'] ?? 0));
-            }
-            require dirname(__DIR__) . '/partials/resources/contribution.php';
-            ?>
-        <?php endif; ?>
+
         </div>
 
 

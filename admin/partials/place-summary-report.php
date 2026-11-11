@@ -66,8 +66,13 @@ $placeReportSelectedSite = isset($placeReportSiteOptions[$requestedSite]) ? $req
 <?php require __DIR__ . '/place-map.php'; ?>
 
 <div class="contribution-tab-shell" data-contribution-tabs data-contribution-split
-    data-contribution-initial="<?= ($_GET['mode'] ?? '') === 'resource' ? 'resource' : ($placeReportSelectedSite !== '' ? 'site' : 'place') ?>">
+    data-contribution-initial="<?= ($_GET['mode'] ?? '') === 'area' ? 'area' : ($placeReportSelectedSite !== '' ? 'site' : 'place') ?>">
     <?php require dirname(__DIR__, 2) . '/partials/place-report/contribution-tabs.php'; ?>
+    <section class="contribution-area-panel" data-contribution-area-tools hidden>
+        <h3>Edit this Place's Areas</h3>
+        <p>Select an existing Area in the Report area picker below to edit its answers. Use Edit Map to draw or change Area boundaries.</p>
+        <a href="https://llamascout.com/place-map-editor.php?slug=<?= rawurlencode((string) $place['slug']) ?>&amp;from=admin">Edit Map</a>
+    </section>
 <form method="post" class="admin-place-report-form place-report-form" id="place-report" data-contribution-report
     <?php if ($placeReportSelectedSite !== ''): ?>data-admin-site-report-id="<?= $requestedSiteId ?>"<?php endif; ?>>
     <input type="hidden" name="csrf_token" value="<?= $e(moderation_csrf_token()) ?>">
@@ -160,17 +165,6 @@ $placeReportSelectedSite = isset($placeReportSiteOptions[$requestedSite]) ? $req
         </button>
     </div>
 </form>
-    <?php
-    require_once dirname(__DIR__, 2) . '/app/admin-resources.php';
-    $contributionResourceAdmin = true;
-    $contributionPlaceId = $placeId;
-    $contributionResourceOptions = [];
-    if (admin_resources_tables_ready($db)) {
-        $contributionResourceOptions = $db->query('SELECT id, name FROM resources ORDER BY name, id')->fetchAll(PDO::FETCH_ASSOC);
-        $contributionResource = admin_resource_get($db, (int) ($_GET['resource_id'] ?? 0));
-    }
-    require dirname(__DIR__, 2) . '/partials/resources/contribution.php';
-    ?>
 </div>
 
 <?php // Independent season forms belong after the complete canonical Place Report. ?>

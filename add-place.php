@@ -586,8 +586,13 @@ $placeReportInitialCompletion =
     <?php endif; ?>
 
     <div class="contribution-tab-shell" data-contribution-tabs data-contribution-split
-        data-contribution-initial="<?= ($_GET['mode'] ?? '') === 'resource' ? 'resource' : 'place' ?>">
+        data-contribution-initial="place">
         <?php require __DIR__ . '/partials/place-report/contribution-tabs.php'; ?>
+        <section class="contribution-area-panel" data-contribution-area-panel hidden>
+            <h3>Areas belong to an existing Place</h3>
+            <p>Save and publish the Place first. Then use its map editor to define camping loops, facilities and other Areas.</p>
+            <a href="/map.php">Find an existing Place</a>
+        </section>
     <form
         method="post"
         class="contribution-form add-place-form place-report-form"
@@ -782,12 +787,6 @@ $placeReportInitialCompletion =
             <a href="/map.php">Cancel</a>
         </div>
     </form>
-        <?php
-        $db = db();
-        $e = static fn (mixed $value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
-        $contributionReturnDraft = $draftId;
-        require __DIR__ . '/partials/resources/contribution.php';
-        ?>
     </div>
 </section>
 

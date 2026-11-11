@@ -52,26 +52,32 @@
     const photoButton = q('[data-contribution-photo-button]');
     const scopedTarget = target => target.scope !== 'place';
     const hasScopedTargets = targets.some(scopedTarget);
-    let lastScopedTarget = scopedTarget(initialTarget) ? initialTarget : targets.find(scopedTarget);
+    const lastByScope = {
+        site: targets.find(t => t.scope === 'site'),
+        area: targets.find(t => t.scope === 'area')
+    };
+    if (scopedTarget(initialTarget)) lastByScope[initialTarget.scope] = initialTarget;
 
     function showMode(mode) {
         if (targetPanel) targetPanel.hidden = mode === 'place' || !hasScopedTargets;
-        if (targetLabel) targetLabel.textContent = 'Site or Area to update';
-        if (photoTitle) photoTitle.textContent = mode === 'site' ? 'Site photos' : 'Place photos';
+        if (targetLabel) targetLabel.textContent = mode === 'area' ? 'Area to update' : 'Site to update';
+        if (photoTitle) photoTitle.textContent = mode === 'site' ? 'Site photos' : mode === 'area' ? 'Area photos' : 'Place photos';
 
         for (const option of search.options) {
-            option.hidden = mode === 'site' && labels.get(option.value)?.scope === 'place';
+            const targetScope = labels.get(option.value)?.scope;
+            option.hidden = mode !== 'place' && targetScope !== mode;
         }
-        const target = mode === 'site' ? lastScopedTarget : place;
+        const target = mode === 'area' || mode === 'site' ? lastByScope[mode] : place;
         if (!target) return;
         search.value = `${target.scope}:${target.source}:${target.id}`;
         update();
-        if (mode === 'site') scopedFields.open = true;
+        if (mode === 'site' || mode === 'area') scopedFields.open = true;
     }
 
     if (picker && initial.locked !== true) {
-        picker.querySelector('[data-contribution-mode="site"]').disabled = !hasScopedTargets;
-        shell.addEventListener('llama:contribution-mode', event => showMode(event.detail));
+        picker.querySelector('[data-contribution-mode="site"]').disabled = !lastByScope.site;
+        picker.querySelector('[data-contribution-mode="area"]').disabled = !lastByScope.area;
+        shell.addEventListener('llama:contribution-mode', event => showMode(event.detail.mode));
     }
 
     if (photoButton) {
@@ -662,7 +668,7 @@
 
     search.addEventListener('change', () => {
         const target = labels.get(search.value);
-        if (target && scopedTarget(target)) lastScopedTarget = target;
+        if (target && scopedTarget(target)) lastByScope[target.scope] = target;
         update();
     });
 
@@ -700,5 +706,5 @@
     const siteSection = placeFields.querySelector('[data-report-main-section="site"]');
     if (siteSection) siteSection.setAttribute('data-contribution-inactive', '');
 
-    showMode(scopedTarget(initialTarget) ? 'site' : 'place');
+    showMode(scopedTarget(initialTarget) ? initialTarget.scope : 'place');
 })();

@@ -35,7 +35,7 @@
     --mode-color: #f2a44e;
 }
 
-.contribution-scope-picker [data-contribution-mode="resource"] {
+.contribution-scope-picker [data-contribution-mode="area"] {
     --mode-color: #bb94ef;
 }
 
@@ -47,8 +47,19 @@
 }
 
 .contribution-tab-shell [data-contribution-report][hidden],
-.contribution-tab-shell [data-contribution-resource][hidden],
+.contribution-tab-shell [data-contribution-area-panel][hidden],
 .contribution-tab-shell [data-contribution-picker][hidden],
 .contribution-tab-shell [data-contribution-inactive] {
     display: none;
 }
+
+.contribution-area-panel {
+    padding: 16px 18px;
+    border: 1px solid var(--border);
+    border-inline-start: 4px solid #7931a9;
+    border-radius: 12px;
+    background: var(--surface);
+}
+.contribution-area-panel h3 { margin: 0 0 6px; font-size: 1rem; }
+.contribution-area-panel p { margin: 0; color: var(--text-muted); line-height: 1.5; }
+.contribution-area-panel a { display: inline-flex; margin-top: 12px; color: var(--text); font-weight: 800; }
