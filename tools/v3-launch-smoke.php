@@ -2469,8 +2469,11 @@ $check('Site pills show only grounded booking evidence', static function () use 
     $mapPanel = file_get_contents(dirname(__DIR__) . '/admin/partials/place-map.php');
     $assert(is_string($map) && is_string($mapPanel), 'Admin map files missing');
     $assert(strpos($map, "place_boundary:\n                    '#22c55e'") !== false
-        && strpos($map, "camping_area:\n                    '#a855f7'") !== false,
-        'Admin Place/Area colors are inverted');
+        && strpos($map, "camping_area:\n                    resourceColor") !== false
+        && strpos($map, "facility_area:\n                    resourceColor") !== false
+        && strpos($map, "pointToLayer:") !== false
+        && strpos($map, "L.circleMarker(latLng") !== false,
+        'Admin Place boundary green, Area points/polygons purple contract failed');
     $assert(strpos($mapPanel, 'data-admin-site-location-form') === false
         && strpos($map, 'pickSiteLocation') === false,
         'Superseded individual Site GPS editor still on Admin Place page');
