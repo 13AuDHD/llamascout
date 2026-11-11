@@ -7,11 +7,6 @@
    Standalone V3 Resource + Service editor.
    ========================================================= */
 
-/* Match the public Resource identity on the Admin editor. */
-.admin-resource-panel {
-    border-inline-start: 4px solid var(--resource-accent);
-}
-
 /* Structured Resource hours */
 
 .admin-resource-field-wide {
