@@ -1526,12 +1526,17 @@ $check('Approved sensory questions stay independent and legacy overlaps stay ret
 $check('Safety and Hazards keeps only approved independent questions', static function () use ($assert, $assertNoAnswerDependencies): void {
     $fields = llama_place_report_fields();
 
-    foreach (['cliff_exposure', 'warning_motorized_recreation_traffic'] as $key) {
-        $assert(!isset($fields[$key]),
-            'Retired safety question is still active: ' . $key);
-    }
+    $assert(!isset($fields['warning_motorized_recreation_traffic']),
+        'Retired motorized recreation warning unexpectedly became an active question');
+    $assert(isset($fields['cliff_exposure']),
+        'Cliff Exposure must be restored as an active Site safety question');
+    $assert(($fields['cliff_exposure']['type'] ?? '') === 'tri'
+        && ($fields['cliff_exposure']['storage'] ?? '') === 'details.cliff_exposure',
+        'Cliff Exposure must reuse its original Yes/No/Unknown field and historical storage');
 
     $groups = llama_place_report_approved_question_groups();
+    $assert(in_array('cliff_exposure', $groups['safety_public'][1] ?? [], true),
+        'Cliff Exposure is missing from the canonical Safety and Hazards group');
     foreach ((array) $groups['safety_public'][1] as $key) {
         $assert(isset($fields[$key]), 'Approved safety question is missing: ' . $key);
         $assertNoAnswerDependencies(
@@ -1539,6 +1544,59 @@ $check('Safety and Hazards keeps only approved independent questions', static fu
             'Approved safety question gained an answer dependency: ' . $key
         );
     }
+});
+
+$check('Cliff Exposure and No Cell Service are derived into Site Quick Warnings', static function () use ($assert): void {
+    $fields = llama_place_report_fields();
+
+    $assert(($fields['cliff_exposure']['report_scope_group'] ?? '') === 'site'
+        && in_array('site', (array) ($fields['cliff_exposure']['report_scopes'] ?? []), true),
+        'Cliff Exposure should be reportable only for Sites');
+    $assert(llama_place_report_field_icon('cliff_exposure', $fields['cliff_exposure']) === 'cliff-jumping',
+        'Cliff Exposure must use the existing cliff-jumping icon');
+    $assert(is_file(dirname(__DIR__) . '/assets/icons/cliff-jumping.svg'),
+        'Cliff Exposure icon asset is missing');
+    $assert(str_contains((string) ($fields['connectivity_overall']['help'] ?? ''), '1/5'),
+        'Overall cell service should explain its No Cell Service warning trigger');
+
+    $data = [
+        'details' => ['cliff_exposure' => '1'],
+        'connectivity' => ['overall' => 1, 'satellite' => 5],
+    ];
+    $warnings = llama_place_report_quick_warnings($data);
+    $assert(isset($warnings['cliff_exposure'])
+        && $warnings['cliff_exposure']['icon'] === 'cliff-jumping',
+        'An affirmative Cliff Exposure answer must create a cliff-jumping Quick Warning');
+    $assert(isset($warnings['warning_no_cell_service'])
+        && $warnings['warning_no_cell_service']['icon'] === 'antenna-bars-off',
+        'Overall cell service 1/5 must create a No cell service Quick Warning even with satellite 5/5');
+
+    $data['details']['cliff_exposure'] = '0';
+    $data['connectivity']['overall'] = 2;
+    $warnings = llama_place_report_quick_warnings($data);
+    $assert(!isset($warnings['cliff_exposure'])
+        && !isset($warnings['warning_no_cell_service']),
+        'Cliff Exposure No and cellular ratings above 1/5 should not trigger those warnings');
+
+    $data['details']['cliff_exposure'] = '1';
+    unset($data['connectivity']['overall']);
+    $warnings = llama_place_report_quick_warnings($data);
+    $assert(isset($warnings['cliff_exposure'])
+        && !isset($warnings['warning_no_cell_service']),
+        'An unanswered cell rating must not be incorrectly treated as No Cell Service');
+
+    $data['_answer_state'] = ['cliff_exposure', 'connectivity_overall'];
+    $warnings = llama_place_report_quick_warnings($data);
+    $assert(!isset($warnings['cliff_exposure'])
+        && !isset($warnings['warning_no_cell_service']),
+        'Explicit Unknown answers should not create Cliff Exposure or No Cell Service warnings');
+
+    $scoped = llama_scoped_report_quick_warnings([
+        'cliff_exposure' => '1',
+        'connectivity_overall' => '1',
+    ]);
+    $assert(isset($scoped['cliff_exposure']) && isset($scoped['warning_no_cell_service']),
+        'Scoped Site report warning generation must include both restored hazards');
 });
 
 $check('Experience and Recommendations keeps only approved independent questions', static function () use ($assert, $assertNoAnswerDependencies): void {
