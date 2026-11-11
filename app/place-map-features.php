@@ -7,6 +7,7 @@ require_once __DIR__ . '/place-map-pricing.php';
 require_once __DIR__ . '/place-map-site-classes.php';
 
 const LLAMA_PLACE_MAP_FEATURE_GEOMETRY_POLYGON = 'polygon';
+const LLAMA_PLACE_MAP_FEATURE_GEOMETRY_POINT = 'point';
 const LLAMA_PLACE_MAP_FEATURE_SRID = 4326;
 const LLAMA_PLACE_MAP_FEATURE_CRS = 'EPSG:4326';
 
@@ -16,6 +17,7 @@ function llama_place_map_feature_types(): array
         'place_boundary' => 'Place boundary',
         'camping_area' => 'Camping area',
         'parking_area' => 'Parking area',
+        'facility_area' => 'Facility / amenity',
         'camping_site' => 'Individual campsite',
     ];
 }
@@ -380,6 +382,33 @@ function llama_place_map_feature_type_is_valid(string $type): bool
         strtolower(trim($type)),
         llama_place_map_feature_types()
     );
+}
+
+/** Facility Areas are points; existing Place/Area boundaries stay polygons. */
+function llama_place_map_feature_validate_point(array $geometry): array
+{
+    if (strtolower((string) ($geometry['type'] ?? '')) !== 'point') {
+        throw new InvalidArgumentException('Facility Areas require Point geometry.');
+    }
+    $coords = $geometry['coordinates'] ?? null;
+    if (!is_array($coords) || count($coords) !== 2
+        || !is_numeric($coords[0]) || !is_numeric($coords[1])) {
+        throw new InvalidArgumentException('Provide longitude and latitude.');
+    }
+    $lng = round((float) $coords[0], 7);
+    $lat = round((float) $coords[1], 7);
+    if (!is_finite($lng) || !is_finite($lat)
+        || $lng < -180 || $lng > 180 || $lat < -90 || $lat > 90
+        || ($lng == 0 && $lat == 0)) {
+        throw new InvalidArgumentException('Invalid facility Area coordinates.');
+    }
+    return ['type' => 'Point', 'coordinates' => [$lng, $lat]];
+}
+
+function llama_place_map_feature_point_wkt(array $geometry): string
+{
+    [$lng, $lat] = llama_place_map_feature_validate_point($geometry)['coordinates'];
+    return sprintf('POINT(%.7F %.7F)', $lng, $lat);
 }
 
 function llama_place_map_feature_validate_polygon(array $geometry): array
@@ -812,6 +841,8 @@ function llama_place_map_features(
             ) AS geometry_point_count,
 
             CASE
+                WHEN place_map_features.geometry_type = "point"
+                    THEN ST_AsGeoJSON(place_map_features.geometry, 7)
                 WHEN ST_NumPoints(
                     ST_ExteriorRing(
                         place_map_features.geometry
@@ -923,10 +954,10 @@ function llama_place_map_features(
          * record and leave the rest of the Place layout usable.
          */
         try {
-            $geometry =
-                llama_place_map_feature_validate_polygon(
-                    $geometry
-                );
+            $geometry = (string) ($row['geometry_type'] ?? '')
+                === LLAMA_PLACE_MAP_FEATURE_GEOMETRY_POINT
+                    ? llama_place_map_feature_validate_point($geometry)
+                    : llama_place_map_feature_validate_polygon($geometry);
         } catch (InvalidArgumentException $exception) {
             error_log(
                 'Llama Scout skipped invalid map feature #'
@@ -1282,21 +1313,19 @@ function llama_place_map_feature_save(
         );
     }
 
-    $geometry =
-        llama_place_map_feature_validate_polygon(
-            $geometry
-        );
-
-    $vertexCount =
-        max(
-            0,
-            count(
-                (array) (
-                    $geometry['coordinates'][0]
-                    ?? []
-                )
-            ) - 1
-        );
+    $isPointArea = $featureType === 'facility_area';
+    $geometry = $isPointArea
+        ? llama_place_map_feature_validate_point($geometry)
+        : llama_place_map_feature_validate_polygon($geometry);
+    $geometryType = $isPointArea
+        ? LLAMA_PLACE_MAP_FEATURE_GEOMETRY_POINT
+        : LLAMA_PLACE_MAP_FEATURE_GEOMETRY_POLYGON;
+    $vertexCount = $isPointArea
+        ? 1
+        : max(0, count((array) ($geometry['coordinates'][0] ?? [])) - 1);
+    if ($isPointArea && $label === '') {
+        throw new InvalidArgumentException('Name the facility Area.');
+    }
 
     $sourceType =
         llama_place_map_feature_validate_source_type(
@@ -1351,10 +1380,9 @@ function llama_place_map_feature_save(
             )
             : null;
 
-    $geometryWkt =
-        llama_place_map_feature_polygon_wkt(
-            $geometry
-        );
+    $geometryWkt = $isPointArea
+        ? llama_place_map_feature_point_wkt($geometry)
+        : llama_place_map_feature_polygon_wkt($geometry);
 
     if ($featureId > 0) {
         $existing =
@@ -1391,7 +1419,7 @@ function llama_place_map_feature_save(
         $stmt->execute([
             $featureType,
             $label !== '' ? $label : null,
-            LLAMA_PLACE_MAP_FEATURE_GEOMETRY_POLYGON,
+            $geometryType,
             $geometryWkt,
             LLAMA_PLACE_MAP_FEATURE_SRID,
             $sourceType,
@@ -1499,7 +1527,7 @@ function llama_place_map_feature_save(
         $label !== ''
             ? $label
             : null,
-        LLAMA_PLACE_MAP_FEATURE_GEOMETRY_POLYGON,
+        $geometryType,
         $geometryWkt,
         LLAMA_PLACE_MAP_FEATURE_SRID,
         $sourceType,
