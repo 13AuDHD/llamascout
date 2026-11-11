@@ -42,10 +42,18 @@
             const preview = document.createElement('div');
             preview.className = 'admin-attached-photo-preview';
             const img = document.createElement('img');
-            img.src = String(photo.url || photo.src || '');
             img.alt = String(photo.alt || '');
             img.loading = 'lazy';
             img.draggable = false;
+            const unavailable = document.createElement('span');
+            unavailable.className = 'admin-attached-photo-unavailable';
+            unavailable.textContent = 'Preview unavailable';
+            unavailable.hidden = true;
+            img.addEventListener('error', () => {
+                img.classList.add('is-preview-broken');
+                unavailable.hidden = false;
+            });
+            img.src = String(photo.url || photo.src || '');
 
             const hero = document.createElement('span');
             hero.className = 'admin-attached-photo-hero';
@@ -60,7 +68,7 @@
             handle.title = 'Hold and drag anywhere in the gallery to reorder';
             handle.setAttribute('aria-label', 'Move photo in gallery');
             handle.setAttribute('aria-keyshortcuts', 'ArrowLeft ArrowRight ArrowUp ArrowDown Home End');
-            preview.append(img, hero, handle);
+            preview.append(img, unavailable, hero, handle);
 
             const remove = document.createElement('label');
             remove.className = 'admin-attached-photo-remove';
@@ -69,7 +77,9 @@
             checkbox.name = removeName;
             checkbox.value = String(id);
             checkbox.dataset.adminPhotoRemove = '1';
-            remove.append(checkbox, document.createTextNode(' Remove this photo'));
+            const removeText = document.createElement('span');
+            removeText.textContent = 'Remove this photo';
+            remove.append(checkbox, removeText);
             checkbox.addEventListener('change', changed);
 
             const caption = document.createElement('input');
