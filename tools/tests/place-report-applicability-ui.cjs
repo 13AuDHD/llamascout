@@ -220,7 +220,7 @@ async function testAdminSiteEditing(overrides = null) {
             createPane() {},
             getPane: () => ({style: {}}),
             fitBounds() {},
-            setView: point => views.push(point),
+            setView(point) { views.push(point); return map; },
             invalidateSize() {},
         };
         w.requestAnimationFrame = callback => callback();

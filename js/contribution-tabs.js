@@ -12,8 +12,25 @@ document.addEventListener('DOMContentLoaded', () => {
         const adminSitePicker = report.querySelector('[data-admin-campsite-selector]');
         const adminAreaPicker = report.querySelector('[data-admin-area-selector]');
         const isNewPlace = shell.hasAttribute('data-contribution-split') && !adminSitePicker;
+        let activeMode = shell.dataset.contributionInitial || 'place';
+        const hasStagedPhotos = () => ['photos_json', 'site_photos_json']
+            .some(name => {
+                const input = report.querySelector(`[name="${name}"]`);
+                if (!input) return false;
+                try {
+                    const photos = JSON.parse(input.value || '[]');
+                    return Array.isArray(photos) && photos.length > 0;
+                } catch (_) {
+                    return input.value.trim() !== '' && input.value.trim() !== '[]';
+                }
+            });
         const select = mode => {
             if (!buttons.some(button => button.dataset.contributionMode === mode && !button.disabled)) return;
+            if (mode === 'area' && isNewPlace && activeMode !== 'area'
+                && hasStagedPhotos()) {
+                window.alert('Save or remove staged Place and Site photos before switching to Areas.');
+                return;
+            }
             for (const button of buttons) {
                 button.setAttribute('aria-pressed', String(button.dataset.contributionMode === mode));
             }
@@ -32,6 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (placePhotoPanel && !adminSitePicker) placePhotoPanel.hidden = mode !== 'place';
             if (firstSitePhotoPanel) firstSitePhotoPanel.hidden = mode !== 'site';
+            activeMode = mode;
             shell.dispatchEvent(new CustomEvent('llama:contribution-mode', { detail: { mode } }));
         };
         for (const button of buttons) button.addEventListener('click', () => select(button.dataset.contributionMode));
