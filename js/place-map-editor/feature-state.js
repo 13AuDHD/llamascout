@@ -130,6 +130,18 @@
                         };
                     }
 
+                    if (value === 'facility_area') {
+                        return {
+                            noun: 'Facility Area',
+                            shortNoun: 'facility',
+                            newLabel: 'New facility',
+                            saveLabel: 'Save facility',
+                            moveLabel: 'Move point',
+                            createHelp: 'Mark the exact facility location on the map.',
+                            editHelp: 'Update this facility name or exact GPS point.'
+                        };
+                    }
+
                     if (
                         value === 'camping_area'
                         || value === 'parking_area'
@@ -476,6 +488,7 @@
                     if (
                         type === 'camping_area'
                         || type === 'parking_area'
+                        || type === 'facility_area'
                     ) {
                         return {
                             level:
