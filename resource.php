@@ -754,35 +754,45 @@ require __DIR__ . '/partials/header.php';
 
 <?php if ($coordinates !== ''): ?>
 <dialog class="resource-directions-dialog" id="resource-directions-dialog"
-        aria-labelledby="resource-directions-title">
+        aria-labelledby="resource-directions-title"
+        aria-describedby="resource-directions-description">
     <div class="resource-directions-header">
-        <h2 id="resource-directions-title">Open directions in</h2>
+        <div>
+            <p class="resource-directions-eyebrow">Resource directions</p>
+            <h2 id="resource-directions-title">Choose your maps app</h2>
+            <p id="resource-directions-description">Open this location with your preferred map.</p>
+        </div>
         <button type="button" class="resource-directions-close"
-                data-resource-directions-close aria-label="Close directions menu">×</button>
+                data-resource-directions-close aria-label="Close directions menu"><?= llama_icon('x') ?></button>
     </div>
     <div class="resource-directions-options">
         <a href="<?= htmlspecialchars($googleDirectionsUrl, ENT_QUOTES, 'UTF-8') ?>"
            target="_blank" rel="noopener noreferrer">
-            <i aria-hidden="true"><?= llama_icon('brand-google-maps') ?></i>
-            Google Maps
+            <span class="resource-directions-provider-icon" aria-hidden="true"><?= llama_icon('brand-google-maps') ?></span>
+            <span class="resource-directions-provider-label"><strong>Google Maps</strong><small>Driving directions</small></span>
+            <?= llama_icon('arrow-up-right') ?>
         </a>
         <a href="<?= htmlspecialchars($appleDirectionsUrl, ENT_QUOTES, 'UTF-8') ?>"
            target="_blank" rel="noopener noreferrer">
-            <i aria-hidden="true"><?= llama_icon('brand-apple') ?></i>
-            Apple Maps
+            <span class="resource-directions-provider-icon" aria-hidden="true"><?= llama_icon('brand-apple') ?></span>
+            <span class="resource-directions-provider-label"><strong>Apple Maps</strong><small>Driving directions</small></span>
+            <?= llama_icon('arrow-up-right') ?>
         </a>
         <a href="<?= htmlspecialchars($onxMapUrl, ENT_QUOTES, 'UTF-8') ?>"
            target="_blank" rel="noopener noreferrer">
-            <i aria-hidden="true"><?= llama_icon('brand-onx') ?></i>
-            onX Offroad Maps
+            <span class="resource-directions-provider-icon" aria-hidden="true"><?= llama_icon('brand-onx') ?></span>
+            <span class="resource-directions-provider-label"><strong>onX Offroad</strong><small>Explore in onX Maps</small></span>
+            <?= llama_icon('arrow-up-right') ?>
         </a>
     </div>
-    <p class="resource-directions-note">To add this Resource to onX, copy its coordinates and paste them into onX Search, then save a waypoint.</p>
-    <div class="resource-directions-coordinates">
-        <output id="resource-directions-coordinates"><?= htmlspecialchars($coordinates, ENT_QUOTES, 'UTF-8') ?></output>
-        <button type="button" data-resource-copy-coordinates>Copy coordinates</button>
+    <div class="resource-directions-footer">
+        <p class="resource-directions-note">For onX, copy these coordinates, search for them in the map, then save a waypoint.</p>
+        <div class="resource-directions-coordinates">
+            <output id="resource-directions-coordinates"><?= htmlspecialchars($coordinates, ENT_QUOTES, 'UTF-8') ?></output>
+            <button type="button" data-resource-copy-coordinates><?= llama_icon('copy') ?> Copy</button>
+        </div>
+        <p class="resource-directions-copy-status" data-resource-copy-status role="status" aria-live="polite"></p>
     </div>
-    <p class="resource-directions-copy-status" data-resource-copy-status role="status" aria-live="polite"></p>
 </dialog>
 <script>
 (() => {

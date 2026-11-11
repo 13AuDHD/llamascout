@@ -227,19 +227,25 @@ $promotionBannerEndsAt = $activeWebsitePromotion
         })();
     </script>
 
+    <?php
+    // Version local stylesheets by modification time so Safari picks up
+    // changes after deployment instead of reusing stale CSS.
+    $publicStyleUrl = static function (string $stylesheet) use ($siteUrl): string {
+        $path = dirname(__DIR__) . '/css/' . $stylesheet;
+        $version = is_file($path) ? (int) filemtime($path) : 0;
+        return $siteUrl . '/css/' . $stylesheet
+            . ($version > 0 ? '?v=' . $version : '');
+    };
+    ?>
     <link
         rel="stylesheet"
-        href="<?= htmlspecialchars($siteUrl . '/css/site.css', ENT_QUOTES, 'UTF-8') ?>"
+        href="<?= htmlspecialchars($publicStyleUrl('site.css'), ENT_QUOTES, 'UTF-8') ?>"
     >
 
     <?php foreach ($pageStylesheets as $stylesheet): ?>
         <link
             rel="stylesheet"
-            href="<?= htmlspecialchars(
-                $siteUrl . '/css/' . $stylesheet,
-                ENT_QUOTES,
-                'UTF-8'
-            ) ?>"
+            href="<?= htmlspecialchars($publicStyleUrl($stylesheet), ENT_QUOTES, 'UTF-8') ?>"
         >
     <?php endforeach; ?>
 </head>
