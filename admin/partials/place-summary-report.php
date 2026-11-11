@@ -119,6 +119,7 @@ $placeReportSelectedSite = isset($placeReportSiteOptions[$requestedSite]) ? $req
         </header>
 
         <?php require __DIR__ . '/place-report-area-selector.php'; ?>
+        <?php require __DIR__ . '/place-report-facility-questions.php'; ?>
 
         <script type="application/json" data-admin-place-campsites><?= json_encode(
             [

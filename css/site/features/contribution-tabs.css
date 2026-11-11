@@ -63,3 +63,24 @@
 .contribution-area-panel h3 { margin: 0 0 6px; font-size: 1rem; }
 .contribution-area-panel p { margin: 0; color: var(--text-muted); line-height: 1.5; }
 .contribution-area-panel a { display: inline-flex; margin-top: 12px; color: var(--text); font-weight: 800; }
+
+/* Facility Area questions use the normal Admin Place form controls. */
+.admin-facility-questions[hidden],
+.admin-facility-question[hidden] { display: none !important; }
+.admin-facility-questions { margin: 16px 0; }
+.admin-facility-question-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+    gap: 14px;
+    margin-top: 12px;
+}
+.admin-facility-question {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+.admin-facility-question select {
+    width: 100%;
+    min-height: 42px;
+}
+.admin-facility-question small { color: var(--text-muted); line-height: 1.45; }

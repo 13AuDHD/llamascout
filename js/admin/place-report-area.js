@@ -16,6 +16,32 @@
     }
 
     const areas = Array.isArray(catalog.areas) ? catalog.areas : [];
+    const facilityPanel = form.querySelector('[data-admin-facility-questions]');
+    const facilityFields = [...form.querySelectorAll('[data-facility-kinds]')];
+    const areasById = new Map(areas.map(area => [String(area.id), area]));
+    const areaShell = form.closest('[data-contribution-tabs]');
+    const facilityAllowed = (key, areaId) => {
+        const node = facilityFields.find(field =>
+            field.getAttribute('data-report-field') === key);
+        if (!node) return true;
+        const area = areasById.get(String(areaId));
+        return area?.feature_type === 'facility_area'
+            && (node.dataset.facilityKinds || '').split(',')
+                .includes(String(area.facility_kind || ''));
+    };
+    const syncFacilityQuestions = areaId => {
+        const area = areasById.get(String(areaId));
+        const areaTab = areaShell?.querySelector('[data-contribution-mode="area"]');
+        const visible = area?.feature_type === 'facility_area'
+            && areaTab?.getAttribute('aria-pressed') === 'true';
+        if (facilityPanel) facilityPanel.hidden = !visible;
+        for (const field of facilityFields) {
+            const key = field.getAttribute('data-report-field') || '';
+            field.hidden = !visible || !facilityAllowed(key, areaId);
+        }
+    };
+    areaShell?.addEventListener('llama:contribution-mode',
+        () => syncFacilityQuestions(selector.value));
     const fieldKeys = new Set(Array.isArray(catalog.field_keys) ? catalog.field_keys : []);
     const controls = new Map();
     for (const control of form.elements) {
@@ -137,6 +163,7 @@
                 const key
                 of controls.keys()
             ) {
+                if (!facilityAllowed(key, selected)) continue;
                 const inherited =
                     Object.prototype.hasOwnProperty.call(
                         placeValues,
@@ -329,6 +356,7 @@
                     )
                     : placeValues
             );
+            syncFacilityQuestions(selected);
         }
     );
 
@@ -600,4 +628,5 @@
     queueMicrotask(
         openRequestedReportTarget
     );
+    syncFacilityQuestions(selector.value);
 })();
