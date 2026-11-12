@@ -14,6 +14,7 @@ require_once dirname(__DIR__) . '/app/place-campsites.php';
 require_once dirname(__DIR__) . '/app/place-pricing.php';
 require_once dirname(__DIR__) . '/app/place-report/season-definitions.php';
 require_once dirname(__DIR__) . '/app/admin-campsite-pricing.php';
+require_once dirname(__DIR__) . '/app/place-report/season-public.php';
 
 // Apply the Admin permission check before either a JSON reader or writer.
 $adminUser = moderation_require_admin();
@@ -134,10 +135,19 @@ if (isset($_GET['ajax'])) {
                 ];
             }
             $seasons = llama_seasons_for_place($db, $placeId);
+            $placeClosed = [];
+            foreach ($seasons as $season) {
+                $conditions = llama_public_season_place_conditions(
+                    $db, $placeId, (int) $season['id']
+                );
+                $placeClosed[(string) $season['id']] =
+                    ($conditions['seasonal_place_closed']['value'] ?? null) === true;
+            }
             $respond([
                 'ok' => true,
                 'place' => $place,
                 'sites' => $sites,
+                'place_closed_by_season' => $placeClosed,
                 'seasons' => array_map(static fn(array $s): array => [
                     'id' => (int) $s['id'],
                     'name' => (string) $s['name'],
