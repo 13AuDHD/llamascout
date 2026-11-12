@@ -579,8 +579,15 @@ function admin_cpr_save_season(
         $seasonId = llama_season_save($db, $placeId, $actorId, [
             'id' => (int) ($rawSeason['id'] ?? 0),
             'name' => (string) ($rawSeason['name'] ?? ''),
-            'start_mmdd' => (string) ($rawSeason['start'] ?? ''),
-            'end_mmdd' => (string) ($rawSeason['end'] ?? ''),
+            'is_recurring' => !empty($rawSeason['recurring']) ? 1 : 0,
+            'start_mmdd' => !empty($rawSeason['recurring'])
+                ? (string) ($rawSeason['start'] ?? '') : '',
+            'end_mmdd' => !empty($rawSeason['recurring'])
+                ? (string) ($rawSeason['end'] ?? '') : '',
+            'starts_on' => empty($rawSeason['recurring'])
+                ? (string) ($rawSeason['start'] ?? '') : '',
+            'ends_on' => empty($rawSeason['recurring'])
+                ? (string) ($rawSeason['end'] ?? '') : '',
             'is_default' => (int) (!empty($rawSeason['default'])),
             'is_active' => (int) (!empty($rawSeason['active'])),
             'sort_order' => (int) ($rawSeason['sort_order'] ?? 0),
