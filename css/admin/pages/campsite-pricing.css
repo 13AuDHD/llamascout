@@ -507,3 +507,65 @@
     .cpr-holiday-row > label:first-child { grid-column: 1 / -1; }
     .cpr-holiday-actions > div { width: 100%; justify-content: flex-end; }
 }
+
+
+/* All season creation and editing lives in Campsite Pricing. */
+.cpr-season-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+.cpr-season-heading .cpr-ghost { padding: 8px 12px; min-height: 38px; }
+.cpr-seasons .cpr-add-season + .cpr-add-season { margin-top: 9px; }
+.cpr-season-dialog-label {
+    display: grid;
+    gap: 8px;
+    font-size: .85rem;
+    font-weight: 700;
+    color: #e5eae6;
+}
+.cpr-season-dialog-label input,
+.cpr-season-dialog-label select {
+    width: 100%;
+    min-width: 0;
+    background: #131715;
+    border: 1px solid #5a665d;
+    border-radius: 9px;
+    padding: 11px 12px;
+    color: #f7faf7;
+    font: inherit;
+}
+.cpr-season-dialog-label select option { background: #202523; color: white; }
+.cpr-season-dialog-label input:focus-visible,
+.cpr-season-dialog-label select:focus-visible {
+    outline: 2px solid #59b66e;
+    outline-offset: 1px;
+}
+.cpr-season-dialog-dates {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+.cpr-season-dialog-flags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 13px 25px;
+    border: 1px solid #4b554e;
+    padding: 12px 14px;
+    border-radius: 10px;
+}
+.cpr-season-dialog-flags label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: .82rem;
+    color: #dde7df;
+}
+.cpr-season-dialog-flags input { accent-color: #2f9a4f; width: 17px; height: 17px; }
+.cpr-season-dialog .cpr-holiday-actions { justify-content: flex-end; }
+@media (max-width: 500px) {
+    .cpr-season-dialog-dates { grid-template-columns: 1fr; }
+    .cpr-season-dialog .cpr-holiday-modal { padding: 16px; }
+}
