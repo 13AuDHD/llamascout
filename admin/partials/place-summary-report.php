@@ -55,7 +55,7 @@ $placeReportSelectedSite = isset($placeReportSiteOptions[$requestedSite]) ? $req
 
 <nav class="admin-place-section-nav">
     <a href="#place-report">Place Report</a>
-    <a href="#place-seasons">Seasons</a>
+    <a href="/campsite-pricing.php?place_id=<?= (int) $placeId ?>">Campsite Pricing</a>
     <a href="#photos">Photos</a>
     <a href="#notes">Notes</a>
     <a href="#verification">Verification</a>
@@ -188,5 +188,4 @@ $placeReportSelectedSite = isset($placeReportSiteOptions[$requestedSite]) ? $req
 </form>
 </div>
 
-<?php // Independent season forms belong after the complete canonical Place Report. ?>
-<?php require __DIR__ . '/place-report-seasons.php'; ?>
+<?php // Season creation, pricing and Site availability now live only in Campsite Pricing. ?>
