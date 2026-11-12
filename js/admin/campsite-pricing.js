@@ -209,7 +209,7 @@
                 button.title = 'Site facts are read from the existing Site record.';
             });
         $('copy-season').disabled = !enabled || state.saving || state.seasons.length < 2;
-        $('manage-holidays').disabled = !enabled || state.saving;
+        $('manage-holidays').disabled = !state.sitePayload?.version || state.saving;
         syncSaveButton();
     };
     const resetSiteSelection = () => {
