@@ -83,6 +83,11 @@ on:
       - 'js/admin/place-map.js'
       - 'js/contribution-tabs.js'
       - 'css/admin/pages/place.css'
+      - 'admin/partials/place-report-area-selector.php'
+      - 'place-map-editor.php'
+      - 'js/place-map-editor.js'
+      - 'js/admin/place-report-area.js'
+      - 'css/site/pages/place-map-editor.css'
   workflow_dispatch:
 
 permissions:
@@ -137,6 +142,9 @@ jobs:
           node --check js/admin/place-season-builder.js
           node --check js/admin/place-report-seasons.js
           node --check js/admin/place-map.js
+          node --check js/admin/place-report-area.js
+          node --check js/place-map-editor.js
+          node --check js/contribution-tabs.js
           node --check js/admin/place-report-save.js
           node --check js/admin/place-report-photos.js
           node --check js/photo-gallery-editor.js
