@@ -159,6 +159,9 @@ function admin_cpr_snapshot(PDO $db, int $placeId, int $siteId): array
             (int) $s['id'],
             (string) $s['start_mmdd'],
             (string) $s['end_mmdd'],
+            (int) ($s['is_recurring'] ?? 1),
+            (string) ($s['starts_on'] ?? ''),
+            (string) ($s['ends_on'] ?? ''),
         ], $seasons),
     ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES));
 
