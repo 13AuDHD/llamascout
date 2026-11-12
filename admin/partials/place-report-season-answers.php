@@ -12,27 +12,28 @@ $availableSeasons = array_values(array_filter(
 
 <section class="admin-place-season-answers" id="seasonal-conditions"
          aria-labelledby="season-answers-heading">
-    <?php if (in_array(($action ?? ''), ['save-season-builder', 'save-season-prices'], true) && ($error ?? '') !== ''): ?>
+    <?php if (in_array(($action ?? ''), ['save-season-builder'], true) && ($error ?? '') !== ''): ?>
         <div class="admin-place-seasons-message is-error" role="alert"
              id="season-save-feedback">
             <strong>Seasonal changes were not saved.</strong>
             <?= $e((string) $error) ?>
         </div>
-    <?php elseif ((string) ($_GET['saved'] ?? '') === 'season-builder' || (string) ($_GET['saved'] ?? '') === 'season-prices'): ?>
+    <?php elseif ((string) ($_GET['saved'] ?? '') === 'season-builder'): ?>
         <div class="admin-place-seasons-message is-success" role="status"
              id="season-save-feedback">
-            Season and rate changes saved.
+            Seasonal operating conditions saved.
         </div>
     <?php endif; ?>
 
     <?php if (!$availableSeasons): ?>
-        <form method="post" action="/place.php?id=<?= (int) $placeId ?>#place-seasons">
-            <input type="hidden" name="csrf_token" value="<?= $e(moderation_csrf_token()) ?>">
-            <input type="hidden" name="place_id" value="<?= (int) $placeId ?>">
-            <input type="hidden" name="place_admin_action" value="save-season-prices">
-            <?php require __DIR__ . '/place-season-rate-editor.php'; ?>
-            <button type="submit" class="admin-button">Save rates</button>
-        </form>
+        <p class="admin-place-seasons-message">
+            No Place seasons are defined yet. Define an operating season here,
+            then set each Site's rates and availability in Campsite Pricing.
+        </p>
+        <a class="admin-button is-muted"
+           href="/campsite-pricing.php?place_id=<?= (int) $placeId ?>">
+            Open Campsite Pricing
+        </a>
     <?php else: ?>
         <?php
         $loadError = '';
@@ -249,7 +250,6 @@ $availableSeasons = array_values(array_filter(
                                : '') ?>">
                 </label>
 
-                <?php require __DIR__ . '/place-season-rate-editor.php'; ?>
 
                 <div class="admin-place-season-builder-footer">
                     <span data-season-builder-change-count role="status">Loading seasonal editor…</span>
