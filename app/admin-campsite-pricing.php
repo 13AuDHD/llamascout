@@ -985,6 +985,10 @@ function admin_cpr_group_catalog(PDO $db, int $placeId, array $sites): array
         $match = (array) ($row['match'] ?? []);
         $matched = 0;
         foreach ($sites as $site) {
+            if (preg_match('/PICNIC|SHELTER|DAY USE/i',
+                (string) ($site['raw_site_type'] ?? ''))) {
+                continue;
+            }
             $context = llama_pricing_site_context(
                 $contexts[(int) ($site['id'] ?? 0)] ?? $site
             );
@@ -1012,6 +1016,10 @@ function admin_cpr_group_catalog(PDO $db, int $placeId, array $sites): array
         $match = (array) ($vehicleRow['match'] ?? []);
         $matched = 0;
         foreach ($sites as $site) {
+            if (preg_match('/PICNIC|SHELTER|DAY USE/i',
+                (string) ($site['raw_site_type'] ?? ''))) {
+                continue;
+            }
             $context = llama_pricing_site_context(
                 $contexts[(int) ($site['id'] ?? 0)] ?? $site
             );
@@ -1053,6 +1061,13 @@ function admin_cpr_matching_sites(
     $doc = llama_pricing_document($db, ['id' => $placeId]);
     $contexts = llama_pricing_effective_site_contexts($db, $placeId, $sites, $doc);
     foreach ($sites as $site) {
+        // The public nightly pricing resolver already excludes day-use Sites.
+        // Admin matching must not silently set campground rates or overnight
+        // availability on those non-overnight records.
+        if (preg_match('/PICNIC|SHELTER|DAY USE/i',
+            (string) ($site['raw_site_type'] ?? ''))) {
+            continue;
+        }
         $context = $contexts[(int) ($site['id'] ?? 0)] ?? $site;
         $score = llama_pricing_match($match, llama_pricing_site_context($context));
         if ($score === -1) {
