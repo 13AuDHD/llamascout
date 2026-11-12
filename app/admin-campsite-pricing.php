@@ -823,3 +823,191 @@ function admin_cpr_save_review(
         throw $e;
     }
 }
+
+
+/** Group rates reuse the existing category / hookups / layout selectors. */
+function admin_cpr_group_key(string $category, string $hookups, string $layout): string
+{
+    return 'cpr-group-' . $category . '-' .
+        ($hookups ?: 'any') . '-' . ($layout ?: 'any');
+}
+
+/** Read all reusable campground rate groups and their actual Site coverage. */
+function admin_cpr_group_catalog(PDO $db, int $placeId, array $sites): array
+{
+    $doc = llama_pricing_document($db, ['id' => $placeId]);
+    $groups = [];
+    $covered = [];
+    foreach ((array) ($doc['rows'] ?? []) as $row) {
+        if (!str_starts_with((string) ($row['id'] ?? ''), 'cpr-group-')) {
+            continue;
+        }
+        $match = (array) ($row['match'] ?? []);
+        $matched = 0;
+        foreach ($sites as $site) {
+            $context = llama_pricing_site_context($site);
+            $score = llama_pricing_match($match, $context);
+            if ($score === null || $score < 0) continue;
+            $matched++;
+            $covered[(int) $site['id']] = true;
+        }
+        $groups[] = [
+            'id' => (string) $row['id'],
+            'name' => (string) ($row['name'] ?? ''),
+            'category' => (string) ($match['category'] ?? ''),
+            'hookups' => (string) ($match['hookups'] ?? ''),
+            'layout' => (string) ($match['layout'] ?? ''),
+            'matched_sites' => $matched,
+            'seasons' => array_values((array) ($row['seasons'] ?? [])),
+        ];
+    }
+    return [
+        'version' => hash('sha256', json_encode($doc, JSON_THROW_ON_ERROR)),
+        'groups' => $groups,
+        'unmatched_sites' => count($sites) - count($covered),
+    ];
+}
+
+/** Save one category/utility/parking rule across matching Sites, not 300 rows. */
+function admin_cpr_save_rate_group(
+    PDO $db, int $placeId, int $actorId,
+    string $expectedVersion, array $request
+): array {
+    if ($placeId < 1 || $actorId < 1 || strlen($expectedVersion) !== 64) {
+        throw new InvalidArgumentException('Select a Place before saving a rate group.');
+    }
+    $category = (string) ($request['category'] ?? '');
+    $hookups = (string) ($request['hookups'] ?? '');
+    $layout = (string) ($request['layout'] ?? '');
+    if (!in_array($category, ['single', 'double', 'group'], true)
+        || !in_array($hookups, ['', 'none', 'electric', 'full'], true)
+        || !in_array($layout, ['', 'pull_through', 'back_in', 'pull_in', 'parallel'], true)) {
+        throw new InvalidArgumentException('Select a valid Site size, utility type, and parking style.');
+    }
+    $seasonId = (int) ($request['season_id'] ?? 0);
+    if ($seasonId < 1) {
+        throw new InvalidArgumentException('Select an operating season for this rate.');
+    }
+    $rawRates = (array) ($request['rates'] ?? []);
+    if (array_keys($rawRates) !== ['weekday', 'weekend', 'holiday']) {
+        throw new InvalidArgumentException('Enter weekday, weekend, and holiday rate fields.');
+    }
+    $rates = [];
+    foreach ($rawRates as $key => $raw) {
+        $rates[$key] = llama_pricing_amount($raw);
+    }
+    if (!array_filter($rates, static fn ($v): bool => $v !== null)) {
+        throw new InvalidArgumentException('Enter at least one rate amount. Enter 0 for free.');
+    }
+
+    $db->beginTransaction();
+    try {
+        $lock = $db->prepare('SELECT id FROM places WHERE id = ? FOR UPDATE');
+        $lock->execute([$placeId]);
+        if (!$lock->fetchColumn()) {
+            throw new InvalidArgumentException('Place not found.');
+        }
+        $seasons = llama_seasons_for_place($db, $placeId);
+        if (!in_array($seasonId, array_map('intval', array_column($seasons, 'id')), true)) {
+            throw new InvalidArgumentException('The season does not belong to this Place.');
+        }
+        $doc = llama_pricing_document($db, ['id' => $placeId]);
+        if (!hash_equals(
+            hash('sha256', json_encode($doc, JSON_THROW_ON_ERROR)),
+            $expectedVersion
+        )) {
+            throw new RuntimeException('Another rate was updated. Reload before saving.', 409);
+        }
+        if (!empty($doc['invalid'])) {
+            throw new InvalidArgumentException('Review invalid Place pricing before adding groups.');
+        }
+
+        $id = admin_cpr_group_key($category, $hookups, $layout);
+        $index = null;
+        foreach ($doc['rows'] as $i => $row) {
+            if ($row['id'] === $id) {
+                $index = $i;
+                break;
+            }
+        }
+        if ($index === null) {
+            $doc['rows'][] = [
+                'id' => $id,
+                'name' => ucfirst($category) . ' · '
+                    . ($hookups === '' ? 'All utilities' : ucfirst($hookups))
+                    . ($layout === '' ? '' : ' · ' . $layout),
+                'match' => [
+                    'category' => $category,
+                    'hookups' => $hookups,
+                    'layout' => $layout,
+                    'raw_type' => '',
+                    'legacy_category' => '',
+                    'legacy_site' => '',
+                    'loop' => '',
+                    'site_ids' => [],
+                    'feature_ids' => [],
+                    'area_ids' => [],
+                    'site_selection' => false,
+                ],
+                'unit' => 'night',
+                'price' => null,
+                'weekend_price' => null,
+                'holiday_price' => null,
+                'seasons' => [],
+            ];
+            $index = array_key_last($doc['rows']);
+        }
+        $row =& $doc['rows'][$index];
+        $match = (array) ($row['match'] ?? []);
+        if (($match['category'] ?? '') !== $category
+            || ($match['hookups'] ?? '') !== $hookups
+            || ($match['layout'] ?? '') !== $layout
+            || !empty($match['site_ids'])
+            || !empty($match['feature_ids'])
+            || !empty($match['area_ids'])) {
+            throw new InvalidArgumentException('A different pricing rule already has this identifier.');
+        }
+        $period = [
+            'season_id' => $seasonId,
+            'price' => $rates['weekday'],
+            'weekend_price' => $rates['weekend'],
+            'holiday_price' => $rates['holiday'],
+        ];
+        $found = false;
+        foreach ($row['seasons'] as &$existing) {
+            if ((int) ($existing['season_id'] ?? 0) === $seasonId) {
+                $existing = $period;
+                $found = true;
+                break;
+            }
+        }
+        unset($existing);
+        if (!$found) $row['seasons'][] = $period;
+        unset($row);
+        $doc = llama_pricing_validate($doc);
+        $encoded = json_encode($doc, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+        $old = $db->prepare('SELECT place_id FROM place_rules WHERE place_id = ? FOR UPDATE');
+        $old->execute([$placeId]);
+        if ($old->fetchColumn()) {
+            $write = $db->prepare(
+                'UPDATE place_rules SET rate_cards_json = ? WHERE place_id = ?'
+            );
+            $write->execute([$encoded, $placeId]);
+        } else {
+            $write = $db->prepare(
+                'INSERT INTO place_rules (place_id, rate_cards_json) VALUES (?, ?)'
+            );
+            $write->execute([$placeId, $encoded]);
+        }
+        admin_users_audit(
+            $db, $actorId, null, 'place.pricing_group_updated',
+            'Saved a matched Site pricing group.',
+            ['place_id' => $placeId, 'rate_group_id' => $id, 'season_id' => $seasonId]
+        );
+        $db->commit();
+        return ['success' => true, 'group_id' => $id];
+    } catch (Throwable $e) {
+        if ($db->inTransaction()) $db->rollBack();
+        throw $e;
+    }
+}
