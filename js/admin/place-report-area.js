@@ -17,7 +17,7 @@
 
     const areas = Array.isArray(catalog.areas) ? catalog.areas : [];
     const facilityPanel = form.querySelector('[data-admin-facility-questions]');
-    const facilityFields = [...form.querySelectorAll('[data-facility-kinds]')];
+    const facilityFields = [...form.querySelectorAll('[data-area-question]')];
     const areasById = new Map(areas.map(area => [String(area.id), area]));
     const areaShell = form.closest('[data-contribution-tabs]');
     const areaPicker = form.querySelector('[data-admin-area-picker]');
@@ -55,24 +55,34 @@
             selector.dispatchEvent(new Event('change', {bubbles: true}));
         }
     };
+    // The same server-verified Area classification controls what can be
+    // edited. Facility questions and camping/parking questions never mix.
     const facilityAllowed = (key, areaId) => {
         const node = facilityFields.find(field =>
             field.getAttribute('data-report-field') === key);
-        if (!node) return true;
+        if (!node) return true; // Existing shared canonical questions.
         const area = areasById.get(String(areaId));
-        return area?.feature_type === 'facility_area'
-            && (node.dataset.facilityKinds || '').split(',')
-                .includes(String(area.facility_kind || ''));
+        if (!area) return false;
+        const allowedKinds = (node.dataset.facilityKinds || '')
+            .split(',').filter(Boolean);
+        const allowedFeatures = (node.dataset.areaFeatureTypes || '')
+            .split(',').filter(Boolean);
+        if (allowedFeatures.length) {
+            return allowedFeatures.includes(String(area.feature_type || ''));
+        }
+        return area.feature_type === 'facility_area'
+            && allowedKinds.includes(String(area.facility_kind || ''));
     };
     const syncFacilityQuestions = areaId => {
-        const area = areasById.get(String(areaId));
-        const areaTab = areaShell?.querySelector('[data-contribution-mode="area"]');
-        const visible = area?.feature_type === 'facility_area'
-            && areaTab?.getAttribute('aria-pressed') === 'true';
+        const visible = currentMode() && areasById.has(String(areaId));
         if (facilityPanel) facilityPanel.hidden = !visible;
         for (const field of facilityFields) {
             const key = field.getAttribute('data-report-field') || '';
             field.hidden = !visible || !facilityAllowed(key, areaId);
+        }
+        for (const group of form.querySelectorAll('[data-admin-area-question-group]')) {
+            group.hidden = !visible
+                || !group.querySelector('[data-area-question]:not([hidden])');
         }
     };
     areaShell?.addEventListener('llama:contribution-mode', () => {
