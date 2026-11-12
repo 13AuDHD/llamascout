@@ -226,7 +226,7 @@ function admin_cpr_merge_vehicle(
     foreach ($document['rows'] as $i => $row) {
         if ((string) ($row['id'] ?? '') !== $rowId) continue;
         if (($row['unit'] ?? '') !== 'vehicle_night'
-            || (array) ($row['match'] ?? []) !== $match) {
+            || (array) ($row['match'] ?? []) != $match) {
             throw new InvalidArgumentException('Extra vehicle rate row ownership conflicts.');
         }
         $index = $i;
@@ -1119,14 +1119,16 @@ function admin_cpr_save_rate_group(
         ];
         $hasNightRate = $rates['weekday'] !== null
             || $rates['weekend'] !== null || $rates['holiday'] !== null;
-        if ($hasNightRate) {
-            $index = null;
-            foreach ($doc['rows'] as $i => $row) {
-                if ($row['id'] === $id) {
-                    $index = $i;
-                    break;
-                }
+        $index = null;
+        foreach ($doc['rows'] as $i => $row) {
+            if ($row['id'] === $id) {
+                $index = $i;
+                break;
             }
+        }
+        // Updating an existing rule with blank amounts clears those prices.
+        // A status-only edit never creates an empty nightly rate row.
+        if ($hasNightRate || $index !== null) {
             if ($index === null) {
                 $doc['rows'][] = [
                     'id' => $id,
@@ -1161,17 +1163,30 @@ function admin_cpr_save_rate_group(
                 }
             }
             unset($existing);
-            if (!$found) $row['seasons'][] = $period;
+            if (!$found && $hasNightRate) $row['seasons'][] = $period;
+            if (!$hasNightRate) {
+                $row['seasons'] = array_values(array_filter(
+                    $row['seasons'],
+                    static fn (array $item): bool =>
+                        (int) ($item['season_id'] ?? 0) !== $seasonId
+                ));
+            }
+            $removeEmpty = !$row['seasons']
+                && ($row['price'] ?? null) === null
+                && ($row['weekend_price'] ?? null) === null
+                && ($row['holiday_price'] ?? null) === null;
             unset($row);
+            if ($removeEmpty) {
+                unset($doc['rows'][$index]);
+                $doc['rows'] = array_values($doc['rows']);
+            }
         }
-        if ($rates['vehicle'] !== null) {
-            $doc = admin_cpr_merge_vehicle(
-                $doc, 'cpr-vehicle-' . $id, $match,
-                ucfirst($category ?: 'All Sites'), [
-                    ['season_id' => $seasonId, 'vehicle' => $rates['vehicle']],
-                ]
-            );
-        }
+        $doc = admin_cpr_merge_vehicle(
+            $doc, 'cpr-vehicle-' . $id, $match,
+            ucfirst($category ?: 'All Sites'), [
+                ['season_id' => $seasonId, 'vehicle' => $rates['vehicle']],
+            ]
+        );
         $doc = llama_pricing_validate($doc);
         $appliedStatusCount = 0;
         if (!empty($request['apply_availability'])) {
