@@ -493,8 +493,15 @@
         setEditorEnabled(enabled);
         $('season-title').textContent = enabled ? season.name
             : ((state.site || isMatching()) ? 'Choose a Season' : 'Select a Site');
-        $('start').value = enabled ? draft.start || '' : '';
-        $('end').value = enabled ? draft.end || '' : '';
+        const repeating = season?.recurring !== false;
+        $('start').maxLength = repeating ? 5 : 10;
+        $('end').maxLength = repeating ? 5 : 10;
+        $('start').placeholder = repeating ? 'MM-DD' : 'YYYY-MM-DD';
+        $('end').placeholder = repeating ? 'MM-DD' : 'YYYY-MM-DD';
+        $('start').value = enabled
+            ? (repeating ? season.start : season.starts_on) || '' : '';
+        $('end').value = enabled
+            ? (repeating ? season.end : season.ends_on) || '' : '';
         ['weekday', 'weekend', 'holiday', 'vehicle', 'group'].forEach(key => {
             const input = $('rate-' + key);
             input.value = enabled && draft[key] !== '' && draft[key] != null
