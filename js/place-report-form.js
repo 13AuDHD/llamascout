@@ -943,6 +943,9 @@ return !!field && (showAllForReview
 // Use canonical question keys, not input names: radio controls include
 // hidden sentinels and compound controls can contain multiple components.
 form.querySelectorAll('[data-report-field]').forEach(wrapper => {
+// Area-only question visibility belongs to the verified Area selector.
+// Do not reset it when a Place/Site dependency or unrelated select changes.
+if (wrapper.matches('[data-area-question]')) return;
 const key = wrapper.dataset.reportField;
 const inScope = scopeAllows(key);
 const allowed = applicable(key);
