@@ -3,10 +3,9 @@
 declare(strict_types=1);
 
 /**
- * Single-Site pricing editor, visual integration pass.
- * Reads existing Places, canonical Sites, Place seasons and pricing v2.
- * Writes deliberately stay in the established Place pricing workflows
- * until the per-Site seasonal save adapter is implemented.
+ * Admin Campsite Pricing. One screen owns Place operating seasons,
+ * individual Site availability and nightly rates, plus holiday dates.
+ * Place seasonal closures remain canonical Scout Report questions.
  */
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/admin-users.php';
@@ -32,7 +31,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         }
         $input = json_decode($raw, true, 32, JSON_THROW_ON_ERROR);
         if (!is_array($input) || !in_array(
-            (string) ($input['action'] ?? ''), ['save', 'save-holidays'], true
+            (string) ($input['action'] ?? ''), ['save', 'save-holidays', 'save-season'], true
         )) {
             throw new InvalidArgumentException('Invalid pricing save request.');
         }
@@ -41,7 +40,19 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             echo json_encode(['success' => false, 'message' => 'Your Admin session expired. Reload before saving.']);
             exit;
         }
-        if ($input['action'] === 'save-holidays') {
+        if ($input['action'] === 'save-season') {
+            if (!isset($input['season']) || !is_array($input['season'])
+                || array_is_list($input['season'])) {
+                throw new InvalidArgumentException('Invalid Place season definition.');
+            }
+            $result = admin_cpr_save_season(
+                $db,
+                (int) ($input['place_id'] ?? 0),
+                $actorId,
+                (string) ($input['season_version'] ?? ''),
+                $input['season']
+            );
+        } elseif ($input['action'] === 'save-holidays') {
             if (!isset($input['holidays']) || !is_array($input['holidays'])
                 || !array_is_list($input['holidays'])) {
                 throw new InvalidArgumentException('Invalid holiday calendar.');
@@ -152,6 +163,8 @@ if (isset($_GET['ajax'])) {
                 ];
             }
             $seasons = llama_seasons_for_place($db, $placeId);
+            $allSeasons = llama_seasons_for_place($db, $placeId, true);
+            $seasonVersion = admin_cpr_season_version($db, $placeId);
             $placeClosed = [];
             foreach ($seasons as $season) {
                 $conditions = llama_public_season_place_conditions(
@@ -165,6 +178,18 @@ if (isset($_GET['ajax'])) {
                 'place' => $place,
                 'sites' => $sites,
                 'place_closed_by_season' => $placeClosed,
+                'season_version' => $seasonVersion,
+                'all_seasons' => array_map(static fn(array $s): array => [
+                    'id' => (int) $s['id'],
+                    'name' => (string) $s['name'],
+                    'start' => (string) ($s['start_mmdd'] ?? ''),
+                    'end' => (string) ($s['end_mmdd'] ?? ''),
+                    'default' => (bool) ($s['is_default'] ?? false),
+                    'active' => (bool) ($s['is_active'] ?? false),
+                    'sort_order' => (int) ($s['sort_order'] ?? 0),
+                    'notes' => (string) ($s['notes'] ?? ''),
+                    'source_url' => (string) ($s['source_url'] ?? ''),
+                ], $allSeasons),
                 'seasons' => array_map(static fn(array $s): array => [
                     'id' => (int) $s['id'],
                     'name' => (string) $s['name'],
