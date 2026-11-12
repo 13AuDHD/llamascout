@@ -429,3 +429,81 @@
     .cpr-footer { flex-direction: column; align-items: stretch; }
     .cpr-footer > div { justify-content: flex-end; }
 }
+
+/* Holiday date editor is intentionally part of Campsite Pricing, not a
+   second Place rate editor. */
+.cpr-holiday-calendar-action {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 4px 3px;
+    color: var(--cpr-muted);
+    font-size: .81rem;
+}
+.cpr-holiday-calendar-action .cpr-ghost { padding: 9px 13px; }
+.cpr-holiday-dialog {
+    color: #f4f6f5;
+    width: min(780px, calc(100vw - 28px));
+    max-height: min(85vh, 900px);
+    overflow-y: auto;
+    padding: 0;
+    border: 1px solid #538361;
+    border-radius: 15px;
+    background: #202322;
+    box-shadow: 0 30px 75px #000c;
+}
+.cpr-holiday-dialog::backdrop { background: #000b; }
+.cpr-holiday-modal { display: grid; gap: 19px; padding: 24px; }
+.cpr-holiday-modal h2 { font-size: 1.2rem; margin: 0 0 7px; }
+.cpr-holiday-modal p { margin: 0; font-size: .83rem; color: #bdc7bf; }
+.cpr-holiday-rows { display: grid; gap: 10px; }
+.cpr-holiday-row {
+    display: grid;
+    grid-template-columns: minmax(160px,2fr) minmax(105px,1fr)
+        minmax(105px,1fr) auto auto;
+    gap: 11px;
+    align-items: end;
+    padding: 12px;
+    border: 1px solid #4b554f;
+    border-radius: 10px;
+    background: #171b18;
+}
+.cpr-holiday-row > label:not(.cpr-holiday-recurring) {
+    display: grid;
+    gap: 6px;
+    color: #dce3dc;
+    font-size: .78rem;
+}
+.cpr-holiday-row input[type="text"] {
+    display: block;
+    min-width: 0;
+    width: 100%;
+    padding: 10px 9px;
+    color: white;
+    border: 1px solid #586359;
+    border-radius: 8px;
+    background: #101411;
+    font-size: .84rem;
+}
+.cpr-holiday-row input:focus-visible {
+    outline: 2px solid #59b66e;
+    outline-offset: 1px;
+}
+.cpr-holiday-recurring {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding-bottom: 13px;
+    white-space: nowrap;
+    font-size: .78rem;
+}
+.cpr-holiday-row .cpr-ghost { min-height: 41px; font-size: .76rem; }
+.cpr-holiday-actions { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.cpr-holiday-actions > div { display: flex; gap: 8px; }
+@media (max-width: 750px) {
+    .cpr-holiday-row { grid-template-columns: 1fr 1fr; }
+    .cpr-holiday-row > label:first-child { grid-column: 1 / -1; }
+    .cpr-holiday-actions > div { width: 100%; justify-content: flex-end; }
+}
