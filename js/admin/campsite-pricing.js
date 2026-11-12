@@ -421,6 +421,9 @@
             '  ·  Weekday ' + money(draft.weekday) +
             '  ·  Weekend ' + money(draft.weekend) +
             '  ·  Holiday ' + money(draft.holiday);
+        if (draft.holiday !== '' && !state.sitePayload?.holidays?.length) {
+            $('preview').textContent += ' · No holiday dates configured for this Place';
+        }
     };
 
     root.querySelectorAll('[data-cpr-rate]').forEach(input => {
