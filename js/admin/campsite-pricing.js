@@ -17,6 +17,7 @@
         reviewReady: false,
         rateGroups: [],
         groupVersion: null,
+        pricingHolidays: [],
         groupPreviewSeq: 0,
         matchingCount: 0,
         matchingUnknown: 0,
@@ -155,6 +156,7 @@
             state.reviewReady = false;
             state.rateGroups = [];
             state.groupVersion = null;
+            state.pricingHolidays = [];
             state.placeClosure = null;
         }
         window.clearTimeout(state.searchTimer);
@@ -255,7 +257,8 @@
         $('edit-season').disabled = !state.place || !state.seasonId || state.saving;
         $('add-season').disabled = !state.place || state.saving;
         $('manage-seasons').disabled = !state.place || !state.allSeasons.length || state.saving;
-        $('manage-holidays').disabled = !state.sitePayload?.version || state.saving;
+        $('manage-holidays').disabled = state.saving ||
+            !(state.sitePayload?.version || (isMatching() && state.groupVersion));
         syncSaveButton();
     };
     const resetSiteSelection = () => {
@@ -274,6 +277,7 @@
         state.paidSites = [];
         state.rateGroups = [];
         state.groupVersion = null;
+        state.pricingHolidays = [];
         state.matchingCount = 0;
         state.matchingFilters = {capacity: '', layout: '', utility: ''};
         $('matching-count').textContent = '';
@@ -304,6 +308,7 @@
             state.reviewReady = Boolean(data.review_queue_ready);
             state.rateGroups = data.rate_groups?.groups || [];
             state.groupVersion = data.rate_groups?.version || null;
+            state.pricingHolidays = data.pricing_holidays || [];
             state.placeClosure = data.place_closure || null;
             renderReviewQueue();
             state.site = null;
@@ -526,7 +531,9 @@
             '  ·  Holiday ' + money(draft.holiday)
             + '  ·  Extra vehicle ' + money(draft.vehicle)
             + (isMatching() ? ' · ' + state.matchingCount + ' matched Sites' : '');
-        if (draft.holiday !== '' && !state.sitePayload?.holidays?.length) {
+        if (draft.holiday !== ''
+            && !(isMatching() ? state.pricingHolidays.length
+                : state.sitePayload?.holidays?.length)) {
             $('preview').textContent += ' · No holiday dates configured for this Place';
         }
         if (state.placeClosure?.reported) {
@@ -1149,13 +1156,15 @@
     };
 
     $('manage-holidays').addEventListener('click', () => {
-        if (!state.place || !state.sitePayload?.version || state.saving) return;
+        if (!state.place || state.saving || !(state.sitePayload?.version
+            || (isMatching() && state.groupVersion))) return;
         if (changesForSave().length) {
-            status('Save or cancel your Site pricing changes before editing Place holiday dates.', true);
+            status('Save or cancel pricing changes before editing Place holiday dates.', true);
             return;
         }
         holidayRows.replaceChildren();
-        for (const item of state.sitePayload.holidays || []) addHolidayRow(item);
+        for (const item of (isMatching()
+            ? state.pricingHolidays : state.sitePayload.holidays) || []) addHolidayRow(item);
         if (!holidayRows.childElementCount) addHolidayRow();
         holidayStatus('Use YYYY-MM-DD for specific dates, or MM-DD with Repeats yearly.');
         holidayDialog.showModal();
@@ -1163,7 +1172,11 @@
     $('holiday-add').addEventListener('click', () => addHolidayRow());
     $('holiday-cancel').addEventListener('click', () => holidayDialog.close());
     $('holiday-save').addEventListener('click', async () => {
-        if (!state.place || !state.site || !state.sitePayload?.version || state.saving) return;
+        if (!state.place || state.saving || !(state.sitePayload?.version
+            || (isMatching() && state.groupVersion))) return;
+        const holidayMatchingMode = isMatching();
+        const placeBefore = {...state.place};
+        const filtersBefore = {...state.matchingFilters};
         const holidays = [];
         for (const row of holidayRows.querySelectorAll('.cpr-holiday-row')) {
             const field = name => row.querySelector('[data-holiday-field="' + name + '"]');
@@ -1194,14 +1207,20 @@
                     action: 'save-holidays',
                     csrf_token: $('csrf').value,
                     place_id: state.place.id,
-                    site_id: state.site.id,
-                    version: state.sitePayload.version,
+                    site_id: holidayMatchingMode ? 0 : state.site.id,
+                    version: holidayMatchingMode
+                        ? state.groupVersion : state.sitePayload.version,
                     holidays,
                 }),
             });
             const data = await response.json();
             if (!response.ok || data.success !== true) {
                 throw new Error(data.message || 'Holiday dates were not saved.');
+            }
+            if (holidayMatchingMode) {
+                await loadPlace(placeBefore);
+                state.matchingFilters = filtersBefore;
+                $('site').value = 'matching';
             }
             await loadSelectedSite();
             holidayDialog.close();
