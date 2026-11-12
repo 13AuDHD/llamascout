@@ -251,7 +251,10 @@ function llama_pricing_match(array $match, array $site): ?int
     }
     if (!empty($match['site_ids'])) {
         if (!in_array((int) ($site['id'] ?? 0), $match['site_ids'], true)) return null;
-        $score += 100;
+        // An individually selected Site rate must outrank a shared
+        // Place, Area or multi-Site rate. That is the intended precedence
+        // of per-Site seasonal overrides in the canonical v2 document.
+        $score += count($match['site_ids']) === 1 ? 1100 : 1000;
     }
     foreach (['category' => 'pricing_category', 'layout' => 'parking_style', 'raw_type' => 'raw_site_type', 'loop' => 'pricing_loop', 'legacy_site' => 'site_code', 'legacy_category' => 'raw_site_type'] as $key => $source) {
         $wanted = (string) ($match[$key] ?? '');
