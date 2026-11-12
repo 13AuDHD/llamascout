@@ -5,26 +5,13 @@ declare(strict_types=1);
 /**
  * Canonical pricing semantics for Scout Report fields.
  *
- * The versioned Place card is authoritative. Old scalar and mapped prices
- * are read only by its legacy adapter until the Place saves a version 2 card.
+ * Nightly Site prices belong to Admin > Campsite Pricing, not the
+ * Scout Report. Only independent access, booking, membership and parking
+ * fees remain here as non-nightly reporting facts.
  */
 function llama_place_report_pricing_semantics(): array
 {
     return [
-        'place_rate_cards_json' => [
-            'kind' => 'camping_rate_schedule',
-            'scope' => 'place',
-            'precedence' => 'authoritative',
-            'mapped_override' => false,
-        ],
-        'fee' => [
-            'kind' => 'base_overnight',
-            'unit' => 'night',
-            'scope' => 'place',
-            'precedence' => 'legacy_adapter_only',
-            'mapped_override' => true,
-        ],
-
         'reservation_fee' => [
             'kind' => 'booking_surcharge',
             'unit' => 'reservation',
@@ -63,9 +50,8 @@ function llama_place_report_pricing_semantics(): array
 function llama_place_report_pricing_precedence(): array
 {
     return [
-        'individual_site_selector',
-        'preserved_area_selector',
-        'most_specific_site_attributes',
-        'place_wide_row',
+        'campsite_pricing_site',
+        'campsite_pricing_season',
+        'place_seasonal_closure_override',
     ];
 }
