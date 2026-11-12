@@ -27,6 +27,6 @@ assert.match(mode, /adminAreaSection\.hidden = mode !== 'area'/, 'Hide selector 
 assert.match(area, /if \(!currentMode\(\)\)/, 'Do not submit Area edits from other tabs');
 assert.match(area, /write\(placeValues\)/, 'Restore Place answers when switching tabs');
 assert.match(shared, /llama_report_questions_for_area_target/, 'Canonical Area questions come from central registry');
-assert.match(css, /data-map-mode-button="site"\.is-active/, 'Site active mode uses independent styling');
-assert.match(css, /data-map-mode-button="area"\.is-active/, 'Area active mode uses independent styling');
+assert.match(css, /data-map-mode-button="site"\]\.is-active/, 'Site active mode uses independent styling');
+assert.match(css, /data-map-mode-button="area"\]\.is-active/, 'Area active mode uses independent styling');
 console.log('PASS: Place/Site/Area tab order, Area ownership and canonical registry wiring');
