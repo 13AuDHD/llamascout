@@ -188,6 +188,7 @@ if (isset($_GET['ajax'])) {
                     'ends' => $closureEnds,
                 ],
                 'season_version' => $seasonVersion,
+                'calendar_ready' => llama_season_year_columns_ready($db),
                 'all_seasons' => array_map(static fn(array $s): array => [
                     'id' => (int) $s['id'],
                     'name' => (string) $s['name'],
