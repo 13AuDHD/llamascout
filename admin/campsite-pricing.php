@@ -14,6 +14,7 @@ require_once dirname(__DIR__) . '/app/place-pricing.php';
 require_once dirname(__DIR__) . '/app/place-report/season-definitions.php';
 require_once dirname(__DIR__) . '/app/admin-campsite-pricing.php';
 require_once dirname(__DIR__) . '/app/place-report/season-public.php';
+require_once dirname(__DIR__) . '/app/place-report/current-answers.php';
 
 // Apply the Admin permission check before either a JSON reader or writer.
 $adminUser = moderation_require_admin();
@@ -165,19 +166,27 @@ if (isset($_GET['ajax'])) {
             $seasons = llama_seasons_for_place($db, $placeId);
             $allSeasons = llama_seasons_for_place($db, $placeId, true);
             $seasonVersion = admin_cpr_season_version($db, $placeId);
-            $placeClosed = [];
-            foreach ($seasons as $season) {
-                $conditions = llama_public_season_place_conditions(
-                    $db, $placeId, (int) $season['id']
-                );
-                $placeClosed[(string) $season['id']] =
-                    ($conditions['seasonal_place_closed']['value'] ?? null) === true;
-            }
+            // Place-wide recurring closure comes from the existing
+            // approved Scout Report questions, not another season toggle.
+            $placeAnswers = llama_place_report_current_place_answers($db, $placeId);
+            $closureAnswer = (array) ($placeAnswers['seasonal_closure'] ?? []);
+            $closureReported = ($closureAnswer['state'] ?? '') === 'answered'
+                && in_array($closureAnswer['value'] ?? null, [true, 1, '1'], true);
+            $closureBegins = (string) (
+                $placeAnswers['season_ends']['value'] ?? ''
+            );
+            $closureEnds = (string) (
+                $placeAnswers['season_begins']['value'] ?? ''
+            );
             $respond([
                 'ok' => true,
                 'place' => $place,
                 'sites' => $sites,
-                'place_closed_by_season' => $placeClosed,
+                'place_closure' => [
+                    'reported' => $closureReported,
+                    'begins' => $closureBegins,
+                    'ends' => $closureEnds,
+                ],
                 'season_version' => $seasonVersion,
                 'all_seasons' => array_map(static fn(array $s): array => [
                     'id' => (int) $s['id'],
