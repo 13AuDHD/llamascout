@@ -253,6 +253,10 @@ try {
         );
         $site['seasonal_operating_status'] =
             $seasonSiteStatuses[$campsiteId] ?? null;
+    } elseif (!empty($seasonState['seasons'])
+        && (string) ($_GET['season'] ?? '') !== '0') {
+        // No active season: do not show this Site as currently open.
+        $site['seasonal_operating_status'] = 'closed';
     }
 
 
