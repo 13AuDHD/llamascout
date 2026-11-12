@@ -171,10 +171,114 @@ function admin_cpr_snapshot(PDO $db, int $placeId, int $siteId): array
         'seasons' => $seasons,
         'availability' => $availability,
         'rates_by_season' => $ratesBySeason,
+        'vehicle_by_season' => admin_cpr_vehicle_amounts($document, $context, $seasons),
         'rate_conflict' => $rateConflict,
         'rate' => $rate,
         'version' => $version,
     ];
+}
+
+/**
+ * Extra vehicle pricing uses the same canonical rate rows as nightly prices,
+ * with unit = vehicle_night. It is a surcharge, never another campsite night.
+ */
+function admin_cpr_vehicle_amounts(
+    array $doc, array $context, array $seasons
+): array {
+    $values = [];
+    foreach ($seasons as $season) {
+        $id = (int) $season['id'];
+        $best = -1;
+        $matched = [];
+        foreach ((array) ($doc['rows'] ?? []) as $row) {
+            if (($row['unit'] ?? 'night') !== 'vehicle_night') continue;
+            $score = llama_pricing_match((array) ($row['match'] ?? []), $context);
+            if ($score === null || $score < 0) continue;
+            $amount = $row['price'] ?? null;
+            $inPeriod = false;
+            foreach ((array) ($row['seasons'] ?? []) as $period) {
+                if ((int) ($period['season_id'] ?? 0) === $id) {
+                    $amount = $period['price'] ?? null;
+                    $inPeriod = true;
+                    break;
+                }
+            }
+            if ($amount === null) continue;
+            $rank = $score * 10 + (int) $inPeriod;
+            if ($rank > $best) {
+                $best = $rank;
+                $matched = [$amount];
+            } elseif ($rank === $best) {
+                $matched[] = $amount;
+            }
+        }
+        $values[(string) $id] = count($matched) === 1 ? $matched[0] : null;
+    }
+    return $values;
+}
+
+/** Add/update only the vehicle_night row owned by one Site or group. */
+function admin_cpr_merge_vehicle(
+    array $document, string $rowId, array $match,
+    string $name, array $changes
+): array {
+    $index = null;
+    foreach ($document['rows'] as $i => $row) {
+        if ((string) ($row['id'] ?? '') !== $rowId) continue;
+        if (($row['unit'] ?? '') !== 'vehicle_night'
+            || (array) ($row['match'] ?? []) !== $match) {
+            throw new InvalidArgumentException('Extra vehicle rate row ownership conflicts.');
+        }
+        $index = $i;
+        break;
+    }
+    if ($index === null) {
+        $hasAmount = false;
+        foreach ($changes as $change) {
+            if (array_key_exists('vehicle', $change) && $change['vehicle'] !== null) {
+                $hasAmount = true;
+                break;
+            }
+        }
+        if (!$hasAmount) return $document;
+        $document['rows'][] = [
+            'id' => $rowId, 'name' => $name . ' · Extra vehicle',
+            'match' => $match, 'unit' => 'vehicle_night',
+            'price' => null, 'weekend_price' => null, 'holiday_price' => null,
+            'seasons' => [],
+        ];
+        $index = array_key_last($document['rows']);
+    }
+    $periods = (array) ($document['rows'][$index]['seasons'] ?? []);
+    foreach ($changes as $change) {
+        if (!array_key_exists('vehicle', $change)) continue;
+        $sid = (int) $change['season_id'];
+        $matchIndex = null;
+        foreach ($periods as $n => $period) {
+            if ((int) ($period['season_id'] ?? 0) === $sid) {
+                $matchIndex = $n;
+                break;
+            }
+        }
+        if ($change['vehicle'] === null) {
+            if ($matchIndex !== null) unset($periods[$matchIndex]);
+        } else {
+            $period = [
+                'season_id' => $sid,
+                'price' => $change['vehicle'],
+                'weekend_price' => null,
+                'holiday_price' => null,
+            ];
+            if ($matchIndex === null) $periods[] = $period;
+            else $periods[$matchIndex] = $period;
+        }
+    }
+    $document['rows'][$index]['seasons'] = array_values($periods);
+    if (!$periods && ($document['rows'][$index]['price'] ?? null) === null) {
+        unset($document['rows'][$index]);
+        $document['rows'] = array_values($document['rows']);
+    }
+    return llama_pricing_validate($document);
 }
 
 /**
@@ -368,6 +472,9 @@ function admin_cpr_save(
                 }
                 $change['rates'] = $rates;
             }
+            if (array_key_exists('vehicle', $item)) {
+                $change['vehicle'] = llama_pricing_amount($item['vehicle']);
+            }
             if (array_key_exists('availability', $item)) {
                 $available = (string) $item['availability'];
                 if (!in_array($available, [
@@ -385,6 +492,17 @@ function admin_cpr_save(
 
         $updated = admin_cpr_merge_rates(
             $before['document'], $siteId, $before['site'], array_values($changes)
+        );
+        $match = [
+            'category' => '', 'layout' => '', 'hookups' => '',
+            'raw_type' => '', 'legacy_category' => '', 'legacy_site' => '',
+            'loop' => '', 'site_ids' => [$siteId],
+            'feature_ids' => [], 'area_ids' => [], 'site_selection' => true,
+        ];
+        $updated = admin_cpr_merge_vehicle(
+            $updated, 'cpr-vehicle-site-' . $siteId, $match,
+            trim((string) ($before['site']['site_name'] ?? '')) ?: 'Site #' . $siteId,
+            array_values($changes)
         );
         $ratesChanged = $updated !== $before['document'];
         if ($ratesChanged) {
