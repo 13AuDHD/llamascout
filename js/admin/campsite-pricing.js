@@ -22,6 +22,7 @@
         matchingCount: 0,
         matchingUnknown: 0,
         matchingFilters: {capacity: '', layout: '', utility: ''},
+        selectedChoice: '',
         placeClosure: null,
         site: null,
         seasonId: null,
@@ -267,6 +268,7 @@
         state.drafts = new Map();
         state.baselines = new Map();
         state.seasonId = null;
+        state.selectedChoice = '';
         $('site').replaceChildren();
         const option = document.createElement('option');
         option.value = '';
@@ -353,6 +355,7 @@
     };
 
     const loadSelectedSite = async () => {
+        state.selectedChoice = $('site').value;
         const id = Number($('site').value);
         ++state.siteRequest;
         if (isMatching() && state.place) {
@@ -443,7 +446,15 @@
             }
         }
     };
-    $('site').addEventListener('change', loadSelectedSite);
+    $('site').addEventListener('change', () => {
+        if (state.selectedChoice !== $('site').value
+            && changesForSave().length
+            && !window.confirm('Switching Sites will discard unsaved pricing changes. Continue?')) {
+            $('site').value = state.selectedChoice;
+            return;
+        }
+        loadSelectedSite();
+    });
 
     const makeSeasonChoice = season => {
         const button = document.createElement('button');
