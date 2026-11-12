@@ -42,6 +42,9 @@
 
         const restoreItemVisibility = () => {
             for (const item of scopedItems) {
+                // Applicability belongs to the selected Area or Site.
+                // A condition from the previous selection is never reused.
+                item.classList.remove('is-applicability-hidden');
                 item.hidden =
                     initialItemHidden.get(item)
                     ?? false;
