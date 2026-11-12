@@ -12,6 +12,7 @@
         seasons: [],
         allSeasons: [],
         seasonVersion: null,
+        calendarReady: false,
         placeClosure: null,
         site: null,
         seasonId: null,
@@ -54,14 +55,25 @@
         return Number.isFinite(amount) && amount >= 0 ? amount.toFixed(2) : '';
     };
     const dateLabel = value => {
-        const match = /^(\d{2})-(\d{2})$/.exec(String(value || ''));
-        if (!match) return 'Dates not set';
-        const date = new Date(2000, Number(match[1]) - 1, Number(match[2]));
-        return date.toLocaleDateString(undefined, {month: 'short', day: 'numeric'});
+        const text = String(value || '');
+        const full = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
+        if (full) {
+            const date = new Date(Number(full[1]), Number(full[2]) - 1, Number(full[3]));
+            return date.toLocaleDateString(undefined, {month: 'short', day: 'numeric', year: 'numeric'});
+        }
+        const recurring = /^(\d{2})-(\d{2})$/.exec(text);
+        if (recurring) {
+            const date = new Date(2000, Number(recurring[1]) - 1, Number(recurring[2]));
+            return date.toLocaleDateString(undefined, {month: 'short', day: 'numeric'});
+        }
+        return 'Dates not set';
     };
     const formatRange = s => {
-        if (!s.start || !s.end) return 'Dates not set';
-        return dateLabel(s.start) + ' – ' + dateLabel(s.end);
+        const repeat = s.recurring !== false && s.recurring !== 0;
+        const start = repeat ? s.start : s.starts_on;
+        const end = repeat ? s.end : s.ends_on;
+        if (!start || !end) return 'Dates not set';
+        return dateLabel(start) + ' – ' + dateLabel(end) + (repeat ? ' · annually' : '');
     };
     const selected = () => state.drafts.get(String(state.seasonId)) || null;
     const updateSegments = (selector, active) => {
@@ -124,6 +136,7 @@
             state.seasons = [];
             state.allSeasons = [];
             state.seasonVersion = null;
+            state.calendarReady = false;
             state.placeClosure = null;
         }
         window.clearTimeout(state.searchTimer);
@@ -252,6 +265,7 @@
             state.seasons = data.seasons || [];
             state.allSeasons = data.all_seasons || [];
             state.seasonVersion = data.season_version || null;
+            state.calendarReady = Boolean(data.calendar_ready);
             state.placeClosure = data.place_closure || null;
             state.site = null;
             state.drafts = new Map();
@@ -376,7 +390,7 @@
         const name = document.createElement('strong');
         name.textContent = season.name;
         const dates = document.createElement('small');
-        dates.textContent = formatRange(state.drafts.get(String(season.id)) || season);
+        dates.textContent = formatRange(season);
         words.append(name, dates);
         const arrow = document.createElement('span');
         arrow.textContent = '›';
@@ -490,17 +504,38 @@
     const seasonChoice = $('season-choose');
     const seasonNotice = text => { $('season-status').textContent = text; };
 
+    const setSeasonDateMode = (clear = false) => {
+        const repeating = $('season-repeat').checked;
+        $('season-start-label').textContent = repeating
+            ? 'Starts (MM-DD)' : 'Starts (year included)';
+        $('season-end-label').textContent = repeating
+            ? 'Ends (MM-DD)' : 'Ends (year included)';
+        for (const id of ['season-start', 'season-end']) {
+            const el = $(id);
+            const old = el.value;
+            el.type = repeating ? 'text' : 'date';
+            el.maxLength = repeating ? 5 : 10;
+            el.placeholder = repeating ? '05-21' : 'YYYY-MM-DD';
+            if (clear) el.value = '';
+            else el.value = old;
+        }
+    };
+    $('season-repeat').addEventListener('change', () => setSeasonDateMode(true));
     const fillSeasonForm = id => {
         const data = state.allSeasons.find(s => String(s.id) === String(id));
         seasonChoice.value = data ? String(data.id) : '';
         $('season-dialog-title').textContent = data ? 'Edit Season' : 'Add Season';
         $('season-name').value = data?.name || '';
-        $('season-start').value = data?.start || '';
-        $('season-end').value = data?.end || '';
+        $('season-repeat').checked = data ? Boolean(data.recurring) : false;
+        setSeasonDateMode(true);
+        $('season-start').value = data ? (data.recurring ? data.start : data.starts_on) || '' : '';
+        $('season-end').value = data ? (data.recurring ? data.end : data.ends_on) || '' : '';
         $('season-active').checked = data ? Boolean(data.active) : true;
         $('season-default').checked = data
             ? Boolean(data.default) : state.seasons.length === 0;
-        seasonNotice('Season dates and availability are saved here. Place seasonal closure is a separate Scout Report question.');
+        seasonNotice(state.calendarReady
+            ? 'Use full calendar dates for published seasons, or Repeat annually for year-independent dates.'
+            : 'Year-specific seasons require the new SQL migration. Recurring MM-DD seasons can still be edited.');
     };
     const openSeasonDialog = (id = '') => {
         if (!state.place || !state.seasonVersion || state.saving) return;
@@ -535,19 +570,34 @@
         const name = $('season-name').value.trim();
         const start = $('season-start').value.trim();
         const end = $('season-end').value.trim();
+        const repeating = $('season-repeat').checked;
         const validDate = value => {
-            if (!/^\d{2}-\d{2}$/.test(value)) return false;
-            const [month, day] = value.split('-').map(Number);
-            const date = new Date(Date.UTC(2000, month - 1, day));
-            return date.getUTCMonth() + 1 === month && date.getUTCDate() === day;
+            if (repeating) {
+                if (!/^\d{2}-\d{2}$/.test(value)) return false;
+                const [month, day] = value.split('-').map(Number);
+                const date = new Date(Date.UTC(2000, month - 1, day));
+                return date.getUTCMonth() + 1 === month && date.getUTCDate() === day;
+            }
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+            const [year, month, day] = value.split('-').map(Number);
+            const date = new Date(Date.UTC(year, month - 1, day));
+            return date.getUTCFullYear() === year
+                && date.getUTCMonth() + 1 === month && date.getUTCDate() === day;
         };
         if (!name || name.length > 100) {
             seasonNotice('Enter a season name.');
             return;
         }
-        if ((start === '') !== (end === '')
+        if ((!repeating && (!start || !end || end < start))
+            || (start === '') !== (end === '')
             || (start !== '' && (!validDate(start) || !validDate(end)))) {
-            seasonNotice('Enter both valid dates as MM-DD, or leave both empty.');
+            seasonNotice(repeating
+                ? 'Use valid MM-DD dates for an annually repeating season.'
+                : 'Enter valid start/end dates including the year, with end after start.');
+            return;
+        }
+        if (!repeating && !state.calendarReady) {
+            seasonNotice('Apply the year-specific season SQL migration before saving these dates.');
             return;
         }
         const previous = state.allSeasons.find(
@@ -555,6 +605,7 @@
         );
         const season = {
             id: previous?.id || 0, name, start, end,
+            recurring: repeating,
             active: $('season-active').checked,
             default: $('season-default').checked,
             sort_order: previous?.sort_order
