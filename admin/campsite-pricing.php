@@ -13,9 +13,57 @@ require_once dirname(__DIR__) . '/app/admin-users.php';
 require_once dirname(__DIR__) . '/app/place-campsites.php';
 require_once dirname(__DIR__) . '/app/place-pricing.php';
 require_once dirname(__DIR__) . '/app/place-report/season-definitions.php';
+require_once dirname(__DIR__) . '/app/admin-campsite-pricing.php';
 
+// Apply the Admin permission check before either a JSON reader or writer.
 $adminUser = moderation_require_admin();
 $db = db();
+$actorId = (int) ($adminUser['id'] ?? 0);
+
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: private, no-store');
+    header('X-Content-Type-Options: nosniff');
+    try {
+        $raw = file_get_contents('php://input');
+        if (!is_string($raw) || strlen($raw) > 24000) {
+            throw new InvalidArgumentException('The pricing change is too large.');
+        }
+        $input = json_decode($raw, true, 32, JSON_THROW_ON_ERROR);
+        if (!is_array($input) || ($input['action'] ?? '') !== 'save') {
+            throw new InvalidArgumentException('Invalid pricing save request.');
+        }
+        if (!moderation_verify_csrf((string) ($input['csrf_token'] ?? ''))) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Your Admin session expired. Reload before saving.']);
+            exit;
+        }
+        $result = admin_cpr_save(
+            $db,
+            (int) ($input['place_id'] ?? 0),
+            (int) ($input['site_id'] ?? 0),
+            $actorId,
+            (string) ($input['version'] ?? ''),
+            (array) ($input['changes'] ?? [])
+        );
+        echo json_encode($result, JSON_THROW_ON_ERROR);
+    } catch (Throwable $exception) {
+        $status = $exception instanceof RuntimeException
+            && (int) $exception->getCode() === 409 ? 409
+            : ($exception instanceof InvalidArgumentException || $exception instanceof JsonException ? 422 : 500);
+        http_response_code($status);
+        if ($status === 500) {
+            llama_log_caught_exception($exception, 'admin.campsite_pricing.save');
+        }
+        echo json_encode([
+            'success' => false,
+            'message' => $status === 500
+                ? 'The pricing change could not be saved. Existing rates were not changed.'
+                : $exception->getMessage(),
+        ], JSON_UNESCAPED_SLASHES);
+    }
+    exit;
+}
 
 if (isset($_GET['ajax'])) {
     header('Content-Type: application/json; charset=utf-8');
@@ -105,51 +153,23 @@ if (isset($_GET['ajax'])) {
             if (!$siteId || $siteId < 1) {
                 $respond(['ok' => false, 'error' => 'Choose an existing Site.'], 400);
             }
-            $site = llama_place_campsites($db, $placeId, $siteId)[0] ?? null;
-            if (!is_array($site)) {
-                $respond(['ok' => false, 'error' => 'This Site does not belong to the selected Place.'], 404);
-            }
-
-            // Project only the best-matching rate row for this actual Site.
-            // Do not rewrite other Sites' rate selectors or legacy rows.
-            $doc = llama_pricing_document($db, $place);
-            $context = llama_pricing_site_context($site);
-            $matched = null;
-            $bestScore = -1;
-            foreach ((array) ($doc['rows'] ?? []) as $row) {
-                if ((string) ($row['unit'] ?? 'night') !== 'night') continue;
-                $score = llama_pricing_match((array) ($row['match'] ?? []), $context);
-                if ($score !== null && $score > $bestScore) {
-                    $bestScore = $score;
-                    $matched = $row;
-                }
-            }
-
-            $statuses = [];
-            $statusStmt = $db->prepare(
-                'SELECT season_id, operating_status
-                 FROM place_season_site_status
-                 WHERE place_id = ? AND target_source = ? AND target_id = ?'
-            );
-            $statusStmt->execute([$placeId, 'campsite_record', $siteId]);
-            foreach ($statusStmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
-                $statuses[(string) $row['season_id']] =
-                    (string) $row['operating_status'] === 'closed' ? 'unavailable' : 'available';
-            }
-
+            $snapshot = admin_cpr_snapshot($db, $placeId, $siteId);
+            $rate = $snapshot['rate'];
             $respond([
                 'ok' => true,
                 'site_id' => $siteId,
-                'rate' => $matched === null ? null : [
-                    'name' => (string) ($matched['name'] ?? ''),
-                    'weekday' => $matched['price'] ?? null,
-                    'weekend' => $matched['weekend_price'] ?? null,
-                    'holiday' => $matched['holiday_price'] ?? null,
-                    'seasons' => array_values((array) ($matched['seasons'] ?? [])),
+                'version' => $snapshot['version'],
+                'rate_conflict' => $snapshot['rate_conflict'],
+                'rate' => $rate === null ? null : [
+                    'name' => (string) ($rate['name'] ?? ''),
+                    'weekday' => $rate['price'] ?? null,
+                    'weekend' => $rate['weekend_price'] ?? null,
+                    'holiday' => $rate['holiday_price'] ?? null,
+                    'seasons' => array_values((array) ($rate['seasons'] ?? [])),
                 ],
-                'availability' => $statuses,
-                'weekend_days' => (array) ($doc['weekend_days'] ?? [5, 6]),
-                'holidays' => (array) ($doc['holidays'] ?? []),
+                'availability' => $snapshot['availability'],
+                'weekend_days' => (array) ($snapshot['document']['weekend_days'] ?? [5, 6]),
+                'holidays' => (array) ($snapshot['document']['holidays'] ?? []),
             ]);
         }
 
@@ -170,6 +190,8 @@ $adminActiveNav = 'campsite_pricing';
 require __DIR__ . '/_header.php';
 ?>
 <div class="cpr" id="cpr" data-cpr-endpoint="/campsite-pricing.php">
+    <input type="hidden" id="cpr-csrf"
+           value="<?= htmlspecialchars(moderation_csrf_token(), ENT_QUOTES, 'UTF-8') ?>">
     <p class="cpr-intro">Search for a Place, then select a Site to manage seasonal availability and rates.</p>
 
     <div class="cpr-card cpr-search-panel">
@@ -310,7 +332,7 @@ require __DIR__ . '/_header.php';
     </div>
     <footer class="cpr-footer">
         <p class="cpr-save-status" id="cpr-save-status" role="status">
-            First pass: changes are a visual preview and are not saved to the database.
+            Choose a Place, Site, and season to manage pricing. Changes save to existing Llama Scout records.
         </p>
         <div>
             <button type="button" class="cpr-ghost" id="cpr-cancel">Cancel</button>
