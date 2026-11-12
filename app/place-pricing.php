@@ -445,16 +445,20 @@ function llama_pricing_public_night(array $doc, ?array $season, mixed $requested
 }
 
 /** Enrich already-authorized Sites. Never returns raw selectors or source URLs. */
-function llama_pricing_enrich_sites(PDO $db, array $place, array $sites, ?array $doc = null, ?string $date = null): array
-{
-    $doc ??= llama_pricing_document($db, $place);
+/**
+ * The exact Site facts used by public price resolution and Admin group
+ * matching. Published Scout Report overrides supersede imported attributes.
+ */
+function llama_pricing_effective_site_contexts(
+    PDO $db, int $placeId, array $sites, array $doc
+): array {
     $overrides = [];
     $ids = array_values(array_filter(array_map('intval', array_column($sites, 'id'))));
     foreach (array_chunk($ids, 400) as $batch) {
         try {
             $marks = implode(',', array_fill(0, count($batch), '?'));
             $q = $db->prepare('SELECT target_id, question_key, answer_state, value_json FROM place_report_current_answers WHERE place_id = ? AND target_scope = ? AND target_source = ? AND question_key IN ("capacity_size_rating", "site_loop", "hookup_water", "hookup_sewer", "hookup_electric_service", "back_in", "pull_through") AND target_id IN (' . $marks . ')');
-            $q->execute([(int) $place['id'], 'site', 'campsite_record', ...$batch]);
+            $q->execute([$placeId, 'site', 'campsite_record', ...$batch]);
             foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $answer) {
                 $value = $answer['answer_state'] === 'answered' ? json_decode((string) $answer['value_json'], true) : null;
                 if ($answer['answer_state'] === 'unanswered') continue;
@@ -468,10 +472,11 @@ function llama_pricing_enrich_sites(PDO $db, array $place, array $sites, ?array 
     $areas = [];
     if ($ids && array_filter($doc['rows'], static fn($r) => !empty($r['match']['area_ids']))) {
         $q = $db->prepare('SELECT feature_id, camping_area_feature_id FROM place_map_camping_sites WHERE feature_id IN (SELECT map_feature_id FROM place_campsites WHERE place_id = ?)');
-        $q->execute([(int) $place['id']]);
+        $q->execute([$placeId]);
         foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $r) $areas[(int) $r['feature_id']] = (int) $r['camping_area_feature_id'];
     }
-    foreach ($sites as &$site) {
+    $contexts = [];
+    foreach ($sites as $site) {
         $context = $site;
         $context['parent_feature_id'] = $areas[(int) ($site['map_feature_id'] ?? 0)] ?? 0;
         $o = $overrides[(int) ($site['id'] ?? 0)] ?? [];
@@ -482,6 +487,19 @@ function llama_pricing_enrich_sites(PDO $db, array $place, array $sites, ?array 
         if (($o['pull_through'] ?? null) === true) $context['parking_style'] = 'pull_through';
         elseif (($o['back_in'] ?? null) === true) $context['parking_style'] = 'back_in';
         if (array_key_exists('site_loop', $o)) $context['pricing_loop'] = (string) $o['site_loop'];
+        $contexts[(int) ($site['id'] ?? 0)] = $context;
+    }
+    return $contexts;
+}
+
+function llama_pricing_enrich_sites(PDO $db, array $place, array $sites, ?array $doc = null, ?string $date = null): array
+{
+    $doc ??= llama_pricing_document($db, $place);
+    $contexts = llama_pricing_effective_site_contexts(
+        $db, (int) $place['id'], $sites, $doc
+    );
+    foreach ($sites as &$site) {
+        $context = $contexts[(int) ($site['id'] ?? 0)] ?? $site;
         $site['pricing'] = llama_pricing_for_site($doc, $context, $date);
         $priceLabels = [];
         $closed = !empty($site['is_closed']) || !empty($site['place_verified_closed'])
