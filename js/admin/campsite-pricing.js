@@ -859,14 +859,11 @@
                 const field = button.dataset.capacity !== undefined ? 'capacity'
                     : button.dataset.layout !== undefined ? 'layout' : 'utility';
                 const chosen = button.dataset[field];
-                if (state.matchingFilters[field] === chosen) {
-                    state.matchingFilters[field] = '';
-                } else {
-                    if (changesForSave().length && !window.confirm(
-                        'Changing the matching filters will discard unsaved prices and availability. Continue?'
-                    )) return;
-                    state.matchingFilters[field] = chosen;
-                }
+                if (changesForSave().length && !window.confirm(
+                    'Changing the matching filters will discard unsaved prices and availability. Continue?'
+                )) return;
+                state.matchingFilters[field] =
+                    state.matchingFilters[field] === chosen ? '' : chosen;
                 loadMatchingDrafts();
                 refreshMatchingCount();
                 status('Edit the rates below to price the matching Sites.'
