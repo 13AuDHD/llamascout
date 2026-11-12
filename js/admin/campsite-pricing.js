@@ -10,6 +10,8 @@
         place: null,
         sites: [],
         seasons: [],
+        allSeasons: [],
+        seasonVersion: null,
         placeClosed: {},
         site: null,
         seasonId: null,
@@ -120,8 +122,9 @@
             state.place = null;
             resetSiteSelection();
             state.seasons = [];
+            state.allSeasons = [];
+            state.seasonVersion = null;
             state.placeClosed = {};
-            $('place-seasons-link').hidden = true;
         }
         window.clearTimeout(state.searchTimer);
         state.searchTimer = window.setTimeout(() => search(value), 220);
@@ -192,7 +195,7 @@
         ['start','end'].forEach(id => {
             $(id).disabled = !enabled;
             $(id).readOnly = true;
-            $(id).title = 'Season dates are shared by the Place. Use Manage Place seasons to change dates.';
+            $(id).title = 'Use Edit Season above to change the season dates here in Campsite Pricing.';
         });
         root.querySelectorAll('[data-cpr-rate]').forEach(input => {
             const supported = ['weekday', 'weekend', 'holiday'].includes(input.dataset.cprRate);
@@ -209,6 +212,9 @@
                 button.title = 'Site facts are read from the existing Site record.';
             });
         $('copy-season').disabled = !enabled || state.saving || state.seasons.length < 2;
+        $('edit-season').disabled = !state.place || !state.seasonId || state.saving;
+        $('add-season').disabled = !state.place || state.saving;
+        $('manage-seasons').disabled = !state.place || !state.allSeasons.length || state.saving;
         $('manage-holidays').disabled = !state.sitePayload?.version || state.saving;
         syncSaveButton();
     };
@@ -244,13 +250,13 @@
             state.place = data.place;
             state.sites = data.sites || [];
             state.seasons = data.seasons || [];
+            state.allSeasons = data.all_seasons || [];
+            state.seasonVersion = data.season_version || null;
             state.placeClosed = data.place_closed_by_season || {};
             state.site = null;
             state.drafts = new Map();
             state.seasonId = null;
-            $('place-seasons-link').hidden = false;
-            $('place-seasons-link').href = '/place.php?id=' + data.place.id + '#place-seasons';
-            const select = $('site');
+             const select = $('site');
             select.replaceChildren();
             const option = document.createElement('option');
             option.value = '';
@@ -264,6 +270,7 @@
             }
             select.disabled = !state.sites.length;
             $('add-season').disabled = false;
+            $('manage-seasons').disabled = !state.allSeasons.length;
             setSiteSummary();
             renderSeasons();
             renderEditor();
@@ -395,7 +402,7 @@
         if (!state.seasons.length) {
             const message = document.createElement('p');
             message.className = 'cpr-muted';
-            message.textContent = 'No Place seasons defined. Add one here for a preview, or configure seasons from the Place editor.';
+            message.textContent = 'No seasons yet. Select Add Season above to create the first one here.';
             list.append(message);
             return;
         }
@@ -472,11 +479,136 @@
     });
     // The Site fact pills reflect existing records and do not write pricing
     // selectors in this pass. Place-wide season dates stay in Place Admin.
-    $('add-season').addEventListener('click', () => {
-        if (!state.place) return;
-        window.location.href = '/place.php?id='
-            + encodeURIComponent(state.place.id) + '&season_edit=0#place-seasons';
+    // Edit Place season definitions without leaving the pricing workspace.
+    const seasonDialog = $('season-dialog');
+    const seasonForm = $('season-form');
+    const seasonChoice = $('season-choose');
+    const seasonNotice = text => { $('season-status').textContent = text; };
+
+    const fillSeasonForm = id => {
+        const data = state.allSeasons.find(s => String(s.id) === String(id));
+        seasonChoice.value = data ? String(data.id) : '';
+        $('season-dialog-title').textContent = data ? 'Edit Season' : 'Add Season';
+        $('season-name').value = data?.name || '';
+        $('season-start').value = data?.start || '';
+        $('season-end').value = data?.end || '';
+        $('season-active').checked = data ? Boolean(data.active) : true;
+        $('season-default').checked = data
+            ? Boolean(data.default) : state.seasons.length === 0;
+        seasonNotice('Season dates and availability are saved here. Place seasonal closure is a separate Scout Report question.');
+    };
+    const openSeasonDialog = (id = '') => {
+        if (!state.place || !state.seasonVersion || state.saving) return;
+        if (changesForSave().length) {
+            status('Save or cancel your current Site prices before changing the Place seasons.', true);
+            return;
+        }
+        seasonChoice.replaceChildren();
+        const fresh = document.createElement('option');
+        fresh.value = '';
+        fresh.textContent = '+ New season';
+        seasonChoice.append(fresh);
+        for (const season of state.allSeasons) {
+            const option = document.createElement('option');
+            option.value = String(season.id);
+            option.textContent = season.name + (season.active ? '' : ' (inactive)');
+            seasonChoice.append(option);
+        }
+        fillSeasonForm(id);
+        seasonDialog.showModal();
+    };
+    $('add-season').addEventListener('click', () => openSeasonDialog());
+    $('edit-season').addEventListener('click', () => openSeasonDialog(state.seasonId));
+    $('manage-seasons').addEventListener('click', () => {
+        openSeasonDialog(state.seasonId || state.allSeasons[0]?.id || '');
     });
+    seasonChoice.addEventListener('change', () => fillSeasonForm(seasonChoice.value));
+    $('season-cancel').addEventListener('click', () => seasonDialog.close());
+    seasonForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        if (!state.place || !state.seasonVersion || state.saving) return;
+        const name = $('season-name').value.trim();
+        const start = $('season-start').value.trim();
+        const end = $('season-end').value.trim();
+        const validDate = value => {
+            if (!/^\d{2}-\d{2}$/.test(value)) return false;
+            const [month, day] = value.split('-').map(Number);
+            const date = new Date(Date.UTC(2000, month - 1, day));
+            return date.getUTCMonth() + 1 === month && date.getUTCDate() === day;
+        };
+        if (!name || name.length > 100) {
+            seasonNotice('Enter a season name.');
+            return;
+        }
+        if ((start === '') !== (end === '')
+            || (start !== '' && (!validDate(start) || !validDate(end)))) {
+            seasonNotice('Enter both valid dates as MM-DD, or leave both empty.');
+            return;
+        }
+        const previous = state.allSeasons.find(
+            season => String(season.id) === seasonChoice.value
+        );
+        const season = {
+            id: previous?.id || 0, name, start, end,
+            active: $('season-active').checked,
+            default: $('season-default').checked,
+            sort_order: previous?.sort_order
+                ?? ((Math.max(0, ...state.allSeasons.map(s => Number(s.sort_order) || 0))) + 10),
+            notes: previous?.notes || '',
+            source_url: previous?.source_url || '',
+        };
+        const placeBefore = {...state.place};
+        const selectedSiteId = state.site?.id || 0;
+        state.saving = true;
+        $('season-save').disabled = true;
+        setEditorEnabled(Boolean(selected()));
+        seasonNotice('Saving season...');
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                cache: 'no-store',
+                credentials: 'same-origin',
+                headers: {'Content-Type': 'application/json', Accept: 'application/json'},
+                body: JSON.stringify({
+                    action: 'save-season',
+                    csrf_token: $('csrf').value,
+                    place_id: placeBefore.id,
+                    season_version: state.seasonVersion,
+                    season,
+                }),
+            });
+            const result = await response.json();
+            if (!response.ok || result.success !== true) {
+                throw new Error(result.message || 'Season was not saved.');
+            }
+            seasonDialog.close();
+            await loadPlace(placeBefore);
+            if (!state.place || Number(state.place.id) !== Number(placeBefore.id)) {
+                throw new Error('Season saved, but Place data could not be reloaded.');
+            }
+            if (selectedSiteId && state.sites.some(x => Number(x.id) === Number(selectedSiteId))) {
+                $('site').value = String(selectedSiteId);
+                await loadSelectedSite();
+                if (!state.sitePayload?.version) {
+                    throw new Error('Season saved. Site pricing could not reload; refresh the page.');
+                }
+            }
+            state.seasonId = state.seasons.find(x =>
+                Number(x.id) === Number(result.season_id)
+            )?.id ?? state.seasonId;
+            renderSeasons();
+            renderEditor();
+            status('Season saved. Pricing and availability can now be edited here.');
+        } catch (error) {
+            seasonNotice('Unable to finish: ' + String(error.message || error));
+            status('Season save needs attention: ' + String(error.message || error), true);
+        } finally {
+            state.saving = false;
+            $('season-save').disabled = false;
+            setEditorEnabled(Boolean(selected()));
+        }
+    });
+
     $('copy-season').addEventListener('click', () => {
         const draft = selected();
         if (!draft || state.seasons.length < 2) return;
