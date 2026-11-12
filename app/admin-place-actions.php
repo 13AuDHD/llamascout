@@ -132,9 +132,10 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
             if ($parts[0] === 'place' && (
                 isset($modes['seasonal_booking_method'])
                 || isset($modes['seasonal_sites_closed'])
+                || isset($modes['seasonal_place_closed'])
             )) {
                 throw new InvalidArgumentException(
-                    'Default Site booking and bulk Site closure controls have been retired. Use Campsite Pricing for each Site.'
+                    'The old seasonal status controls are retired. Use Campsite Pricing for each Site and the Seasonal Closure question for the Place.'
                 );
             }
             if (!is_array($modes) || !is_array($values)) {
