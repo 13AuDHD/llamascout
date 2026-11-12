@@ -437,3 +437,100 @@ function admin_cpr_save(
         throw $exception;
     }
 }
+
+
+/**
+ * Place holiday date calendar for the single authoritative pricing document.
+ * Holiday dates are Place-wide; the holiday price remains per Site and season.
+ */
+function admin_cpr_save_holidays(
+    PDO $db,
+    int $placeId,
+    int $siteId,
+    int $actorId,
+    string $expectedVersion,
+    array $rawHolidays
+): array {
+    if ($placeId < 1 || $siteId < 1 || $actorId < 1
+        || strlen($expectedVersion) !== 64 || count($rawHolidays) > 60) {
+        throw new InvalidArgumentException('Invalid Place holiday dates.');
+    }
+    if ($db->inTransaction()) {
+        throw new LogicException('Unexpected nested holiday save.');
+    }
+
+    $db->beginTransaction();
+    try {
+        $lock = $db->prepare('SELECT id FROM places WHERE id = ? FOR UPDATE');
+        $lock->execute([$placeId]);
+        if (!$lock->fetchColumn()) {
+            throw new InvalidArgumentException('Place not found.');
+        }
+        $before = admin_cpr_snapshot($db, $placeId, $siteId);
+        if (!hash_equals($expectedVersion, $before['version'])) {
+            throw new RuntimeException(
+                'Holiday dates or Site pricing changed in another tab. Reload and review before saving.',
+                409
+            );
+        }
+
+        $holidays = [];
+        $seen = [];
+        foreach ($rawHolidays as $index => $raw) {
+            if (!is_array($raw)) {
+                throw new InvalidArgumentException('Invalid holiday row.');
+            }
+            $name = trim((string) ($raw['name'] ?? ''));
+            if ($name === '' || mb_strlen($name) > 100) {
+                throw new InvalidArgumentException('Give each holiday a name of 1 to 100 characters.');
+            }
+            $id = trim((string) ($raw['id'] ?? ''));
+            if ($id === '') {
+                $id = 'cpr-holiday-' . bin2hex(random_bytes(8));
+            }
+            if (!preg_match('/^[a-zA-Z0-9_-]{1,80}$/D', $id) || isset($seen[$id])) {
+                throw new InvalidArgumentException('Invalid or duplicated holiday identifier.');
+            }
+            $seen[$id] = true;
+            $holidays[] = [
+                'id' => $id,
+                'name' => $name,
+                'start' => trim((string) ($raw['start'] ?? '')),
+                'end' => trim((string) ($raw['end'] ?? '')),
+                'recurring' => !empty($raw['recurring']),
+            ];
+        }
+
+        $document = $before['document'];
+        $document['holidays'] = $holidays;
+        $document = llama_pricing_validate($document);
+        if ($document !== $before['document']) {
+            $json = json_encode($document, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+            $existing = $db->prepare('SELECT place_id FROM place_rules WHERE place_id = ? FOR UPDATE');
+            $existing->execute([$placeId]);
+            if ($existing->fetchColumn()) {
+                $write = $db->prepare(
+                    'UPDATE place_rules SET rate_cards_json = ? WHERE place_id = ?'
+                );
+                $write->execute([$json, $placeId]);
+            } else {
+                $write = $db->prepare(
+                    'INSERT INTO place_rules (place_id, rate_cards_json) VALUES (?, ?)'
+                );
+                $write->execute([$placeId, $json]);
+            }
+            admin_users_audit(
+                $db, $actorId, null, 'place.pricing_holidays_updated',
+                'Updated Place holiday dates for Campsite Pricing.',
+                ['place_id' => $placeId, 'holiday_count' => count($document['holidays'])]
+            );
+        }
+        $db->commit();
+        return ['success' => true, 'holidays_saved' => count($document['holidays'])];
+    } catch (Throwable $error) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+        throw $error;
+    }
+}
