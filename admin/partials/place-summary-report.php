@@ -68,6 +68,31 @@ $placeReportSelectedSite = isset($placeReportSiteOptions[$requestedSite]) ? $req
 <div class="contribution-tab-shell" data-contribution-tabs data-contribution-split
     data-contribution-initial="<?= ($_GET['mode'] ?? '') === 'area' ? 'area' : ($placeReportSelectedSite !== '' ? 'site' : 'place') ?>">
     <?php require dirname(__DIR__, 2) . '/partials/place-report/contribution-tabs.php'; ?>
+    <?php if (empty($adminPlaceAreas)): ?>
+        <section class="admin-place-report-shell"
+                 data-contribution-area-empty
+                 aria-labelledby="admin-add-area-heading"
+                 hidden>
+            <header class="admin-place-report-header">
+                <p>Area Scout Report</p>
+                <h2 id="admin-add-area-heading">Add an Area</h2>
+                <span class="admin-place-muted">
+                    This Place has no Areas yet. Add an Area on the existing map editor
+                    before filling out its Scout Report.
+                </span>
+            </header>
+            <p>
+                Create a camping Area, parking Area, or facility point on the map.
+                Then return here and refresh the page to select that Area.
+            </p>
+            <a class="admin-button"
+               href="https://llamascout.com/place-map-editor.php?slug=<?= rawurlencode((string) ($place['slug'] ?? '')) ?>&amp;from=admin"
+               target="_blank" rel="noopener">
+                <?= llama_icon('map') ?>
+                Open Add Area Map Editor
+            </a>
+        </section>
+    <?php endif; ?>
 <form method="post" class="admin-place-report-form place-report-form" id="place-report" data-contribution-report
     <?php if ($placeReportSelectedSite !== ''): ?>data-admin-site-report-id="<?= $requestedSiteId ?>"<?php endif; ?>>
     <input type="hidden" name="csrf_token" value="<?= $e(moderation_csrf_token()) ?>">
