@@ -24,16 +24,6 @@ function admin_cpr_snapshot(PDO $db, int $placeId, int $siteId): array
         throw new InvalidArgumentException('The Site does not belong to this Place.');
     }
     $document = llama_pricing_document($db, ['id' => $placeId]);
-    $stored = $db->prepare('SELECT rate_cards_json FROM place_rules WHERE place_id = ?');
-    $stored->execute([$placeId]);
-    $rawRates = $stored->fetchColumn();
-    $decoded = is_string($rawRates) && $rawRates !== ''
-        ? json_decode($rawRates, true) : null;
-    // The existing read adapter may project legacy/imported rates into v2
-    // without migrating storage. Never silently publish that projection as
-    // the new authoritative document during a single-Site edit.
-    $legacyPricing = (!is_array($decoded) || ($decoded['version'] ?? null) !== 2)
-        && (!empty($document['rows']) || !empty($document['legacy_cards']));
     if (!empty($document['invalid'])) {
         throw new InvalidArgumentException(
             'Existing pricing needs review before this Site can be edited.'
@@ -174,7 +164,6 @@ function admin_cpr_snapshot(PDO $db, int $placeId, int $siteId): array
     return [
         'site' => $site,
         'document' => $document,
-        'legacy_pricing' => $legacyPricing,
         'seasons' => $seasons,
         'availability' => $availability,
         'rates_by_season' => $ratesBySeason,
@@ -390,15 +379,6 @@ function admin_cpr_save(
             $changes[$id] = $change;
         }
 
-        if ($before['legacy_pricing']) {
-            foreach ($changes as $change) {
-                if (array_key_exists('rates', $change)) {
-                    throw new InvalidArgumentException(
-                        'This Place still uses legacy or imported pricing. Reconcile those rates in the existing Place pricing editor before replacing them with Site-specific rates.'
-                    );
-                }
-            }
-        }
         $updated = admin_cpr_merge_rates(
             $before['document'], $siteId, $before['site'], array_values($changes)
         );
