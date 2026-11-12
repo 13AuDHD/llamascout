@@ -168,6 +168,7 @@ if (isset($_GET['ajax'])) {
                     'seasons' => array_values((array) ($rate['seasons'] ?? [])),
                 ],
                 'availability' => $snapshot['availability'],
+                'rates_by_season' => $snapshot['rates_by_season'],
                 'weekend_days' => (array) ($snapshot['document']['weekend_days'] ?? [5, 6]),
                 'holidays' => (array) ($snapshot['document']['holidays'] ?? []),
             ]);
