@@ -63,6 +63,7 @@ function admin_place_campsite_field_keys(): array
 
         if (
             !empty($field['derived'])
+            || !empty($field['pricing_managed'])
             || $key === 'site_number'
         ) {
             continue;
@@ -104,6 +105,7 @@ function admin_place_site_section_place_field_keys(): array
 
         if (
             !empty($field['derived'])
+            || !empty($field['pricing_managed'])
             || $key === 'site_number'
         ) {
             continue;
