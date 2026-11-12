@@ -113,6 +113,7 @@ try {
         'ok' => true,
         'area' => [
             'id' => $areaId,
+            'report_target_scope' => 'area',
             'display_name' => (string) ($target['label'] ?? $target['name'] ?? ''),
             'report_effective_values' => llama_scoped_report_display_values($effective),
             'report_override_values' => llama_scoped_report_display_values($local),
