@@ -209,7 +209,8 @@
                 button.disabled = true;
                 button.title = 'Site facts are read from the existing Site record.';
             });
-        $('copy-season').disabled = !enabled || state.saving || state.seasons.length < 2;
+        $('copy-season').disabled = !enabled || state.saving || state.seasons.length < 2
+            || Boolean(state.sitePayload?.legacy_pricing);
         syncSaveButton();
     };
     const resetSiteSelection = () => {
