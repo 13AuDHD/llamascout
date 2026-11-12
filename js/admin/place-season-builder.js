@@ -32,9 +32,6 @@
             .map(node => node.value).sort().join('|');
         return checked !== loadedTargets;
     };
-    const rates = form.querySelector('[data-managed-season]');
-    const ratesChanged = () => rates?.dataset.seasonDirty === '1';
-    rates?.addEventListener('input', refresh);
     const removed = new Set(initialRemovals.filter(key => definitions.has(String(key))));
     let sequence = 0;
 
@@ -209,7 +206,7 @@
 
     function refresh() {
         const {changes, deletions} = pending();
-        const total = changes.length + deletions.size + Number(ratesChanged());
+        const total = changes.length + deletions.size;
         const selectionChanged = selectedTargetsChanged();
         counter.textContent = selectionChanged
             ? 'Selection changed: load conditions before saving'
@@ -245,7 +242,7 @@
             window.alert('Each seasonal question may appear only once. Remove the duplicate row.');
             return;
         }
-        if (changes.length === 0 && deletions.size === 0 && !ratesChanged()) {
+        if (changes.length === 0 && deletions.size === 0) {
             event.preventDefault();
             return;
         }
@@ -321,7 +318,7 @@
                 return;
             }
             const draft = pending();
-            if ((draft.changes.length || draft.deletions.size || ratesChanged()) && !window.confirm(
+            if ((draft.changes.length || draft.deletions.size) && !window.confirm(
                 'Discard unsaved seasonal changes and load another selection?'
             )) {
                 event.preventDefault();
