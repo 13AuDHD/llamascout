@@ -764,188 +764,185 @@
         }
         loadSelectedSite().then(() => status('Unsaved edits discarded; existing Site pricing reloaded.'));
     });
-    // Reusable rate profiles. A Site matches these only if the imported
-    // capacity/utility/parking facts are known. A Site-specific exception wins.
-    const groupForm = $('group-form');
-    const groupInput = id => $('group-' + id);
-    let groupMatchCount = 0;
-    const groupKey = () => 'cpr-group-' + groupInput('category').value
-        + '-' + (groupInput('hookups').value || 'any')
-        + '-' + (groupInput('layout').value || 'any');
-    const currentGroup = () => (state.rateGroups || []).find(
-        group => group.id === groupKey()
-    );
-    const groupSelectedSeason = () => Number(groupInput('season').value || 0);
-    const fillGroupRates = () => {
-        const group = currentGroup();
-        const period = group?.seasons?.find(
-            s => Number(s.season_id) === groupSelectedSeason()
-        );
-        for (const [key, source] of [
-            ['weekday', 'price'], ['weekend', 'weekend_price'], ['holiday', 'holiday_price'],
-        ]) {
-            const value = period?.[source];
-            groupInput(key).value = value === null || value === undefined
-                ? '' : Number(value).toFixed(2);
+    // Matching Sites is a mode of the SAME editor, not a second pricing form.
+    // The existing capacity, parking, utility and price controls are reused.
+    const loadMatchingDrafts = () => {
+        if (!isMatching()) return;
+        const previousSeason = state.seasonId;
+        const rule = matchingRule();
+        state.site = null;
+        state.sitePayload = null;
+        state.drafts = new Map();
+        state.baselines = new Map();
+        for (const season of state.seasons) {
+            const period = rule?.seasons?.find(p =>
+                Number(p.season_id) === Number(season.id));
+            const extra = rule?.vehicle_seasons?.find(p =>
+                Number(p.season_id) === Number(season.id));
+            const values = {
+                weekday: period?.price ?? '',
+                weekend: period?.weekend_price ?? '',
+                holiday: period?.holiday_price ?? '',
+                vehicle: extra?.price ?? '',
+                group: '',
+                availability: '',
+                start: season.start,
+                end: season.end,
+            };
+            state.drafts.set(String(season.id), {...values});
+            state.baselines.set(String(season.id), {...values});
         }
+        state.seasonId = state.seasons.some(s =>
+            String(s.id) === String(previousSeason))
+            ? previousSeason : state.seasons[0]?.id ?? null;
+        updateSegments('[data-capacity]', state.matchingFilters.capacity);
+        updateSegments('[data-layout]', state.matchingFilters.layout);
+        updateSegments('[data-utility]', state.matchingFilters.utility);
+        setSiteSummary();
+        renderSeasons();
+        renderEditor();
     };
-    const renderRateGroups = () => {
-        const list = $('group-list');
-        list.replaceChildren();
-        const seasonSelect = groupInput('season');
-        const previousSeason = seasonSelect.value;
-        seasonSelect.replaceChildren();
-        const empty = document.createElement('option');
-        empty.value = '';
-        empty.textContent = 'Select season';
-        seasonSelect.append(empty);
-        for (const season of state.seasons || []) {
-            const opt = document.createElement('option');
-            opt.value = String(season.id);
-            opt.textContent = season.name + ': ' + formatRange(season);
-            seasonSelect.append(opt);
-        }
-        seasonSelect.value = state.seasons.some(
-            s => String(s.id) === previousSeason
-        ) ? previousSeason : String(state.seasons[0]?.id || '');
-        $('group-summary').textContent = state.place
-            ? (state.rateGroups.length + ' shared rate group'
-                + (state.rateGroups.length === 1 ? '' : 's')
-                + ' · ' + state.sites.length + ' Sites')
-            : 'Select a Place';
-        for (const group of state.rateGroups || []) {
-            const button = document.createElement('button');
-            button.type = 'button';
-            button.className = 'cpr-group-chip';
-            button.textContent = group.name + ' (' + group.matched_sites + ' Sites)';
-            button.addEventListener('click', () => {
-                groupInput('category').value = group.category || 'single';
-                groupInput('hookups').value = group.hookups || '';
-                groupInput('layout').value = group.layout || '';
-                fillGroupRates();
-                refreshGroupPreview();
-            });
-            list.append(button);
-        }
-        if (!state.rateGroups?.length) {
-            const p = document.createElement('p');
-            p.className = 'cpr-muted';
-            p.textContent = 'No matching rate groups yet. Create one above to price several Sites together.';
-            list.append(p);
-        }
-        fillGroupRates();
-        refreshGroupPreview();
-    };
-    const refreshGroupPreview = async () => {
+
+    const refreshMatchingCount = async () => {
         const request = ++state.groupPreviewSeq;
-        groupMatchCount = 0;
-        groupInput('save').disabled = true;
-        if (!state.place || !groupSelectedSeason()) {
-            $('group-preview').textContent =
-                'Choose a Place and operating season to preview matching Sites.';
+        state.matchingCount = 0;
+        state.matchingUnknown = 0;
+        syncSaveButton();
+        if (!state.place || !isMatching()) {
+            $('matching-count').textContent = '';
             return;
         }
-        $('group-preview').textContent = 'Checking matching Site attributes...';
+        $('matching-count').textContent = 'Checking matching Sites...';
         try {
             const result = await api({
                 ajax: 'group-preview',
                 place_id: state.place.id,
-                category: groupInput('category').value,
-                hookups: groupInput('hookups').value,
-                layout: groupInput('layout').value,
+                category: state.matchingFilters.capacity,
+                hookups: state.matchingFilters.utility,
+                layout: state.matchingFilters.layout,
             });
-            if (request !== state.groupPreviewSeq) return;
-            groupMatchCount = Number(result.matched_count) || 0;
-            const uncertain = Number(result.uncertain_count) || 0;
-            $('group-preview').textContent = groupMatchCount + ' Sites match'
-                + (uncertain ? '; ' + uncertain
-                    + ' Sites have missing attributes and will not be changed.' : '.');
-            groupInput('save').disabled = !groupMatchCount || !state.groupVersion;
+            if (request !== state.groupPreviewSeq || !isMatching()) return;
+            state.matchingCount = Number(result.matched_count) || 0;
+            state.matchingUnknown = Number(result.uncertain_count) || 0;
+            $('matching-count').textContent =
+                state.matchingCount + ' Sites match'
+                + (state.matchingUnknown
+                    ? '; ' + state.matchingUnknown + ' missing attributes' : '');
+            syncSaveButton();
+            renderPreview();
         } catch (error) {
             if (request !== state.groupPreviewSeq) return;
-            $('group-preview').textContent = error.message;
+            $('matching-count').textContent = 'Match unavailable';
+            status(error.message, true);
+            syncSaveButton();
         }
     };
-    for (const key of ['category', 'hookups', 'layout', 'season']) {
-        groupInput(key).addEventListener('change', () => {
-            fillGroupRates();
-            refreshGroupPreview();
-        });
-    }
-    groupInput('apply-status').addEventListener('change', () => {
-        groupInput('status').disabled = !groupInput('apply-status').checked;
-    });
-    $('apply-sites').addEventListener('click', () => {
-        $('group-section').scrollIntoView({behavior: 'smooth', block: 'start'});
-        status('Use a matching rate group below instead of copying prices into individual Site records.');
-    });
-    groupForm.addEventListener('submit', async event => {
-        event.preventDefault();
-        if (!state.place || !state.groupVersion || !groupMatchCount || !groupSelectedSeason()) return;
-        const raw = {};
-        for (const key of ['weekday', 'weekend', 'holiday']) {
-            const value = groupInput(key).value.trim();
-            if (value && (!Number.isFinite(Number(value)) || Number(value) < 0
-                || Number(value) > 999999.99)) {
-                $('group-preview').textContent = 'Enter a valid ' + key + ' rate.';
-                return;
-            }
-            raw[key] = value;
-        }
-        if (Object.values(raw).every(value => value === '')) {
-            $('group-preview').textContent = 'Enter at least one rate. Enter 0 for a free rate.';
-            return;
-        }
-        if (changesForSave().length) {
-            status('Save or cancel your individual Site changes before saving a shared rate group.', true);
-            return;
-        }
-        const place = {...state.place};
-        const previousSiteId = state.site?.id || 0;
-        const applyAvailability = groupInput('apply-status').checked;
-        if (applyAvailability && !window.confirm(
-            'Set ' + groupInput('status').selectedOptions[0]?.textContent
-            + ' for ' + groupMatchCount
-            + ' matching Sites in this season? Existing individual statuses will be overwritten.'
-        )) return;
-        groupInput('save').disabled = true;
-        $('group-preview').textContent = 'Saving matched rate group...';
-        try {
-            const response = await fetch(endpoint, {
-                method: 'POST', credentials: 'same-origin', cache: 'no-store',
-                headers: {'Content-Type': 'application/json', Accept: 'application/json'},
-                body: JSON.stringify({
-                    action: 'save-group', csrf_token: $('csrf').value,
-                    place_id: place.id, group_version: state.groupVersion,
-                    group: {
-                        category: groupInput('category').value,
-                        hookups: groupInput('hookups').value,
-                        layout: groupInput('layout').value,
-                        season_id: groupSelectedSeason(),
-                        rates: raw,
-                        apply_availability: applyAvailability,
-                        availability: applyAvailability ? groupInput('status').value : '',
-                    },
-                }),
+
+    root.querySelectorAll('[data-capacity], [data-layout], [data-utility]')
+        .forEach(button => {
+            button.addEventListener('click', () => {
+                if (!isMatching() || !state.place || state.saving) return;
+                const field = button.dataset.capacity !== undefined ? 'capacity'
+                    : button.dataset.layout !== undefined ? 'layout' : 'utility';
+                const chosen = button.dataset[field];
+                if (state.matchingFilters[field] === chosen) {
+                    state.matchingFilters[field] = '';
+                } else {
+                    if (changesForSave().length && !window.confirm(
+                        'Changing the matching filters will discard unsaved prices and availability. Continue?'
+                    )) return;
+                    state.matchingFilters[field] = chosen;
+                }
+                loadMatchingDrafts();
+                refreshMatchingCount();
+                status('Edit the rates below to price the matching Sites.'
+                    + ' Click an availability button only if you want to change those Site statuses.');
             });
-            const result = await response.json();
-            if (!response.ok || result.success !== true) {
-                throw new Error(result.message || 'The rate group was not saved.');
+        });
+
+    const saveMatchingRates = async changes => {
+        if (!state.place || !isMatching() || state.matchingCount < 1
+            || !state.groupVersion) return;
+        const statuses = changes.filter(x => x.availability);
+        if (statuses.length && !window.confirm(
+            'Apply the selected availability status to ' + state.matchingCount
+            + ' matching Sites in ' + statuses.length
+            + ' season(s)? This will replace those Sites’ current seasonal statuses.'
+        )) return;
+
+        const placeBefore = {...state.place};
+        const filters = {...state.matchingFilters};
+        const chosenSeason = state.seasonId;
+        let version = state.groupVersion;
+        let completed = 0;
+        state.saving = true;
+        $('place-search').disabled = true;
+        $('site').disabled = true;
+        setEditorEnabled(Boolean(selected()));
+        try {
+            for (const change of changes) {
+                const draft = state.drafts.get(String(change.season_id));
+                if (!draft) continue;
+                const rates = {};
+                for (const key of ['weekday', 'weekend', 'holiday', 'vehicle']) {
+                    const value = draft[key];
+                    if (value !== '' && (value == null
+                        || !Number.isFinite(Number(value)) || Number(value) < 0
+                        || Number(value) > 999999.99)) {
+                        throw new Error('Invalid ' + key + ' amount in season #' + change.season_id);
+                    }
+                    rates[key] = value === '' || value == null ? '' : Number(value).toFixed(2);
+                }
+                status('Saving matching Site rates for season ' + change.season_id + '...');
+                const response = await fetch(endpoint, {
+                    method: 'POST', credentials: 'same-origin',
+                    cache: 'no-store',
+                    headers: {'Content-Type': 'application/json', Accept: 'application/json'},
+                    body: JSON.stringify({
+                        action: 'save-group',
+                        csrf_token: $('csrf').value,
+                        place_id: placeBefore.id,
+                        group_version: version,
+                        group: {
+                            category: filters.capacity,
+                            hookups: filters.utility,
+                            layout: filters.layout,
+                            season_id: Number(change.season_id),
+                            rates,
+                            apply_availability: Boolean(change.availability),
+                            availability: change.availability || '',
+                        },
+                    }),
+                });
+                const data = await response.json();
+                if (!response.ok || data.success !== true) {
+                    throw new Error(data.message || 'Matching Site rates were not saved.');
+                }
+                version = data.version;
+                completed++;
+                // The next season save uses the returned version, preventing
+                // an earlier save from being mistakenly treated as a conflict.
             }
-            await loadPlace(place);
-            if (previousSiteId && state.sites.some(s => Number(s.id) === Number(previousSiteId))) {
-                $('site').value = String(previousSiteId);
-                await loadSelectedSite();
-            }
-            $('group-preview').textContent = 'Rate group saved.'
-                + (Number(result.sites_status_updated)
-                    ? ' Updated ' + result.sites_status_updated + ' Site statuses.' : '');
-            status('Shared rate saved. Matching Sites now use this rate unless they have an explicit Site override.');
+            await loadPlace(placeBefore);
+            state.matchingFilters = filters;
+            $('site').value = 'matching';
+            await loadSelectedSite();
+            state.seasonId = chosenSeason;
+            renderSeasons();
+            renderEditor();
+            status('Saved matching Site rates for ' + completed
+                + ' season(s), covering ' + state.matchingCount
+                + ' Sites. Individual Site overrides remain unchanged.');
         } catch (error) {
-            $('group-preview').textContent = 'Not saved: ' + String(error.message || error);
-            groupInput('save').disabled = false;
+            status('Saved ' + completed + ' season(s). '
+                + 'Remaining changes were not saved: ' + String(error.message || error), true);
+        } finally {
+            state.saving = false;
+            $('place-search').disabled = false;
+            $('site').disabled = !state.sites.length;
+            setEditorEnabled(Boolean(selected()));
         }
-    });
+    };
 
     // One place-level paid Site queue, showing both published closure alarms
     // and pricing/booking review reminders without creating false closures.
