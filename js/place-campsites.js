@@ -1130,7 +1130,7 @@
                     // A loaded Site must not reveal Area-only cards (or
                     // vice versa), even though both share the renderer.
                     const cardScopes = String(card.dataset.reportScopes || '')
-                        .split(/\\s+/).filter(Boolean);
+                        .split(/\s+/).filter(Boolean);
                     if (cardScopes.length && !cardScopes.includes(targetScope)) {
                         card.hidden = true;
                         return;
