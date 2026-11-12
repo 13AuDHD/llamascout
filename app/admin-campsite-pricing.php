@@ -66,6 +66,7 @@ function admin_cpr_snapshot(PDO $db, int $placeId, int $siteId): array
             ($statuses[$id] ?? '') === 'closed' => 'unavailable',
             ($bookings[$id] ?? '') === 'reservable' => 'reservable',
             ($bookings[$id] ?? '') === 'first_come' => 'fcfs',
+            ($bookings[$id] ?? '') === 'not_reservable' => 'available',
             ($statuses[$id] ?? '') === 'open' => 'available',
             default => '',
         };
@@ -405,14 +406,14 @@ function admin_cpr_save(
             }
             $status = $change['availability'];
             $modes = match ($status) {
-                'available' => ['site_reservation_method' => 'inherit'],
-                'reservable', 'fcfs' => ['site_reservation_method' => 'answer'],
-                default => [],
+                'unavailable' => ['site_reservation_method' => 'inherit'],
+                'available', 'reservable', 'fcfs' => ['site_reservation_method' => 'answer'],
             };
             $values = match ($status) {
+                'available' => ['site_reservation_method' => 'not_reservable'],
                 'reservable' => ['site_reservation_method' => 'reservable'],
                 'fcfs' => ['site_reservation_method' => 'first_come'],
-                default => [],
+                'unavailable' => [],
             };
             llama_season_save_target_answers(
                 $db, $placeId, (int) $change['season_id'], $target,
