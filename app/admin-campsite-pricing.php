@@ -89,8 +89,65 @@ function admin_cpr_snapshot(PDO $db, int $placeId, int $siteId): array
             $matched[] = $row;
         }
     }
-    // Conflicting equally specific rows must not be silently selected.
-    $rateConflict = count($matched) > 1;
+    // Select the effective weekday/weekend/holiday row separately for each
+    // Place season. A Site-only row for Peak must not hide an inherited
+    // general rate in Off-Season.
+    $rateConflict = false;
+    $ratesBySeason = [];
+    foreach ($seasons as $season) {
+        $seasonId = (int) $season['id'];
+        $topScore = -1;
+        $bestRates = [];
+        foreach ($document['rows'] as $row) {
+            if (($row['unit'] ?? 'night') !== 'night') continue;
+            $score = llama_pricing_match($row['match'] ?? [], $context);
+            if ($score === null || $score < 0) continue;
+
+            $base = [
+                'weekday' => $row['price'] ?? null,
+                'weekend' => $row['weekend_price'] ?? null,
+                'holiday' => $row['holiday_price'] ?? null,
+            ];
+            $period = null;
+            foreach ((array) ($row['seasons'] ?? []) as $candidate) {
+                if ((int) ($candidate['season_id'] ?? 0) === $seasonId) {
+                    $period = $candidate;
+                    break;
+                }
+            }
+            if ($period !== null) {
+                if (($period['price'] ?? null) !== null) {
+                    // Follow the public price resolver: an explicit seasonal
+                    // weekday amount replaces the old base fallback.
+                    $base = ['weekday' => $period['price'], 'weekend' => null, 'holiday' => null];
+                }
+                foreach (['price' => 'weekday', 'weekend_price' => 'weekend',
+                    'holiday_price' => 'holiday'] as $source => $key) {
+                    if (($period[$source] ?? null) !== null) {
+                        $base[$key] = $period[$source];
+                    }
+                }
+            }
+            if (array_filter($base, static fn ($value): bool => $value !== null) === []) {
+                continue;
+            }
+            $rank = $score * 10 + ($period !== null ? 1 : 0);
+            if ($rank > $topScore) {
+                $topScore = $rank;
+                $bestRates = [$base];
+            } elseif ($rank === $topScore) {
+                $bestRates[] = $base;
+            }
+            if (!empty($row['needs_review']) && $rank >= $topScore) {
+                $rateConflict = true;
+            }
+        }
+        if (count($bestRates) > 1) {
+            $rateConflict = true;
+        }
+        $ratesBySeason[(string) $seasonId] = count($bestRates) === 1
+            ? $bestRates[0] : ['weekday' => null, 'weekend' => null, 'holiday' => null];
+    }
     $rate = count($matched) === 1 ? $matched[0] : null;
 
     $version = hash('sha256', json_encode([
@@ -109,6 +166,7 @@ function admin_cpr_snapshot(PDO $db, int $placeId, int $siteId): array
         'document' => $document,
         'seasons' => $seasons,
         'availability' => $availability,
+        'rates_by_season' => $ratesBySeason,
         'rate_conflict' => $rateConflict,
         'rate' => $rate,
         'version' => $version,
@@ -170,6 +228,16 @@ function admin_cpr_merge_rates(
         }
     }
     if (!$hasRateEdit) {
+        return $document;
+    }
+
+    // Do not create an empty pricing rule when only an unrelated booking
+    // status changed or when the user cleared already-unset amounts.
+    if ($rowIndex === null && !array_filter(
+        $changes,
+        static fn (array $item): bool => isset($item['rates'])
+            && count(array_filter($item['rates'], static fn ($v): bool => $v !== null)) > 0
+    )) {
         return $document;
     }
 
