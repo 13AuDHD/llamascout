@@ -32,7 +32,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         }
         $input = json_decode($raw, true, 32, JSON_THROW_ON_ERROR);
         if (!is_array($input) || !in_array(
-            (string) ($input['action'] ?? ''), ['save', 'save-holidays', 'save-season', 'save-review'], true
+            (string) ($input['action'] ?? ''), ['save', 'save-holidays', 'save-season', 'save-review', 'save-group'], true
         )) {
             throw new InvalidArgumentException('Invalid pricing save request.');
         }
@@ -41,7 +41,15 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             echo json_encode(['success' => false, 'message' => 'Your Admin session expired. Reload before saving.']);
             exit;
         }
-        if ($input['action'] === 'save-review') {
+        if ($input['action'] === 'save-group') {
+            $result = admin_cpr_save_rate_group(
+                $db,
+                (int) ($input['place_id'] ?? 0),
+                $actorId,
+                (string) ($input['group_version'] ?? ''),
+                (array) ($input['group'] ?? [])
+            );
+        } elseif ($input['action'] === 'save-review') {
             $result = admin_cpr_save_review(
                 $db,
                 (int) ($input['place_id'] ?? 0),
@@ -195,6 +203,9 @@ if (isset($_GET['ajax'])) {
                 'paid_sites' => admin_cpr_paid_site_queue(
                     $db, $placeId, $rawSites, $seasons
                 ),
+                'rate_groups' => admin_cpr_group_catalog(
+                    $db, $placeId, $rawSites
+                ),
                 'place_closure' => [
                     'reported' => $closureReported,
                     'begins' => $closureBegins,
@@ -226,6 +237,25 @@ if (isset($_GET['ajax'])) {
                     'starts_on' => (string) ($s['starts_on'] ?? ''),
                     'ends_on' => (string) ($s['ends_on'] ?? ''),
                 ], $seasons),
+            ]);
+        }
+
+        if ($action === 'group-preview') {
+            $category = (string) ($_GET['category'] ?? '');
+            $hookups = (string) ($_GET['hookups'] ?? '');
+            $layout = (string) ($_GET['layout'] ?? '');
+            if (!in_array($category, ['single', 'double', 'group'], true)
+                || !in_array($hookups, ['', 'none', 'electric', 'full'], true)
+                || !in_array($layout, ['', 'pull_through', 'back_in', 'pull_in', 'parallel'], true)) {
+                $respond(['ok' => false, 'error' => 'Choose valid Site matching attributes.'], 400);
+            }
+            $matches = admin_cpr_matching_sites(
+                $db, $placeId, $category, $hookups, $layout
+            );
+            $respond([
+                'ok' => true,
+                'matched_count' => count($matches['sites']),
+                'uncertain_count' => $matches['uncertain'],
             ]);
         }
 
@@ -428,6 +458,81 @@ require __DIR__ . '/_header.php';
             </div>
         </div>
     </div>
+    <section class="cpr-card cpr-group-section" id="cpr-group-section"
+             aria-labelledby="cpr-group-title">
+        <div class="cpr-group-heading">
+            <div>
+                <h2 id="cpr-group-title"><?= llama_icon('layers') ?> Rates for matching Sites</h2>
+                <p>Set one price for an entire Site category. Single, Double, and Group Sites
+                   can be filtered by electric service, full hookups, or parking style.
+                   Individual Site rates override matching group rates.</p>
+            </div>
+            <span class="cpr-group-summary" id="cpr-group-summary">Select a Place</span>
+        </div>
+        <form id="cpr-group-form" class="cpr-group-form">
+            <label>Site capacity
+                <select id="cpr-group-category">
+                    <option value="single">Single</option>
+                    <option value="double">Double</option>
+                    <option value="group">Group</option>
+                </select>
+            </label>
+            <label>Utilities
+                <select id="cpr-group-hookups">
+                    <option value="">Any utilities</option>
+                    <option value="none">Non-electric / no hookups</option>
+                    <option value="electric">Electric</option>
+                    <option value="full">Full hookups</option>
+                </select>
+            </label>
+            <label>Parking
+                <select id="cpr-group-layout">
+                    <option value="">Any parking style</option>
+                    <option value="back_in">Back-in</option>
+                    <option value="pull_through">Pull-through</option>
+                    <option value="pull_in">Pull-in</option>
+                    <option value="parallel">Parallel</option>
+                </select>
+            </label>
+            <label>Operating season
+                <select id="cpr-group-season">
+                    <option value="">Choose a Place first</option>
+                </select>
+            </label>
+            <div class="cpr-group-money-fields">
+                <label>Weekday $<input id="cpr-group-weekday" type="number" min="0"
+                    max="999999.99" step="0.01" placeholder="0.00"></label>
+                <label>Weekend $<input id="cpr-group-weekend" type="number" min="0"
+                    max="999999.99" step="0.01" placeholder="0.00"></label>
+                <label>Holiday $<input id="cpr-group-holiday" type="number" min="0"
+                    max="999999.99" step="0.01" placeholder="0.00"></label>
+            </div>
+            <div class="cpr-group-availability">
+                <label class="cpr-season-repeat-label">
+                    <input id="cpr-group-apply-status" type="checkbox">
+                    <span>Also set seasonal availability for all matching Sites</span>
+                </label>
+                <select id="cpr-group-status" disabled>
+                    <option value="reservable">Reservable</option>
+                    <option value="fcfs">First-come, first-served</option>
+                    <option value="available">Available</option>
+                    <option value="unavailable">Unavailable</option>
+                </select>
+            </div>
+            <div class="cpr-group-footer">
+                <p id="cpr-group-preview" role="status">
+                    Select a Place to see how many Sites match this rule.
+                </p>
+                <button type="submit" class="cpr-save" id="cpr-group-save" disabled>
+                    Save matching rate
+                </button>
+            </div>
+        </form>
+        <div id="cpr-group-list" class="cpr-group-list">
+            <p class="cpr-muted">Existing matched rates will appear here.</p>
+        </div>
+    </section>
+
     <section class="cpr-card cpr-review-section" aria-labelledby="cpr-review-title">
         <header class="cpr-review-header">
             <div>
