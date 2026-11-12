@@ -1237,7 +1237,8 @@ function admin_cpr_save_rate_group(
         );
         $db->commit();
         return ['success' => true, 'group_id' => $id,
-            'sites_status_updated' => $appliedStatusCount];
+            'sites_status_updated' => $appliedStatusCount,
+            'version' => hash('sha256', json_encode($doc, JSON_THROW_ON_ERROR))];
     } catch (Throwable $e) {
         if ($db->inTransaction()) $db->rollBack();
         throw $e;
