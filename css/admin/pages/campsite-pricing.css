@@ -304,6 +304,10 @@
 }
 .cpr-rate-types > span { font-weight: 740; font-size: .82rem; margin-right: auto; }
 .cpr-rate-types .cpr-segments button { padding: 8px 12px; }
+.cpr-rate-types .cpr-segments button:disabled {
+    opacity: 1;
+    cursor: default;
+}
 .cpr-rate-rows { display: grid; gap: 3px; }
 .cpr-rate-row {
     display: flex;
