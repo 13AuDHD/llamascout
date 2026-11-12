@@ -207,62 +207,63 @@
             : null;
     };
 
-    const equipmentMarkup = (
-        site
-    ) => {
-        const rows =
-            featureRows(
-                site,
-                'permitted_equipment'
-            );
+    // RIDB equipment is displayed inside the existing canonical
+    // "Allowed Camping Setups" Site question, not in a second section.
+    // Preserve Recreation.gov's specific wording rather than guessing
+    // which broader Llama Scout multiselect options it implies.
+    const equipmentNames = (site) =>
+        Array.from(new Set(
+            featureRows(site, 'permitted_equipment')
+                .map(row => smartCase(row.feature_value))
+                .filter(Boolean)
+        ));
 
-        if (!rows.length) {
-            return '';
+    const showEquipmentInScoutReport = (siteId, site) => {
+        const current = mount.querySelector('[data-campsite-detail-id]');
+        if (!current || clean(current.dataset.campsiteDetailId) !== clean(siteId)) {
+            return;
+        }
+        const card = document.querySelector(
+            '.scout-report [data-campsite-report-field="site_allowed_setups"]'
+        );
+        if (!card || card.hidden || card.classList.contains('is-access-locked')) {
+            return;
         }
 
-        const names =
-            Array.from(
-                new Set(
-                    rows
-                        .map(
-                            (row) =>
-                                smartCase(
-                                    row.feature_value
-                                )
-                        )
-                        .filter(Boolean)
-                )
-            );
-
-        if (!names.length) {
-            return '';
+        // An approved Scout Report answer (including explicit Unknown) wins.
+        // RIDB is display fallback only; it must never overwrite that answer.
+        const strong = card.querySelector('.scout-report-value-content strong');
+        if (!strong || (
+            !card.classList.contains('is-unanswered')
+            && clean(strong.textContent).toLowerCase() !== 'not provided'
+        )) {
+            return;
         }
+        const names = equipmentNames(site);
+        if (!names.length) return;
 
-        const pills =
-            names
-                .map(
-                    (name) =>
-                        `
-                            <span class="place-campsite-equipment-pill">
-                                ${escapeHtml(name)}
-                            </span>
-                        `
-                )
-                .join('');
+        const pills = document.createElement('span');
+        pills.className = 'place-campsite-equipment-pills';
+        for (const name of names) {
+            const pill = document.createElement('span');
+            pill.className = 'place-campsite-equipment-pill';
+            pill.textContent = name;
+            pills.append(pill);
+        }
+        strong.replaceChildren(pills);
+        card.classList.remove('is-unanswered');
 
-        return `
-            <section class="place-campsite-rich-section">
-                <div class="place-campsite-rich-heading">
-                    <h4>Permitted equipment</h4>
-
-                </div>
-
-                <div class="place-campsite-equipment-pills">
-                    ${pills}
-                </div>
-
-            </section>
-        `;
+        const content = card.querySelector('.scout-report-value-content');
+        let source = card.querySelector('.scout-report-answer-source');
+        if (!source && content) {
+            source = document.createElement('small');
+            source.className = 'scout-report-answer-source';
+            content.append(source);
+        }
+        if (source) {
+            source.textContent = 'Recreation.gov / RIDB';
+            source.hidden = false;
+        }
     };
 
     const galleryMarkup = (
@@ -478,17 +479,14 @@
                 payload.photo_access?.can_open === true
             );
 
-        const equipment =
-            equipmentMarkup(
-                payload.site
-            );
+        showEquipmentInScoutReport(
+            detail.dataset.campsiteDetailId,
+            payload.site
+        );
 
-        // RIDB Loop and Type of Use are now canonical Site Info cards.
-        // Reservable already has a Site pill/question, and RIDB refresh
-        // metadata is not relevant to the visitor-facing summary.
-        const markup =
-            gallery
-            + equipment;
+        // Site facts, including permitted equipment, belong in the
+        // canonical Scout Report. This upper detail contains photos only.
+        const markup = gallery;
 
         if (!markup) {
             return;
@@ -621,6 +619,16 @@
         }
         
     };
+
+    // The Scout Report and the Site-media request can finish in either
+    // order. Reapply the same imported fallback only after the canonical
+    // answer renderer has finished, and only for the currently selected Site.
+    window.addEventListener('llama:site-report-updated', (event) => {
+        if (event.detail?.scope !== 'site') return;
+        const siteId = clean(event.detail?.siteId);
+        if (!siteId || !cache.has(siteId)) return;
+        showEquipmentInScoutReport(siteId, cache.get(siteId).site);
+    });
 
     const refresh = () => {
         const detail =
