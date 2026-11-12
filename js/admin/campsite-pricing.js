@@ -461,6 +461,8 @@
             status('No pending changes.');
             return;
         }
+        // Cancel removes unsaved seasons as well as unsaved rate changes.
+        state.seasons = state.seasons.filter(season => !season.draft);
         $('site').dispatchEvent(new Event('change'));
     });
     $('save').addEventListener('click', () => status(
