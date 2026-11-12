@@ -1408,6 +1408,79 @@
         );
     };
 
+    /*
+     * Area uses the same canonical Scout Report cards as Place and Site.
+     * The Area endpoint verifies Place ownership and Complete Access before
+     * returning the selected Area's approved published answers.
+     */
+    const originalPlaceCards = new Map(
+        Array.from(document.querySelectorAll('.scout-report-item')).map((card) => {
+            const valueContent = card.querySelector(
+                '.scout-report-value-content, .scout-rating-content'
+            );
+            return [card, {
+                className: card.className,
+                hidden: card.hidden,
+                content: valueContent,
+                markup: valueContent?.innerHTML ?? '',
+            }];
+        })
+    );
+    const restorePlaceAnswers = () => {
+        for (const [card, saved] of originalPlaceCards) {
+            card.className = saved.className;
+            card.hidden = saved.hidden;
+            if (saved.content) saved.content.innerHTML = saved.markup;
+        }
+        updateTargetContributionPrompts();
+    };
+    let areaReportRequest = 0;
+    window.addEventListener('llama:explorer-selection', (event) => {
+        const token = ++areaReportRequest;
+        const kind = String(event.detail?.kind || 'place');
+        if (kind === 'place') {
+            restorePlaceAnswers();
+            return;
+        }
+        if (kind !== 'area' && kind !== 'parking') return;
+
+        const areaId = Number(
+            event.detail?.id ?? event.detail?.featureId ?? event.detail?.areaId
+        );
+        // Never carry the Place's (or a previous Area's) answers onto the
+        // newly selected Area while its report is loading.
+        updateScoutReport({
+            report_effective_values: {},
+            report_answer_states: {},
+            report_answer_sources: {},
+            report_inapplicable_keys: [],
+        });
+        if (!Number.isSafeInteger(areaId) || areaId < 1 || !hasCompleteAccess) {
+            return;
+        }
+
+        fetch(
+            `/api/place-area-report.php?slug=${encodeURIComponent(slug)}&area=${encodeURIComponent(areaId)}${seasonQuery}`,
+            { cache: 'no-store', credentials: 'same-origin' }
+        )
+            .then((response) => {
+                if (!response.ok) throw new Error('Area report unavailable');
+                return response.json();
+            })
+            .then((payload) => {
+                if (token !== areaReportRequest) return;
+                if (!payload.ok || !payload.area) {
+                    throw new Error('Invalid Area report');
+                }
+                updateScoutReport(payload.area);
+            })
+            .catch((error) => {
+                if (token === areaReportRequest) {
+                    console.error('Llama Scout Area report error:', error);
+                }
+            });
+    });
+
     // Issue #41: the old public-only Site renderer was removed. The shared
     // browser below receives either the narrow public catalog or the Complete
     // Access catalog from the server and renders the same structure for both.
