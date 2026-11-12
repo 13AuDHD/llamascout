@@ -211,7 +211,10 @@ function admin_cpr_merge_rates(
             }
             $rowIndex = $index;
         }
-        if (in_array($siteId, $match['site_ids'] ?? [], true)) {
+        // Shared multi-Site rate rows are valid fallbacks and must coexist
+        // with one dedicated Site override. Only multiple competing exact
+        // single-Site rows are ambiguous.
+        if (($match['site_ids'] ?? []) === [$siteId]) {
             $siteRows[] = $index;
         }
     }
@@ -224,8 +227,7 @@ function admin_cpr_merge_rates(
             $rowIndex = $siteRows[0];
         }
     }
-    if (count($siteRows) > 1
-        || ($rowIndex !== null && count($siteRows) > 1)) {
+    if (count($siteRows) > 1) {
         throw new InvalidArgumentException(
             'More than one Site-specific pricing row exists. Resolve the conflict before saving.'
         );
