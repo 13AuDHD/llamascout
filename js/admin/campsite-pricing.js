@@ -18,6 +18,9 @@
         rateGroups: [],
         groupVersion: null,
         groupPreviewSeq: 0,
+        matchingCount: 0,
+        matchingUnknown: 0,
+        matchingFilters: {capacity: '', layout: '', utility: ''},
         placeClosure: null,
         site: null,
         seasonId: null,
@@ -81,6 +84,12 @@
         return dateLabel(start) + ' – ' + dateLabel(end) + (repeat ? ' · annually' : '');
     };
     const selected = () => state.drafts.get(String(state.seasonId)) || null;
+    const isMatching = () => $('site').value === 'matching';
+    const matchingId = () => 'cpr-group-'
+        + (state.matchingFilters.capacity || '') + '-'
+        + (state.matchingFilters.utility || 'any') + '-'
+        + (state.matchingFilters.layout || 'any');
+    const matchingRule = () => state.rateGroups.find(group => group.id === matchingId());
     const updateSegments = (selector, active) => {
         root.querySelectorAll(selector).forEach(button => {
             const on = button.dataset.availability === active
@@ -169,18 +178,20 @@
     const setSiteSummary = () => {
         const site = state.site;
         const place = state.place;
-        $('site-title').textContent = site
-            ? site.label : (place ? 'Select a Site' : 'Choose a Site');
-        $('site-subtitle').textContent = site
-            ? [place?.name, titleCase(site.type)].filter(Boolean).join(' · ')
-            : (place ? 'Choose a Site above to edit its pricing.' : 'Select a Place and Site above to see its details.');
+        $('site-title').textContent = isMatching()
+            ? 'Matching Sites' : (site ? site.label : (place ? 'Select a Site' : 'Choose a Site'));
+        $('site-subtitle').textContent = isMatching()
+            ? 'Select one or more Site attributes below to match pricing and availability.'
+            : (site ? [place?.name, titleCase(site.type)].filter(Boolean).join(' · ')
+            : (place ? 'Choose a Site above to edit its pricing.' : 'Select a Place and Site above to see its details.'));
         $('max-people').textContent = site?.max_people ?? '—';
         $('max-vehicles').textContent = site?.max_vehicles ?? '—';
         $('layout').textContent = site?.layout ? titleCase(site.layout) : '—';
         $('hookups').textContent = site?.electric
             ? titleCase(site.electric)
             : (site?.hookups ? titleCase(site.hookups) : '—');
-        $('rates-title').textContent = 'Rates for ' + (site?.label || 'selected Site');
+        $('rates-title').textContent = isMatching()
+            ? 'Rates for matching Sites' : 'Rates for ' + (site?.label || 'selected Site');
     };
     const normalizedAmount = value => value == null || value === ''
         ? '' : Number(value).toFixed(2);
@@ -199,6 +210,9 @@
                     holiday: draft.holiday,
                 };
             }
+            if (normalizedAmount(draft.vehicle) !== normalizedAmount(before.vehicle)) {
+                change.vehicle = draft.vehicle;
+            }
             if (draft.availability !== before.availability
                 && draft.availability !== '') {
                 change.availability = draft.availability;
@@ -208,9 +222,11 @@
         return changes;
     };
     const syncSaveButton = () => {
-        $('save').disabled = state.saving || !state.sitePayload?.version
-            || Boolean(state.sitePayload.rate_conflict)
-            || changesForSave().length === 0;
+        $('save').disabled = state.saving || (
+            isMatching()
+                ? (!state.groupVersion || state.matchingCount < 1 || !state.seasonId)
+                : (!state.sitePayload?.version || Boolean(state.sitePayload.rate_conflict))
+        ) || changesForSave().length === 0;
     };
     const setEditorEnabled = enabled => {
         $('status-field').disabled = !enabled || state.saving;
@@ -220,18 +236,20 @@
             $(id).title = 'Use Edit Season above to change the season dates here in Campsite Pricing.';
         });
         root.querySelectorAll('[data-cpr-rate]').forEach(input => {
-            const supported = ['weekday', 'weekend', 'holiday'].includes(input.dataset.cprRate);
+            const supported = ['weekday', 'weekend', 'holiday', 'vehicle'].includes(input.dataset.cprRate);
             input.disabled = !enabled || !supported || state.saving;
             if (!supported) {
-                input.title = 'Surcharge pricing will be connected in a later step.';
+                input.title = 'Group surcharge will be connected after the base and vehicle rates.';
             } else {
                 input.removeAttribute('title');
             }
         });
         root.querySelectorAll('[data-capacity], [data-layout], [data-utility]')
             .forEach(button => {
-                button.disabled = true;
-                button.title = 'Site facts are read from the existing Site record.';
+                button.disabled = !isMatching() || !state.place || state.saving;
+                button.title = isMatching()
+                    ? 'Select a matching filter. Tap again to include all values.'
+                    : 'Site facts are read from its existing record.';
             });
         $('copy-season').disabled = !enabled || state.saving || state.seasons.length < 2;
         $('edit-season').disabled = !state.place || !state.seasonId || state.saving;
