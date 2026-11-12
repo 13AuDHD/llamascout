@@ -1042,17 +1042,18 @@
     background: transparent;
 }
 
-.mapped-area-editor-mode-tabs button.is-active {
+ .mapped-area-editor-mode-tabs button.is-active {
+    --map-mode-color: #22c55e;
     border-color:
         color-mix(
             in srgb,
-            #22c55e 75%,
+            var(--map-mode-color) 75%,
             var(--border)
         );
     background:
         color-mix(
             in srgb,
-            #22c55e 18%,
+            var(--map-mode-color) 18%,
             var(--background)
         );
     color: var(--text);
@@ -1287,4 +1288,13 @@
     color: var(--text);
     font: inherit;
     padding: 8px 10px;
+}
+
+/* The map editor matches the Place (green), Site (orange), Area (purple)
+   tab identity used by the canonical reporting interface. */
+.mapped-area-editor-mode-tabs button[data-map-mode-button="site"].is-active {
+    --map-mode-color: #d97706;
+}
+.mapped-area-editor-mode-tabs button[data-map-mode-button="area"].is-active {
+    --map-mode-color: #9765cb;
 }

@@ -24,12 +24,32 @@
     const currentMode = () =>
         areaShell?.querySelector('[data-contribution-mode="area"]')
             ?.getAttribute('aria-pressed') === 'true';
+    let previouslyEditingArea = false;
+    const areaDrafts = new Map();
     const syncAreaMode = () => {
         const isArea = currentMode();
         if (areaPicker) areaPicker.hidden = !isArea;
-        if (!isArea || !areas.length) return;
-        // A selected Area is mandatory in Area mode. Never use a fictitious
-        // "Entire Place" Area: the Place tab owns Place editing.
+
+        // Shared form controls must never retain Area answers when switching
+        // back to Place or Site. Preserve the unsaved Area draft by identity.
+        if (!isArea) {
+            if (previouslyEditingArea) {
+                if (selected) areaDrafts.set(selected, read());
+                write(placeValues);
+                target.value = '';
+            }
+            previouslyEditingArea = false;
+            return;
+        }
+
+        if (!previouslyEditingArea) {
+            placeValues = read();
+            previouslyEditingArea = true;
+            if (selected && allowed.has(selected)) {
+                write(areaDrafts.get(selected) || effectiveValues(selected));
+            }
+        }
+        if (!areas.length) return;
         if (!allowed.has(selector.value)) {
             selector.value = String(areas[0].id);
             selector.dispatchEvent(new Event('change', {bubbles: true}));
@@ -414,6 +434,13 @@
         (event) => {
             answersField.value =
                 '';
+
+            if (!currentMode()) {
+                // The Area selector is not an alternate way to save Place
+                // values. Place and Site modes have their own save targets.
+                target.value = '';
+                return;
+            }
 
             if (
                 String(
