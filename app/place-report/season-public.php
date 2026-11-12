@@ -174,13 +174,10 @@ function llama_public_season_site_statuses(
     if (!$ids || $seasonId < 1) {
         return [];
     }
-    $conditions = llama_public_season_place_conditions($db, $placeId, $seasonId);
-    if (($conditions['seasonal_place_closed']['value'] ?? null) === true) {
-        return array_fill_keys($ids, 'closed');
-    }
-    // Only a verified Place-wide seasonal closure overrides every Site.
-    // The retired "close Sites by default" toggle must not supersede
-    // the authoritative per-Site Campsite Pricing availability.
+    // Site operating status is authored only in Campsite Pricing.
+    // The former Place-season closure switch is retired. The canonical
+    // Place Scout Report's Seasonal Closure and its dates remain distinct
+    // from verified administrative closures handled by the normal API.
     $statuses = [];
     foreach (array_chunk($ids, 400) as $batch) {
         $marks = implode(',', array_fill(0, count($batch), '?'));
