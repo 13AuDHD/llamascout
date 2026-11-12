@@ -152,6 +152,9 @@ jobs:
       - name: Run V3 reporting smoke tests
         run: php tools/v3-launch-smoke.php
 
+      - name: Verify Place/Site/Area tab ownership
+        run: node tools/tests/admin-area-tab-ui.cjs
+
       - name: Verify facility Area question eligibility
         run: php tools/tests/facility-area-question-eligibility.php
 
