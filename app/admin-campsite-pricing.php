@@ -608,3 +608,218 @@ function admin_cpr_save_season(
         throw $error;
     }
 }
+
+
+/** Review reminders are metadata, not closures or booking availability. */
+function admin_cpr_reviews_ready(PDO $db): bool
+{
+    try {
+        $statement = $db->query("SHOW TABLES LIKE 'place_pricing_reviews'");
+        return $statement && $statement->fetch(PDO::FETCH_NUM) !== false;
+    } catch (Throwable) {
+        return false;
+    }
+}
+
+/**
+ * Summarize paid Sites for a Place using actual pricing rule matches. A Site
+ * with an explicit free rule is not counted as paid merely because a less
+ * specific rule also matches. The closure review alarm is read, not copied.
+ */
+function admin_cpr_paid_site_queue(
+    PDO $db, int $placeId, array $rawSites, array $seasons
+): array {
+    $doc = llama_pricing_document($db, ['id' => $placeId]);
+    $reviewRows = [];
+    if (admin_cpr_reviews_ready($db)) {
+        $q = $db->prepare(
+            'SELECT site_id, next_review_on, availability_release_on,
+                    last_checked_on, source_url
+             FROM place_pricing_reviews WHERE place_id = ?'
+        );
+        $q->execute([$placeId]);
+        foreach ($q->fetchAll(PDO::FETCH_ASSOC) ?: [] as $item) {
+            $reviewRows[(int) ($item['site_id'] ?? 0)] = $item;
+        }
+    }
+
+    $closureRows = [];
+    try {
+        $q = $db->prepare(
+            "SELECT campsite_id, review_date, expected_reopening
+             FROM place_operating_closures
+             WHERE place_id = ? AND status <> 'open'"
+        );
+        $q->execute([$placeId]);
+        foreach ($q->fetchAll(PDO::FETCH_ASSOC) ?: [] as $item) {
+            $key = (int) ($item['campsite_id'] ?? 0);
+            $closureRows[$key] = $item;
+        }
+    } catch (PDOException) {
+        // The pricing queue remains available before the closure module.
+    }
+
+    $seasonSummary = [];
+    foreach ($seasons as $season) {
+        $repeat = (int) ($season['is_recurring'] ?? 1) === 1;
+        $start = $repeat
+            ? (string) ($season['start_mmdd'] ?? '')
+            : (string) ($season['starts_on'] ?? '');
+        $end = $repeat
+            ? (string) ($season['end_mmdd'] ?? '')
+            : (string) ($season['ends_on'] ?? '');
+        $seasonSummary[] = trim((string) ($season['name'] ?? '')
+            . ': ' . $start . ' to ' . $end . ($repeat ? ' (annual)' : ''));
+    }
+    $sites = [];
+    foreach ($rawSites as $site) {
+        $siteId = (int) ($site['id'] ?? 0);
+        if ($siteId < 1) continue;
+        $context = llama_pricing_site_context($site);
+        $top = -1;
+        $matching = [];
+        foreach ((array) ($doc['rows'] ?? []) as $row) {
+            if (($row['unit'] ?? 'night') !== 'night') continue;
+            $score = llama_pricing_match((array) ($row['match'] ?? []), $context);
+            if ($score === null || $score < 0) continue;
+            if ($score > $top) {
+                $top = $score;
+                $matching = [$row];
+            } elseif ($score === $top) {
+                $matching[] = $row;
+            }
+        }
+        if (count($matching) !== 1) continue;
+        $rule = $matching[0];
+        $prices = [
+            $rule['price'] ?? null,
+            $rule['weekend_price'] ?? null,
+            $rule['holiday_price'] ?? null,
+        ];
+        foreach ((array) ($rule['seasons'] ?? []) as $period) {
+            $prices[] = $period['price'] ?? null;
+            $prices[] = $period['weekend_price'] ?? null;
+            $prices[] = $period['holiday_price'] ?? null;
+        }
+        $positive = array_values(array_filter(
+            $prices, static fn ($v): bool => $v !== null && (float) $v > 0
+        ));
+        if (!$positive) continue;
+
+        $siteReview = (array) ($reviewRows[$siteId] ?? []);
+        $placeReview = (array) ($reviewRows[0] ?? []);
+        $closure = (array) ($closureRows[$siteId] ?? []);
+        if (!$closure && isset($closureRows[0])) {
+            $closure = (array) $closureRows[0];
+        }
+        $reviewOn = (string) ($siteReview['next_review_on']
+            ?? $placeReview['next_review_on'] ?? '');
+        $closureReview = (string) ($closure['review_date'] ?? '');
+        $nextCheck = $reviewOn;
+        if ($closureReview !== '' && ($nextCheck === '' || $closureReview < $nextCheck)) {
+            $nextCheck = $closureReview;
+        }
+        $releaseOn = (string) ($siteReview['availability_release_on']
+            ?? $placeReview['availability_release_on'] ?? '');
+        $earliest = $nextCheck;
+        if ($releaseOn !== '') {
+            $releaseDate = substr($releaseOn, 0, 10);
+            if ($earliest === '' || $releaseDate < $earliest) {
+                $earliest = $releaseDate;
+            }
+        }
+        $sites[] = [
+            'id' => $siteId,
+            'label' => trim((string) ($site['site_name'] ?? ''))
+                ?: ('Site ' . (string) ($site['site_code'] ?? $siteId)),
+            'price_min' => min($positive),
+            'price_max' => max($positive),
+            'season_summary' => $seasonSummary,
+            'review_on' => $reviewOn,
+            'release_on' => $releaseOn,
+            'closure_review_on' => $closureReview,
+            'next_check_on' => $earliest,
+            'last_checked_on' => (string) ($siteReview['last_checked_on']
+                ?? $placeReview['last_checked_on'] ?? ''),
+            'source_url' => (string) ($siteReview['source_url']
+                ?? $placeReview['source_url'] ?? ''),
+        ];
+    }
+    usort($sites, static function (array $a, array $b): int {
+        $at = $a['next_check_on'] ?: '9999-12-31';
+        $bt = $b['next_check_on'] ?: '9999-12-31';
+        return [$at, $a['label']] <=> [$bt, $b['label']];
+    });
+    return $sites;
+}
+
+/** Update one Site's review reminder, never its actual closure status. */
+function admin_cpr_save_review(
+    PDO $db, int $placeId, int $siteId, int $actorId, array $details
+): array {
+    if ($placeId < 1 || $siteId < 1 || $actorId < 1) {
+        throw new InvalidArgumentException('Choose a valid Place and Site.');
+    }
+    if (!admin_cpr_reviews_ready($db)) {
+        throw new InvalidArgumentException(
+            'Apply the Campsite Pricing review-table migration before scheduling reviews.'
+        );
+    }
+    $site = llama_place_campsites($db, $placeId, $siteId)[0] ?? null;
+    if (!is_array($site)) {
+        throw new InvalidArgumentException('The selected Site does not belong to this Place.');
+    }
+    $review = llama_season_absolute_date($details['next_review_on'] ?? null);
+    $releaseRaw = trim((string) ($details['availability_release_on'] ?? ''));
+    $release = null;
+    if ($releaseRaw !== '') {
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/D', $releaseRaw)) {
+            throw new InvalidArgumentException('Enter a valid availability release date and time.');
+        }
+        $date = DateTimeImmutable::createFromFormat('!Y-m-d\TH:i', $releaseRaw);
+        if (!$date || $date->format('Y-m-d\TH:i') !== $releaseRaw) {
+            throw new InvalidArgumentException('Invalid availability release date.');
+        }
+        $release = $date->format('Y-m-d H:i:s');
+    }
+    $source = trim((string) ($details['source_url'] ?? ''));
+    if ($source !== '' && (strlen($source) > 2048
+        || !filter_var($source, FILTER_VALIDATE_URL)
+        || !in_array(strtolower((string) parse_url($source, PHP_URL_SCHEME)),
+            ['http', 'https'], true))) {
+        throw new InvalidArgumentException('Enter a valid source URL.');
+    }
+    $markChecked = !empty($details['checked_today']);
+    $db->beginTransaction();
+    try {
+        $lock = $db->prepare('SELECT id FROM places WHERE id = ? FOR UPDATE');
+        $lock->execute([$placeId]);
+        if (!$lock->fetchColumn()) {
+            throw new InvalidArgumentException('Place no longer exists.');
+        }
+        $q = $db->prepare(
+            'INSERT INTO place_pricing_reviews
+              (place_id, site_id, next_review_on, availability_release_on,
+               last_checked_on, source_url)
+             VALUES (?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE next_review_on = VALUES(next_review_on),
+               availability_release_on = VALUES(availability_release_on),
+               last_checked_on = COALESCE(VALUES(last_checked_on), last_checked_on),
+               source_url = VALUES(source_url)'
+        );
+        $q->execute([
+            $placeId, $siteId, $review, $release,
+            $markChecked ? date('Y-m-d') : null, $source !== '' ? $source : null,
+        ]);
+        admin_users_audit(
+            $db, $actorId, null, 'place.site_pricing_review_updated',
+            'Updated pricing review reminder for one Site.',
+            ['place_id' => $placeId, 'site_id' => $siteId]
+        );
+        $db->commit();
+        return ['success' => true];
+    } catch (Throwable $e) {
+        if ($db->inTransaction()) $db->rollBack();
+        throw $e;
+    }
+}
