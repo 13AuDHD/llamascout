@@ -62,7 +62,9 @@ if (
             data-place-report-clear="<?= $yesNoEscape($yesNoKey) ?>"
             aria-label="Clear <?= $yesNoEscape($yesNoLabel) ?>">Clear</button>
     </div>
-    <div class="add-place-radio-help is-simple">
-        ? = Unknown · Clear = Unanswered
-    </div>
+    <?php if (empty($yesNoHideHint)): ?>
+        <div class="add-place-radio-help is-simple">
+            ? = Unknown · Clear = Unanswered
+        </div>
+    <?php endif; ?>
 </div>
