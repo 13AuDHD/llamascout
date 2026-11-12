@@ -244,7 +244,7 @@ if (isset($_GET['ajax'])) {
             $category = (string) ($_GET['category'] ?? '');
             $hookups = (string) ($_GET['hookups'] ?? '');
             $layout = (string) ($_GET['layout'] ?? '');
-            if (!in_array($category, ['single', 'double', 'group'], true)
+            if (!in_array($category, ['', 'single', 'double', 'group'], true)
                 || !in_array($hookups, ['', 'none', 'electric', 'full'], true)
                 || !in_array($layout, ['', 'pull_through', 'back_in', 'pull_in', 'parallel'], true)) {
                 $respond(['ok' => false, 'error' => 'Choose valid Site matching attributes.'], 400);
