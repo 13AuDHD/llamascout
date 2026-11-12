@@ -960,6 +960,12 @@ function admin_cpr_group_catalog(PDO $db, int $placeId, array $sites): array
     $doc = llama_pricing_document($db, ['id' => $placeId]);
     $groups = [];
     $covered = [];
+    $vehicleRows = [];
+    foreach ((array) ($doc['rows'] ?? []) as $row) {
+        if (str_starts_with((string) ($row['id'] ?? ''), 'cpr-vehicle-cpr-group-')) {
+            $vehicleRows[substr((string) $row['id'], strlen('cpr-vehicle-'))] = $row;
+        }
+    }
     $contexts = llama_pricing_effective_site_contexts($db, $placeId, $sites, $doc);
     foreach ((array) ($doc['rows'] ?? []) as $row) {
         if (!str_starts_with((string) ($row['id'] ?? ''), 'cpr-group-')) {
@@ -984,6 +990,32 @@ function admin_cpr_group_catalog(PDO $db, int $placeId, array $sites): array
             'layout' => (string) ($match['layout'] ?? ''),
             'matched_sites' => $matched,
             'seasons' => array_values((array) ($row['seasons'] ?? [])),
+            'vehicle_seasons' => array_values((array) (
+                $vehicleRows[(string) $row['id']]['seasons'] ?? []
+            )),
+        ];
+    }
+    // A rule may contain only an Extra Vehicle fee, with no nightly amount.
+    foreach ($vehicleRows as $id => $vehicleRow) {
+        if (in_array($id, array_column($groups, 'id'), true)) continue;
+        $match = (array) ($vehicleRow['match'] ?? []);
+        $matched = 0;
+        foreach ($sites as $site) {
+            $context = llama_pricing_site_context(
+                $contexts[(int) ($site['id'] ?? 0)] ?? $site
+            );
+            if (($score = llama_pricing_match($match, $context)) !== null && $score >= 0) {
+                $matched++;
+                $covered[(int) $site['id']] = true;
+            }
+        }
+        $groups[] = [
+            'id' => $id, 'name' => (string) ($vehicleRow['name'] ?? ''),
+            'category' => (string) ($match['category'] ?? ''),
+            'hookups' => (string) ($match['hookups'] ?? ''),
+            'layout' => (string) ($match['layout'] ?? ''),
+            'matched_sites' => $matched, 'seasons' => [],
+            'vehicle_seasons' => (array) ($vehicleRow['seasons'] ?? []),
         ];
     }
     return [
@@ -1032,7 +1064,7 @@ function admin_cpr_save_rate_group(
     $category = (string) ($request['category'] ?? '');
     $hookups = (string) ($request['hookups'] ?? '');
     $layout = (string) ($request['layout'] ?? '');
-    if (!in_array($category, ['single', 'double', 'group'], true)
+    if (!in_array($category, ['', 'single', 'double', 'group'], true)
         || !in_array($hookups, ['', 'none', 'electric', 'full'], true)
         || !in_array($layout, ['', 'pull_through', 'back_in', 'pull_in', 'parallel'], true)) {
         throw new InvalidArgumentException('Select a valid Site size, utility type, and parking style.');
@@ -1042,15 +1074,18 @@ function admin_cpr_save_rate_group(
         throw new InvalidArgumentException('Select an operating season for this rate.');
     }
     $rawRates = (array) ($request['rates'] ?? []);
-    if (array_keys($rawRates) !== ['weekday', 'weekend', 'holiday']) {
-        throw new InvalidArgumentException('Enter weekday, weekend, and holiday rate fields.');
+    if (array_keys($rawRates) !== ['weekday', 'weekend', 'holiday', 'vehicle']) {
+        throw new InvalidArgumentException('Enter weekday, weekend, holiday, and extra vehicle prices.');
     }
     $rates = [];
     foreach ($rawRates as $key => $raw) {
         $rates[$key] = llama_pricing_amount($raw);
     }
-    if (!array_filter($rates, static fn ($v): bool => $v !== null)) {
-        throw new InvalidArgumentException('Enter at least one rate amount. Enter 0 for free.');
+    if (!array_filter($rates, static fn ($v): bool => $v !== null)
+        && empty($request['apply_availability'])) {
+        throw new InvalidArgumentException(
+            'Enter at least one rate or choose a seasonal availability status.'
+        );
     }
 
     $db->beginTransaction();
@@ -1076,67 +1111,67 @@ function admin_cpr_save_rate_group(
         }
 
         $id = admin_cpr_group_key($category, $hookups, $layout);
-        $index = null;
-        foreach ($doc['rows'] as $i => $row) {
-            if ($row['id'] === $id) {
-                $index = $i;
-                break;
-            }
-        }
-        if ($index === null) {
-            $doc['rows'][] = [
-                'id' => $id,
-                'name' => ucfirst($category) . ' · '
-                    . ($hookups === '' ? 'All utilities' : ucfirst($hookups))
-                    . ($layout === '' ? '' : ' · ' . $layout),
-                'match' => [
-                    'category' => $category,
-                    'hookups' => $hookups,
-                    'layout' => $layout,
-                    'raw_type' => '',
-                    'legacy_category' => '',
-                    'legacy_site' => '',
-                    'loop' => '',
-                    'site_ids' => [],
-                    'feature_ids' => [],
-                    'area_ids' => [],
-                    'site_selection' => false,
-                ],
-                'unit' => 'night',
-                'price' => null,
-                'weekend_price' => null,
-                'holiday_price' => null,
-                'seasons' => [],
-            ];
-            $index = array_key_last($doc['rows']);
-        }
-        $row =& $doc['rows'][$index];
-        $match = (array) ($row['match'] ?? []);
-        if (($match['category'] ?? '') !== $category
-            || ($match['hookups'] ?? '') !== $hookups
-            || ($match['layout'] ?? '') !== $layout
-            || !empty($match['site_ids'])
-            || !empty($match['feature_ids'])
-            || !empty($match['area_ids'])) {
-            throw new InvalidArgumentException('A different pricing rule already has this identifier.');
-        }
-        $period = [
-            'season_id' => $seasonId,
-            'price' => $rates['weekday'],
-            'weekend_price' => $rates['weekend'],
-            'holiday_price' => $rates['holiday'],
+        $match = [
+            'category' => $category, 'layout' => $layout, 'hookups' => $hookups,
+            'raw_type' => '', 'legacy_category' => '', 'legacy_site' => '',
+            'loop' => '', 'site_ids' => [], 'feature_ids' => [],
+            'area_ids' => [], 'site_selection' => false,
         ];
-        $found = false;
-        foreach ($row['seasons'] as &$existing) {
-            if ((int) ($existing['season_id'] ?? 0) === $seasonId) {
-                $existing = $period;
-                $found = true;
-                break;
+        $hasNightRate = $rates['weekday'] !== null
+            || $rates['weekend'] !== null || $rates['holiday'] !== null;
+        if ($hasNightRate) {
+            $index = null;
+            foreach ($doc['rows'] as $i => $row) {
+                if ($row['id'] === $id) {
+                    $index = $i;
+                    break;
+                }
             }
+            if ($index === null) {
+                $doc['rows'][] = [
+                    'id' => $id,
+                    'name' => ucfirst($category ?: 'All Sites') . ' · '
+                        . ($hookups === '' ? 'All utilities' : ucfirst($hookups))
+                        . ($layout === '' ? '' : ' · ' . $layout),
+                    'match' => $match,
+                    'unit' => 'night', 'price' => null,
+                    'weekend_price' => null, 'holiday_price' => null,
+                    'seasons' => [],
+                ];
+                $index = array_key_last($doc['rows']);
+            }
+            $row =& $doc['rows'][$index];
+            if (($row['unit'] ?? '') !== 'night'
+                || (array) ($row['match'] ?? []) != $match) {
+                throw new InvalidArgumentException(
+                    'An unrelated pricing rule already uses this identifier.'
+                );
+            }
+            $period = [
+                'season_id' => $seasonId, 'price' => $rates['weekday'],
+                'weekend_price' => $rates['weekend'],
+                'holiday_price' => $rates['holiday'],
+            ];
+            $found = false;
+            foreach ($row['seasons'] as &$existing) {
+                if ((int) ($existing['season_id'] ?? 0) === $seasonId) {
+                    $existing = $period;
+                    $found = true;
+                    break;
+                }
+            }
+            unset($existing);
+            if (!$found) $row['seasons'][] = $period;
+            unset($row);
         }
-        unset($existing);
-        if (!$found) $row['seasons'][] = $period;
-        unset($row);
+        if ($rates['vehicle'] !== null) {
+            $doc = admin_cpr_merge_vehicle(
+                $doc, 'cpr-vehicle-' . $id, $match,
+                ucfirst($category ?: 'All Sites'), [
+                    ['season_id' => $seasonId, 'vehicle' => $rates['vehicle']],
+                ]
+            );
+        }
         $doc = llama_pricing_validate($doc);
         $appliedStatusCount = 0;
         if (!empty($request['apply_availability'])) {
