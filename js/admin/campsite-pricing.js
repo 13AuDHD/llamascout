@@ -290,6 +290,11 @@
         state.site = state.sites.find(s => Number(s.id) === id) || null;
         setSiteSummary();
         const request = state.siteRequest;
+        state.sitePayload = null;
+        state.drafts = new Map();
+        state.baselines = new Map();
+        state.seasonId = null;
+        renderEditor();
         status('Loading pricing for ' + state.site.label + '...');
         try {
             const data = await api({ajax: 'site', place_id: state.place.id, site_id: id});
@@ -298,13 +303,11 @@
             state.drafts = new Map();
             state.baselines = new Map();
             for (const season of state.seasons) {
-                const seasonOverride = (data.rate?.seasons || []).find(
-                    value => Number(value.season_id) === Number(season.id)
-                );
+                const effectiveRates = data.rates_by_season?.[String(season.id)] || {};
                 const values = {
-                    weekday: seasonOverride?.price ?? data.rate?.weekday ?? '',
-                    weekend: seasonOverride?.weekend_price ?? data.rate?.weekend ?? '',
-                    holiday: seasonOverride?.holiday_price ?? data.rate?.holiday ?? '',
+                    weekday: effectiveRates.weekday ?? '',
+                    weekend: effectiveRates.weekend ?? '',
+                    holiday: effectiveRates.holiday ?? '',
                     vehicle: '',
                     group: '',
                     availability: data.availability?.[String(season.id)] || '',
@@ -506,6 +509,8 @@
             }
         }
         state.saving = true;
+        $('place-search').disabled = true;
+        $('site').disabled = true;
         syncSaveButton();
         setEditorEnabled(Boolean(selected()));
         status('Saving ' + changes.length + ' season' +
@@ -533,12 +538,17 @@
                 throw new Error(data.message || 'Pricing save was not confirmed.');
             }
             await loadSelectedSite();
+            if (!state.sitePayload?.version) {
+                throw new Error('The save completed, but the updated pricing could not be reloaded. Refresh before changing it again.');
+            }
             status('Saved ' + Number(data.seasons_saved || 0) +
                 ' season(s) for ' + state.site.label + '.');
         } catch (error) {
             status('Not saved: ' + String(error.message || 'Unknown error.'), true);
         } finally {
             state.saving = false;
+            $('place-search').disabled = false;
+            $('site').disabled = !state.sites.length;
             setEditorEnabled(Boolean(selected()));
         }
     });
