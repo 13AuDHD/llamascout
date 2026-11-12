@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const placePhotoPanel = report.querySelector('[data-contribution-place-photo-panel]');
         const firstSitePhotoPanel = report.querySelector('[data-contribution-site-photo-panel]');
         const areaPanel = shell.querySelector('[data-contribution-area-panel]');
+        const emptyAdminAreaPanel = shell.querySelector('[data-contribution-area-empty]');
         const areaTools = shell.querySelector('[data-contribution-area-tools]');
         const adminAreaSection = report.querySelector('[data-admin-area-picker]');
         const adminSitePicker = report.querySelector('[data-admin-campsite-selector]');
@@ -36,9 +37,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 button.setAttribute('aria-pressed', String(button.dataset.contributionMode === mode));
             }
             // A new Place cannot own Areas until it has a saved Place ID.
-            const standaloneArea = mode === 'area' && isNewPlace;
+            const standaloneArea = mode === 'area' && (isNewPlace || !!emptyAdminAreaPanel);
             report.hidden = standaloneArea;
-            if (areaPanel) areaPanel.hidden = !standaloneArea;
+            if (areaPanel) areaPanel.hidden = !(mode === 'area' && isNewPlace);
+            if (emptyAdminAreaPanel) emptyAdminAreaPanel.hidden = mode !== 'area';
             if (areaTools) areaTools.hidden = mode !== 'area';
             if (adminAreaSection) adminAreaSection.hidden = mode !== 'area';
             const reportHeading = report.querySelector('[data-admin-report-mode-heading]');
