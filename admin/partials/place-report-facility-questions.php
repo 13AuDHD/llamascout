@@ -72,11 +72,64 @@ $areaCampingFields = array_filter(
                              data-area-feature-types="<?= $esc(implode(',', (array) $field['area_feature_types'])) ?>"
                          <?php endif; ?>
                          hidden>
-                        <label class="place-report-field-label admin-facility-question-heading"
-                               for="<?= $esc($inputId) ?>">
-                            <?= $esc((string) $field['label']) ?>
-                        </label>
-                        <?php if ($type === 'textarea'): ?>
+                        <div class="place-report-field-label admin-facility-question-heading">
+                            <label for="<?= $esc($inputId) ?>">
+                                <?= $esc((string) $field['label']) ?>
+                            </label>
+                            <?php if (!empty($field['help'])):
+                                $helpId = $inputId . '-help';
+                            ?>
+                                <span class="place-report-field-help">
+                                    <span class="place-report-field-help-toggle"
+                                          role="button" tabindex="0"
+                                          aria-label="Help for <?= $esc((string) $field['label']) ?>"
+                                          aria-controls="<?= $esc($helpId) ?>"
+                                          aria-expanded="false"
+                                          data-place-report-help-toggle="<?= $esc($helpId) ?>"
+                                          title="What does this mean?">
+                                        <?= llama_icon('info-circle') ?>
+                                    </span>
+                                    <span id="<?= $esc($helpId) ?>"
+                                          class="place-report-field-help-panel"
+                                          role="dialog"
+                                          aria-label="<?= $esc((string) $field['label']) ?> help"
+                                          data-place-report-help-panel>
+                                        <?= $esc((string) $field['help']) ?>
+                                    </span>
+                                </span>
+                            <?php endif; ?>
+                        </div>
+                        <?php if ($type === 'tri'): ?>
+                            <?php
+                            $yesNoField = $field;
+                            $yesNoValue = '';
+                            require dirname(__DIR__, 2) . '/partials/place-report/yes-no-control.php';
+                            ?>
+                        <?php elseif ($type === 'rating'): ?>
+                            <div class="add-place-radio-control" data-radio-type="rating"
+                                 role="group" aria-label="<?= $esc((string) $field['label']) ?>">
+                                <div class="add-place-radio-row">
+                                    <div class="add-place-radio-options">
+                                        <label class="add-place-radio-option is-unknown">
+                                            <input type="radio" name="<?= $esc($key) ?>"
+                                                   value="<?= $esc(llama_place_report_unknown_token()) ?>"
+                                                   aria-label="Unknown">
+                                            <span>?</span>
+                                        </label>
+                                        <?php for ($rating = 1; $rating <= 5; $rating++): ?>
+                                            <label class="add-place-radio-option">
+                                                <input type="radio" name="<?= $esc($key) ?>"
+                                                       value="<?= $rating ?>">
+                                                <span><?= $rating ?></span>
+                                            </label>
+                                        <?php endfor; ?>
+                                    </div>
+                                    <button class="add-place-radio-clear" type="button"
+                                            data-place-report-clear="<?= $esc($key) ?>"
+                                            aria-label="Clear <?= $esc((string) $field['label']) ?>">Clear</button>
+                                </div>
+                            </div>
+                        <?php elseif ($type === 'textarea'): ?>
                             <textarea id="<?= $esc($inputId) ?>"
                                       name="<?= $esc($key) ?>" rows="3"></textarea>
                         <?php elseif ($type === 'number'): ?>
@@ -103,9 +156,6 @@ $areaCampingFields = array_filter(
                                     </option>
                                 <?php endforeach; ?>
                             </select>
-                        <?php endif; ?>
-                        <?php if (!empty($field['help'])): ?>
-                            <small><?= $esc((string) $field['help']) ?></small>
                         <?php endif; ?>
                     </div>
                 <?php endforeach; ?>
