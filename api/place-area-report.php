@@ -61,8 +61,27 @@ try {
     );
     $season = $seasonSelection['selected'] ?? null;
     if (is_array($season)) {
-        $seasonModel = llama_public_season_site_answers(
-            $db, $placeId, (int) $season['id'], $target, $answers
+        $seasonId = (int) $season['id'];
+        $placeTarget = ['scope' => 'place', 'source' => 'place', 'id' => $placeId];
+        $seasonModel = llama_public_season_overlay_answer_layers(
+            $answers,
+            [
+                [
+                    'scope' => 'place',
+                    'target' => $placeTarget,
+                    'answers' => llama_public_season_place_conditions(
+                        $db, $placeId, $seasonId
+                    ),
+                ],
+                [
+                    'scope' => 'area',
+                    'target' => $target,
+                    'answers' => llama_season_answers_for_target(
+                        $db, $placeId, $seasonId, $target
+                    ),
+                ],
+            ],
+            $target
         );
         $answers = (array) ($seasonModel['answers'] ?? $answers);
         $seasonSources = (array) ($seasonModel['sources'] ?? []);
