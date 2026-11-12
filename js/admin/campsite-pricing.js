@@ -684,6 +684,8 @@
         };
         const placeBefore = {...state.place};
         const selectedSiteId = state.site?.id || 0;
+        const previousMode = isMatching();
+        const previousFilters = {...state.matchingFilters};
         state.saving = true;
         $('season-save').disabled = true;
         setEditorEnabled(Boolean(selected()));
@@ -708,6 +710,11 @@
             }
             seasonDialog.close();
             await loadPlace(placeBefore);
+            if (previousMode) {
+                state.matchingFilters = previousFilters;
+                $('site').value = 'matching';
+                await loadSelectedSite();
+            }
             if (!state.place || Number(state.place.id) !== Number(placeBefore.id)) {
                 throw new Error('Season saved, but Place data could not be reloaded.');
             }
@@ -751,10 +758,17 @@
         state.seasonId = chosen.id;
         renderSeasons();
         renderEditor();
-        status('Copied rates are ready to save to the selected Site.');
+        status(isMatching()
+            ? 'Copied rates are ready to save for matching Sites.'
+            : 'Copied rates are ready to save to the selected Site.');
         syncSaveButton();
     });
     $('cancel').addEventListener('click', () => {
+        if (isMatching() && state.place) {
+            loadMatchingDrafts();
+            status('Unsaved matching Site changes discarded.');
+            return;
+        }
         if (!state.site || !state.place) {
             $('place-search').value = '';
             state.place = null;
@@ -1197,6 +1211,12 @@
 
     $('save').addEventListener('click', async () => {
         const changes = changesForSave();
+        if (isMatching()) {
+            if (changes.length && !state.saving) {
+                await saveMatchingRates(changes);
+            }
+            return;
+        }
         if (!state.place || !state.site || !state.sitePayload?.version
             || !changes.length || state.saving) return;
         for (const change of changes) {
