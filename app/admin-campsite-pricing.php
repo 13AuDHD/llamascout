@@ -572,7 +572,7 @@ function admin_cpr_save_holidays(
     string $expectedVersion,
     array $rawHolidays
 ): array {
-    if ($placeId < 1 || $siteId < 1 || $actorId < 1
+    if ($placeId < 1 || $siteId < 0 || $actorId < 1
         || strlen($expectedVersion) !== 64 || count($rawHolidays) > 60) {
         throw new InvalidArgumentException('Invalid Place holiday dates.');
     }
@@ -587,10 +587,21 @@ function admin_cpr_save_holidays(
         if (!$lock->fetchColumn()) {
             throw new InvalidArgumentException('Place not found.');
         }
-        $before = admin_cpr_snapshot($db, $placeId, $siteId);
-        if (!hash_equals($expectedVersion, $before['version'])) {
+        if ($siteId > 0) {
+            $before = admin_cpr_snapshot($db, $placeId, $siteId);
+            $document = $before['document'];
+            $actualVersion = $before['version'];
+        } else {
+            // The Place holiday calendar is shared across all Sites. Matching
+            // mode locks the canonical Place pricing document directly.
+            $document = llama_pricing_document($db, ['id' => $placeId]);
+            $actualVersion = hash(
+                'sha256', json_encode($document, JSON_THROW_ON_ERROR)
+            );
+        }
+        if (!hash_equals($expectedVersion, $actualVersion)) {
             throw new RuntimeException(
-                'Holiday dates or Site pricing changed in another tab. Reload and review before saving.',
+                'Holiday dates or pricing changed in another tab. Reload and review before saving.',
                 409
             );
         }
@@ -622,10 +633,10 @@ function admin_cpr_save_holidays(
             ];
         }
 
-        $document = $before['document'];
+        $previousDocument = $document;
         $document['holidays'] = $holidays;
         $document = llama_pricing_validate($document);
-        if ($document !== $before['document']) {
+        if ($document !== $previousDocument) {
             $json = json_encode($document, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
             $existing = $db->prepare('SELECT place_id FROM place_rules WHERE place_id = ? FOR UPDATE');
             $existing->execute([$placeId]);
