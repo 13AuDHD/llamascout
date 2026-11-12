@@ -200,8 +200,7 @@ function llama_season_builder_save(
     mixed $rawTargets,
     mixed $rawChanges,
     mixed $rawRemovals,
-    mixed $sourceInput = null,
-    bool $savingPrices = false
+    mixed $sourceInput = null
 ): array {
     if ($placeId < 1 || $seasonId < 1 || $actorId < 1) {
         throw new InvalidArgumentException('A valid Place, season, and Admin are required.');
@@ -275,7 +274,7 @@ function llama_season_builder_save(
             }
             $removals[$raw] = true;
         }
-        if (!$changes && !$removals && !$savingPrices) {
+        if (!$changes && !$removals) {
             throw new InvalidArgumentException('Choose at least one seasonal change.');
         }
 
