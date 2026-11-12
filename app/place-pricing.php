@@ -225,7 +225,9 @@ function llama_pricing_match(array $match, array $site): ?int
         $ok = match ($hookups) { 'electric' => $power, 'full' => ($power === false || $water === false || $sewer === false) ? false : (($power && $water && $sewer) ? true : null), 'none' => ($power || $water || $sewer) ? false : (($power === false && $water === false && $sewer === false) ? true : null) };
         if ($ok === false) return null;
         if ($ok === null) $missing = true;
-        $score++;
+        // Full hookups is more specific than generic electrical service:
+        // both can match a fully equipped Site, but the Full rate wins.
+        $score += $hookups === 'full' ? 2 : 1;
     }
     return $missing ? -1 : $score;
 }
