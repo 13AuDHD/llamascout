@@ -1108,6 +1108,7 @@
 
         // Only the authorized Site detail endpoint can evaluate member-only
         // child dependencies. Catalog previews must not revive those cards.
+        const targetScope = site.report_target_scope === 'area' ? 'area' : 'site';
         const hasSiteApplicability = Array.isArray(site.report_inapplicable_keys);
         const inapplicable = new Set(hasSiteApplicability
             ? site.report_inapplicable_keys.map(clean)
@@ -1125,6 +1126,15 @@
                             card.dataset
                                 .campsiteReportField
                         );
+
+                    // A loaded Site must not reveal Area-only cards (or
+                    // vice versa), even though both share the renderer.
+                    const cardScopes = String(card.dataset.reportScopes || '')
+                        .split(/\\s+/).filter(Boolean);
+                    if (cardScopes.length && !cardScopes.includes(targetScope)) {
+                        card.hidden = true;
+                        return;
+                    }
 
                     const conditional = card.dataset.campsiteReportConditional === '1';
                     if (inapplicable.has(key)
@@ -1377,7 +1387,7 @@
                 site.report_warnings
                 || {},
             target:
-                'Site',
+                targetScope === 'area' ? 'Area' : 'Site',
         };
 
         window.LlamaScoutReportWarningsState =
