@@ -44,6 +44,12 @@ foreach ($rateDoc['rows'] as $rate) {
     if ($label === '' || strcasecmp($label, 'Place base price') === 0 || strcasecmp($label, 'Camping') === 0) {
         $label = implode(' · ', $conditions) ?: 'Base Price';
     }
+    // The extra vehicle charge is a surcharge per additional vehicle,
+    // not part of a Site's nightly base rate.
+    if (($rate['unit'] ?? '') === 'vehicle_night'
+        && stripos($label, 'Extra vehicle') === false) {
+        $label .= ' · Extra vehicle';
+    }
     $rateGroups['base']['cards'][] = [$label, $rate, $rate['unit'], $rate['holiday_prices'] ?? [], $scope];
     foreach ($rate['seasons'] ?? [] as $period) {
         if (isset($period['season_id'])) {
@@ -79,7 +85,7 @@ foreach ($rateGroups as $groupKey => $group):
             }
         }
         if (isset($values['Weekend'])) $showWeekendNights = true;
-        if ($values) $cards[] = [$label, $values, $scope];
+        if ($values) $cards[] = [$label, $values, $scope, $unit];
     }
     if (!$cards) continue;
     $renderedRates = true;
@@ -91,7 +97,7 @@ foreach ($rateGroups as $groupKey => $group):
             <h4>Base schedule</h4>
         <?php endif; ?>
         <div class="scout-report-grid">
-            <?php foreach ($cards as [$label, $values, $scope]): ?>
+            <?php foreach ($cards as [$label, $values, $scope, $unit]): ?>
                 <article class="scout-report-item scout-report-value-item">
                     <div class="scout-report-value-content">
                         <span><?= $e($label) ?></span>
@@ -99,7 +105,12 @@ foreach ($rateGroups as $groupKey => $group):
                             <small><?= $e($scope) ?></small>
                         <?php endif; ?>
                         <?php foreach ($values as $dayType => $amount): ?>
-                            <strong><?= $e(count($values) === 1 && $dayType === 'Weekday' ? $amount : $dayType . ' · ' . $amount) ?></strong>
+                            <?php $dayLabel = $unit === 'vehicle_night' && $dayType === 'Weekday'
+                                ? 'Per extra vehicle' : $dayType; ?>
+                            <strong><?= $e(
+                                count($values) === 1 && $dayLabel === 'Weekday'
+                                    ? $amount : $dayLabel . ' · ' . $amount
+                            ) ?></strong>
                         <?php endforeach; ?>
                     </div>
                 </article>
@@ -111,5 +122,5 @@ foreach ($rateGroups as $groupKey => $group):
     <?php $dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']; ?>
     <p>Weekend nights: <?= $e(implode(', ', array_map(static fn ($day) => $dayNames[$day], $rateDoc['weekend_days'])) ?: 'None') ?></p>
 <?php elseif (!$renderedRates): ?>
-    <p>No Place-wide rates published.</p>
+    <p>No campsite rates have been published in Campsite Pricing.</p>
 <?php endif; ?>
