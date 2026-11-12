@@ -74,65 +74,50 @@
                 return;
             }
 
-            if (scope === 'area') {
-                for (const section of sections) {
-                    const sectionScopes =
-                        scopesFor(section);
+            // Every target shows only its own canonical questions.
+            // The Area may share a report section with the Place or Site,
+            // but it never inherits their UI cards just because of layout.
+            for (const section of sections) {
+                const sectionScopes = scopesFor(section);
+                const page = String(section.dataset.reportPage || '');
 
-                    if (!sectionScopes.includes('area')) {
-                        section.hidden = true;
-                        continue;
-                    }
+                // Place and Site retain their approved page ordering.
+                // Area selects any section that contains Area-owned fields.
+                const allowedSection = scope === 'area'
+                    ? sectionScopes.includes('area')
+                    : page === scope;
+                section.hidden = !allowedSection;
+                if (!allowedSection) continue;
 
-                    section.hidden = false;
-
-                    const items =
-                        Array.from(
-                            section.querySelectorAll(
-                                '.scout-report-item'
-                            )
-                        );
-
-                    for (const item of items) {
-                        const itemScopes =
-                            scopesFor(item);
-
-                        item.hidden =
-                            !itemScopes.includes(
-                                'area'
-                            );
-                    }
-
-                    section
-                        .querySelectorAll(
-                            '.scout-report-subsection, .scout-report-grid'
-                        )
-                        .forEach(
-                            (container) => {
-                                container.hidden =
-                                    !container.querySelector(
-                                        '.scout-report-item:not([hidden])'
-                                    );
-                            }
-                        );
-
-                    section.hidden =
-                        !section.querySelector(
-                            '.scout-report-item:not([hidden])'
-                        );
+                const items = Array.from(
+                    section.querySelectorAll('.scout-report-item')
+                );
+                for (const item of items) {
+                    const itemScopes = scopesFor(item);
+                    // Non-question cards (e.g. official contact links)
+                    // belong to the Place overview only.
+                    const allowedItem = itemScopes.length
+                        ? itemScopes.includes(scope)
+                        : scope === 'place';
+                    item.hidden = !allowedItem
+                        || Boolean(initialItemHidden.get(item))
+                        || item.classList.contains('is-applicability-hidden');
                 }
 
-                return;
-            }
-
-            for (const section of sections) {
-                section.hidden =
-                    String(
-                        section.dataset
-                            .reportPage
-                        || ''
-                    )
-                    !== scope;
+                section.querySelectorAll(
+                    '.scout-report-subsection, .scout-report-grid'
+                ).forEach((container) => {
+                    container.hidden = !container.querySelector(
+                        '.scout-report-item:not([hidden])'
+                    );
+                });
+                // A group without any fields for the selected target
+                // must not render an empty section heading.
+                if (items.length) {
+                    section.hidden = !section.querySelector(
+                        '.scout-report-item:not([hidden])'
+                    );
+                }
             }
         };
 
@@ -1104,10 +1089,11 @@
     const updateScoutReport = (
         site
     ) => {
-        const values =
-            siteReportValues(
-                site
-            );
+        // Areas have no campsite baseline. Their displayed answers must
+        // come exclusively from the verified canonical Area target model.
+        const values = site.report_target_scope === 'area'
+            ? (site.report_effective_values || {})
+            : siteReportValues(site);
 
         const publicReportKeys =
             new Set(
@@ -1450,6 +1436,7 @@
         // Never carry the Place's (or a previous Area's) answers onto the
         // newly selected Area while its report is loading.
         updateScoutReport({
+            report_target_scope: 'area',
             report_effective_values: {},
             report_answer_states: {},
             report_answer_sources: {},
