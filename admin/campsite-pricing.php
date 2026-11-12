@@ -32,7 +32,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         }
         $input = json_decode($raw, true, 32, JSON_THROW_ON_ERROR);
         if (!is_array($input) || !in_array(
-            (string) ($input['action'] ?? ''), ['save', 'save-holidays', 'save-season'], true
+            (string) ($input['action'] ?? ''), ['save', 'save-holidays', 'save-season', 'save-review'], true
         )) {
             throw new InvalidArgumentException('Invalid pricing save request.');
         }
@@ -41,7 +41,15 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             echo json_encode(['success' => false, 'message' => 'Your Admin session expired. Reload before saving.']);
             exit;
         }
-        if ($input['action'] === 'save-season') {
+        if ($input['action'] === 'save-review') {
+            $result = admin_cpr_save_review(
+                $db,
+                (int) ($input['place_id'] ?? 0),
+                (int) ($input['site_id'] ?? 0),
+                $actorId,
+                (array) ($input['review'] ?? [])
+            );
+        } elseif ($input['action'] === 'save-season') {
             if (!isset($input['season']) || !is_array($input['season'])
                 || array_is_list($input['season'])) {
                 throw new InvalidArgumentException('Invalid Place season definition.');
@@ -143,8 +151,9 @@ if (isset($_GET['ajax'])) {
         }
 
         if ($action === 'place') {
+            $rawSites = llama_place_campsites($db, $placeId);
             $sites = [];
-            foreach (llama_place_campsites($db, $placeId) as $site) {
+            foreach ($rawSites as $site) {
                 $siteId = (int) ($site['id'] ?? 0);
                 if ($siteId < 1) continue;
                 $number = trim((string) ($site['site_code'] ?? ''));
@@ -182,6 +191,10 @@ if (isset($_GET['ajax'])) {
                 'ok' => true,
                 'place' => $place,
                 'sites' => $sites,
+                'review_queue_ready' => admin_cpr_reviews_ready($db),
+                'paid_sites' => admin_cpr_paid_site_queue(
+                    $db, $placeId, $rawSites, $seasons
+                ),
                 'place_closure' => [
                     'reported' => $closureReported,
                     'begins' => $closureBegins,
@@ -415,6 +428,36 @@ require __DIR__ . '/_header.php';
             </div>
         </div>
     </div>
+    <section class="cpr-card cpr-review-section" aria-labelledby="cpr-review-title">
+        <header class="cpr-review-header">
+            <div>
+                <h2 id="cpr-review-title"><?= llama_icon('calendar') ?> Paid Site review queue</h2>
+                <p>Review published season dates, pricing, and booking release dates.
+                   Verified closure alarms are included when applicable.</p>
+            </div>
+            <label>Show
+                <select id="cpr-review-filter">
+                    <option value="all">All paid Sites</option>
+                    <option value="due">Due for review</option>
+                    <option value="upcoming">Upcoming reviews</option>
+                    <option value="unscheduled">Not scheduled</option>
+                </select>
+            </label>
+        </header>
+        <p class="cpr-review-count" id="cpr-review-count">Choose a Place to see its paid Sites.</p>
+        <div class="cpr-review-table-wrap">
+            <table class="cpr-review-table">
+                <thead><tr>
+                    <th>Site</th><th>Season dates</th><th>Rate range</th>
+                    <th>Next review</th><th>Availability released</th><th>Actions</th>
+                </tr></thead>
+                <tbody id="cpr-review-rows"><tr><td colspan="6">No Place selected.</td></tr></tbody>
+            </table>
+        </div>
+        <p class="cpr-review-footnote" id="cpr-review-footnote">
+            Review reminders are not closures and do not change availability.
+        </p>
+    </section>
     <footer class="cpr-footer">
         <p class="cpr-save-status" id="cpr-save-status" role="status">
             Choose a Place, Site, and season to manage pricing. Changes save to existing Llama Scout records.
@@ -424,6 +467,36 @@ require __DIR__ . '/_header.php';
             <button type="button" class="cpr-save" id="cpr-save" disabled>Save Pricing</button>
         </div>
     </footer>
+<dialog class="cpr-holiday-dialog cpr-season-dialog" id="cpr-review-dialog"
+        aria-labelledby="cpr-review-dialog-title">
+    <form id="cpr-review-form" class="cpr-holiday-modal" method="dialog">
+        <header>
+            <h2 id="cpr-review-dialog-title">Schedule pricing review</h2>
+            <p id="cpr-review-dialog-site">Selected Site</p>
+        </header>
+        <label class="cpr-season-dialog-label">
+            <span>Next pricing review</span>
+            <input type="date" id="cpr-review-on">
+        </label>
+        <label class="cpr-season-dialog-label">
+            <span>Booking availability release (if published)</span>
+            <input type="datetime-local" id="cpr-review-release">
+        </label>
+        <label class="cpr-season-dialog-label">
+            <span>Official source link</span>
+            <input type="url" id="cpr-review-source" placeholder="https://www.recreation.gov/...">
+        </label>
+        <label class="cpr-season-repeat-label">
+            <input type="checkbox" id="cpr-review-checked">
+            <span>Mark pricing as checked today</span>
+        </label>
+        <div class="cpr-holiday-actions">
+            <button type="button" class="cpr-ghost" id="cpr-review-cancel">Cancel</button>
+            <button type="submit" class="cpr-save" id="cpr-review-save">Save review schedule</button>
+        </div>
+        <p class="cpr-save-status" id="cpr-review-dialog-status" role="status"></p>
+    </form>
+</dialog>
 <dialog class="cpr-holiday-dialog cpr-season-dialog" id="cpr-season-dialog"
         aria-labelledby="cpr-season-dialog-title">
     <form class="cpr-holiday-modal" id="cpr-season-form" method="dialog">
