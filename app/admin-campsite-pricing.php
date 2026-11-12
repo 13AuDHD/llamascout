@@ -868,6 +868,30 @@ function admin_cpr_group_catalog(PDO $db, int $placeId, array $sites): array
     ];
 }
 
+/** Return only Sites whose imported/recorded attributes definitively match. */
+function admin_cpr_matching_sites(
+    PDO $db, int $placeId,
+    string $category, string $hookups, string $layout
+): array {
+    $match = [
+        'category' => $category,
+        'hookups' => $hookups,
+        'layout' => $layout,
+        'site_ids' => [], 'feature_ids' => [], 'area_ids' => [],
+    ];
+    $matching = [];
+    $uncertain = 0;
+    foreach (llama_place_campsites($db, $placeId) as $site) {
+        $score = llama_pricing_match($match, llama_pricing_site_context($site));
+        if ($score === -1) {
+            $uncertain++;
+        } elseif ($score !== null && $score >= 0) {
+            $matching[] = $site;
+        }
+    }
+    return ['sites' => $matching, 'uncertain' => $uncertain];
+}
+
 /** Save one category/utility/parking rule across matching Sites, not 300 rows. */
 function admin_cpr_save_rate_group(
     PDO $db, int $placeId, int $actorId,
@@ -985,6 +1009,48 @@ function admin_cpr_save_rate_group(
         if (!$found) $row['seasons'][] = $period;
         unset($row);
         $doc = llama_pricing_validate($doc);
+        $appliedStatusCount = 0;
+        if (!empty($request['apply_availability'])) {
+            $status = (string) ($request['availability'] ?? '');
+            if (!in_array($status, [
+                'available', 'reservable', 'fcfs', 'unavailable',
+            ], true)) {
+                throw new InvalidArgumentException('Choose an availability status to apply to matched Sites.');
+            }
+            $matched = admin_cpr_matching_sites(
+                $db, $placeId, $category, $hookups, $layout
+            );
+            if (!$matched['sites']) {
+                throw new InvalidArgumentException(
+                    'No Sites definitively match these imported attributes. Correct the Site facts before applying availability.'
+                );
+            }
+            if (count($matched['sites']) > 1000) {
+                throw new InvalidArgumentException(
+                    'Too many Sites match one batch. Narrow the rate group first.'
+                );
+            }
+            $modes = match ($status) {
+                'unavailable' => ['site_reservation_method' => 'inherit'],
+                default => ['site_reservation_method' => 'answer'],
+            };
+            $values = match ($status) {
+                'available' => ['site_reservation_method' => 'not_reservable'],
+                'reservable' => ['site_reservation_method' => 'reservable'],
+                'fcfs' => ['site_reservation_method' => 'first_come'],
+                default => [],
+            };
+            foreach ($matched['sites'] as $site) {
+                llama_season_save_target_answers(
+                    $db, $placeId, $seasonId,
+                    ['scope' => 'site', 'source' => 'campsite_record',
+                        'id' => (int) $site['id']],
+                    $actorId, $modes, $values,
+                    $status === 'unavailable' ? 'closed' : 'open'
+                );
+                $appliedStatusCount++;
+            }
+        }
         $encoded = json_encode($doc, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
         $old = $db->prepare('SELECT place_id FROM place_rules WHERE place_id = ? FOR UPDATE');
         $old->execute([$placeId]);
@@ -1002,10 +1068,12 @@ function admin_cpr_save_rate_group(
         admin_users_audit(
             $db, $actorId, null, 'place.pricing_group_updated',
             'Saved a matched Site pricing group.',
-            ['place_id' => $placeId, 'rate_group_id' => $id, 'season_id' => $seasonId]
+            ['place_id' => $placeId, 'rate_group_id' => $id,
+                'season_id' => $seasonId, 'sites_status_updated' => $appliedStatusCount]
         );
         $db->commit();
-        return ['success' => true, 'group_id' => $id];
+        return ['success' => true, 'group_id' => $id,
+            'sites_status_updated' => $appliedStatusCount];
     } catch (Throwable $e) {
         if ($db->inTransaction()) $db->rollBack();
         throw $e;
