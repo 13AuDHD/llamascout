@@ -22,5 +22,6 @@ CREATE TABLE IF NOT EXISTS place_pricing_reviews (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_pricing_review_next (next_review_on, place_id),
     INDEX idx_pricing_release_next (availability_release_on, place_id),
-    INDEX idx_pricing_review_place (place_id, site_id)
+    INDEX idx_pricing_review_place (place_id, site_id),
+    UNIQUE KEY uniq_pricing_review_site (place_id, site_id)
 );
