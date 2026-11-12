@@ -121,13 +121,17 @@
     const read = () => {
         const values = {};
         for (const [name, group] of controls) {
-            const first = group[0];
-            if (first.type === 'radio') {
-                values[name] = group.find(control => control.checked)?.value ?? '';
-            } else if (first.type === 'checkbox' && group.length === 1) {
+            const radios = group.filter(control => control.type === 'radio');
+            const editable = group.filter(control => control.type !== 'hidden');
+            const first = editable[0] || group[0];
+            // Shared Yes/No controls include a hidden unanswered fallback.
+            // Read the selected radio instead of the first hidden input.
+            if (radios.length) {
+                values[name] = radios.find(control => control.checked)?.value ?? '';
+            } else if (first.type === 'checkbox' && editable.length === 1) {
                 values[name] = first.checked ? '1' : '0';
             } else if (first.type === 'checkbox') {
-                values[name] = group.filter(control => control.checked).map(control => control.value);
+                values[name] = editable.filter(control => control.checked).map(control => control.value);
             } else if (first instanceof HTMLSelectElement && first.multiple) {
                 values[name] = [...first.selectedOptions].map(option => option.value);
             } else {
@@ -145,6 +149,11 @@
             for (const [name, group] of controls) {
                 const value = values[name] ?? '';
                 for (const control of group) {
+                    if (control.type === 'hidden') {
+                        // The shared form's unanswered fallback is not the
+                        // editable value and must never be overwritten.
+                        continue;
+                    }
                     if (control.type === 'radio') {
                         control.checked = control.value === String(value);
                     } else if (control.type === 'checkbox') {
