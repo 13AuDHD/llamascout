@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/season-calendar.php';
+
 /**
  * M4-001: Place-defined recurring operating seasons.
  *
@@ -70,7 +72,7 @@ function llama_season_contains(array $season, string $mmdd): bool
     return false;
 }
 
-function llama_seasons_overlap(array $left, array $right): bool
+function llama_seasons_overlap_recurring(array $left, array $right): bool
 {
     foreach (llama_season_intervals($left) as [$a, $b]) {
         foreach (llama_season_intervals($right) as [$c, $d]) {
@@ -83,6 +85,11 @@ function llama_seasons_overlap(array $left, array $right): bool
 }
 
 /** Normalize one active or archived season for validation and persistence. */
+function llama_seasons_overlap(array $left, array $right): bool
+{
+    return llama_seasons_calendar_overlap($left, $right);
+}
+
 function llama_season_definition(array $input): array
 {
     $name = trim((string) ($input['name'] ?? ''));
@@ -90,8 +97,37 @@ function llama_season_definition(array $input): array
         throw new InvalidArgumentException('Season name must be 1 to 100 characters.');
     }
 
-    $start = llama_season_mmdd($input['start_mmdd'] ?? null);
-    $end = llama_season_mmdd($input['end_mmdd'] ?? null);
+    $repeatRaw = $input['is_recurring'] ?? 1;
+    if (!in_array($repeatRaw, [0, 1, '0', '1', false, true], true)) {
+        throw new InvalidArgumentException('Choose an annual or year-specific season.');
+    }
+    $repeat = (int) $repeatRaw;
+    $startsOn = null;
+    $endsOn = null;
+    if ($repeat === 1) {
+        $start = llama_season_mmdd($input['start_mmdd'] ?? null);
+        $end = llama_season_mmdd($input['end_mmdd'] ?? null);
+    } else {
+        $startsOn = llama_season_absolute_date($input['starts_on'] ?? null);
+        $endsOn = llama_season_absolute_date($input['ends_on'] ?? null);
+        if (!$startsOn || !$endsOn || $endsOn < $startsOn) {
+            throw new InvalidArgumentException(
+                'Year-specific seasons require both dates, with the end after the start.'
+            );
+        }
+        $spanDays = (new DateTimeImmutable($startsOn))->diff(
+            new DateTimeImmutable($endsOn)
+        )->days;
+        if ($spanDays > 730) {
+            throw new InvalidArgumentException(
+                'One dated season may span at most two years. Create another season for the next period.'
+            );
+        }
+        // Compatibility columns are retained for existing database readers;
+        // is_recurring and full dates decide the actual matching behavior.
+        $start = substr($startsOn, 5);
+        $end = substr($endsOn, 5);
+    }
     $activeRaw = $input['is_active'] ?? 1;
     $defaultRaw = $input['is_default'] ?? 0;
     $allowedFlags = [0, 1, '0', '1', false, true];
@@ -121,13 +157,18 @@ function llama_season_definition(array $input): array
         'name' => $name,
         'start_mmdd' => $start,
         'end_mmdd' => $end,
+        'is_recurring' => $repeat,
+        'starts_on' => $startsOn,
+        'ends_on' => $endsOn,
         'is_default' => $default,
         'is_active' => $active,
         'sort_order' => (int) ($input['sort_order'] ?? 0),
         'notes' => $notes !== '' ? $notes : null,
         'source_url' => $source !== '' ? $source : null,
     ];
-    llama_season_intervals($definition); // Check paired dates.
+    if ($repeat === 1) {
+        llama_season_intervals($definition); // Check paired recurring dates.
+    }
     return $definition;
 }
 
@@ -173,10 +214,14 @@ function llama_seasons_for_place(
     if ($placeId < 1) {
         throw new InvalidArgumentException('A Place is required.');
     }
+    $calendarColumns = llama_season_year_columns_ready($db)
+        ? ', is_recurring, starts_on, ends_on'
+        : ', 1 AS is_recurring, NULL AS starts_on, NULL AS ends_on';
     $query = $db->prepare(
         'SELECT id, place_id, name, start_mmdd, end_mmdd,
-                is_default, is_active, sort_order, notes, source_url
-         FROM place_seasons WHERE place_id = ?'
+                is_default, is_active, sort_order, notes, source_url'
+        . $calendarColumns
+        . ' FROM place_seasons WHERE place_id = ?'
         . ($includeInactive ? '' : ' AND is_active = 1')
         . ' ORDER BY sort_order, id'
     );
@@ -191,19 +236,13 @@ function llama_season_for_date(array $seasons, string $date): ?array
     if (!$day || $day->format('Y-m-d') !== $date) {
         throw new InvalidArgumentException('Use a valid YYYY-MM-DD date.');
     }
-    $default = null;
     foreach ($seasons as $season) {
-        if (!(int) ($season['is_active'] ?? 1)) {
-            continue;
-        }
-        if ((int) ($season['is_default'] ?? 0) === 1) {
-            $default = $season;
-        }
-        if (llama_season_contains($season, $day->format('m-d'))) {
+        if (llama_season_applies_on($season, $date)) {
             return $season;
         }
     }
-    return $default;
+    // No matching season means seasonal unavailability, never auto-open.
+    return null;
 }
 
 /**
@@ -229,10 +268,20 @@ function llama_season_save(PDO $db, int $placeId, int $actorId, array $input): i
             throw new InvalidArgumentException('Place not found.');
         }
 
+        $hasCalendarColumns = llama_season_year_columns_ready($db);
+        if (!$hasCalendarColumns && $candidate['is_recurring'] === 0) {
+            throw new InvalidArgumentException(
+                'Apply the campsite season year-date database migration before saving dated seasons.'
+            );
+        }
+        $calendarColumns = $hasCalendarColumns
+            ? ', is_recurring, starts_on, ends_on'
+            : ', 1 AS is_recurring, NULL AS starts_on, NULL AS ends_on';
         $query = $db->prepare(
             'SELECT id, name, start_mmdd, end_mmdd, is_default,
-                    is_active, sort_order, notes, source_url
-             FROM place_seasons WHERE place_id = ? FOR UPDATE'
+                    is_active, sort_order, notes, source_url'
+            . $calendarColumns
+            . ' FROM place_seasons WHERE place_id = ? FOR UPDATE'
         );
         $query->execute([$placeId]);
         $existing = $query->fetchAll(PDO::FETCH_ASSOC) ?: [];
@@ -268,21 +317,50 @@ function llama_season_save(PDO $db, int $placeId, int $actorId, array $input): i
             $candidate['notes'], $candidate['source_url'], $actorId,
         ];
         if ($seasonId > 0) {
-            $update = $db->prepare(
-                'UPDATE place_seasons SET name = ?, start_mmdd = ?, end_mmdd = ?,
-                    is_default = ?, is_active = ?, sort_order = ?, notes = ?,
-                    source_url = ?, updated_by = ?
-                 WHERE id = ? AND place_id = ?'
-            );
-            $update->execute([...$values, $seasonId, $placeId]);
+            if ($hasCalendarColumns) {
+                $update = $db->prepare(
+                    'UPDATE place_seasons SET name = ?, start_mmdd = ?, end_mmdd = ?,
+                        is_default = ?, is_active = ?, sort_order = ?, notes = ?,
+                        source_url = ?, updated_by = ?, is_recurring = ?,
+                        starts_on = ?, ends_on = ?
+                     WHERE id = ? AND place_id = ?'
+                );
+                $update->execute([
+                    ...$values, $candidate['is_recurring'],
+                    $candidate['starts_on'], $candidate['ends_on'],
+                    $seasonId, $placeId,
+                ]);
+            } else {
+                $update = $db->prepare(
+                    'UPDATE place_seasons SET name = ?, start_mmdd = ?, end_mmdd = ?,
+                        is_default = ?, is_active = ?, sort_order = ?, notes = ?,
+                        source_url = ?, updated_by = ?
+                     WHERE id = ? AND place_id = ?'
+                );
+                $update->execute([...$values, $seasonId, $placeId]);
+            }
         } else {
-            $insert = $db->prepare(
-                'INSERT INTO place_seasons
-                    (name, start_mmdd, end_mmdd, is_default, is_active,
-                     sort_order, notes, source_url, updated_by, created_by, place_id)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-            );
-            $insert->execute([...$values, $actorId, $placeId]);
+            if ($hasCalendarColumns) {
+                $insert = $db->prepare(
+                    'INSERT INTO place_seasons
+                        (name, start_mmdd, end_mmdd, is_default, is_active,
+                         sort_order, notes, source_url, updated_by, created_by, place_id,
+                         is_recurring, starts_on, ends_on)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                );
+                $insert->execute([
+                    ...$values, $actorId, $placeId, $candidate['is_recurring'],
+                    $candidate['starts_on'], $candidate['ends_on'],
+                ]);
+            } else {
+                $insert = $db->prepare(
+                    'INSERT INTO place_seasons
+                        (name, start_mmdd, end_mmdd, is_default, is_active,
+                         sort_order, notes, source_url, updated_by, created_by, place_id)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                );
+                $insert->execute([...$values, $actorId, $placeId]);
+            }
             $seasonId = (int) $db->lastInsertId();
         }
 
