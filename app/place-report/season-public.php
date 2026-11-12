@@ -155,9 +155,6 @@ function llama_public_season_site_answers(
         ];
     }
     $siteAnswers = llama_season_answers_for_target($db, $placeId, $seasonId, $verified);
-    if (isset($placeAnswers['seasonal_booking_method'])) {
-        $siteAnswers['site_reservation_method'] ??= $placeAnswers['seasonal_booking_method'];
-    }
     $layers[] = ['scope' => 'site', 'target' => $verified, 'answers' => $siteAnswers];
 
     return llama_public_season_overlay_answer_layers($normalAnswers, $layers, $verified);
