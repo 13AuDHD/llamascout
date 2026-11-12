@@ -442,16 +442,9 @@
                 return;
             }
 
-            if (
-                String(
-                    siteSelector?.value
-                    || ''
-                ).startsWith('campsite_record:')
-            ) {
-                target.value =
-                    '';
-                return;
-            }
+            // An old Site dropdown selection may remain when the user
+            // switches to Area. The active tab, not that stale value,
+            // determines which target is saved.
 
             if (
                 !selected
