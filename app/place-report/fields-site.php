@@ -101,7 +101,10 @@ function llama_place_report_add_site_fields(
         'report_visibility' => 'public',
         'counts_toward_completion' => false,
         'points_categories' => ['seasons_rules_services'],
-        'help' => 'Select First-come, first-served only when confirmed. Not reservable does not by itself mean first-come, first-served.',
+        // Still a canonical public/seasonal answer, but only Campsite Pricing
+        // controls its per-season edits. Hide the duplicate generic form input.
+        'pricing_managed' => true,
+        'help' => 'Site reservation method is managed in Campsite Pricing.',
     ]);
 
     $add('vehicle_capacity', 'Maximum vehicles', 'site_vehicle', 'select', 'details.vehicle_capacity', [
