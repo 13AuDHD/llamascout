@@ -1081,13 +1081,6 @@ function admin_cpr_save_rate_group(
     foreach ($rawRates as $key => $raw) {
         $rates[$key] = llama_pricing_amount($raw);
     }
-    if (!array_filter($rates, static fn ($v): bool => $v !== null)
-        && empty($request['apply_availability'])) {
-        throw new InvalidArgumentException(
-            'Enter at least one rate or choose a seasonal availability status.'
-        );
-    }
-
     $db->beginTransaction();
     try {
         $lock = $db->prepare('SELECT id FROM places WHERE id = ? FOR UPDATE');
@@ -1109,8 +1102,31 @@ function admin_cpr_save_rate_group(
         if (!empty($doc['invalid'])) {
             throw new InvalidArgumentException('Review invalid Place pricing before adding groups.');
         }
-
+        $matched = admin_cpr_matching_sites(
+            $db, $placeId, $category, $hookups, $layout
+        );
         $id = admin_cpr_group_key($category, $hookups, $layout);
+        $hasAmounts = array_filter($rates, static fn ($v): bool => $v !== null);
+        $existingRate = false;
+        foreach ((array) $doc['rows'] as $row) {
+            if (in_array((string) ($row['id'] ?? ''), [
+                $id, 'cpr-vehicle-' . $id,
+            ], true)) {
+                $existingRate = true;
+                break;
+            }
+        }
+        if (!$hasAmounts && empty($request['apply_availability']) && !$existingRate) {
+            throw new InvalidArgumentException(
+                'Enter a rate, or select an availability status for the matching Sites.'
+            );
+        }
+        if (!$matched['sites'] && ($hasAmounts || !empty($request['apply_availability']))) {
+            throw new InvalidArgumentException(
+                'No Sites match these attributes. Confirm the Site facts before saving.'
+            );
+        }
+        $previousDocument = $doc;
         $match = [
             'category' => $category, 'layout' => $layout, 'hookups' => $hookups,
             'raw_type' => '', 'legacy_category' => '', 'legacy_site' => '',
@@ -1196,9 +1212,6 @@ function admin_cpr_save_rate_group(
             ], true)) {
                 throw new InvalidArgumentException('Choose an availability status to apply to matched Sites.');
             }
-            $matched = admin_cpr_matching_sites(
-                $db, $placeId, $category, $hookups, $layout
-            );
             if (!$matched['sites']) {
                 throw new InvalidArgumentException(
                     'No Sites definitively match these imported attributes. Correct the Site facts before applying availability.'
@@ -1230,19 +1243,21 @@ function admin_cpr_save_rate_group(
                 $appliedStatusCount++;
             }
         }
-        $encoded = json_encode($doc, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
-        $old = $db->prepare('SELECT place_id FROM place_rules WHERE place_id = ? FOR UPDATE');
-        $old->execute([$placeId]);
-        if ($old->fetchColumn()) {
-            $write = $db->prepare(
-                'UPDATE place_rules SET rate_cards_json = ? WHERE place_id = ?'
-            );
-            $write->execute([$encoded, $placeId]);
-        } else {
-            $write = $db->prepare(
-                'INSERT INTO place_rules (place_id, rate_cards_json) VALUES (?, ?)'
-            );
-            $write->execute([$placeId, $encoded]);
+        if ($doc !== $previousDocument) {
+            $encoded = json_encode($doc, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+            $old = $db->prepare('SELECT place_id FROM place_rules WHERE place_id = ? FOR UPDATE');
+            $old->execute([$placeId]);
+            if ($old->fetchColumn()) {
+                $write = $db->prepare(
+                    'UPDATE place_rules SET rate_cards_json = ? WHERE place_id = ?'
+                );
+                $write->execute([$encoded, $placeId]);
+            } else {
+                $write = $db->prepare(
+                    'INSERT INTO place_rules (place_id, rate_cards_json) VALUES (?, ?)'
+                );
+                $write->execute([$placeId, $encoded]);
+            }
         }
         admin_users_audit(
             $db, $actorId, null, 'place.pricing_group_updated',
