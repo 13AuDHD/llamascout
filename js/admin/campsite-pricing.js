@@ -194,8 +194,15 @@
         });
         root.querySelectorAll('[data-cpr-rate]').forEach(input => {
             const supported = ['weekday', 'weekend', 'holiday'].includes(input.dataset.cprRate);
-            input.disabled = !enabled || !supported || state.saving;
-            if (!supported) input.title = 'Surcharge pricing will be connected in a later step.';
+            input.disabled = !enabled || !supported || state.saving
+                || Boolean(state.sitePayload?.legacy_pricing);
+            if (state.sitePayload?.legacy_pricing && supported) {
+                input.title = 'Reconcile imported Place rates before changing Site prices.';
+            } else if (!supported) {
+                input.title = 'Surcharge pricing will be connected in a later step.';
+            } else {
+                input.removeAttribute('title');
+            }
         });
         root.querySelectorAll('[data-capacity], [data-layout], [data-utility]')
             .forEach(button => {
@@ -327,9 +334,11 @@
             renderEditor();
             status(data.rate_conflict
                 ? 'Conflicting pricing rows require review before saving. No changes have been made.'
-                : (data.rate
-                    ? 'Existing pricing loaded. Weekday, weekend, holiday and seasonal availability can be saved.'
-                    : 'No existing matching rate. New Site-specific seasonal prices can be saved.'),
+                : (data.legacy_pricing
+                    ? 'Legacy or imported rates require reconciliation in Place Admin. Seasonal availability can still be saved here.'
+                    : (data.rate
+                        ? 'Existing pricing loaded. Weekday, weekend, holiday and seasonal availability can be saved.'
+                        : 'No existing matching rate. New Site-specific seasonal prices can be saved.')),
                 Boolean(data.rate_conflict));
             const url = new URL(window.location.href);
             url.searchParams.set('site_id', id);
