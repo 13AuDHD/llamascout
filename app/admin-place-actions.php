@@ -129,9 +129,12 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
                     'Site availability and booking methods belong to Campsite Pricing.'
                 );
             }
-            if ($parts[0] === 'place' && isset($modes['seasonal_booking_method'])) {
+            if ($parts[0] === 'place' && (
+                isset($modes['seasonal_booking_method'])
+                || isset($modes['seasonal_sites_closed'])
+            )) {
                 throw new InvalidArgumentException(
-                    'Default Site booking methods are now managed per Site in Campsite Pricing.'
+                    'Default Site booking and bulk Site closure controls have been retired. Use Campsite Pricing for each Site.'
                 );
             }
             if (!is_array($modes) || !is_array($values)) {
