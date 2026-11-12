@@ -209,6 +209,7 @@
                 button.title = 'Site facts are read from the existing Site record.';
             });
         $('copy-season').disabled = !enabled || state.saving || state.seasons.length < 2;
+        $('manage-holidays').disabled = !enabled || state.saving;
         syncSaveButton();
     };
     const resetSiteSelection = () => {
@@ -506,6 +507,128 @@
         }
         loadSelectedSite().then(() => status('Unsaved edits discarded; existing Site pricing reloaded.'));
     });
+    // One Place-wide holiday calendar; each Site's holiday amount remains
+    // independent. This is the sole holiday date editing workflow.
+    const holidayDialog = $('holiday-dialog');
+    const holidayRows = $('holiday-rows');
+    const holidayStatus = message => {
+        $('holiday-status').textContent = message;
+    };
+    const addHolidayRow = (item = {}) => {
+        const row = document.createElement('div');
+        row.className = 'cpr-holiday-row';
+        row.dataset.holidayId = String(item.id || '');
+
+        const fields = [
+            ['Name', 'name', 'Thanksgiving', String(item.name || '')],
+            ['Start', 'start', item.recurring ? 'MM-DD' : 'YYYY-MM-DD', String(item.start || '')],
+            ['End', 'end', item.recurring ? 'MM-DD' : 'YYYY-MM-DD', String(item.end || '')],
+        ];
+        for (const [label, key, placeholder, value] of fields) {
+            const container = document.createElement('label');
+            const title = document.createElement('span');
+            title.textContent = label;
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.dataset.holidayField = key;
+            input.maxLength = key === 'name' ? 100 : 10;
+            input.placeholder = placeholder;
+            input.value = value;
+            container.append(title, input);
+            row.append(container);
+        }
+        const recurring = document.createElement('label');
+        recurring.className = 'cpr-holiday-recurring';
+        const check = document.createElement('input');
+        check.type = 'checkbox';
+        check.dataset.holidayField = 'recurring';
+        check.checked = Boolean(item.recurring);
+        check.addEventListener('change', () => {
+            row.querySelector('[data-holiday-field="start"]').placeholder =
+                check.checked ? 'MM-DD' : 'YYYY-MM-DD';
+            row.querySelector('[data-holiday-field="end"]').placeholder =
+                check.checked ? 'MM-DD' : 'YYYY-MM-DD';
+        });
+        const checkLabel = document.createElement('span');
+        checkLabel.textContent = 'Repeats yearly';
+        recurring.append(check, checkLabel);
+        row.append(recurring);
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'cpr-ghost';
+        remove.textContent = 'Remove';
+        remove.setAttribute('aria-label', 'Remove holiday dates');
+        remove.addEventListener('click', () => row.remove());
+        row.append(remove);
+        holidayRows.append(row);
+        return row;
+    };
+
+    $('manage-holidays').addEventListener('click', () => {
+        if (!state.place || !state.sitePayload?.version || state.saving) return;
+        if (changesForSave().length) {
+            status('Save or cancel your Site pricing changes before editing Place holiday dates.', true);
+            return;
+        }
+        holidayRows.replaceChildren();
+        for (const item of state.sitePayload.holidays || []) addHolidayRow(item);
+        if (!holidayRows.childElementCount) addHolidayRow();
+        holidayStatus('Use YYYY-MM-DD for specific dates, or MM-DD with Repeats yearly.');
+        holidayDialog.showModal();
+    });
+    $('holiday-add').addEventListener('click', () => addHolidayRow());
+    $('holiday-cancel').addEventListener('click', () => holidayDialog.close());
+    $('holiday-save').addEventListener('click', async () => {
+        if (!state.place || !state.site || !state.sitePayload?.version || state.saving) return;
+        const holidays = [];
+        for (const row of holidayRows.querySelectorAll('.cpr-holiday-row')) {
+            const field = name => row.querySelector('[data-holiday-field="' + name + '"]');
+            const name = field('name').value.trim();
+            const start = field('start').value.trim();
+            const end = field('end').value.trim();
+            const recurring = field('recurring').checked;
+            const format = recurring ? /^\d{2}-\d{2}$/ : /^\d{4}-\d{2}-\d{2}$/;
+            if (!name || !format.test(start) || !format.test(end)) {
+                holidayStatus('Enter each holiday name and valid start/end dates.');
+                return;
+            }
+            holidays.push({
+                id: row.dataset.holidayId || '',
+                name, start, end, recurring,
+            });
+        }
+        const saveButton = $('holiday-save');
+        saveButton.disabled = true;
+        holidayStatus('Saving holiday dates to this Place...');
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                credentials: 'same-origin',
+                cache: 'no-store',
+                headers: {'Content-Type': 'application/json', Accept: 'application/json'},
+                body: JSON.stringify({
+                    action: 'save-holidays',
+                    csrf_token: $('csrf').value,
+                    place_id: state.place.id,
+                    site_id: state.site.id,
+                    version: state.sitePayload.version,
+                    holidays,
+                }),
+            });
+            const data = await response.json();
+            if (!response.ok || data.success !== true) {
+                throw new Error(data.message || 'Holiday dates were not saved.');
+            }
+            await loadSelectedSite();
+            holidayDialog.close();
+            status('Saved ' + Number(data.holidays_saved) + ' holiday date period(s) for this Place.');
+        } catch (error) {
+            holidayStatus('Not saved: ' + String(error.message || 'Unexpected error.'));
+        } finally {
+            saveButton.disabled = false;
+        }
+    });
+
     $('save').addEventListener('click', async () => {
         const changes = changesForSave();
         if (!state.place || !state.site || !state.sitePayload?.version
