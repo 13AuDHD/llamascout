@@ -64,7 +64,7 @@ $seasonCount = count($adminPlaceSeasons);
          <?= $showSeasons ? 'open' : '' ?>>
     <summary class="admin-place-seasons-toggle">
         <span class="admin-place-seasons-toggle-label">
-            <strong>Seasons and campsite rates</strong>
+            <strong>Place seasons and closures</strong>
             <small><?= $seasonCount > 0
                 ? $e((string) $seasonCount . ($seasonCount === 1 ? ' season configured' : ' seasons configured'))
                 : 'Optional · No seasons configured' ?></small>
@@ -76,7 +76,11 @@ $seasonCount = count($adminPlaceSeasons);
     </summary>
     <div class="admin-place-seasons-content">
         <header class="admin-place-report-header">
-            <h2 id="admin-place-seasons-heading">Seasons and campsite rates</h2>
+            <h2 id="admin-place-seasons-heading">Place seasons and closures</h2>
+            <a class="admin-button is-muted"
+               href="/campsite-pricing.php?place_id=<?= (int) $placeId ?>">
+                Open Campsite Pricing
+            </a>
         </header>
 
     <?php if ($adminPlaceSeasonsError !== ''): ?>
@@ -182,7 +186,7 @@ $seasonCount = count($adminPlaceSeasons);
         <p class="admin-place-seasons-help">
             Leave both dates empty for a manually selected season. Dates may
             cross New Year's Day but cannot overlap another active season.
-            Seasonal amenity and Site-status editing will use these definitions.
+            The Campsite Pricing page uses these seasons for individual Site prices. Place-wide seasonal closures remain managed here.
         </p>
         <div class="admin-place-seasons-divider"></div>
         <?php require __DIR__ . '/place-report-season-answers.php'; ?>
