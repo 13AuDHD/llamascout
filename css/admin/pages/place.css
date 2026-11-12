@@ -1114,3 +1114,14 @@
 .admin-place-report-form [data-report-main-section][data-contribution-inactive] {
     display: none !important;
 }
+
+/* Area belongs exclusively to Area mode, not to the Place editor. */
+.admin-place-report-form [data-admin-area-picker][hidden] {
+    display: none !important;
+}
+.admin-place-report-form [data-admin-area-picker] {
+    border-left: 4px solid #9765cb;
+}
+.admin-place-report-form [data-admin-area-picker] h3 {
+    color: #bb94ef;
+}

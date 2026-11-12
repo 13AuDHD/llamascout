@@ -106,8 +106,8 @@ $placeReportSelectedSite = isset($placeReportSiteOptions[$requestedSite]) ? $req
 
     <section class="admin-place-report-shell">
         <header class="admin-place-report-header">
-            <p>Shared Place Report</p>
-            <h2>Edit Place Report</h2>
+            <p>Canonical Scout Report</p>
+            <h2 data-admin-report-mode-heading>Edit Place Report</h2>
             <span class="admin-place-muted">
                 This is the same question set and control system used by Add Place and moderation.
             </span>

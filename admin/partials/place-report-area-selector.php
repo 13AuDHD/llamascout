@@ -37,26 +37,24 @@ $encode =
 <section
     class="admin-place-area-picker"
     aria-labelledby="admin-place-area-heading"
+    data-admin-area-picker
+    hidden
 >
     <header>
         <h3 id="admin-place-area-heading">
-            Report area
+            Area Scout Report
         </h3>
 
     </header>
 
     <label for="admin-place-area-target">
-        Area
+        Area to edit
     </label>
 
     <select
         id="admin-place-area-target"
         data-admin-area-selector
     >
-        <option value="">
-            Entire Place
-        </option>
-
         <?php foreach ($areas as $area): ?>
             <option
                 value="<?= $encode(

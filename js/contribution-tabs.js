@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const firstSitePhotoPanel = report.querySelector('[data-contribution-site-photo-panel]');
         const areaPanel = shell.querySelector('[data-contribution-area-panel]');
         const areaTools = shell.querySelector('[data-contribution-area-tools]');
+        const adminAreaSection = report.querySelector('[data-admin-area-picker]');
         const adminSitePicker = report.querySelector('[data-admin-campsite-selector]');
         const adminAreaPicker = report.querySelector('[data-admin-area-selector]');
         const isNewPlace = shell.hasAttribute('data-contribution-split') && !adminSitePicker;
@@ -39,6 +40,11 @@ document.addEventListener('DOMContentLoaded', () => {
             report.hidden = standaloneArea;
             if (areaPanel) areaPanel.hidden = !standaloneArea;
             if (areaTools) areaTools.hidden = mode !== 'area';
+            if (adminAreaSection) adminAreaSection.hidden = mode !== 'area';
+            const reportHeading = report.querySelector('[data-admin-report-mode-heading]');
+            if (reportHeading) reportHeading.textContent =
+                mode === 'area' ? 'Edit Area Report'
+                : mode === 'site' ? 'Edit Site Report' : 'Edit Place Report';
             if (shell.hasAttribute('data-contribution-split')) {
                 for (const group of groups) {
                     const site = group.dataset.reportMainSection === 'site';

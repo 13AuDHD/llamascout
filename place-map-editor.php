@@ -175,11 +175,11 @@ require __DIR__ . '/partials/header.php';
                 <button type="button" class="is-active" data-map-mode-button="place">
                     Place
                 </button>
-                <button type="button" data-map-mode-button="area">
-                    Area
-                </button>
                 <button type="button" data-map-mode-button="site">
                     Site
+                </button>
+                <button type="button" data-map-mode-button="area">
+                    Area
                 </button>
             </div>
         </div>
