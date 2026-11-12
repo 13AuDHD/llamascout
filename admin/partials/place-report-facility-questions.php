@@ -103,6 +103,7 @@ $areaCampingFields = array_filter(
                             <?php
                             $yesNoField = $field;
                             $yesNoValue = '';
+                            $yesNoHideHint = true;
                             require dirname(__DIR__, 2) . '/partials/place-report/yes-no-control.php';
                             ?>
                         <?php elseif ($type === 'rating'): ?>
