@@ -1405,6 +1405,16 @@
                 }
             )
         );
+
+        // Site media may have loaded before these canonical answers.
+        // Notify the existing media renderer, which can then show RIDB
+        // permitted equipment inside the unanswered Site question only.
+        window.dispatchEvent(new CustomEvent('llama:site-report-updated', {
+            detail: {
+                scope: targetScope,
+                siteId: String(site.feature_id ?? site.id ?? ''),
+            },
+        }));
     };
 
     /*
