@@ -82,6 +82,14 @@ try {
                 $siteStatuses[(int) ($site['id'] ?? 0)] ?? null;
         }
         unset($site);
+    } elseif (!empty($seasonSelection['seasons'])
+        && (string) ($_GET['season'] ?? '') !== '0') {
+        // A configured campground has no current operating season.
+        // This is seasonal unavailability, not a verified safety closure.
+        foreach ($sites as &$site) {
+            $site['seasonal_operating_status'] = 'closed';
+        }
+        unset($site);
     }
 
     [$rateDoc, $rateDate] = llama_pricing_public_night(
