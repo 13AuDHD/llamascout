@@ -1,4 +1,4 @@
-/* Site-specific photographs, equipment, and official source details. */
+/* Site photos plus imported-equipment pills inside the canonical Site Scout Report. */
 
 .place-campsite-rich-detail {
     display: grid;
@@ -130,6 +130,20 @@
     background: var(--background);
     font-size: .78rem;
     font-weight: 750;
+}
+
+/* Reuse the existing pills within Allowed Camping Setups, never render
+   another permitted-equipment section above the Scout Report. */
+.scout-report [data-campsite-report-field="site_allowed_setups"] .place-campsite-equipment-pills {
+    max-width: 100%;
+    min-width: 0;
+    padding-block: 3px;
+    gap: 7px;
+}
+.scout-report [data-campsite-report-field="site_allowed_setups"] .place-campsite-equipment-pill {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
 }
 
 .place-campsite-detail-grid {
