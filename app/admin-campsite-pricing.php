@@ -672,10 +672,11 @@ function admin_cpr_paid_site_queue(
             . ': ' . $start . ' to ' . $end . ($repeat ? ' (annual)' : ''));
     }
     $sites = [];
+    $contexts = llama_pricing_effective_site_contexts($db, $placeId, $rawSites, $doc);
     foreach ($rawSites as $site) {
         $siteId = (int) ($site['id'] ?? 0);
         if ($siteId < 1) continue;
-        $context = llama_pricing_site_context($site);
+        $context = llama_pricing_site_context($contexts[$siteId] ?? $site);
         $top = -1;
         $matching = [];
         foreach ((array) ($doc['rows'] ?? []) as $row) {
@@ -838,6 +839,7 @@ function admin_cpr_group_catalog(PDO $db, int $placeId, array $sites): array
     $doc = llama_pricing_document($db, ['id' => $placeId]);
     $groups = [];
     $covered = [];
+    $contexts = llama_pricing_effective_site_contexts($db, $placeId, $sites, $doc);
     foreach ((array) ($doc['rows'] ?? []) as $row) {
         if (!str_starts_with((string) ($row['id'] ?? ''), 'cpr-group-')) {
             continue;
@@ -845,7 +847,9 @@ function admin_cpr_group_catalog(PDO $db, int $placeId, array $sites): array
         $match = (array) ($row['match'] ?? []);
         $matched = 0;
         foreach ($sites as $site) {
-            $context = llama_pricing_site_context($site);
+            $context = llama_pricing_site_context(
+                $contexts[(int) ($site['id'] ?? 0)] ?? $site
+            );
             $score = llama_pricing_match($match, $context);
             if ($score === null || $score < 0) continue;
             $matched++;
@@ -881,8 +885,12 @@ function admin_cpr_matching_sites(
     ];
     $matching = [];
     $uncertain = 0;
-    foreach (llama_place_campsites($db, $placeId) as $site) {
-        $score = llama_pricing_match($match, llama_pricing_site_context($site));
+    $sites = llama_place_campsites($db, $placeId);
+    $doc = llama_pricing_document($db, ['id' => $placeId]);
+    $contexts = llama_pricing_effective_site_contexts($db, $placeId, $sites, $doc);
+    foreach ($sites as $site) {
+        $context = $contexts[(int) ($site['id'] ?? 0)] ?? $site;
+        $score = llama_pricing_match($match, llama_pricing_site_context($context));
         if ($score === -1) {
             $uncertain++;
         } elseif ($score !== null && $score >= 0) {
