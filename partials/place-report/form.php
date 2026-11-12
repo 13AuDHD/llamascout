@@ -176,8 +176,10 @@ $placeReportAllowedStorageLookup =
  * =========================================================
  */
 
-$placeReportFields =
-    llama_report_questions();
+$placeReportFields = array_filter(
+    llama_report_questions(),
+    static fn (array $field): bool => empty($field['pricing_managed'])
+);
 
 $placeReportSections =
     llama_place_report_sections();
