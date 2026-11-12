@@ -206,6 +206,9 @@ if (isset($_GET['ajax'])) {
                 'rate_groups' => admin_cpr_group_catalog(
                     $db, $placeId, $rawSites
                 ),
+                'pricing_holidays' => (array) (
+                    llama_pricing_document($db, ['id' => $placeId])['holidays'] ?? []
+                ),
                 'place_closure' => [
                     'reported' => $closureReported,
                     'begins' => $closureBegins,
