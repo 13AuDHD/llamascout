@@ -133,17 +133,14 @@
                     : null;
             }
 
-            const areaValue =
-                String(
-                    areaSelector?.value
-                    || ''
-                ).trim();
-
-            if (areaValue !== '') {
-                return 'area:' + areaValue;
+            // The Area picker retains its last selection across tabs.
+            // Only the active Area tab may use that value as a photo owner.
+            if (mode === 'area') {
+                const areaValue = String(areaSelector?.value || '').trim();
+                return areaValue !== '' ? 'area:' + areaValue : null;
             }
 
-            return 'place:place:' + placeId;
+            return mode === 'place' ? 'place:place:' + placeId : null;
         };
 
     const currentTarget =
@@ -345,15 +342,17 @@
         payload.set('photos_json', String(photosField?.value || '[]'));
         const selectedSite = String(siteSelector?.value || '');
         const siteValue = selectedSite.startsWith('campsite_record:') ? selectedSite : '';
+        // Keep the photo-only request's submitted target aligned with
+        // the active tab, never with an inactive dropdown's stale value.
         payload.set(
             'selected_campsite_id',
-            siteValue
+            currentMode() === 'site' ? siteValue : ''
         );
         payload.set(
             'selected_area_id',
-            siteValue
-                ? ''
-                : String(areaSelector?.value || '')
+            currentMode() === 'area'
+                ? String(areaSelector?.value || '')
+                : ''
         );
 
         savingPhotos = true;
