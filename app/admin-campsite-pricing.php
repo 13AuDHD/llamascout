@@ -534,3 +534,70 @@ function admin_cpr_save_holidays(
         throw $error;
     }
 }
+
+
+/** Revision token for the full Place season schedule, including inactive rows. */
+function admin_cpr_season_version(PDO $db, int $placeId): string
+{
+    return hash('sha256', json_encode(
+        llama_seasons_for_place($db, $placeId, true),
+        JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+    ));
+}
+
+/**
+ * Add or edit a Place season without leaving the Campsite Pricing screen.
+ * Place, Site and seasonal pricing use the same Place lock for serialization.
+ * The existing canonical season definition and overlap checks remain active.
+ */
+function admin_cpr_save_season(
+    PDO $db,
+    int $placeId,
+    int $actorId,
+    string $expectedVersion,
+    array $rawSeason
+): array {
+    if ($placeId < 1 || $actorId < 1 || strlen($expectedVersion) !== 64) {
+        throw new InvalidArgumentException('Choose a Place and reload the season schedule.');
+    }
+    if ($db->inTransaction()) {
+        throw new LogicException('Unexpected nested season update.');
+    }
+    $db->beginTransaction();
+    try {
+        $lock = $db->prepare('SELECT id FROM places WHERE id = ? FOR UPDATE');
+        $lock->execute([$placeId]);
+        if (!$lock->fetchColumn()) {
+            throw new InvalidArgumentException('Place not found.');
+        }
+        if (!hash_equals(admin_cpr_season_version($db, $placeId), $expectedVersion)) {
+            throw new RuntimeException(
+                'Someone changed this Place\'s seasons. Reload the pricing page before saving.',
+                409
+            );
+        }
+        $seasonId = llama_season_save($db, $placeId, $actorId, [
+            'id' => (int) ($rawSeason['id'] ?? 0),
+            'name' => (string) ($rawSeason['name'] ?? ''),
+            'start_mmdd' => (string) ($rawSeason['start'] ?? ''),
+            'end_mmdd' => (string) ($rawSeason['end'] ?? ''),
+            'is_default' => (int) (!empty($rawSeason['default'])),
+            'is_active' => (int) (!empty($rawSeason['active'])),
+            'sort_order' => (int) ($rawSeason['sort_order'] ?? 0),
+            'notes' => (string) ($rawSeason['notes'] ?? ''),
+            'source_url' => (string) ($rawSeason['source_url'] ?? ''),
+        ]);
+        admin_users_audit(
+            $db, $actorId, null, 'place.pricing_season_updated',
+            'Updated a Place operating season from Campsite Pricing.',
+            ['place_id' => $placeId, 'season_id' => $seasonId]
+        );
+        $db->commit();
+        return ['success' => true, 'season_id' => $seasonId];
+    } catch (Throwable $error) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+        throw $error;
+    }
+}
