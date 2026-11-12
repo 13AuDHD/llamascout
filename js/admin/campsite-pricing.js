@@ -282,7 +282,7 @@
     };
 
     const loadSelectedSite = async () => {
-        const id = Number(event.target.value);
+        const id = Number($('site').value);
         ++state.siteRequest;
         if (!id || !state.place) {
             state.site = null;
