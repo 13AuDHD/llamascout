@@ -50,54 +50,36 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
     }
 
     try {
-        if (in_array($action, ['save-season-builder', 'save-season-prices'], true)) {
+        if ($action === 'save-season-prices') {
+            // The old rate-card editor has been retired. A stale browser
+            // tab must not be allowed to overwrite current Campsite Pricing.
+            throw new InvalidArgumentException(
+                'The old rates form is retired. Use Admin > Places > Campsite Pricing.'
+            );
+        }
+
+        if ($action === 'save-season-builder') {
+            // Seasonal Place/Area/Site Scout Report conditions remain distinct
+            // from prices. The pricing document is never writable here.
+            if (isset($_POST['place_rate_cards_json'])
+                || isset($_POST['season_rate_version'])) {
+                throw new InvalidArgumentException(
+                    'Rates can only be edited in Campsite Pricing.'
+                );
+            }
             require_once __DIR__ . '/place-report/season-builder.php';
             $seasonId = (int) ($_POST['season_id'] ?? 0);
             $selected = $_POST['season_targets'] ?? null;
-            $hasRates = isset($_POST['place_rate_cards_json']);
-            $db->beginTransaction();
-            try {
-                if ($action === 'save-season-builder') {
-                    llama_season_builder_save(
-                        $db, $placeId, $seasonId, $actorUserId, $selected,
-                        $_POST['season_changes'] ?? [], $_POST['season_removals'] ?? [],
-                        $_POST['season_answer_source_url'] ?? null, $hasRates
-                    );
-                }
-                if ($hasRates) {
-                    require_once __DIR__ . '/place-pricing.php';
-                    $lock = $db->prepare('SELECT id FROM places WHERE id = ? FOR UPDATE');
-                    $lock->execute([$placeId]);
-                    if (!$lock->fetchColumn()) {
-                        throw new InvalidArgumentException('Place not found.');
-                    }
-                    $current = llama_pricing_document($db, ['id' => $placeId]);
-                    $version = hash('sha256', json_encode($current, JSON_THROW_ON_ERROR));
-                    if (!hash_equals($version, (string) ($_POST['season_rate_version'] ?? ''))) {
-                        throw new InvalidArgumentException('Rates changed in another tab. Reload to get the latest rates.');
-                    }
-                    $rates = llama_pricing_validate($_POST['place_rate_cards_json']);
-                    $seasonIds = array_map('intval', array_column(llama_seasons_for_place($db, $placeId, true), 'id'));
-                    foreach ($rates['rows'] as $row) {
-                        if (array_diff(array_column($row['seasons'], 'season_id'), $seasonIds)) {
-                            throw new InvalidArgumentException('A rate refers to a season that does not belong to this Place.');
-                        }
-                    }
-                    admin_place_save_shared_report($db, $actorUserId, $placeId, [
-                        'place_rate_cards_json' => json_encode($rates, JSON_THROW_ON_ERROR),
-                    ]);
-                }
-                $db->commit();
-            } catch (Throwable $exception) {
-                $db->rollBack();
-                throw $exception;
-            }
+            llama_season_builder_save(
+                $db, $placeId, $seasonId, $actorUserId, $selected,
+                $_POST['season_changes'] ?? [], $_POST['season_removals'] ?? [],
+                $_POST['season_answer_source_url'] ?? null
+            );
             $query = [
                 'id' => $placeId,
-                'saved' => $action === 'save-season-builder' ? 'season-builder' : 'season-prices',
+                'saved' => 'season-builder',
                 'season_view' => $seasonId,
             ];
-            // Avoid enormous redirects for very large Site batches.
             if (is_array($selected) && count($selected) <= 50) {
                 $query['season_targets'] = $selected;
             }
