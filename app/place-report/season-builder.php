@@ -59,15 +59,17 @@ function llama_season_builder_questions(string $scope): array
         throw new InvalidArgumentException('Invalid seasonal report target.');
     }
     $groups = llama_season_question_groups($scope);
-    if ($scope === 'site') {
-        $groups = ['Site operating status' => [
-            LLAMA_SEASON_SITE_CLOSED_KEY => [
-                'key' => LLAMA_SEASON_SITE_CLOSED_KEY,
-                'label' => 'Normally closed this season?',
-                'type' => 'tri',
-                'options' => ['1' => 'Yes', '0' => 'No'],
-            ],
-        ]] + $groups;
+
+    // Site reservation method and normal seasonal Site open/closed status
+    // belong exclusively to Admin > Campsite Pricing. Place-wide closure
+    // remains editable through its Place-season questions.
+    foreach ($groups as $name => $fields) {
+        unset($fields['site_reservation_method'], $fields['seasonal_booking_method']);
+        if ($fields) {
+            $groups[$name] = $fields;
+        } else {
+            unset($groups[$name]);
+        }
     }
     $questions = [];
     foreach ($groups as $heading => $fields) {
