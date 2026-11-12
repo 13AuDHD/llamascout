@@ -10,6 +10,7 @@
         place: null,
         sites: [],
         seasons: [],
+        placeClosed: {},
         site: null,
         seasonId: null,
         drafts: new Map(),
@@ -119,6 +120,7 @@
             state.place = null;
             resetSiteSelection();
             state.seasons = [];
+            state.placeClosed = {};
             $('place-seasons-link').hidden = true;
         }
         window.clearTimeout(state.searchTimer);
@@ -245,6 +247,7 @@
             state.place = data.place;
             state.sites = data.sites || [];
             state.seasons = data.seasons || [];
+            state.placeClosed = data.place_closed_by_season || {};
             state.site = null;
             state.drafts = new Map();
             state.seasonId = null;
@@ -433,6 +436,9 @@
             '  ·  Holiday ' + money(draft.holiday);
         if (draft.holiday !== '' && !state.sitePayload?.holidays?.length) {
             $('preview').textContent += ' · No holiday dates configured for this Place';
+        }
+        if (state.placeClosed[String(state.seasonId)]) {
+            $('preview').textContent += ' · PLACE CLOSED this season (overrides Site status)';
         }
     };
 
