@@ -271,12 +271,13 @@
         $('site').append(option);
         $('site').disabled = true;
         $('add-season').disabled = true;
-        $('apply-sites').disabled = true;
         state.paidSites = [];
         state.rateGroups = [];
         state.groupVersion = null;
+        state.matchingCount = 0;
+        state.matchingFilters = {capacity: '', layout: '', utility: ''};
+        $('matching-count').textContent = '';
         renderReviewQueue();
-        renderRateGroups();
         setEditorEnabled(false);
         setSiteSummary();
         renderSeasons();
@@ -304,7 +305,6 @@
             state.rateGroups = data.rate_groups?.groups || [];
             state.groupVersion = data.rate_groups?.version || null;
             state.placeClosure = data.place_closure || null;
-            renderRateGroups();
             renderReviewQueue();
             state.site = null;
             state.drafts = new Map();
@@ -315,6 +315,12 @@
             option.value = '';
             option.textContent = state.sites.length ? 'Choose a Site' : 'No Sites attached to this Place';
             select.append(option);
+            if (state.sites.length) {
+                const matching = document.createElement('option');
+                matching.value = 'matching';
+                matching.textContent = 'Matching Sites (by type, parking, utilities)';
+                select.append(matching);
+            }
             for (const site of state.sites) {
                 const row = document.createElement('option');
                 row.value = String(site.id);
@@ -324,7 +330,6 @@
             select.disabled = !state.sites.length;
             $('add-season').disabled = false;
             $('manage-seasons').disabled = !state.allSeasons.length;
-            $('apply-sites').disabled = false;
             setSiteSummary();
             renderSeasons();
             renderEditor();
@@ -345,6 +350,25 @@
     const loadSelectedSite = async () => {
         const id = Number($('site').value);
         ++state.siteRequest;
+        if (isMatching() && state.place) {
+            state.site = null;
+            state.sitePayload = null;
+            state.drafts = new Map();
+            state.baselines = new Map();
+            state.seasonId = state.seasons[0]?.id ?? null;
+            setSiteSummary();
+            loadMatchingDrafts();
+            renderSeasons();
+            renderEditor();
+            refreshMatchingCount();
+            const url = new URL(window.location.href);
+            url.searchParams.set('place_id', state.place.id);
+            url.searchParams.delete('site_id');
+            window.history.replaceState(null, '', url);
+            return;
+        }
+        state.matchingCount = 0;
+        $('matching-count').textContent = '';
         if (!id || !state.place) {
             state.site = null;
             state.sitePayload = null;
@@ -377,7 +401,7 @@
                     weekday: effectiveRates.weekday ?? '',
                     weekend: effectiveRates.weekend ?? '',
                     holiday: effectiveRates.holiday ?? '',
-                    vehicle: '',
+                    vehicle: data.vehicle_by_season?.[String(season.id)] ?? '',
                     group: '',
                     availability: data.availability?.[String(season.id)] || '',
                     start: season.start,
@@ -465,9 +489,10 @@
     const renderEditor = () => {
         const season = state.seasons.find(s => String(s.id) === String(state.seasonId));
         const draft = selected();
-        const enabled = Boolean(state.site && season && draft);
+        const enabled = Boolean((state.site || isMatching()) && season && draft);
         setEditorEnabled(enabled);
-        $('season-title').textContent = enabled ? season.name : (state.site ? 'Choose a Season' : 'Select a Site');
+        $('season-title').textContent = enabled ? season.name
+            : ((state.site || isMatching()) ? 'Choose a Season' : 'Select a Site');
         $('start').value = enabled ? draft.start || '' : '';
         $('end').value = enabled ? draft.end || '' : '';
         ['weekday', 'weekend', 'holiday', 'vehicle', 'group'].forEach(key => {
@@ -481,15 +506,19 @@
     const renderPreview = () => {
         const season = state.seasons.find(s => String(s.id) === String(state.seasonId));
         const draft = selected();
-        if (!state.site || !season || !draft) {
+        if ((!state.site && !isMatching()) || !season || !draft) {
             $('preview').textContent = 'Select a Place, Site and season to preview rates.';
             return;
         }
-        const availability = draft.availability ? titleCase(draft.availability) : 'Status not set';
+        const availability = draft.availability
+            ? titleCase(draft.availability)
+            : (isMatching() ? 'Existing Site statuses unchanged' : 'Status not set');
         $('preview').textContent = season.name + ': ' + availability +
             '  ·  Weekday ' + money(draft.weekday) +
             '  ·  Weekend ' + money(draft.weekend) +
-            '  ·  Holiday ' + money(draft.holiday);
+            '  ·  Holiday ' + money(draft.holiday)
+            + '  ·  Extra vehicle ' + money(draft.vehicle)
+            + (isMatching() ? ' · ' + state.matchingCount + ' matched Sites' : '');
         if (draft.holiday !== '' && !state.sitePayload?.holidays?.length) {
             $('preview').textContent += ' · No holiday dates configured for this Place';
         }
