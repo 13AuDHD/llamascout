@@ -240,6 +240,10 @@ function admin_shell_nav_class(string $key, string $active): string
             'pages' => ['places.css'],
             'features' => ['list-filters.css'],
         ],
+        'campsite-pricing.php' => [
+            'pages' => ['campsite-pricing.css'],
+            'features' => [],
+        ],
         'resources.php' => [
             'pages' => ['places.css', 'resources.css'],
             'features' => ['list-filters.css'],
@@ -557,6 +561,14 @@ function admin_shell_nav_class(string $key, string $active): string
         >
             <i  aria-hidden="true"><?= llama_icon('map') ?></i>
             <span>Places</span>
+        </a>
+
+        <a
+            class="<?= admin_shell_nav_class('campsite_pricing', $adminActiveNav) ?>"
+            href="<?= moderation_e($adminUrl . '/campsite-pricing.php') ?>"
+        >
+            <i aria-hidden="true"><?= llama_icon('tag') ?></i>
+            <span>Campsite Pricing</span>
         </a>
 
         <a
