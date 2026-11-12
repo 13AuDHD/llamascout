@@ -87,7 +87,10 @@ function llama_scoped_report_save(
     );
 
     $field = llama_scoped_report_field($fieldKey, $scope);
-    if ($scope === 'area' && array_key_exists('facility_kinds', $field)) {
+    if ($scope === 'area' && (
+        array_key_exists('facility_kinds', $field)
+        || array_key_exists('area_feature_types', $field)
+    )) {
         $verifiedTarget = llama_report_verified_target(
             $db, $placeId, 'area', $source, $scopeId
         );
