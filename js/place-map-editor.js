@@ -2609,6 +2609,18 @@
                     setMode(
                         nextMode
                     );
+
+                    if (nextMode === 'area') {
+                        // Match Site selection: opening Areas chooses an
+                        // existing Area rather than leaving the editor on a
+                        // generic Place or an empty selection.
+                        const firstArea = features.find(item =>
+                            ['camping_area', 'parking_area', 'facility_area']
+                                .includes(String(item.feature_type || '')));
+                        if (firstArea) {
+                            featureState.selectFeature(Number(firstArea.id));
+                        }
+                    }
                 }
             );
         }

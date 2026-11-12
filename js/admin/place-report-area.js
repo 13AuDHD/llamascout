@@ -20,6 +20,41 @@
     const facilityFields = [...form.querySelectorAll('[data-facility-kinds]')];
     const areasById = new Map(areas.map(area => [String(area.id), area]));
     const areaShell = form.closest('[data-contribution-tabs]');
+    const areaPicker = form.querySelector('[data-admin-area-picker]');
+    const currentMode = () =>
+        areaShell?.querySelector('[data-contribution-mode="area"]')
+            ?.getAttribute('aria-pressed') === 'true';
+    let previouslyEditingArea = false;
+    const areaDrafts = new Map();
+    const syncAreaMode = () => {
+        const isArea = currentMode();
+        if (areaPicker) areaPicker.hidden = !isArea;
+
+        // Shared form controls must never retain Area answers when switching
+        // back to Place or Site. Preserve the unsaved Area draft by identity.
+        if (!isArea) {
+            if (previouslyEditingArea) {
+                if (selected) areaDrafts.set(selected, read());
+                write(placeValues);
+                target.value = '';
+            }
+            previouslyEditingArea = false;
+            return;
+        }
+
+        if (!previouslyEditingArea) {
+            placeValues = read();
+            previouslyEditingArea = true;
+            if (selected && allowed.has(selected)) {
+                write(areaDrafts.get(selected) || effectiveValues(selected));
+            }
+        }
+        if (!areas.length) return;
+        if (!allowed.has(selector.value)) {
+            selector.value = String(areas[0].id);
+            selector.dispatchEvent(new Event('change', {bubbles: true}));
+        }
+    };
     const facilityAllowed = (key, areaId) => {
         const node = facilityFields.find(field =>
             field.getAttribute('data-report-field') === key);
@@ -40,8 +75,10 @@
             field.hidden = !visible || !facilityAllowed(key, areaId);
         }
     };
-    areaShell?.addEventListener('llama:contribution-mode',
-        () => syncFacilityQuestions(selector.value));
+    areaShell?.addEventListener('llama:contribution-mode', () => {
+        syncAreaMode();
+        syncFacilityQuestions(selector.value);
+    });
     const fieldKeys = new Set(Array.isArray(catalog.field_keys) ? catalog.field_keys : []);
     const controls = new Map();
     for (const control of form.elements) {
@@ -398,16 +435,16 @@
             answersField.value =
                 '';
 
-            if (
-                String(
-                    siteSelector?.value
-                    || ''
-                ).startsWith('campsite_record:')
-            ) {
-                target.value =
-                    '';
+            if (!currentMode()) {
+                // The Area selector is not an alternate way to save Place
+                // values. Place and Site modes have their own save targets.
+                target.value = '';
                 return;
             }
+
+            // An old Site dropdown selection may remain when the user
+            // switches to Area. The active tab, not that stale value,
+            // determines which target is saved.
 
             if (
                 !selected
@@ -628,5 +665,6 @@
     queueMicrotask(
         openRequestedReportTarget
     );
+    syncAreaMode();
     syncFacilityQuestions(selector.value);
 })();
