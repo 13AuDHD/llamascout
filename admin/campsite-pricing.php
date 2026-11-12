@@ -408,7 +408,6 @@ require __DIR__ . '/_header.php';
             <button type="button" class="cpr-save" id="cpr-save" disabled>Save Pricing</button>
         </div>
     </footer>
-</div>
 <dialog class="cpr-holiday-dialog cpr-season-dialog" id="cpr-season-dialog"
         aria-labelledby="cpr-season-dialog-title">
     <form class="cpr-holiday-modal" id="cpr-season-form" method="dialog">
@@ -474,5 +473,6 @@ require __DIR__ . '/_header.php';
         <p class="cpr-save-status" id="cpr-holiday-status" role="status"></p>
     </div>
 </dialog>
+</div>
 <script defer src="https://llamascout.com/js/admin/campsite-pricing.js?v=<?= (int) filemtime(dirname(__DIR__) . '/js/admin/campsite-pricing.js') ?>"></script>
 <?php require __DIR__ . '/_footer.php'; ?>
