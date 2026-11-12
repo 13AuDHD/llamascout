@@ -50,7 +50,9 @@ function llama_pricing_validate(mixed $raw): array
         catch (JsonException) { throw new InvalidArgumentException('Invalid rate card data.'); }
     }
     if (!is_array($raw)) throw new InvalidArgumentException('Invalid rate card data.');
-    if (array_is_list($raw)) $raw = llama_pricing_legacy_cards($raw);
+    if (array_is_list($raw)) {
+        throw new InvalidArgumentException('Campsite Pricing requires a versioned rate document.');
+    }
     if (($raw['version'] ?? null) !== 2 || ($raw['currency'] ?? 'USD') !== 'USD') {
         throw new InvalidArgumentException('Unsupported rate card version or currency.');
     }
@@ -59,10 +61,6 @@ function llama_pricing_validate(mixed $raw): array
     if (!is_array($days) || !array_is_list($days) || count($days) > 7) throw new InvalidArgumentException('Invalid weekend nights.');
     foreach ($days as $day) {
         if (!is_int($day) || $day < 0 || $day > 6) throw new InvalidArgumentException('Invalid weekend night.');
-    }
-    if (isset($raw['legacy_cards'])) {
-        if (!is_array($raw['legacy_cards']) || !array_is_list($raw['legacy_cards'])) throw new InvalidArgumentException('Invalid legacy price archive.');
-        $doc['legacy_cards'] = $raw['legacy_cards'];
     }
     $doc['weekend_days'] = array_values(array_unique($days));
     foreach (['rows' => 500, 'holidays' => 60] as $key => $limit) {
@@ -137,24 +135,6 @@ function llama_pricing_validate(mixed $raw): array
     return $doc;
 }
 
-function llama_pricing_legacy_cards(array $cards): array
-{
-    $doc = llama_pricing_empty();
-    $doc['legacy_cards'] = $cards;
-    foreach ($cards as $i => $card) {
-        if (!is_array($card)) throw new InvalidArgumentException('Invalid legacy rate card.');
-        $scope = (string) ($card['scope'] ?? 'entire_place');
-        $category = trim((string) ($card['category'] ?? ''));
-        $match = ['layout' => (string) ($card['parking_style'] ?? '')];
-        if (in_array(strtolower($category), ['single','double','group'], true)) $match['category'] = strtolower($category);
-        elseif ($scope === 'site_category') $match['legacy_category'] = $category;
-        if ($scope === 'individual_site') $match['legacy_site'] = (string) ($card['site'] ?? '');
-        $doc['rows'][] = ['id' => 'legacy-' . $i, 'name' => (string) ($card['name'] ?? ''), 'match' => $match, 'price' => $card['price'] ?? null, 'unit' => $card['unit'] ?? 'night', 'seasons' => [], 'needs_review' => !in_array((string) ($card['season'] ?? 'year_round'), ['', 'year_round'], true) || $scope === 'mixed_other' || ($scope === 'site_category' && $category === '') || $scope === 'individual_site', 'notes' => 'Imported legacy card. ' . (string) ($card['season'] ?? ''), 'source_url' => $card['source_url'] ?? '', 'verified_on' => $card['verified_on'] ?? ''];
-    }
-    return $doc;
-}
-
-/** Invalid persisted content must never fall back to a misleading old price. */
 function llama_pricing_decode(mixed $raw): array
 {
     if ($raw === null || $raw === '') return llama_pricing_empty();
