@@ -306,13 +306,21 @@ require __DIR__ . '/_header.php';
             <button type="button" id="cpr-add-season" class="cpr-ghost cpr-add-season" disabled>
                 <?= llama_icon('plus') ?> Add Season
             </button>
+            <button type="button" id="cpr-manage-seasons" class="cpr-ghost cpr-add-season" disabled>
+                <?= llama_icon('settings') ?> Manage Seasons
+            </button>
             <div id="cpr-seasons-list" class="cpr-seasons-list" aria-label="Seasons">
                 <p class="cpr-muted">Select a Place to load its seasons.</p>
             </div>
         </aside>
         <div class="cpr-main-column">
             <section class="cpr-card cpr-season-editor" id="cpr-season-editor">
-                <h2 id="cpr-season-title">Select a Site</h2>
+                <div class="cpr-season-heading">
+                    <h2 id="cpr-season-title">Select a Site</h2>
+                    <button type="button" class="cpr-ghost" id="cpr-edit-season" disabled>
+                        <?= llama_icon('pencil') ?> Edit Season
+                    </button>
+                </div>
                 <div class="cpr-season-top">
                     <label>Start date<input type="text" id="cpr-start" placeholder="MM-DD" maxlength="5" disabled></label>
                     <span class="cpr-date-dash" aria-hidden="true">−</span>
@@ -385,8 +393,9 @@ require __DIR__ . '/_header.php';
                 </div>
             </div>
             <div class="cpr-closure-note"><?= llama_icon('info-circle') ?>
-                Place seasonal closure is managed separately at the Place level.
-                <a href="#" id="cpr-place-seasons-link" hidden>Manage Place seasons</a>
+                Place-wide seasonal closures and their dates are managed by the
+                existing <strong>Seasonal Closure</strong> question under Getting There
+                in the Place Scout Report. Place closures override individual Site availability.
             </div>
         </div>
     </div>
@@ -400,6 +409,52 @@ require __DIR__ . '/_header.php';
         </div>
     </footer>
 </div>
+<dialog class="cpr-holiday-dialog cpr-season-dialog" id="cpr-season-dialog"
+        aria-labelledby="cpr-season-dialog-title">
+    <form class="cpr-holiday-modal" id="cpr-season-form" method="dialog">
+        <header>
+            <h2 id="cpr-season-dialog-title">Add Season</h2>
+            <p>Define the operating seasons for this Place here. Each Site's rates and
+               availability are edited in this same pricing screen.</p>
+        </header>
+        <label class="cpr-season-dialog-label">
+            <span>Choose season</span>
+            <select id="cpr-season-choose">
+                <option value="">New season</option>
+            </select>
+        </label>
+        <label class="cpr-season-dialog-label">
+            <span>Season name</span>
+            <input type="text" id="cpr-season-name" maxlength="100" required
+                   placeholder="Peak Season">
+        </label>
+        <div class="cpr-season-dialog-dates">
+            <label class="cpr-season-dialog-label">
+                <span>Starts (MM-DD)</span>
+                <input type="text" id="cpr-season-start" maxlength="5"
+                       inputmode="numeric" placeholder="05-15">
+            </label>
+            <label class="cpr-season-dialog-label">
+                <span>Ends (MM-DD)</span>
+                <input type="text" id="cpr-season-end" maxlength="5"
+                       inputmode="numeric" placeholder="10-15">
+            </label>
+        </div>
+        <div class="cpr-season-dialog-flags">
+            <label><input type="checkbox" id="cpr-season-active" checked> Active season</label>
+            <label><input type="checkbox" id="cpr-season-default"> Use when no dated season matches</label>
+        </div>
+        <p class="cpr-muted">Enter both dates or leave both blank for a manually
+           selected season. Seasons cannot overlap. Existing Site rates stay
+           attached to the same season when its dates change.</p>
+        <div class="cpr-holiday-actions">
+            <button type="button" class="cpr-ghost" id="cpr-season-cancel">Cancel</button>
+            <button type="submit" class="cpr-save" id="cpr-season-save">Save Season</button>
+        </div>
+        <p class="cpr-save-status" id="cpr-season-status" role="status"></p>
+    </form>
+</dialog>
+
 <dialog class="cpr-holiday-dialog" id="cpr-holiday-dialog" aria-labelledby="cpr-holiday-title">
     <div class="cpr-holiday-modal">
         <header>
