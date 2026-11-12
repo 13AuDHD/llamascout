@@ -195,6 +195,9 @@ if (isset($_GET['ajax'])) {
                     'end' => (string) ($s['end_mmdd'] ?? ''),
                     'default' => (bool) ($s['is_default'] ?? false),
                     'active' => (bool) ($s['is_active'] ?? false),
+                    'recurring' => (bool) ($s['is_recurring'] ?? 1),
+                    'starts_on' => (string) ($s['starts_on'] ?? ''),
+                    'ends_on' => (string) ($s['ends_on'] ?? ''),
                     'sort_order' => (int) ($s['sort_order'] ?? 0),
                     'notes' => (string) ($s['notes'] ?? ''),
                     'source_url' => (string) ($s['source_url'] ?? ''),
@@ -205,6 +208,9 @@ if (isset($_GET['ajax'])) {
                     'start' => (string) ($s['start_mmdd'] ?? ''),
                     'end' => (string) ($s['end_mmdd'] ?? ''),
                     'default' => (bool) ($s['is_default'] ?? false),
+                    'recurring' => (bool) ($s['is_recurring'] ?? 1),
+                    'starts_on' => (string) ($s['starts_on'] ?? ''),
+                    'ends_on' => (string) ($s['ends_on'] ?? ''),
                 ], $seasons),
             ]);
         }
@@ -436,25 +442,28 @@ require __DIR__ . '/_header.php';
             <input type="text" id="cpr-season-name" maxlength="100" required
                    placeholder="Peak Season">
         </label>
+        <label class="cpr-season-repeat-label">
+            <input type="checkbox" id="cpr-season-repeat">
+            <span>Repeat these season dates every year</span>
+        </label>
         <div class="cpr-season-dialog-dates">
             <label class="cpr-season-dialog-label">
-                <span>Starts (MM-DD)</span>
-                <input type="text" id="cpr-season-start" maxlength="5"
-                       inputmode="numeric" placeholder="05-15">
+                <span id="cpr-season-start-label">Starts (with year)</span>
+                <input type="date" id="cpr-season-start" placeholder="YYYY-MM-DD">
             </label>
             <label class="cpr-season-dialog-label">
-                <span>Ends (MM-DD)</span>
-                <input type="text" id="cpr-season-end" maxlength="5"
-                       inputmode="numeric" placeholder="10-15">
+                <span id="cpr-season-end-label">Ends (with year)</span>
+                <input type="date" id="cpr-season-end" placeholder="YYYY-MM-DD">
             </label>
         </div>
         <div class="cpr-season-dialog-flags">
             <label><input type="checkbox" id="cpr-season-active" checked> Active season</label>
             <label><input type="checkbox" id="cpr-season-default"> Use when no dated season matches</label>
         </div>
-        <p class="cpr-muted">Enter both dates or leave both blank for a manually
-           selected season. Seasons cannot overlap. Existing Site rates stay
-           attached to the same season when its dates change.</p>
+        <p class="cpr-muted">A specific-year season applies only during those exact
+           dates. Check Repeat annually for recurring MM-DD dates.
+           Outside every active season, Sites are seasonally unavailable.
+           Existing Site rates stay attached when dates change.</p>
         <div class="cpr-holiday-actions">
             <button type="button" class="cpr-ghost" id="cpr-season-cancel">Cancel</button>
             <button type="submit" class="cpr-save" id="cpr-season-save">Save Season</button>
