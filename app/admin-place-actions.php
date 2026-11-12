@@ -161,34 +161,11 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
         }
 
         if ($action === 'save-season') {
-            require_once __DIR__ . '/place-report/season-definitions.php';
-
-            $savedSeasonId = llama_season_save(
-                $db,
-                $placeId,
-                $actorUserId,
-                [
-                    'id' => (int) ($_POST['season_id'] ?? 0),
-                    'name' => (string) ($_POST['season_name'] ?? ''),
-                    'start_mmdd' => (string) ($_POST['start_mmdd'] ?? ''),
-                    'end_mmdd' => (string) ($_POST['end_mmdd'] ?? ''),
-                    'is_default' => (string) ($_POST['is_default'] ?? '0'),
-                    'is_active' => (string) ($_POST['is_active'] ?? '0'),
-                    'sort_order' => (int) ($_POST['sort_order'] ?? 0),
-                    'notes' => (string) ($_POST['season_notes'] ?? ''),
-                    'source_url' => (string) ($_POST['season_source_url'] ?? ''),
-                ]
+            // Even a stale bookmarked Place form cannot overwrite seasons.
+            // All active season definitions now belong to Campsite Pricing.
+            throw new InvalidArgumentException(
+                'Season definitions are now edited under Admin > Places > Campsite Pricing.'
             );
-
-            header(
-                'Location: /place.php?id=' . $placeId
-                . '&saved=season&season_edit=' . $savedSeasonId
-                . '&season_view=' . $savedSeasonId
-                . '#place-seasons',
-                true,
-                303
-            );
-            exit;
         }
 
         if ($action === 'save-report') {
