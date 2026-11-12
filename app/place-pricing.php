@@ -162,52 +162,24 @@ function llama_pricing_decode(mixed $raw): array
     catch (Throwable) { return array_merge(llama_pricing_empty(), ['invalid' => true]); }
 }
 
-/** Read adapter for untouched Places. No writes or destructive migration. */
+/**
+ * Authoritative published pricing document.
+ *
+ * The Campsite Pricing Admin editor is the only write interface. Place-wide
+ * flat fees, imported map-feature rates and historical rate cards are not
+ * synthesized into Site prices; an unpriced Site remains unpriced.
+ */
 function llama_pricing_document(PDO $db, array $place): array
 {
     $rules = $place['rules'] ?? null;
     if (!is_array($rules)) {
-        $q = $db->prepare('SELECT * FROM place_rules WHERE place_id = ?');
-        $q->execute([(int) $place['id']]); $rules = $q->fetch(PDO::FETCH_ASSOC) ?: [];
+        $query = $db->prepare(
+            'SELECT rate_cards_json FROM place_rules WHERE place_id = ?'
+        );
+        $query->execute([(int) $place['id']]);
+        $rules = $query->fetch(PDO::FETCH_ASSOC) ?: [];
     }
-    $raw = $rules['rate_cards_json'] ?? '';
-    $doc = llama_pricing_decode($raw);
-    $decoded = is_string($raw) ? json_decode($raw, true) : $raw;
-    if (isset($doc['invalid']) || (is_array($decoded) && ($decoded['version'] ?? null) === 2)) return $doc;
-    if (($rules['fee'] ?? null) !== null && ($rules['fee'] ?? '') !== '') {
-        $hasFlat = false;
-        foreach ($doc['rows'] as $r) if (!array_filter($r['match']) && $r['unit'] === 'night') $hasFlat = true;
-        if (!$hasFlat) $doc['rows'][] = ['id' => 'legacy-place', 'name' => 'Place base price', 'match' => [], 'unit' => 'night', 'price' => $rules['fee']];
-    }
-    // Old mapped rates become explicit selectors in this editor. Keep old SQL
-    // rows untouched for rollback; once v2 is saved they are no longer readers.
-    require_once __DIR__ . '/place-map-features.php';
-    $groups = [];
-    foreach (llama_place_map_features($db, (int) $place['id'], true) as $f) {
-        if (!in_array($f['feature_type'] ?? '', ['camping_site','camping_area'], true)) continue;
-        $rates = $f['feature_type'] === 'camping_site' ? ($f['effective_rates'] ?? []) : ($f['rates'] ?? []);
-        if (!$rates) continue;
-        $key = json_encode(array_map(static fn($r) => array_intersect_key($r, array_flip(['rate_type','label','amount','season_start','season_end','notes'])), $rates));
-        $selector = $f['feature_type'] === 'camping_site' ? 'feature_ids' : 'area_ids';
-        $groups[$key]['rates'] = $rates;
-        $groups[$key]['match'][$selector][] = (int) $f['id'];
-        $groups[$key]['name'] = (string) ($f['label'] ?? 'Mapped rates');
-    }
-    foreach ($groups as $g) {
-        // A group may contain both Area and Site targets: selectors are OR.
-        $row = ['id' => 'mapped-' . count($doc['rows']), 'name' => $g['name'], 'match' => $g['match'], 'unit' => 'night', 'price' => null, 'seasons' => []];
-        foreach ($g['rates'] as $rate) {
-            $type = (string) ($rate['rate_type'] ?? 'standard');
-            if ($type === 'standard' || $type === 'weekday') $row['price'] = $rate['amount'];
-            elseif ($type === 'weekend') $row['weekend_price'] = $rate['amount'];
-            elseif ($type === 'seasonal') $row['seasons'][] = ['name' => $rate['label'] ?? 'Seasonal', 'start' => $rate['season_start'], 'end' => $rate['season_end'], 'recurring' => true, 'price' => $rate['amount']];
-            elseif ($type === 'holiday') {
-                $doc['rows'][] = ['id' => 'holiday-' . count($doc['rows']), 'name' => $rate['label'] ?? 'Holiday', 'match' => $g['match'], 'unit' => 'night', 'price' => $rate['amount'], 'needs_review' => true, 'notes' => 'Legacy holiday needs exact dates before it can be applied.'];
-            }
-        }
-        $doc['rows'][] = $row;
-    }
-    return llama_pricing_validate($doc);
+    return llama_pricing_decode($rules['rate_cards_json'] ?? null);
 }
 
 function llama_pricing_token(mixed $value): string
