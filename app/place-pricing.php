@@ -527,13 +527,29 @@ function llama_pricing_enrich_features(PDO $db, array $place, array $features): 
     require_once __DIR__ . '/place-report/season-public.php';
     $placeId = (int) $place['id'];
     $requested = $_GET['season'] ?? null;
-    $season = llama_public_season_selection($db, $placeId, $requested)['selected'];
-    [$doc, $date] = llama_pricing_public_night(llama_pricing_document($db, $place), $season, $requested);
+    $seasonSelection = llama_public_season_selection($db, $placeId, $requested);
+    $season = $seasonSelection['selected'] ?? null;
+    [$doc, $date] = llama_pricing_public_night(
+        llama_pricing_document($db, $place), $season, $requested
+    );
     $byMap = [];
     $sites = llama_place_campsites($db, $placeId);
     $seasonId = (int) ($season['id'] ?? 0);
-    $status = $seasonId ? llama_public_season_site_statuses($db, $placeId, $seasonId, array_column($sites, 'id')) : [];
+    $status = $seasonId
+        ? llama_public_season_site_statuses(
+            $db, $placeId, $seasonId, array_column($sites, 'id')
+        ) : [];
+    if (!$seasonId && !empty($seasonSelection['seasons'])
+        && (string) $requested !== '0') {
+        $status = array_fill_keys(array_map('intval', array_column($sites, 'id')), 'closed');
+    }
     $placeClosed = llama_public_place_verified_closed($db, $placeId);
+    foreach ($sites as &$site) {
+        if ($placeClosed || ($status[(int) ($site['id'] ?? 0)] ?? '') === 'closed') {
+            $site['seasonal_operating_status'] = 'closed';
+        }
+    }
+    unset($site);
     foreach (llama_pricing_enrich_sites($db, $place, $sites, $doc, $date) as $site) {
         if (!empty($site['map_feature_id'])) $byMap[(int) $site['map_feature_id']] = $site;
     }
