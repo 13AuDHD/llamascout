@@ -327,7 +327,7 @@ require __DIR__ . '/_header.php';
                 <div class="cpr-season-heading">
                     <h2 id="cpr-season-title">Select a Site</h2>
                     <button type="button" class="cpr-ghost" id="cpr-edit-season" disabled>
-                        <?= llama_icon('pencil') ?> Edit Season
+                        <?= llama_icon('edit') ?> Edit Season
                     </button>
                 </div>
                 <div class="cpr-season-top">
