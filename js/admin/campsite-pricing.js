@@ -12,7 +12,7 @@
         seasons: [],
         allSeasons: [],
         seasonVersion: null,
-        placeClosed: {},
+        placeClosure: null,
         site: null,
         seasonId: null,
         drafts: new Map(),
@@ -124,7 +124,7 @@
             state.seasons = [];
             state.allSeasons = [];
             state.seasonVersion = null;
-            state.placeClosed = {};
+            state.placeClosure = null;
         }
         window.clearTimeout(state.searchTimer);
         state.searchTimer = window.setTimeout(() => search(value), 220);
@@ -252,7 +252,7 @@
             state.seasons = data.seasons || [];
             state.allSeasons = data.all_seasons || [];
             state.seasonVersion = data.season_version || null;
-            state.placeClosed = data.place_closed_by_season || {};
+            state.placeClosure = data.place_closure || null;
             state.site = null;
             state.drafts = new Map();
             state.seasonId = null;
@@ -439,8 +439,13 @@
         if (draft.holiday !== '' && !state.sitePayload?.holidays?.length) {
             $('preview').textContent += ' · No holiday dates configured for this Place';
         }
-        if (state.placeClosed[String(state.seasonId)]) {
-            $('preview').textContent += ' · PLACE CLOSED this season (overrides Site status)';
+        if (state.placeClosure?.reported) {
+            const begins = state.placeClosure.begins;
+            const ends = state.placeClosure.ends;
+            $('preview').textContent += begins && ends
+                ? ' · Place closure is reported from ' + begins + ' through ' + ends
+                  + ' and overrides Site availability on those dates'
+                : ' · Place has a reported seasonal closure; closure dates are not provided';
         }
     };
 
