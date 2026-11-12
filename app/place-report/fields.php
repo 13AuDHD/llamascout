@@ -219,6 +219,8 @@ function llama_place_report_fields(): array
         $add($key, $label, $section, $type, $storage, $extra);
     };
     llama_report_register_custom_questions($registerCustom);
+    require_once __DIR__ . '/questions-area-approved.php';
+    llama_report_register_approved_area_questions($registerCustom);
     /*
      * ---------------------------------------------------------
      * 2. Apply behavior only after the registry is complete.
