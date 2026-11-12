@@ -178,8 +178,10 @@ function llama_public_season_site_statuses(
     if (($conditions['seasonal_place_closed']['value'] ?? null) === true) {
         return array_fill_keys($ids, 'closed');
     }
-    $statuses = ($conditions['seasonal_sites_closed']['value'] ?? null) === true
-        ? array_fill_keys($ids, 'closed') : [];
+    // Only a verified Place-wide seasonal closure overrides every Site.
+    // The retired "close Sites by default" toggle must not supersede
+    // the authoritative per-Site Campsite Pricing availability.
+    $statuses = [];
     foreach (array_chunk($ids, 400) as $batch) {
         $marks = implode(',', array_fill(0, count($batch), '?'));
         $query = $db->prepare(
