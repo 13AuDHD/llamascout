@@ -160,6 +160,7 @@ if (isset($_GET['ajax'])) {
                 'site_id' => $siteId,
                 'version' => $snapshot['version'],
                 'rate_conflict' => $snapshot['rate_conflict'],
+                'legacy_pricing' => $snapshot['legacy_pricing'],
                 'rate' => $rate === null ? null : [
                     'name' => (string) ($rate['name'] ?? ''),
                     'weekday' => $rate['price'] ?? null,
