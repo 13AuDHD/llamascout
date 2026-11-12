@@ -13,6 +13,8 @@
         allSeasons: [],
         seasonVersion: null,
         calendarReady: false,
+        paidSites: [],
+        reviewReady: false,
         placeClosure: null,
         site: null,
         seasonId: null,
@@ -137,6 +139,8 @@
             state.allSeasons = [];
             state.seasonVersion = null;
             state.calendarReady = false;
+            state.paidSites = [];
+            state.reviewReady = false;
             state.placeClosure = null;
         }
         window.clearTimeout(state.searchTimer);
@@ -244,6 +248,8 @@
         $('site').append(option);
         $('site').disabled = true;
         $('add-season').disabled = true;
+        state.paidSites = [];
+        renderReviewQueue();
         setEditorEnabled(false);
         setSiteSummary();
         renderSeasons();
@@ -266,7 +272,10 @@
             state.allSeasons = data.all_seasons || [];
             state.seasonVersion = data.season_version || null;
             state.calendarReady = Boolean(data.calendar_ready);
+            state.paidSites = data.paid_sites || [];
+            state.reviewReady = Boolean(data.review_queue_ready);
             state.placeClosure = data.place_closure || null;
+            renderReviewQueue();
             state.site = null;
             state.drafts = new Map();
             state.seasonId = null;
@@ -695,6 +704,135 @@
         }
         loadSelectedSite().then(() => status('Unsaved edits discarded; existing Site pricing reloaded.'));
     });
+    // One place-level paid Site queue, showing both published closure alarms
+    // and pricing/booking review reminders without creating false closures.
+    const reviewDialog = $('review-dialog');
+    const reviewForm = $('review-form');
+    let editingReviewSite = null;
+    const localToday = () => {
+        const today = new Date();
+        return today.getFullYear() + '-'
+            + String(today.getMonth() + 1).padStart(2, '0') + '-'
+            + String(today.getDate()).padStart(2, '0');
+    };
+    const textCell = (row, textValue) => {
+        const cell = document.createElement('td');
+        cell.textContent = String(textValue ?? '');
+        row.append(cell);
+        return cell;
+    };
+    const renderReviewQueue = () => {
+        const tbody = $('review-rows');
+        tbody.replaceChildren();
+        if (!state.place) {
+            const row = tbody.insertRow();
+            textCell(row, 'Choose a Place to see its paid Sites.').colSpan = 6;
+            $('review-count').textContent = 'Choose a Place to load paid Sites.';
+            return;
+        }
+        const today = localToday();
+        const mode = $('review-filter').value;
+        const show = (state.paidSites || []).filter(site => {
+            const next = site.next_check_on || '';
+            if (mode === 'due') return next !== '' && next <= today;
+            if (mode === 'upcoming') return next !== '' && next > today;
+            if (mode === 'unscheduled') return next === '';
+            return true;
+        });
+        $('review-count').textContent = show.length + ' of '
+            + (state.paidSites?.length || 0) + ' paid Sites shown';
+        $('review-footnote').textContent = state.reviewReady
+            ? 'A closure alarm is included when present. Scheduling a pricing review does not open or close a Site.'
+            : 'Review dates need the new database migration. Rates and season dates can still be inspected.';
+        if (!show.length) {
+            const row = tbody.insertRow();
+            textCell(row, 'No paid Sites match this filter.').colSpan = 6;
+            return;
+        }
+        for (const site of show) {
+            const row = tbody.insertRow();
+            textCell(row, site.label);
+            const seasons = (site.season_summary || []).filter(Boolean);
+            textCell(row, seasons.length ? seasons.join(' · ') : 'No operating season');
+            textCell(row, money(site.price_min)
+                + (Number(site.price_max) > Number(site.price_min)
+                    ? ' to ' + money(site.price_max) : ''));
+            const review = textCell(row, site.next_check_on || 'Not scheduled');
+            if (site.closure_review_on) review.title =
+                'Includes a verified closure alarm for ' + site.closure_review_on;
+            const release = String(site.release_on || '');
+            textCell(row, release ? release.replace(' ', ' at ').slice(0, 22) : 'Not published');
+            const actions = row.insertCell();
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'cpr-ghost';
+            button.textContent = 'Schedule';
+            button.disabled = !state.reviewReady;
+            button.addEventListener('click', () => openReviewDialog(site.id));
+            actions.append(button);
+            if (site.next_check_on && site.next_check_on <= today) row.classList.add('is-due');
+        }
+    };
+    $('review-filter').addEventListener('change', renderReviewQueue);
+    const openReviewDialog = id => {
+        if (!state.reviewReady || !state.place || state.saving) return;
+        if (changesForSave().length) {
+            status('Save or cancel your unsaved Site prices before scheduling a review.', true);
+            return;
+        }
+        editingReviewSite = state.paidSites.find(x => Number(x.id) === Number(id));
+        if (!editingReviewSite) return;
+        $('review-dialog-site').textContent = editingReviewSite.label;
+        $('review-on').value = editingReviewSite.review_on || '';
+        $('review-release').value = (editingReviewSite.release_on || '')
+            .replace(' ', 'T').slice(0, 16);
+        $('review-source').value = editingReviewSite.source_url || '';
+        $('review-checked').checked = false;
+        $('review-dialog-status').textContent = '';
+        reviewDialog.showModal();
+    };
+    $('review-cancel').addEventListener('click', () => reviewDialog.close());
+    reviewForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        if (!editingReviewSite || !state.place || state.saving) return;
+        const place = {...state.place};
+        const siteId = state.site?.id || 0;
+        $('review-save').disabled = true;
+        $('review-dialog-status').textContent = 'Saving review date...';
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST', credentials: 'same-origin', cache: 'no-store',
+                headers: {'Content-Type': 'application/json', Accept: 'application/json'},
+                body: JSON.stringify({
+                    action: 'save-review', csrf_token: $('csrf').value,
+                    place_id: place.id, site_id: editingReviewSite.id,
+                    review: {
+                        next_review_on: $('review-on').value,
+                        availability_release_on: $('review-release').value,
+                        source_url: $('review-source').value.trim(),
+                        checked_today: $('review-checked').checked,
+                    },
+                }),
+            });
+            const result = await response.json();
+            if (!response.ok || result.success !== true) {
+                throw new Error(result.message || 'Unable to save review.');
+            }
+            reviewDialog.close();
+            await loadPlace(place);
+            if (siteId && state.sites.some(x => Number(x.id) === Number(siteId))) {
+                $('site').value = String(siteId);
+                await loadSelectedSite();
+            }
+            status('Review reminder saved. The Site status and prices are unchanged.');
+        } catch (error) {
+            $('review-dialog-status').textContent =
+                'Not saved: ' + String(error.message || error);
+        } finally {
+            $('review-save').disabled = false;
+        }
+    });
+
     // One Place-wide holiday calendar; each Site's holiday amount remains
     // independent. This is the sole holiday date editing workflow.
     const holidayDialog = $('holiday-dialog');
