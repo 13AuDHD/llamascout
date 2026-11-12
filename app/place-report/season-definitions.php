@@ -184,10 +184,14 @@ function llama_seasons_validate_schedule(array $seasons): void
             continue;
         }
         $key = mb_strtolower($item['name'], 'UTF-8');
-        if (isset($names[$key])) {
-            throw new InvalidArgumentException('Duplicate active season name: ' . $item['name']);
+        if (isset($names[$key])
+            && llama_season_calendar_repeats($names[$key])
+            && llama_season_calendar_repeats($item)) {
+            throw new InvalidArgumentException(
+                'Duplicate annually recurring season name: ' . $item['name']
+            );
         }
-        $names[$key] = true;
+        $names[$key] = $item;
         $defaults += $item['is_default'];
         $active[] = $item;
     }
