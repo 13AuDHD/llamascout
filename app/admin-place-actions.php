@@ -89,29 +89,12 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
         }
 
         if ($action === 'save-season-bulk-sites') {
-            require_once __DIR__ . '/place-report/season-answers.php';
-
-            $seasonId = (int) ($_POST['season_id'] ?? 0);
-            $result = llama_season_bulk_site_statuses(
-                $db,
-                $placeId,
-                $seasonId,
-                $actorUserId,
-                $_POST['season_site_ids'] ?? null,
-                (string) ($_POST['season_bulk_status'] ?? ''),
-                $_POST['season_bulk_source_url'] ?? null
+            // Seasonal availability is exclusively controlled per Site in
+            // Campsite Pricing. Reject stale bulk forms rather than allowing
+            // the old workflow to overwrite the new editor.
+            throw new InvalidArgumentException(
+                'Site availability is now managed in Campsite Pricing.'
             );
-
-            header(
-                'Location: /place.php?id=' . $placeId
-                . '&saved=season-bulk-sites'
-                . '&changed=' . (int) $result['changed']
-                . '&season_view=' . $seasonId
-                . '#place-seasons',
-                true,
-                303
-            );
-            exit;
         }
 
         if ($action === 'save-season-answers') {
@@ -130,6 +113,19 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
             ];
             $modes = $_POST['season_modes'] ?? null;
             $values = $_POST['season_values'] ?? [];
+            if ($parts[0] === 'site' && (
+                isset($modes['site_reservation_method'])
+                || isset($_POST['season_site_status'])
+            )) {
+                throw new InvalidArgumentException(
+                    'Site availability and booking methods belong to Campsite Pricing.'
+                );
+            }
+            if ($parts[0] === 'place' && isset($modes['seasonal_booking_method'])) {
+                throw new InvalidArgumentException(
+                    'Default Site booking methods are now managed per Site in Campsite Pricing.'
+                );
+            }
             if (!is_array($modes) || !is_array($values)) {
                 throw new InvalidArgumentException('Seasonal answers were not submitted correctly.');
             }
