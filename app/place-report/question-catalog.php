@@ -87,6 +87,16 @@ function llama_report_question_applies_to_area_target(
         return false;
     }
 
+    // Area-wide questions apply only to mapped camping/parking Areas.
+    // Facility-specific questions stay limited to the verified facility kind.
+    if (array_key_exists('area_feature_types', $field)) {
+        return in_array(
+            (string) ($target['feature_type'] ?? ''),
+            (array) $field['area_feature_types'],
+            true
+        );
+    }
+
     if (!array_key_exists('facility_kinds', $field)) {
         return true;
     }
