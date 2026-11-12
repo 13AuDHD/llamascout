@@ -31,7 +31,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             throw new InvalidArgumentException('The pricing change is too large.');
         }
         $input = json_decode($raw, true, 32, JSON_THROW_ON_ERROR);
-        if (!is_array($input) || ($input['action'] ?? '') !== 'save') {
+        if (!is_array($input) || !in_array(
+            (string) ($input['action'] ?? ''), ['save', 'save-holidays'], true
+        )) {
             throw new InvalidArgumentException('Invalid pricing save request.');
         }
         if (!moderation_verify_csrf((string) ($input['csrf_token'] ?? ''))) {
@@ -39,14 +41,29 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             echo json_encode(['success' => false, 'message' => 'Your Admin session expired. Reload before saving.']);
             exit;
         }
-        $result = admin_cpr_save(
-            $db,
-            (int) ($input['place_id'] ?? 0),
-            (int) ($input['site_id'] ?? 0),
-            $actorId,
-            (string) ($input['version'] ?? ''),
-            (array) ($input['changes'] ?? [])
-        );
+        if ($input['action'] === 'save-holidays') {
+            if (!isset($input['holidays']) || !is_array($input['holidays'])
+                || !array_is_list($input['holidays'])) {
+                throw new InvalidArgumentException('Invalid holiday calendar.');
+            }
+            $result = admin_cpr_save_holidays(
+                $db,
+                (int) ($input['place_id'] ?? 0),
+                (int) ($input['site_id'] ?? 0),
+                $actorId,
+                (string) ($input['version'] ?? ''),
+                $input['holidays']
+            );
+        } else {
+            $result = admin_cpr_save(
+                $db,
+                (int) ($input['place_id'] ?? 0),
+                (int) ($input['site_id'] ?? 0),
+                $actorId,
+                (string) ($input['version'] ?? ''),
+                (array) ($input['changes'] ?? [])
+            );
+        }
         echo json_encode($result, JSON_THROW_ON_ERROR);
     } catch (Throwable $exception) {
         $status = $exception instanceof RuntimeException
@@ -328,6 +345,13 @@ require __DIR__ . '/_header.php';
                 </div>
             </section>
 
+            <div class="cpr-holiday-calendar-action">
+                <span>Holiday dates are shared by this Place; holiday rates are set per Site.</span>
+                <button type="button" id="cpr-manage-holidays" class="cpr-ghost" disabled>
+                    <?= llama_icon('calendar') ?> Manage holiday dates
+                </button>
+            </div>
+
             <div class="cpr-preview" aria-live="polite">
                 <?= llama_icon('eye') ?>
                 <div><strong>Public Pricing Preview</strong>
@@ -351,5 +375,24 @@ require __DIR__ . '/_header.php';
         </div>
     </footer>
 </div>
+<dialog class="cpr-holiday-dialog" id="cpr-holiday-dialog" aria-labelledby="cpr-holiday-title">
+    <div class="cpr-holiday-modal">
+        <header>
+            <h2 id="cpr-holiday-title">Place holiday calendar</h2>
+            <p>Define the dates that use each Site's holiday rate. This calendar is shared by the entire Place.</p>
+        </header>
+        <div id="cpr-holiday-rows" class="cpr-holiday-rows"></div>
+        <div class="cpr-holiday-actions">
+            <button type="button" class="cpr-ghost" id="cpr-holiday-add">
+                <?= llama_icon('plus') ?> Add holiday dates
+            </button>
+            <div>
+                <button type="button" class="cpr-ghost" id="cpr-holiday-cancel">Cancel</button>
+                <button type="button" class="cpr-save" id="cpr-holiday-save">Save holiday dates</button>
+            </div>
+        </div>
+        <p class="cpr-save-status" id="cpr-holiday-status" role="status"></p>
+    </div>
+</dialog>
 <script defer src="https://llamascout.com/js/admin/campsite-pricing.js?v=<?= (int) filemtime(dirname(__DIR__) . '/js/admin/campsite-pricing.js') ?>"></script>
 <?php require __DIR__ . '/_footer.php'; ?>
