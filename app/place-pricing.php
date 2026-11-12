@@ -419,13 +419,25 @@ function llama_pricing_public_night(array $doc, ?array $season, mixed $requested
     $date = date('Y-m-d');
     $doc['_base_only'] = (string) $requested === '0';
     $doc['_season_id'] = isset($season['id']) ? (int) $season['id'] : null;
-    if ($season !== null && (string) $requested === (string) $season['id']
-        && !empty($season['start_mmdd']) && !empty($season['end_mmdd'])) {
-        $period = ['start' => $season['start_mmdd'], 'end' => $season['end_mmdd'], 'recurring' => true];
-        if (!llama_pricing_in_period($period, $date)) {
-            $date = date('Y') . '-' . $period['start'];
-            if (str_ends_with($date, '-02-29') && !checkdate(2, 29, (int) date('Y'))) {
-                $date = date('Y') . '-03-01';
+    if ($season !== null && (string) $requested === (string) $season['id']) {
+        if ((int) ($season['is_recurring'] ?? 1) === 0
+            && !empty($season['starts_on']) && !empty($season['ends_on'])) {
+            // Explicitly preview the actual published operating year.
+            if ($date < $season['starts_on'] || $date > $season['ends_on']) {
+                $date = (string) $season['starts_on'];
+            }
+        } elseif (!empty($season['start_mmdd']) && !empty($season['end_mmdd'])) {
+            $period = [
+                'start' => $season['start_mmdd'],
+                'end' => $season['end_mmdd'],
+                'recurring' => true,
+            ];
+            if (!llama_pricing_in_period($period, $date)) {
+                $date = date('Y') . '-' . $period['start'];
+                if (str_ends_with($date, '-02-29')
+                    && !checkdate(2, 29, (int) date('Y'))) {
+                    $date = date('Y') . '-03-01';
+                }
             }
         }
     }
