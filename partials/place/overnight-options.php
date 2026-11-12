@@ -841,6 +841,6 @@ foreach ($stayReportFields as $fieldKey => $field) {
 ></script>
 
 <script
-    src="/js/place-campsite-detail-media.js"
+    src="/js/place-campsite-detail-media.js?v=<?= (int) filemtime(dirname(__DIR__, 2) . '/js/place-campsite-detail-media.js') ?>"
     defer
 ></script>
