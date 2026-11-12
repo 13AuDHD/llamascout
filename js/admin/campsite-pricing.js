@@ -13,7 +13,9 @@
         site: null,
         seasonId: null,
         drafts: new Map(),
+        baselines: new Map(),
         sitePayload: null,
+        saving: false,
         searchTimer: null,
         searchRequest: 0,
         placeRequest: 0,
@@ -153,18 +155,61 @@
             : (site?.hookups ? titleCase(site.hookups) : '—');
         $('rates-title').textContent = 'Rates for ' + (site?.label || 'selected Site');
     };
+    const normalizedAmount = value => value == null || value === ''
+        ? '' : Number(value).toFixed(2);
+    const changesForSave = () => {
+        const changes = [];
+        for (const [id, draft] of state.drafts) {
+            const before = state.baselines.get(id);
+            if (!before || !/^\d+$/.test(String(id))) continue;
+            const change = {season_id: Number(id)};
+            if (['weekday', 'weekend', 'holiday'].some(
+                key => normalizedAmount(draft[key]) !== normalizedAmount(before[key])
+            )) {
+                change.rates = {
+                    weekday: draft.weekday,
+                    weekend: draft.weekend,
+                    holiday: draft.holiday,
+                };
+            }
+            if (draft.availability !== before.availability
+                && draft.availability !== '') {
+                change.availability = draft.availability;
+            }
+            if (Object.keys(change).length > 1) changes.push(change);
+        }
+        return changes;
+    };
+    const syncSaveButton = () => {
+        $('save').disabled = state.saving || !state.sitePayload?.version
+            || Boolean(state.sitePayload.rate_conflict)
+            || changesForSave().length === 0;
+    };
     const setEditorEnabled = enabled => {
-        $('status-field').disabled = !enabled;
-        ['start','end'].forEach(id => { $(id).disabled = !enabled; });
-        root.querySelectorAll('[data-cpr-rate]').forEach(input => { input.disabled = !enabled; });
-        $('copy-season').disabled = !enabled || state.seasons.length < 2;
-        // The first pass has no approved per-Site write adapter.
-        $('save').disabled = true;
+        $('status-field').disabled = !enabled || state.saving;
+        ['start','end'].forEach(id => {
+            $(id).disabled = !enabled;
+            $(id).readOnly = true;
+            $(id).title = 'Season dates are shared by the Place. Use Manage Place seasons to change dates.';
+        });
+        root.querySelectorAll('[data-cpr-rate]').forEach(input => {
+            const supported = ['weekday', 'weekend', 'holiday'].includes(input.dataset.cprRate);
+            input.disabled = !enabled || !supported || state.saving;
+            if (!supported) input.title = 'Surcharge pricing will be connected in a later step.';
+        });
+        root.querySelectorAll('[data-capacity], [data-layout], [data-utility]')
+            .forEach(button => {
+                button.disabled = true;
+                button.title = 'Site facts are read from the existing Site record.';
+            });
+        $('copy-season').disabled = !enabled || state.saving || state.seasons.length < 2;
+        syncSaveButton();
     };
     const resetSiteSelection = () => {
         state.site = null;
         state.sitePayload = null;
         state.drafts = new Map();
+        state.baselines = new Map();
         state.seasonId = null;
         $('site').replaceChildren();
         const option = document.createElement('option');
@@ -228,13 +273,14 @@
         }
     };
 
-    $('site').addEventListener('change', async event => {
+    const loadSelectedSite = async () => {
         const id = Number(event.target.value);
         ++state.siteRequest;
         if (!id || !state.place) {
             state.site = null;
             state.sitePayload = null;
             state.drafts = new Map();
+            state.baselines = new Map();
             state.seasonId = null;
             setSiteSummary();
             renderEditor();
@@ -250,11 +296,12 @@
             if (request !== state.siteRequest) return;
             state.sitePayload = data;
             state.drafts = new Map();
+            state.baselines = new Map();
             for (const season of state.seasons) {
                 const seasonOverride = (data.rate?.seasons || []).find(
                     value => Number(value.season_id) === Number(season.id)
                 );
-                state.drafts.set(String(season.id), {
+                const values = {
                     weekday: seasonOverride?.price ?? data.rate?.weekday ?? '',
                     weekend: seasonOverride?.weekend_price ?? data.rate?.weekend ?? '',
                     holiday: seasonOverride?.holiday_price ?? data.rate?.holiday ?? '',
@@ -264,7 +311,9 @@
                     start: season.start,
                     end: season.end,
                     changed: false,
-                });
+                };
+                state.drafts.set(String(season.id), values);
+                state.baselines.set(String(season.id), {...values});
             }
             state.seasonId = state.seasons[0]?.id ?? null;
             updateSegments('[data-capacity]', state.site?.type === 'group_site' ? 'group' : '');
@@ -273,9 +322,12 @@
                 : (state.site?.hookups?.includes('electric') ? 'electric' : ''));
             renderSeasons();
             renderEditor();
-            status(data.rate
-                ? 'Existing pricing loaded. Edits below are preview-only in this first pass.'
-                : 'No matching published rate found. You can preview proposed prices without changing production data.');
+            status(data.rate_conflict
+                ? 'Conflicting pricing rows require review before saving. No changes have been made.'
+                : (data.rate
+                    ? 'Existing pricing loaded. Weekday, weekend, holiday and seasonal availability can be saved.'
+                    : 'No existing matching rate. New Site-specific seasonal prices can be saved.'),
+                Boolean(data.rate_conflict));
             const url = new URL(window.location.href);
             url.searchParams.set('site_id', id);
             window.history.replaceState(null, '', url);
@@ -284,11 +336,13 @@
                 state.sitePayload = null;
                 state.seasonId = null;
                 state.drafts = new Map();
+                state.baselines = new Map();
                 renderEditor();
                 status(error.message, true);
             }
         }
-    });
+    };
+    $('site').addEventListener('change', loadSelectedSite);
 
     const makeSeasonChoice = season => {
         const button = document.createElement('button');
@@ -374,7 +428,8 @@
             draft[key] = event.target.value;
             draft.changed = true;
             renderPreview();
-            status('Preview changed; these values have not been saved.');
+            status('Unsaved pricing changes.');
+            syncSaveButton();
         });
         input.addEventListener('blur', event => {
             if (event.target.value !== '') {
@@ -383,6 +438,7 @@
                 if (draft) draft[event.target.dataset.cprRate] = event.target.value;
             }
             renderPreview();
+            syncSaveButton();
         });
     });
     root.querySelectorAll('[data-availability]').forEach(button => {
@@ -393,46 +449,16 @@
             draft.changed = true;
             updateSegments('[data-availability]', draft.availability);
             renderPreview();
-            status('Preview changed; availability has not been saved.');
+            status('Unsaved seasonal availability changes.');
+            syncSaveButton();
         });
     });
-    for (const [selector, attr] of [
-        ['[data-capacity]', 'capacity'],
-        ['[data-layout]', 'layout'],
-        ['[data-utility]', 'utility'],
-    ]) {
-        root.querySelectorAll(selector).forEach(button => {
-            button.addEventListener('click', () => {
-                if (!state.site) return;
-                updateSegments(selector, button.dataset[attr]);
-                status('Rate type selection changed in preview only.');
-            });
-        });
-    }
-    for (const [id, key] of [['start','start'],['end','end']]) {
-        $(id).addEventListener('change', event => {
-            const draft = selected();
-            if (!draft) return;
-            draft[key] = event.target.value;
-            draft.changed = true;
-            renderSeasons();
-            status('Season date preview changed. Place season definitions are unchanged.');
-        });
-    }
+    // The Site fact pills reflect existing records and do not write pricing
+    // selectors in this pass. Place-wide season dates stay in Place Admin.
     $('add-season').addEventListener('click', () => {
         if (!state.place) return;
-        const name = window.prompt('Name the preview season (not yet saved to the Place)', 'New Season');
-        if (!name?.trim()) return;
-        const id = 'draft-' + Date.now();
-        state.seasons.push({id, name: name.trim().slice(0,80), start: '', end: '', draft: true});
-        if (state.site) state.drafts.set(String(id), {
-            weekday: '', weekend: '', holiday: '', vehicle: '', group: '', availability: '',
-            start: '', end: '', changed: true,
-        });
-        state.seasonId = id;
-        renderSeasons();
-        renderEditor();
-        status('Season created for preview only. Production Place seasons have not changed.');
+        window.location.href = '/place.php?id='
+            + encodeURIComponent(state.place.id) + '&season_edit=0#place-seasons';
     });
     $('copy-season').addEventListener('click', () => {
         const draft = selected();
@@ -451,7 +477,8 @@
         state.seasonId = chosen.id;
         renderSeasons();
         renderEditor();
-        status('Copied rates for preview only; not saved to the database.');
+        status('Copied rates are ready to save to the selected Site.');
+        syncSaveButton();
     });
     $('cancel').addEventListener('click', () => {
         if (!state.site || !state.place) {
@@ -461,13 +488,60 @@
             status('No pending changes.');
             return;
         }
-        // Cancel removes unsaved seasons as well as unsaved rate changes.
-        state.seasons = state.seasons.filter(season => !season.draft);
-        $('site').dispatchEvent(new Event('change'));
+        loadSelectedSite().then(() => status('Unsaved edits discarded; existing Site pricing reloaded.'));
     });
-    $('save').addEventListener('click', () => status(
-        'Saving is not connected yet. This first pass never changes live pricing.', true
-    ));
+    $('save').addEventListener('click', async () => {
+        const changes = changesForSave();
+        if (!state.place || !state.site || !state.sitePayload?.version
+            || !changes.length || state.saving) return;
+        for (const change of changes) {
+            if (!change.rates) continue;
+            for (const [key, value] of Object.entries(change.rates)) {
+                if (value === '') continue;
+                if (!Number.isFinite(Number(value)) || Number(value) < 0
+                    || Number(value) > 999999.99) {
+                    status('Enter a valid ' + key + ' rate between $0 and $999,999.99.', true);
+                    return;
+                }
+            }
+        }
+        state.saving = true;
+        syncSaveButton();
+        setEditorEnabled(Boolean(selected()));
+        status('Saving ' + changes.length + ' season' +
+            (changes.length === 1 ? '' : 's') + ' for ' + state.site.label + '...');
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                credentials: 'same-origin',
+                cache: 'no-store',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    action: 'save',
+                    csrf_token: $('csrf').value,
+                    place_id: state.place.id,
+                    site_id: state.site.id,
+                    version: state.sitePayload.version,
+                    changes,
+                })
+            });
+            const data = await response.json();
+            if (!response.ok || data.success !== true) {
+                throw new Error(data.message || 'Pricing save was not confirmed.');
+            }
+            await loadSelectedSite();
+            status('Saved ' + Number(data.seasons_saved || 0) +
+                ' season(s) for ' + state.site.label + '.');
+        } catch (error) {
+            status('Not saved: ' + String(error.message || 'Unknown error.'), true);
+        } finally {
+            state.saving = false;
+            setEditorEnabled(Boolean(selected()));
+        }
+    });
     root.querySelectorAll('[data-cpr-view]').forEach(button => {
         button.addEventListener('click', () => {
             if (button.dataset.cprView === 'pricing') return;
