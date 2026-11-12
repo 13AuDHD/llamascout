@@ -341,5 +341,5 @@ require __DIR__ . '/_header.php';
         </div>
     </footer>
 </div>
-<script defer src="https://llamascout.com/js/admin/campsite-pricing.js?v=1"></script>
+<script defer src="https://llamascout.com/js/admin/campsite-pricing.js?v=<?= (int) filemtime(dirname(__DIR__) . '/js/admin/campsite-pricing.js') ?>"></script>
 <?php require __DIR__ . '/_footer.php'; ?>
