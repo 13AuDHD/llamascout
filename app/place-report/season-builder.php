@@ -64,7 +64,11 @@ function llama_season_builder_questions(string $scope): array
     // belong exclusively to Admin > Campsite Pricing. Place-wide closure
     // remains editable through its Place-season questions.
     foreach ($groups as $name => $fields) {
-        unset($fields['site_reservation_method'], $fields['seasonal_booking_method']);
+        unset(
+            $fields['site_reservation_method'],
+            $fields['seasonal_booking_method'],
+            $fields['seasonal_sites_closed']
+        );
         if ($fields) {
             $groups[$name] = $fields;
         } else {
