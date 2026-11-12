@@ -50,6 +50,14 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
     }
 
     try {
+        // The Place/Scout Report endpoint must never become a second price
+        // writer through a stale form or direct POST from an old browser tab.
+        if (array_key_exists('place_rate_cards_json', $_POST)
+            || array_key_exists('season_rate_version', $_POST)) {
+            throw new InvalidArgumentException(
+                'Campsite rates can only be saved in Admin > Campsite Pricing.'
+            );
+        }
         if ($action === 'save-season-prices') {
             // The old rate-card editor has been retired. A stale browser
             // tab must not be allowed to overwrite current Campsite Pricing.
