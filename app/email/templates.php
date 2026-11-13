@@ -937,7 +937,10 @@ function llama_email_send_template_result(
         $recipient,
         $subject,
         $rendered['text'],
-        $rendered['html']
+        $rendered['html'],
+        str_starts_with($templateKey, 'support_')
+            ? 'support'
+            : 'default'
     );
 
     $logRecorded = true;
