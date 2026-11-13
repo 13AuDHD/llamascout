@@ -75,8 +75,12 @@ if ($posted) {
         // Published photo IDs may be reordered by a contributor, but
         // the public gallery changes only after an Admin approves the update.
         $publishedOrderJson = trim((string) ($_POST['resource_published_photo_order'] ?? ''));
-        $publishedOrder = $publishedOrderJson === ''
-            ? [] : json_decode($publishedOrderJson, true, 512, JSON_THROW_ON_ERROR);
+        try {
+            $publishedOrder = $publishedOrderJson === ''
+                ? [] : json_decode($publishedOrderJson, true, 512, JSON_THROW_ON_ERROR);
+        } catch (JsonException) {
+            throw new InvalidArgumentException('Invalid published Resource photo order. Reload and try again.');
+        }
         if (!is_array($publishedOrder) || !array_is_list($publishedOrder)
             || count($publishedOrder) > llama_location_gallery_photo_limit('resource')) {
             throw new InvalidArgumentException('Invalid published Resource photo order.');
