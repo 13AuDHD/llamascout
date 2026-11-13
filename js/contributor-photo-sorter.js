@@ -51,7 +51,7 @@
             root.dataset.photoContext || ''
         ).trim();
 
-        if (context !== 'add-place') {
+        if (!['add-place', 'add-resource', 'update-resource'].includes(context)) {
             return;
         }
 
@@ -66,11 +66,11 @@
         );
 
         const photosField = form.querySelector(
-            'input[name="photos_json"]'
+            'input[name="' + (root.dataset.photoField || 'photos_json') + '"]'
         );
 
         const tokenField = form.querySelector(
-            'input[name="photo_stage_token"]'
+            'input[name="' + (root.dataset.photoTokenField || 'photo_stage_token') + '"]'
         );
 
         if (
@@ -108,8 +108,8 @@
             'contributor-photo-sort-help';
 
         help.textContent = isRevision
-            ? 'Drag newly added photos to set their order. Photos already attached stay ahead of newly added photos unless you remove them.'
-            : 'Drag photos to set the published gallery order. Photo #1 becomes the featured image.';
+            ? 'Drag newly added photos to set their order. Photos already attached stay ahead unless removed.'
+            : 'Drag photos by the handle to set their order. Photo #1 becomes the Hero image when published.';
 
         const status =
             document.createElement('p');
