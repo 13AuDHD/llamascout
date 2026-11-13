@@ -102,7 +102,7 @@ $back = $revision
         ? '/resource.php?slug=' . rawurlencode((string) $contributionResource['slug'])
         : '/add-place.php?mode=resource' . ($contributionReturnDraft > 0 ? '&draft=' . $contributionReturnDraft : ''));
 $pageTitle = $revision ? 'Revise Resource Submission' : ($isUpdate ? 'Update Resource' : 'Add a Resource');
-$pageStyles = ['site/pages/add-place.css', 'site/features/place-report-form.css', 'site/features/resource-form.css'];
+$pageStyles = ['site/pages/add-place.css', 'site/features/place-report-form.css', 'site/features/resource-form.css', 'photo-uploader.css'];
 $e = static fn (mixed $value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 require __DIR__ . '/partials/header.php';
 ?>
