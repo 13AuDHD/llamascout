@@ -89,4 +89,7 @@ $resourceEditorUrl = $resourceStaffFields
         </div>
     </details>
 </div>
+<?php if (!$resourceStaffFields): ?>
+<script defer src="https://llamascout.com/js/photo-gallery-editor.js?v=<?= (int) filemtime(dirname(__DIR__, 2) . '/js/photo-gallery-editor.js') ?>"></script>
+<?php endif; ?>
 <script defer src="https://llamascout.com/js/admin/resources.js?v=<?= (int) filemtime(dirname(__DIR__, 2) . '/js/admin/resources.js') ?>"></script>
