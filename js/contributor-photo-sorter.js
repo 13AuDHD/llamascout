@@ -91,7 +91,8 @@
             );
 
         const isRevision =
-            existingPhotos.length > 0;
+            existingPhotos.length > 0
+            || Number(root.dataset.photoExistingCount || 0) > 0;
 
         loadStyles();
 
