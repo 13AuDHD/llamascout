@@ -51,6 +51,7 @@ $photoContext = !empty($contributionResourceId) ? 'update-resource' : 'add-resou
                    value="<?= $e((string) ($_POST['resource_photos_json'] ?? '[]')) ?>">
             <div data-photo-uploader
                  data-photo-context="<?= $e($photoContext) ?>"
+                 data-photo-existing-count="<?= (int) ($publicPhotoCount + count($pendingPhotos)) ?>"
                  data-photo-max="<?= (int) $photoSpace ?>"
                  data-photo-token-field="resource_photo_stage_token"
                  data-photo-field="resource_photos_json"
