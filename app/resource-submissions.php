@@ -103,7 +103,8 @@ function llama_resource_submit(
     int $revisionId = 0,
     string $photoStageToken = '',
     array $submittedPhotos = [],
-    array $removedPhotoPaths = []
+    array $removedPhotoPaths = [],
+    array $publishedPhotoOrder = []
 ): void
 {
     if ($userId < 1 || !llama_resource_submissions_ready($db)) {
@@ -192,6 +193,35 @@ function llama_resource_submit(
             );
         }
 
+        // Validate a proposed reorder against the actual approved Resource
+        // photos. The proposal is saved with the submission, never applied
+        // here; moderation owns all changes to the public gallery.
+        if ($publishedPhotoOrder !== []) {
+            if ($resourceId < 1 || count($publishedPhotoOrder) > llama_location_gallery_photo_limit('resource')) {
+                throw new InvalidArgumentException('Published photo order is invalid for this Resource.');
+            }
+            foreach ($publishedPhotoOrder as $photoId) {
+                if (!is_int($photoId) || $photoId < 1) {
+                    throw new InvalidArgumentException('Invalid Resource photo ID in proposed order.');
+                }
+            }
+            $approvedIds = array_map(
+                static fn (array $photo): int => (int) $photo['id'],
+                llama_resource_images($db, $resourceId)
+            );
+            $submittedIds = $publishedPhotoOrder;
+            $approvedSorted = $approvedIds;
+            sort($approvedSorted);
+            sort($submittedIds);
+            if ($approvedSorted !== $submittedIds) {
+                throw new InvalidArgumentException(
+                    'The published Resource photos changed. Reload and review their order.'
+                );
+            }
+            if ($publishedPhotoOrder !== $approvedIds) {
+                $data['_published_photo_order'] = $publishedPhotoOrder;
+            }
+        }
         $data['_photos'] = $keptPhotos;
         $payload = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
         if (strlen($payload) > 32000) {
