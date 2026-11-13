@@ -183,3 +183,90 @@
     height: 1em;
     vertical-align: middle;
 }
+
+/* Resource photos reuse the shared uploader and Place photo sorter.
+   Never stretch a single uploaded image to fill the entire form. */
+.contribution-resource-photos .llama-photo-grid,
+.contribution-resource-photos .admin-resource-gallery,
+.contribution-resource-photos .add-place-existing-photo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 144px), 144px));
+    align-items: start;
+    justify-content: start;
+    gap: 12px;
+}
+
+.contribution-resource-photos .llama-photo-card,
+.contribution-resource-photos .admin-resource-gallery .admin-attached-photo,
+.contribution-resource-photos .add-place-existing-photo {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    border-inline-start: 4px solid var(--resource-accent, #8650b6);
+}
+
+.contribution-resource-photos .llama-photo-image,
+.contribution-resource-photos .admin-resource-gallery .admin-attached-photo-preview,
+.contribution-resource-photos .add-place-existing-photo img {
+    aspect-ratio: 1 / 1;
+}
+
+.contribution-resource-photos .llama-photo-image img,
+.contribution-resource-photos .admin-resource-gallery .admin-attached-photo-preview img,
+.contribution-resource-photos .add-place-existing-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.contribution-resource-photos .llama-photo-card .contributor-photo-sort-handle {
+    top: 7px;
+    right: 7px;
+    bottom: auto;
+    width: 37px;
+    height: 37px;
+    border-radius: 9px;
+}
+
+.contribution-resource-photos .llama-photo-card .llama-photo-remove {
+    top: auto;
+    right: 7px;
+    bottom: 7px;
+    width: 32px;
+    height: 32px;
+}
+
+.contribution-resource-photos .llama-photo-card.is-contributor-featured {
+    border-inline-start-color: var(--resource-accent, #8650b6);
+}
+
+.contribution-resource-photos .llama-photo-card .contributor-photo-featured {
+    background: #45245c;
+    border-color: var(--resource-accent, #8650b6);
+    color: #fff;
+}
+
+.contribution-resource-photos .llama-photo-caption {
+    padding: 8px;
+}
+.contribution-resource-photos .llama-photo-caption label {
+    font-size: .72rem;
+}
+.contribution-resource-photos .llama-photo-caption input {
+    padding: 7px;
+    font-size: .78rem;
+}
+
+/* The picker itself stays compact, with the shared 28px icon.
+   The image placeholder is never a full-width responsive SVG. */
+.contribution-resource-photos .llama-photo-drop {
+    min-height: 112px;
+    padding: 14px;
+}
+.contribution-resource-photos .llama-photo-drop-icon,
+.contribution-resource-photos .llama-photo-drop-icon svg {
+    width: 28px;
+    height: 28px;
+    max-width: 28px;
+    max-height: 28px;
+}
