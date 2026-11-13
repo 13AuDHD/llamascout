@@ -229,8 +229,10 @@
     }
 
     for (const form of document.querySelectorAll('[data-resource-editor]')) {
-        setupServices(form.querySelector('[data-resource-services]'));
+        // Saved photos must render even if another Resource form control
+        // later fails to initialize.
         setupPhotoGallery(form);
+        setupServices(form.querySelector('[data-resource-services]'));
 
         const mode = form.querySelector('[data-resource-hours-mode]');
         const panels = form.querySelectorAll('[data-resource-hours-panel]');
