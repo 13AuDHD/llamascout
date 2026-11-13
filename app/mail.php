@@ -103,7 +103,8 @@ function send_llama_mail(
     string $to,
     string $subject,
     string $message,
-    ?string $html = null
+    ?string $html = null,
+    string $sender = 'default'
 ): bool {
     $config = llama_mail_config();
 
@@ -124,11 +125,41 @@ function send_llama_mail(
 
         $mail->SMTPAuth = true;
 
-        $mail->Username =
-            (string) $config['username'];
+        /*
+         * Automated messages use the default sender (normally no-reply).
+         * Support templates can use their own mailbox credentials so
+         * replies reach support instead of the no-reply discard filter.
+         *
+         * Optional support_* keys live in /private/mail.php, never GitHub.
+         * Until both support credentials are configured, preserve the
+         * existing default transport rather than attempting partial auth.
+         */
+        $useSupportSender =
+            $sender === 'support'
+            && !empty($config['support_username'])
+            && !empty($config['support_password']);
 
-        $mail->Password =
-            (string) $config['password'];
+        $fromEmail = (string) $config['from_email'];
+        $fromName = (string) $config['from_name'];
+
+        if ($useSupportSender) {
+            $fromEmail = (string) (
+                $config['support_email']
+                ?? 'support@llamascout.com'
+            );
+            $fromName = (string) (
+                $config['support_from_name']
+                ?? 'Llama Scout Support'
+            );
+        }
+
+        $mail->Username = $useSupportSender
+            ? (string) $config['support_username']
+            : (string) $config['username'];
+
+        $mail->Password = $useSupportSender
+            ? (string) $config['support_password']
+            : (string) $config['password'];
 
         $mail->SMTPSecure =
             PHPMailer::ENCRYPTION_STARTTLS;
@@ -136,15 +167,11 @@ function send_llama_mail(
         $mail->CharSet = 'UTF-8';
         $mail->Encoding = 'base64';
 
-        $mail->setFrom(
-            (string) $config['from_email'],
-            (string) $config['from_name']
-        );
+        $mail->setFrom($fromEmail, $fromName);
 
-        $mail->addReplyTo(
-            (string) $config['from_email'],
-            (string) $config['from_name']
-        );
+        if ($useSupportSender) {
+            $mail->addReplyTo($fromEmail, $fromName);
+        }
 
         $mail->addAddress($to);
 
