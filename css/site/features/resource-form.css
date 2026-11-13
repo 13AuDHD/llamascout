@@ -270,3 +270,22 @@
     max-width: 28px;
     max-height: 28px;
 }
+
+/* Published Resource photos shown during a member update are read-only
+   evidence, except for a proposed reorder that goes through moderation. */
+.contribution-resource-photos .resource-existing-gallery
+    :is(.admin-attached-photo-remove, .admin-attached-photo-caption) {
+    display: none;
+}
+.contribution-resource-photos .resource-existing-gallery .admin-attached-photo-preview {
+    aspect-ratio: 1 / 1;
+}
+.contribution-resource-photos .resource-published-photos > p {
+    margin: 7px 0 12px;
+    color: var(--text-muted);
+    font-size: .8rem;
+    line-height: 1.55;
+}
+.contribution-resource-photos .resource-existing-gallery .admin-attached-photo {
+    padding: 6px;
+}
