@@ -46,7 +46,9 @@ if (!llama_photo_verify_csrf($csrf)) {
 }
 
 try {
-    if ($context !== 'add-place') {
+    // Reuse the same validated staged-photo manifest ordering used by
+    // Places. Resource uploads have their own existing stage contexts.
+    if (!in_array($context, ['add-place', 'add-resource', 'update-resource'], true)) {
         throw new InvalidArgumentException(
             'Photo ordering is not available for this uploader.'
         );
