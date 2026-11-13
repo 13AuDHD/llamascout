@@ -72,6 +72,16 @@ if ($posted) {
             (array) ($contributionResourceInput ?? []),
             llama_resource_submission_input($_POST)
         );
+        // Published photo IDs may be reordered by a contributor, but
+        // the public gallery changes only after an Admin approves the update.
+        $publishedOrderJson = trim((string) ($_POST['resource_published_photo_order'] ?? ''));
+        $publishedOrder = $publishedOrderJson === ''
+            ? [] : json_decode($publishedOrderJson, true, 512, JSON_THROW_ON_ERROR);
+        if (!is_array($publishedOrder) || !array_is_list($publishedOrder)
+            || count($publishedOrder) > llama_location_gallery_photo_limit('resource')) {
+            throw new InvalidArgumentException('Invalid published Resource photo order.');
+        }
+        $contributionResourceInput['_published_photo_order'] = $publishedOrder;
         llama_resource_submit(
             $db,
             $userId,
@@ -83,7 +93,8 @@ if ($posted) {
             llama_photo_decode_form_photos($_POST['resource_photos_json'] ?? '[]'),
             is_array($_POST['resource_remove_photos'] ?? null)
                 ? $_POST['resource_remove_photos']
-                : []
+                : [],
+            $publishedOrder
         );
         $kind = $revision ? 'resource-resubmitted' : ($isUpdate ? 'resource-update' : 'resource');
         header('Location: https://account.llamascout.com/contributions.php?submitted=' . $kind, true, 303);
