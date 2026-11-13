@@ -369,6 +369,22 @@ function llama_resource_review(
                 $author = $db->prepare('UPDATE resources SET created_by = ? WHERE id = ?');
                 $author->execute([(int) $submission['submitted_by'], $resourceId]);
             }
+            // Reordering already-published Resource images requires an
+            // approved contribution. The existing gallery validator checks
+            // that the proposal contains every current image exactly once.
+            $proposedOrder = $reviewData['_published_photo_order'] ?? [];
+            if ($proposedOrder !== []) {
+                if ($targetId < 1 || !is_array($proposedOrder)
+                    || !array_is_list($proposedOrder)) {
+                    throw new InvalidArgumentException('Invalid published Resource photo order in submission.');
+                }
+                foreach ($proposedOrder as $photoId) {
+                    if (!is_int($photoId) || $photoId < 1) {
+                        throw new InvalidArgumentException('Invalid Resource photo ID.');
+                    }
+                }
+                llama_resource_images_reorder($db, $resourceId, $proposedOrder);
+            }
             $selectedPhotos = llama_resource_review_selected_photos(
                 $allSubmittedPhotos,
                 $excludedPhotos
