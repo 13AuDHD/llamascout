@@ -40,7 +40,25 @@ $resourcePhotoRemaining = max(0, $resourcePhotoLimit - count($resourceSavedPhoto
         ?></script>
         <input type="hidden" name="resource_gallery_json" value="">
         <div class="add-place-existing-photo-grid admin-resource-gallery"
-             data-resource-photo-gallery data-resource-gallery-id="<?= (int) $resourcePhotoTargetId ?>"></div>
+             data-resource-photo-gallery data-resource-gallery-id="<?= (int) $resourcePhotoTargetId ?>">
+            <?php // Server-render existing previews. JavaScript enhances these with
+                  // caption, remove, drag sorting and the same Hero state. ?>
+            <?php foreach ($resourceSavedPhotos as $position => $photo): ?>
+                <article class="add-place-existing-photo admin-attached-photo"
+                         data-admin-photo-id="<?= (int) $photo['id'] ?>">
+                    <div class="admin-attached-photo-preview">
+                        <img src="<?= $e(llama_photo_public_url((string) $photo['src'])) ?>"
+                             alt="<?= $e((string) ($photo['alt_text'] ?? 'Resource photo')) ?>"
+                             loading="lazy" draggable="false">
+                        <?php if ($position === 0): ?>
+                            <span class="admin-attached-photo-hero">Hero</span>
+                        <?php endif; ?>
+                        <button type="button" class="admin-attached-photo-handle"
+                                aria-label="Drag photo to reorder">⠿</button>
+                    </div>
+                </article>
+            <?php endforeach; ?>
+        </div>
         <?php if ($resourcePhotoRemaining > 0): ?>
         <input type="hidden" name="resource_photo_stage_token"
                value="<?= $e($_POST['resource_photo_stage_token'] ?? '') ?>">
