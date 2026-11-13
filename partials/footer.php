@@ -202,8 +202,10 @@ $footerUser = current_user();
 <script src="<?= htmlspecialchars($footerSiteBase . '/js/privacy.js', ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($footerSiteBase . '/js/accessibility.js', ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($footerSiteBase . '/js/mobile-menu.js', ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($footerSiteBase . '/js/photo-uploader.js', ENT_QUOTES, 'UTF-8') ?>"></script>
-<script src="<?= htmlspecialchars($footerSiteBase . '/js/contributor-photo-sorter.js', ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($footerSiteBase . '/js/photo-uploader.js?v='
+    . (int) filemtime(dirname(__DIR__) . '/js/photo-uploader.js'), ENT_QUOTES, 'UTF-8') ?>"></script>
+<script src="<?= htmlspecialchars($footerSiteBase . '/js/contributor-photo-sorter.js?v='
+    . (int) filemtime(dirname(__DIR__) . '/js/contributor-photo-sorter.js'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($footerSiteBase . '/js/persistent-photo-manager.js', ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($footerSiteBase . '/js/place-report-presentation.js', ENT_QUOTES, 'UTF-8') ?>"></script>
 <script src="<?= htmlspecialchars($footerSiteBase . '/js/map-closure-marker.js', ENT_QUOTES, 'UTF-8') ?>"></script>
