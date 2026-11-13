@@ -560,6 +560,50 @@ $e =
         }
         ?>
 
+        <?php
+        // Resource reorder requests use existing published image IDs.
+        // Preview the order submitted for moderation; do not alter the
+        // public gallery until the submission is explicitly approved.
+        $proposedPhotoIds = $resourceSubmission
+            && is_array($form['_published_photo_order'] ?? null)
+            ? array_values(array_map('intval', (array) $form['_published_photo_order']))
+            : [];
+        $proposedPublishedPhotos = [];
+        if ($proposedPhotoIds && (int) ($resourceSubmission['target_resource_id'] ?? 0) > 0) {
+            $publishedById = array_column(
+                llama_resource_images($db, (int) $resourceSubmission['target_resource_id']),
+                null,
+                'id'
+            );
+            foreach ($proposedPhotoIds as $imageId) {
+                if (isset($publishedById[$imageId])) {
+                    $proposedPublishedPhotos[] = $publishedById[$imageId];
+                }
+            }
+        }
+        ?>
+        <?php if ($resourceSubmission && $proposedPublishedPhotos): ?>
+            <section class="contribution-section">
+                <h3>Proposed published-photo order</h3>
+                <p>Approving this submission will change the published Resource
+                   gallery to this order. The first photo becomes Hero.</p>
+                <div class="add-place-existing-photo-grid admin-photo-gallery">
+                    <?php foreach ($proposedPublishedPhotos as $position => $photo): ?>
+                        <article class="add-place-existing-photo admin-attached-photo">
+                            <div class="admin-attached-photo-preview">
+                                <img src="<?= $e(llama_photo_public_url((string) $photo['src'])) ?>"
+                                     alt="<?= $e((string) ($photo['alt_text'] ?? 'Resource photo')) ?>"
+                                     loading="lazy">
+                                <?php if ($position === 0): ?>
+                                    <span class="admin-attached-photo-hero">Hero</span>
+                                <?php endif; ?>
+                            </div>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
+            </section>
+        <?php endif; ?>
+
         <?php if ($resourceSubmission && $resourceReviewPhotos): ?>
             <section class="contribution-section">
                 <h3>Submitted Resource photos (<?= count($resourceReviewPhotos) ?>)</h3>
