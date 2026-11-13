@@ -185,7 +185,11 @@
     function setupPhotoGallery(form) {
         const grid = form.querySelector('[data-resource-photo-gallery]');
         const catalog = form.querySelector('[data-resource-photo-catalog]');
-        const output = form.querySelector('[name="resource_gallery_json"]');
+        const proposal = grid?.hasAttribute('data-resource-gallery-proposal') || false;
+        const output = form.querySelector(
+            proposal ? '[name="resource_published_photo_order"]'
+                : '[name="resource_gallery_json"]'
+        );
         if (!grid || !catalog || !output || !window.LlamaPhotoGallery) return;
         let photos;
         try {
@@ -198,14 +202,17 @@
         if (!Number.isInteger(resourceId) || resourceId < 1) return;
         const owner = 'resource:resource:' + resourceId;
         const gallery = window.LlamaPhotoGallery.mount(grid, {
-            removeName: 'resource_remove_photo_ids[]',
+            removeName: proposal ? 'resource_preview_only_remove[]'
+                : 'resource_remove_photo_ids[]',
             onChange: () => sync(),
         });
         if (!gallery) return;
         const sync = () => {
             const snapshot = gallery.snapshot(photos);
-            output.value = snapshot.dirty
-                ? JSON.stringify({target: owner, items: snapshot.items}) : '';
+            output.value = proposal
+                ? JSON.stringify(snapshot.items.map(item => item.id))
+                : (snapshot.dirty
+                    ? JSON.stringify({target: owner, items: snapshot.items}) : '');
         };
         gallery.render(photos);
         sync();
