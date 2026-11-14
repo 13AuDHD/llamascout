@@ -853,6 +853,8 @@
                 highlight = null;
             }
 
+            const selectedColor = selection.kind === 'area' ? '#9765cb' : '#e58a17';
+
             if (featureId) {
                 const features =
                     await mappedFeatures();
@@ -873,7 +875,7 @@
                             {
                                 style: {
                                     color:
-                                        '#f8d028',
+                                        selectedColor,
                                     weight:
                                         4,
                                     opacity:
@@ -892,7 +894,7 @@
                                                 radius:
                                                     11,
                                                 color:
-                                                    '#f8d028',
+                                                    selectedColor,
                                                 weight:
                                                     3,
                                             }
@@ -970,6 +972,10 @@
                     }
                 }
             }
+
+            // Areas have their own geometry. Do not draw a white Place
+            // fallback popup when the selected Area has no usable geometry.
+            if (selection.kind === 'area') return;
 
             const lat =
                 Number(
