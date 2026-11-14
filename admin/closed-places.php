@@ -145,7 +145,7 @@ require __DIR__ . '/_header.php';
         </header>
 
         <div class="admin-panel-body">
-            <p class="closure-help">Select a Place, then set when its closure begins and ends. Leaving the Site ID blank applies it to the whole Place. The review date is a separate reminder and does not change opening status.</p>
+            <p class="closure-help">Select a Place, then set when its closure begins and ends. Leaving the Site ID blank applies it to the whole Place. Review dates remind staff to verify reopening, road conditions, and any changed amenities. They never activate or end a closure.</p>
             <?php if ($editRecord): ?>
                 <p class="closure-notice is-success" role="status">
                     Editing saved record #<?= (int) $editRecord['id'] ?>. All saved dates and details are loaded.
