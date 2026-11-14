@@ -50,7 +50,7 @@ if ($closurePhase === 'scheduled') {
     <section class="place-access-alert is-scheduled-closure"
              role="status" aria-label="Upcoming Place closure">
         <i class="place-access-alert-icon" aria-hidden="true">
-            <?= llama_icon('calendar-clock') ?>
+            <?= llama_icon('alert-triangle') ?>
         </i>
         <div class="place-access-alert-copy">
             <p class="place-access-alert-eyebrow">Upcoming scheduled closure</p>
