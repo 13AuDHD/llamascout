@@ -55,6 +55,8 @@ jobs:
           php -l api/place-campsites.php
           php -l api/place-campsite-detail.php
           php -l tools/tests/closure-schedule-integration.php
+      - name: Verify closure pipeline and Admin edit contract
+        run: node tools/tests/closure-schedule-contract.cjs
       - name: Test future, active and ended closures in real MariaDB
         env:
           LLAMA_CLOSURE_TEST_DSN: mysql:host=127.0.0.1;port=3306;dbname=llama_closure_schedule_test;charset=utf8mb4
