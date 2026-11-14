@@ -479,6 +479,9 @@ $renderValue =
                     )
                 ) ?>"
             <?php endif; ?>
+            <?php if ($placeReportReadMode === 'scout-report'): ?>
+                data-report-owner="<?= $e((string) ($field['report_scope_group'] ?? 'place')) ?>"
+            <?php endif; ?>
             <?php if ($isAccessLocked): ?>
                 data-report-access-locked="1"
             <?php endif; ?>
