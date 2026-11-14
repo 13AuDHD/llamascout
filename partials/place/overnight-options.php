@@ -807,11 +807,6 @@ $hasSupplementalStayOptions =
         data-stay-area-photo-detail
         hidden
     ></div>
-    <script type="application/json" data-stay-facility-question-catalog><?= json_encode(
-        $stayFacilityQuestions, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
-        | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
-        | JSON_THROW_ON_ERROR
-    ) ?></script>
 
 </section>
 
