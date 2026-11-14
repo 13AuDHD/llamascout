@@ -433,6 +433,8 @@ $canEditBoundaries = user_has_role('admin', $userId)
     || user_has_role('master-scout', $userId);
 $canRemoveSavedSitePoint = $canEdit
     && ($canEditBoundaries || user_is_owner($userId));
+$canDeleteSite = $canEdit
+    && (user_has_role('admin', $userId) || user_is_owner($userId));
 
 $mapStats =
     llama_place_map_api_stats(
@@ -490,6 +492,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
         'can_edit' => $canEdit,
         'can_remove_site_point' => $canRemoveSavedSitePoint,
+        'can_delete_site' => $canDeleteSite,
 
         'place' => [
             'id' => $placeId,
@@ -585,6 +588,30 @@ $action =
     );
 
 try {
+    if ($action === 'delete_site') {
+        if (!$canDeleteSite) {
+            llama_place_map_api_json([
+                'ok' => false,
+                'error' => 'Only the Owner or an Admin may permanently delete a Site.',
+            ], 403);
+        }
+        $siteId = (int) ($input['site_id'] ?? 0);
+        $confirmation = trim((string) ($input['confirmation'] ?? ''));
+        if ($siteId < 1 || $confirmation !== 'DELETE SITE ' . $siteId) {
+            throw new InvalidArgumentException(
+                'Type DELETE SITE followed by the selected Site ID to confirm.'
+            );
+        }
+        require_once dirname(__DIR__) . '/app/place-site-delete.php';
+        $deleted = llama_site_delete_permanently($db, $placeId, $siteId, $userId);
+        llama_place_map_api_json([
+            'ok' => true,
+            'deleted_site' => $deleted,
+            'features' => llama_place_map_api_features($db, $placeId),
+            'campsites' => llama_place_map_api_sites($db, $placeId),
+        ]);
+    }
+
     if ($action === 'clear_site_point') {
         // This clears only a canonical Site's stored coordinates. Never
         // delete the Site row, linked reports, photos, or Site identity.
