@@ -226,25 +226,33 @@ function llama_support_imap_read($imap, int $uid): array
         throw new RuntimeException('Unable to fetch incoming email metadata.');
     }
     $size = (int) ($overview[0]->size ?? 0);
+    $rawHeader = @imap_fetchheader($imap, $uid, FT_UID);
+    if (!is_string($rawHeader)) {
+        throw new RuntimeException('Unable to read the incoming email headers.');
+    }
     if ($size > 24 * 1024 * 1024) {
-        // Avoid loading oversized messages into a shared PHP worker.
+        // Store only safe metadata, without loading huge MIME bodies.
         return [
             'oversized' => true,
-            'sender' => '',
-            'subject' => '',
-            'message_id' => '',
+            'sender' => llama_support_imap_sender(
+                llama_support_imap_header($rawHeader, 'From')
+            ),
+            'subject' => mb_substr(llama_support_imap_decode_header(
+                llama_support_imap_header($rawHeader, 'Subject')
+            ), 0, 500),
+            'message_id' => mb_substr(
+                llama_support_imap_header($rawHeader, 'Message-ID'), 0, 255
+            ),
             'references' => [],
-            'body' => '',
+            'body' => '[Email exceeds the 24 MB safe import limit. Open it in Purelymail.]',
             'files' => [],
             'received_at' => null,
             'auto' => false,
         ];
     }
-
-    $rawHeader = @imap_fetchheader($imap, $uid, FT_UID);
     $structure = @imap_fetchstructure($imap, $uid, FT_UID);
-    if (!is_string($rawHeader) || !is_object($structure)) {
-        throw new RuntimeException('Unable to read the IMAP message.');
+    if (!is_object($structure)) {
+        throw new RuntimeException('Unable to read the incoming email structure.');
     }
 
     $sender = llama_support_imap_sender(llama_support_imap_header($rawHeader, 'From'));
