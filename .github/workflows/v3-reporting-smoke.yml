@@ -6,14 +6,14 @@ on:
     paths:
       - '.github/workflows/v3-reporting-smoke.yml'
       - 'tools/v3-launch-smoke.php'
-      - 'tools/tests/season-builder-ui.cjs'
+      - 'tools/tests/campsite-pricing-contract.cjs'
       - 'tools/tests/place-report-applicability-ui.cjs'
       - 'app/place-report/**'
       - 'app/admin-place-actions.php'
       - 'admin/place.php'
-      - 'admin/partials/place-report-seasons.php'
+      - 'admin/campsite-pricing.php'
       - 'admin/partials/place-summary-report.php'
-      - 'admin/partials/place-report-season-answers.php'
+      - 'app/admin-campsite-pricing.php'
       - 'admin/partials/place-season-bulk-status.php'
       - 'js/admin/place-season-bulk-status.js'
       - 'api/place-campsites.php'
@@ -50,7 +50,7 @@ on:
       - 'tools/tests/admin-resource-gallery-ui.cjs'
       - 'tools/tests/admin-all-sites-ui.cjs'
       - 'tools/tests/admin-photo-gallery-ui.cjs'
-      - 'js/admin/place-season-builder.js'
+      - 'js/admin/campsite-pricing.js'
       - 'js/admin/place-report-seasons.js'
       - 'admin/partials/place-map.php'
       - 'css/admin/pages/place.css'
@@ -114,9 +114,9 @@ jobs:
           php -l app/admin-resources.php
           php -l admin/resources.php
           php -l admin/place.php
-          php -l admin/partials/place-report-seasons.php
+          php -l admin/campsite-pricing.php
           php -l admin/partials/place-summary-report.php
-          php -l admin/partials/place-report-season-answers.php
+          php -l app/admin-campsite-pricing.php
           php -l admin/partials/place-season-bulk-status.php
           php -l app/place-report/season-public.php
           php -l app/place-report/season-builder.php
@@ -139,7 +139,7 @@ jobs:
           node --check js/place-campsite-detail-media.js
           node --check js/place-report-seasons.js
           node --check js/admin/place-season-bulk-status.js
-          node --check js/admin/place-season-builder.js
+          node --check js/admin/campsite-pricing.js
           node --check js/admin/place-report-seasons.js
           node --check js/admin/place-map.js
           node --check js/admin/place-report-area.js
@@ -164,10 +164,10 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/llama-season-ui-tests"
           npm install --prefix "$RUNNER_TEMP/llama-season-ui-tests" --no-save --no-package-lock jsdom@26
-      - name: Exercise seasonal Add Change and Save in a browser DOM
+      - name: Verify active Campsite Pricing save, security, and season contract
         env:
           NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules
-        run: node tools/tests/season-builder-ui.cjs
+        run: node tools/tests/campsite-pricing-contract.cjs
       - name: Exercise All Sites consensus and bulk save persistence
         env:
           NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules
