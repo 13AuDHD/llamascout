@@ -174,7 +174,7 @@ require __DIR__ . '/_header.php';
                     <label class="closure-field closure-span-4">
                         <span>Operating status <abbr title="Required">*</abbr></span>
                         <select name="status" id="closure-status" required>
-                            <?php foreach (['temporary' => 'Temporarily closed', 'seasonal' => 'Seasonally closed', 'permanent' => 'Permanently closed', 'open' => 'Open â verified reopening'] as $key => $label): ?>
+                            <?php foreach (['temporary' => 'Temporarily closed', 'seasonal' => 'Seasonally closed', 'permanent' => 'Permanently closed', 'open' => 'Open (manual override)'] as $key => $label): ?>
                                 <option value="<?= moderation_e($key) ?>" <?= $fieldValue('status', 'temporary') === $key ? 'selected' : '' ?>><?= moderation_e($label) ?></option>
                             <?php endforeach; ?>
                         </select>
