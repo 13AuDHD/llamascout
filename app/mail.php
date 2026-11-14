@@ -104,7 +104,8 @@ function send_llama_mail(
     string $subject,
     string $message,
     ?string $html = null,
-    string $sender = 'default'
+    string $sender = 'default',
+    array $attachments = []
 ): bool {
     $config = llama_mail_config();
 
@@ -174,6 +175,15 @@ function send_llama_mail(
         }
 
         $mail->addAddress($to);
+
+        foreach ($attachments as $attachment) {
+            $path = (string) ($attachment['path'] ?? '');
+            $name = (string) ($attachment['name'] ?? '');
+            if ($path === '' || !is_file($path) || $name === '') {
+                throw new RuntimeException('Support attachment is unavailable.');
+            }
+            $mail->addAttachment($path, $name);
+        }
 
         $mail->Subject = $subject;
 
