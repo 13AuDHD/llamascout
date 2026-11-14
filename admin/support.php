@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/support.php';
 require_once dirname(__DIR__) . '/app/support-conversations.php';
+require_once dirname(__DIR__) . '/app/support-inbox.php';
 require_once __DIR__ . '/_dashboard.php';
 
 $adminUser = moderation_require_admin();
@@ -28,6 +29,10 @@ $notice = '';
 $error = '';
 $replyDraft = '';
 $conversationReady = llama_support_conversations_ready($db);
+$inboxReady = llama_support_inbox_schema_ready($db);
+$inboxConfig = llama_mail_config();
+$inboxEnabled = llama_support_imap_ready($inboxConfig);
+$inboxSyncResult = null;
 
 if (isset($_GET['reply']) && $_GET['reply'] === 'sent') {
     $notice = 'Reply sent and saved to the ticket.';
@@ -47,7 +52,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $action = trim((string) ($_POST['action'] ?? 'update_ticket'));
         try {
-            if ($action === 'reply') {
+            if ($action === 'sync_inbox') {
+                if (!$inboxReady || !$inboxEnabled) {
+                    throw new RuntimeException(
+                        'Install the Support inbox SQL migration and configure IMAP access first.'
+                    );
+                }
+                $inboxSyncResult = llama_support_inbox_sync($db, 15, true);
+                if ($inboxSyncResult['error'] !== '') {
+                    throw new RuntimeException((string) $inboxSyncResult['error']);
+                }
+                $notice = 'Inbox checked: '
+                    . $inboxSyncResult['checked'] . ' email(s), '
+                    . $inboxSyncResult['imported'] . ' imported, '
+                    . $inboxSyncResult['review'] . ' requiring review.';
+            } elseif ($action === 'link_inbound') {
+                llama_support_inbox_match_review(
+                    $db,
+                    (int) ($_POST['inbound_id'] ?? 0),
+                    (string) ($_POST['ticket_number'] ?? '')
+                );
+                $notice = 'Incoming email attached to its ticket.';
+            } elseif ($action === 'ignore_inbound') {
+                llama_support_inbox_ignore_review(
+                    $db,
+                    (int) ($_POST['inbound_id'] ?? 0)
+                );
+                $notice = 'Incoming email dismissed.';
+            } elseif ($action === 'reply') {
                 if (!$conversationReady) {
                     throw new RuntimeException('Install the Support conversation migration first.');
                 }
@@ -156,6 +188,10 @@ foreach ($cannedResponses as $response) {
 }
 
 
+$inboxState = $inboxReady ? llama_support_inbox_state($db) : null;
+$inboxReviews = $inboxReady ? llama_support_inbox_reviews($db) : [];
+$inboxReviewCount = $inboxReady ? llama_support_inbox_review_count($db) : 0;
+
 $categories = llama_support_categories();
 
 $stats = admin_dashboard_stats($db);
@@ -195,6 +231,78 @@ require __DIR__ . '/_header.php';
 </div>
 <?php endif; ?>
 
+
+<section class="admin-panel admin-support-inbox-panel">
+    <header class="admin-panel-header">
+        <div>
+            <p>Purelymail</p>
+            <h2>Incoming support email</h2>
+        </div>
+        <?php if ($inboxReady && $inboxEnabled && function_exists('imap_open')): ?>
+        <span class="admin-status-pill">Configured</span>
+        <?php else: ?>
+        <span class="admin-status-pill">Setup needed</span>
+        <?php endif; ?>
+    </header>
+    <div class="admin-support-inbox-body">
+        <?php if (!$inboxReady): ?>
+            <p>Apply <code>sql/2026-11-13-support-inbox.sql</code> to enable automatic reply collection.</p>
+        <?php elseif (!$inboxEnabled): ?>
+            <p>Create an IMAP-only app password for support@llamascout.com. Add it to the private mail configuration with <code>support_imap_enabled</code>, <code>support_imap_username</code>, and <code>support_imap_password</code>.</p>
+        <?php elseif (!function_exists('imap_open')): ?>
+            <p>The server's PHP IMAP extension is unavailable. Check <strong>cPanel → Select PHP Version → Extensions</strong> for <code>imap</code>.</p>
+        <?php endif; ?>
+        <?php if ($inboxState): ?>
+            <p>
+                <strong>Last inbox check:</strong>
+                <?= !empty($inboxState['last_checked_at'])
+                    ? moderation_e(llama_format_viewer_datetime((string) $inboxState['last_checked_at']))
+                    : 'Not checked yet' ?>
+                &nbsp; | &nbsp;
+                <strong>Unmatched emails:</strong> <?= number_format($inboxReviewCount) ?>
+            </p>
+            <?php if (!empty($inboxState['last_error'])): ?>
+                <p class="admin-support-send-error"><?= moderation_e((string) $inboxState['last_error']) ?></p>
+            <?php endif; ?>
+        <?php endif; ?>
+        <?php if ($inboxReady && $inboxEnabled && function_exists('imap_open')): ?>
+            <form method="post">
+                <input type="hidden" name="action" value="sync_inbox">
+                <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+                <input type="hidden" name="status_filter" value="<?= moderation_e($status) ?>">
+                <input type="hidden" name="request_id" value="<?= (int) $requestId ?>">
+                <button class="admin-button" type="submit">Check inbox now</button>
+            </form>
+        <?php endif; ?>
+    </div>
+    <?php if ($inboxReviews): ?>
+        <div class="admin-support-review-list">
+            <h3>Needs manual review</h3>
+            <p class="admin-support-hint">Messages remain in Purelymail. Only matching customer addresses can be linked to an existing ticket.</p>
+            <?php foreach ($inboxReviews as $email): ?>
+                <article class="admin-support-review-item">
+                    <div>
+                        <strong><?= moderation_e((string) ($email['subject'] ?: '(No subject)')) ?></strong>
+                        <p>From: <?= moderation_e((string) $email['sender_email']) ?></p>
+                        <p>Reason: <?= moderation_e(str_replace('_', ' ', (string) $email['reason'])) ?></p>
+                        <p class="admin-support-review-preview"><?= moderation_e((string) $email['body_preview']) ?></p>
+                    </div>
+                    <form method="post" class="admin-support-review-controls">
+                        <input type="hidden" name="csrf_token" value="<?= moderation_e(moderation_csrf_token()) ?>">
+                        <input type="hidden" name="request_id" value="<?= (int) $requestId ?>">
+                        <input type="hidden" name="status_filter" value="<?= moderation_e($status) ?>">
+                        <input type="hidden" name="inbound_id" value="<?= (int) $email['id'] ?>">
+                        <label>Existing ticket number
+                            <input type="text" name="ticket_number" placeholder="YYMMDD-HHMMSS" autocomplete="off">
+                        </label>
+                        <button class="admin-button" type="submit" name="action" value="link_inbound">Attach to ticket</button>
+                        <button class="admin-button" type="submit" name="action" value="ignore_inbound" formnovalidate>Dismiss</button>
+                    </form>
+                </article>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
+</section>
 
 <section class="admin-panel admin-user-filter-panel">
 
