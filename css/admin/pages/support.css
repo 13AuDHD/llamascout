@@ -254,3 +254,83 @@
         grid-template-columns: minmax(0, 1fr);
     }
 }
+
+
+/* Purelymail inbox status and unmatched message review */
+
+.admin-support-inbox-panel {
+    margin-bottom: var(--admin-panel-gap);
+}
+.admin-support-inbox-body {
+    padding: var(--admin-panel-padding);
+    display: grid;
+    gap: 12px;
+}
+.admin-support-inbox-body p {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+.admin-support-inbox-body form {
+    justify-self: start;
+}
+.admin-support-review-list {
+    display: grid;
+    gap: 12px;
+    padding: var(--admin-panel-padding);
+    border-top: 1px solid var(--border);
+}
+.admin-support-review-list > h3,
+.admin-support-review-list > p {
+    margin: 0;
+}
+.admin-support-review-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(200px, .6fr);
+    gap: 18px;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-inline-start: 4px solid #d97706;
+    border-radius: var(--admin-control-radius);
+    background: var(--background);
+}
+.admin-support-review-item p {
+    margin: 6px 0 0;
+    overflow-wrap: anywhere;
+}
+.admin-support-review-preview {
+    max-height: 140px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-size: .85rem;
+    color: var(--text-muted);
+}
+.admin-support-review-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    gap: 8px;
+}
+.admin-support-review-controls label {
+    display: grid;
+    gap: 6px;
+    font-size: .8rem;
+    font-weight: 800;
+}
+.admin-support-review-controls input {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    border: 1px solid var(--border);
+    border-radius: var(--admin-control-radius);
+    padding: 10px 12px;
+    color: var(--text);
+    background: var(--background);
+    font: inherit;
+}
+@media (max-width: 760px) {
+    .admin-support-review-item {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
