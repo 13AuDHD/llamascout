@@ -206,18 +206,33 @@ function llama_public_season_place_conditions(PDO $db, int $placeId, int $season
     );
 }
 
-/** A verified closure of the whole Place outranks every normal Site season. */
-function llama_public_place_verified_closed(PDO $db, int $placeId): bool
+/** A verified closure overrides normal seasons only while its date window is active. */
+function llama_public_place_active_closure(PDO $db, int $placeId): ?array
 {
     if ($placeId < 1) {
-        return false;
+        return null;
     }
+    require_once __DIR__ . '/../operating-closures.php';
     $stmt = $db->prepare(
-        'SELECT 1 FROM place_operating_closures
-         WHERE place_id = ? AND campsite_id IS NULL
-           AND status IN (\'temporary\', \'seasonal\', \'permanent\')
-         LIMIT 1'
+        "SELECT c.status, c.reason, c.closure_began, c.expected_reopening,
+                c.verified_at, p.state
+         FROM place_operating_closures c
+         INNER JOIN places p ON p.id = c.place_id
+         WHERE c.place_id = ? AND c.campsite_id IS NULL
+           AND c.status IN ('temporary', 'seasonal', 'permanent')
+         LIMIT 1"
     );
     $stmt->execute([$placeId]);
-    return (bool) $stmt->fetchColumn();
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$row || !llama_closure_is_active(
+        $row, llama_closure_local_today((string) ($row['state'] ?? ''))
+    )) {
+        return null;
+    }
+    return $row;
+}
+
+function llama_public_place_verified_closed(PDO $db, int $placeId): bool
+{
+    return llama_public_place_active_closure($db, $placeId) !== null;
 }
