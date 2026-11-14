@@ -132,16 +132,16 @@
             }
         };
 
-        const initialSite =
-            new URLSearchParams(
-                window.location.search
-            ).get('site');
+        const initialParams = new URLSearchParams(window.location.search);
+        const initialArea = initialParams.get('area') || '';
+        const initialSite = initialParams.get('site') || '';
 
         showReportScope(
-            initialSite
-            && /^\d+$/.test(initialSite)
-                ? 'site'
-                : 'place'
+            /^[1-9]\d*$/.test(initialArea)
+                ? 'area'
+                : /^[1-9]\d*$/.test(initialSite)
+                    ? 'site'
+                    : 'place'
         );
 
         window.addEventListener(
@@ -1548,13 +1548,10 @@
             return;
         }
 
-        let selectedId =
-            String(
-                new URLSearchParams(
-                    window.location.search
-                ).get('site')
-                || ''
-            );
+        const initialSelection = new URLSearchParams(window.location.search);
+        let selectedId = /^[1-9]\d*$/.test(initialSelection.get('area') || '')
+            ? ''
+            : String(initialSelection.get('site') || '');
 
         // A Place starts on its own overview. Only explicit Site links
         // restore a selected Site when the browser first loads.

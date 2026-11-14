@@ -50,10 +50,18 @@
     // The map is directly above the explorer. Selection does not need a jump link.
     section.querySelector('.place-overnight-options-map-link')?.remove();
 
-    const requestedId = new URLSearchParams(window.location.search).get('site');
-    let selection = requestedId && /^\d+$/.test(requestedId)
-        ? { kind: 'site', id: requestedId }
-        : { kind: 'place', id: '' };
+    const initialParams = new URLSearchParams(window.location.search);
+    const requestedArea = initialParams.get('area') || '';
+    const requestedSite = initialParams.get('site') || '';
+    // The Area ID is its verified place_map_features ID. Never use a name
+    // as identity or select a stale Site when an Area deep link is present.
+    const validId = value => /^[1-9]\d*$/.test(value)
+        && Number.isSafeInteger(Number(value));
+    let selection = validId(requestedArea)
+        ? { kind: 'area', id: requestedArea }
+        : validId(requestedSite)
+            ? { kind: 'site', id: requestedSite }
+            : { kind: 'place', id: '' };
     let pendingMapSite = null;
     let mapSelectionInProgress = false;
     let activePlaceLayer = null;
@@ -70,6 +78,45 @@
         return placeColor;
     };
 
+    const updateLink = document.querySelector('[data-place-suggest-update]');
+    const baseUpdateUrl = updateLink?.href || '';
+
+    const syncSelectionLinks = (selected) => {
+        // Site and Area are mutually exclusive URL targets. Preserve season,
+        // slug, hash, and any other unrelated query parameters.
+        const url = new URL(window.location.href);
+        if (selected.kind === 'site' && validId(selected.id)) {
+            url.searchParams.set('site', selected.id);
+            url.searchParams.delete('area');
+        } else if ((selected.kind === 'area' || selected.kind === 'parking')
+            && validId(selected.id)) {
+            url.searchParams.set('area', selected.id);
+            url.searchParams.delete('site');
+        } else {
+            url.searchParams.delete('site');
+            url.searchParams.delete('area');
+        }
+        if (url.href !== window.location.href) {
+            window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+        }
+
+        // The existing update form already supports Area-owned answers.
+        // Pass the verified Area identity instead of reopening a Place draft.
+        if (updateLink && baseUpdateUrl) {
+            const updateUrl = new URL(baseUpdateUrl, window.location.href);
+            for (const key of ['report_scope', 'report_source', 'report_target']) {
+                updateUrl.searchParams.delete(key);
+            }
+            if ((selected.kind === 'area' || selected.kind === 'parking')
+                && validId(selected.id)) {
+                updateUrl.searchParams.set('report_scope', 'area');
+                updateUrl.searchParams.set('report_source', 'map_feature');
+                updateUrl.searchParams.set('report_target', selected.id);
+            }
+            updateLink.href = updateUrl.href;
+        }
+    };
+
     const restorePlaceReport = () => {
         for (const [card, initial] of baseline) {
             if (card.innerHTML !== initial.html) card.innerHTML = initial.html;
@@ -84,6 +131,7 @@
 
     const setSelected = (next, origin = 'card') => {
         selection = { kind: next.kind, id: String(next.id || '') };
+        syncSelectionLinks(selection);
         const placeSelected = selection.kind === 'place';
         section.dataset.explorerScope = selection.kind;
         section.dataset.explorerColor = reportColor(selection.kind);
@@ -127,11 +175,6 @@
 
     const placeView = (origin) => {
         setSelected({ kind: 'place', id: '' }, origin);
-        const url = new URL(window.location.href);
-        if (url.searchParams.has('site')) {
-            url.searchParams.delete('site');
-            window.history.replaceState({}, '', url);
-        }
         if (origin !== 'initial') {
             // Selecting an overview can move the map, but never the page.
             map.closePopup();
@@ -229,11 +272,6 @@
             }
         }
         setSelected({ kind, id: row.dataset.stayAreaId || '' }, origin);
-        const url = new URL(window.location.href);
-        if (url.searchParams.has('site')) {
-            url.searchParams.delete('site');
-            window.history.replaceState({}, '', url);
-        }
     };
 
     const oldIntro = section.querySelector('.place-stay-intro');
@@ -435,8 +473,37 @@
         popup.update();
     });
 
-    // Do not interpret the first Site row as the initial selection.
-    if (selection.kind === 'site') {
+    // Restore an explicit Area URL to that exact Area. All other report
+    // loaders (Area answers, Site browser, Area photos) retain their existing
+    // responsibilities and listen to this one selection.
+    if (selection.kind === 'area') {
+        const requestedAreaRow = section.querySelector(
+            `[data-stay-area-id="${CSS.escape(selection.id)}"]`
+        );
+        if (!requestedAreaRow) {
+            placeView('initial');
+        } else {
+            setSelected({
+                kind: requestedAreaRow.dataset.stayAreaKind === 'parking' ? 'parking' : 'area',
+                id: requestedAreaRow.dataset.stayAreaId,
+            }, 'initial');
+            // The Area photo/row handlers are deferred scripts. Fire their
+            // normal click only after those handlers are registered.
+            const restoreAreaRow = () => {
+                activatingAreaFromMap = true;
+                try {
+                    requestedAreaRow.click();
+                } finally {
+                    activatingAreaFromMap = false;
+                }
+            };
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', restoreAreaRow, { once: true });
+            } else {
+                queueMicrotask(restoreAreaRow);
+            }
+        }
+    } else if (selection.kind === 'site') {
         setSelected(selection, 'initial');
     } else {
         placeView('initial');

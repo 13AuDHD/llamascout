@@ -114,6 +114,7 @@ $placeDirectionsCoordinates = (
                     <?php if ($canSuggestUpdate): ?>
                         <a
                             class="place-detail-action-button"
+                            data-place-suggest-update
                             href="https://account.llamascout.com/update-place.php?slug=<?= rawurlencode((string) $place['slug']) ?>"
                         >
                             <i aria-hidden="true"><?= llama_icon('edit') ?></i>

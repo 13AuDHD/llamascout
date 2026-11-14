@@ -454,6 +454,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $reportTargetId =
         (int) $editScopedPayload['id'];
+} elseif (
+    $_SERVER['REQUEST_METHOD'] === 'GET'
+    && !$isNeedsChanges
+    && (string) ($_GET['report_scope'] ?? '') === 'area'
+) {
+    // A Place page Area deep link opens a new report targeting that exact
+    // canonical Area. Never interpret a map feature ID as a Place or Site.
+    // Verify the Area belongs to this Place before rendering any form.
+    require_once dirname(__DIR__) . '/app/place-report/report-targets.php';
+    $requestedAreaId = filter_var(
+        $_GET['report_target'] ?? null,
+        FILTER_VALIDATE_INT,
+        ['options' => ['min_range' => 1]]
+    );
+    $requestedSource = (string) ($_GET['report_source'] ?? '');
+    if ($requestedSource !== 'map_feature' || $requestedAreaId === false) {
+        http_response_code(404);
+        exit('The requested Area is invalid. Return to the Place page and select an Area.');
+    }
+    try {
+        $verifiedArea = llama_report_verified_target(
+            $db, $placeId, 'area', 'map_feature', (int) $requestedAreaId
+        );
+    } catch (InvalidArgumentException) {
+        http_response_code(404);
+        exit('This Area is no longer available for the selected Place.');
+    }
+    $reportTargetScope = 'area';
+    $reportTargetSource = 'map_feature';
+    $reportTargetId = (int) $verifiedArea['id'];
 } else {
     $reportTargetScope =
         'place';
