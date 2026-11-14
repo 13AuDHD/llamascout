@@ -20,6 +20,7 @@ assert.match(css, /data-active-report-scope="place"/,
 assert.match(css, /not\(\[data-report-scopes~="place"\]\)/,
     'Area-only and Site-only cards must not be able to appear in Place mode');
 
+(async () => {
 const dom = new JSDOM(`<!doctype html><body>
 <style>${css}</style>
 <section class="scout-report" data-question-inventory-review="1">
@@ -143,3 +144,7 @@ assert.ok(isShown(place));
 assert.ok(!isShown(site));
 dom.window.close();
 console.log('PASS: original Place questions, Area isolation, scope CSS, Site restoration and returning to Place');
+})().catch(error => {
+    console.error(error);
+    process.exitCode = 1;
+});
