@@ -1548,13 +1548,10 @@
             return;
         }
 
-        let selectedId =
-            String(
-                new URLSearchParams(
-                    window.location.search
-                ).get('site')
-                || ''
-            );
+        const initialSelection = new URLSearchParams(window.location.search);
+        let selectedId = /^[1-9]\d*$/.test(initialSelection.get('area') || '')
+            ? ''
+            : String(initialSelection.get('site') || '');
 
         // A Place starts on its own overview. Only explicit Site links
         // restore a selected Site when the browser first loads.
