@@ -2212,7 +2212,7 @@ $check('Campsite Pricing owns season editing outside the Place Scout Report', st
         && str_contains($script, "csrf_token: $('csrf').value")
         && str_contains($script, 'season_version: state.seasonVersion'),
         'The active season editor must send a CSRF-checked, versioned save request');
-    $assert(str_contains($actions, "if ($action === 'save-season')") // historical route intentionally blocked
+    $assert(str_contains($actions, "if (\$action === 'save-season')") // historical route intentionally blocked
         && str_contains($actions, 'Season definitions are now edited under Admin'),
         'The retired Place Report season save must remain blocked');
 });
