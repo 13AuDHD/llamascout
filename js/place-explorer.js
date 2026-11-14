@@ -65,7 +65,7 @@
     const reportColor = (kind) => {
         if (kind === 'place') return placeColor;
         if (kind === 'site' || kind === 'mapped') return 'orange';
-        if (kind === 'parking') return 'blue';
+        if (kind === 'parking') return 'purple';
         if (kind === 'area') return 'purple';
         return placeColor;
     };
@@ -423,7 +423,7 @@
             mapCardFor(
                 label,
                 () => selectArea(area, 'map'),
-                parking ? 'blue' : 'purple',
+                'purple',
                 parking
                     ? 'Parking area'
                     : featureType === 'facility_area'
