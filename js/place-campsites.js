@@ -90,7 +90,13 @@
                     ? sectionScopes.includes('area')
                     : page === scope;
                 section.hidden = !allowedSection;
-                if (!allowedSection) continue;
+                if (!allowedSection) {
+                    // Also hide each card explicitly. Some card display rules
+                    // override the native hidden attribute in legacy layouts.
+                    section.querySelectorAll('.scout-report-item')
+                        .forEach((item) => { item.hidden = true; });
+                    continue;
+                }
 
                 const items = Array.from(
                     section.querySelectorAll('.scout-report-item')
