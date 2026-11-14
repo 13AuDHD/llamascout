@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/operating-closures.php';
+
 /**
  * Add verified closure metadata to campground campsite results.
  * This never changes availability, published data or review status.
@@ -25,15 +27,22 @@ function llama_campsite_closure_enrich(PDO $db, int $placeId, array $sites): arr
     }
 
     $placeholders = implode(', ', array_fill(0, count($ids), '?'));
-    $query = 'SELECT campsite_id, status, reason, closure_began, '
-        . 'expected_reopening, verified_at '
-        . 'FROM place_operating_closures '
-        . 'WHERE place_id = ? AND campsite_id IN (' . $placeholders . ') '
-        . "AND status IN ('temporary','seasonal','permanent')";
+    $query = 'SELECT c.campsite_id, c.status, c.reason, c.closure_began, '
+        . 'c.expected_reopening, c.verified_at, p.state '
+        . 'FROM place_operating_closures c '
+        . 'INNER JOIN places p ON p.id = c.place_id '
+        . 'WHERE c.place_id = ? AND c.campsite_id IN (' . $placeholders . ') '
+        . "AND c.status IN ('temporary','seasonal','permanent')";
     $statement = $db->prepare($query);
     $statement->execute(array_merge([$placeId], array_keys($ids)));
     $closures = [];
     while ($row = $statement->fetch(PDO::FETCH_ASSOC)) {
+        if (!llama_closure_is_active(
+            $row,
+            llama_closure_local_today((string) ($row['state'] ?? ''))
+        )) {
+            continue;
+        }
         $closures[(int) $row['campsite_id']] = $row;
     }
 
