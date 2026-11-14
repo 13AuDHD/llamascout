@@ -38,11 +38,12 @@ jobs:
         run: php tools/v3-launch-smoke.php
       - name: Verify shared Place pricing
         run: php tools/tests/place-pricing.php
-      - name: Verify pricing editor and Admin asset loading
+      - name: Verify dedicated Campsite Pricing and Admin asset loading
         run: |
           npm install --prefix "$RUNNER_TEMP/llama-pricing-ui" --no-save --ignore-scripts jsdom@26.1.0
-          NODE_PATH="$RUNNER_TEMP/llama-pricing-ui/node_modules" node tools/tests/place-pricing-ui.cjs
-          NODE_PATH="$RUNNER_TEMP/llama-pricing-ui/node_modules" node tools/tests/place-pricing-assets.cjs
+          node tools/tests/campsite-pricing-contract.cjs
+          php -l admin/campsite-pricing.php
+          node --check js/admin/campsite-pricing.js
           node --check js/contribution-tabs.js
           node --check js/place-report-warnings.js
           node --check js/place-explorer.js

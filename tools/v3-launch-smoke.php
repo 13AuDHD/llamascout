@@ -2187,35 +2187,34 @@ $check('Seasonal overrides cannot change permanent Site facts', static function 
     }
 });
 
-$check('Season definition editor is isolated from normal Scout Report save', static function () use ($assert): void {
-    $page = file_get_contents(dirname(__DIR__) . '/admin/partials/place-summary-report.php');
-    $panel = file_get_contents(dirname(__DIR__) . '/admin/partials/place-report-seasons.php');
+$check('Campsite Pricing owns season editing outside the Place Scout Report', static function () use ($assert): void {
+    $summary = file_get_contents(dirname(__DIR__) . '/admin/partials/place-summary-report.php');
+    $controller = file_get_contents(dirname(__DIR__) . '/admin/campsite-pricing.php');
+    $service = file_get_contents(dirname(__DIR__) . '/app/admin-campsite-pricing.php');
+    $script = file_get_contents(dirname(__DIR__) . '/js/admin/campsite-pricing.js');
     $actions = file_get_contents(dirname(__DIR__) . '/app/admin-place-actions.php');
-    $assert(is_string($page) && is_string($panel) && is_string($actions), 'Admin season files missing');
-    $seasonInclude = strpos($page, "require __DIR__ . '/place-report-seasons.php'");
-    $normalForm = strpos($page, '<form method="post" class="admin-place-report-form');
-    $normalFormEnd = strpos($page, '</form>', $normalForm === false ? 0 : $normalForm);
-    $assert($seasonInclude !== false && $normalForm !== false
-        && $normalFormEnd !== false && $seasonInclude > $normalFormEnd,
-        'Optional Seasons must appear after Save Place Report, outside its form');
-    $assert(strpos($panel, '<details class="admin-place-seasons"') !== false
-        && strpos($panel, 'data-admin-seasons-disclosure') !== false
-        && strpos($panel, '<summary class="admin-place-seasons-toggle">') !== false,
-        'Seasons must be one native collapsed, accessible disclosure');
-    $assert(strpos($panel, "'open' : ''") !== false
-        && strpos($panel, "str_starts_with(\$seasonSaved, 'season')") !== false,
-        'Season saves/edits must reopen the collapsed panel');
-    $seasonScript = file_get_contents(dirname(__DIR__) . '/js/admin/place-report-seasons.js');
-    $assert(is_string($seasonScript)
-        && strpos($seasonScript, "window.location.hash === '#place-seasons'") !== false,
-        'The Seasons nav link must open the collapsed panel');
-    $assert(strpos($panel, 'name="place_admin_action" value="save-season"') !== false,
-        'Missing season-only save action');
-    $assert(strpos($panel, 'name="csrf_token"') !== false,
-        'Season editor must include CSRF');
-    $assert(strpos($actions, "if (\$action === 'save-season')") !== false
-        && strpos($actions, 'llama_season_save(') !== false,
-        'Season save action is not routed through the validated season service');
+    $assert(is_string($summary) && is_string($controller) && is_string($service)
+        && is_string($script) && is_string($actions), 'Active pricing/season components missing');
+    $assert(str_contains($summary, '/campsite-pricing.php?place_id=')
+        && !str_contains($summary, "place-report-seasons.php"),
+        'Place Report must link to dedicated Campsite Pricing without embedding a retired season form');
+    $assert(str_contains($controller, 'id="cpr-season-form"')
+        && str_contains($controller, 'id="cpr-season-save"')
+        && str_contains($controller, 'moderation_require_admin()')
+        && str_contains($controller, 'moderation_verify_csrf('),
+        'Dedicated season editor must have a Save form, Admin authorization, and CSRF validation');
+    $assert(str_contains($controller, 'admin_cpr_save_season(')
+        && str_contains($service, 'function admin_cpr_save_season(')
+        && str_contains($service, 'llama_season_save(')
+        && str_contains($service, 'hash_equals(admin_cpr_season_version('),
+        'Season edits must pass through the locked, version-checked season service');
+    $assert(str_contains($script, "action: 'save-season'")
+        && str_contains($script, "csrf_token: $('csrf').value")
+        && str_contains($script, 'season_version: state.seasonVersion'),
+        'The active season editor must send a CSRF-checked, versioned save request');
+    $assert(str_contains($actions, "if (\$action === 'save-season')") // historical route intentionally blocked
+        && str_contains($actions, 'Season definitions are now edited under Admin'),
+        'The retired Place Report season save must remain blocked');
 });
 
 $check('Named seasons edit only approved canonical amenities and fire rules', static function () use ($assert): void {
@@ -2239,83 +2238,36 @@ $check('Named seasons edit only approved canonical amenities and fire rules', st
         'Individual Site seasonal water service missing');
 });
 
-$check('Compact seasonal builder uses one canonical editor for Place and Sites', static function () use ($assert): void {
-    require_once dirname(__DIR__) . '/app/place-report/season-builder.php';
-
-    $available = [
-        ['scope' => 'place', 'source' => 'place', 'id' => 8, 'label' => 'Entire Place'],
-        ['scope' => 'area', 'source' => 'map_feature', 'id' => 20, 'label' => 'Camp area'],
-        ['scope' => 'site', 'source' => 'campsite_record', 'id' => 101, 'label' => '001'],
-        ['scope' => 'site', 'source' => 'campsite_record', 'id' => 102, 'label' => '002'],
-    ];
-    $sites = llama_season_builder_targets($available, [
-        'site:campsite_record:101', 'site:campsite_record:102'
-    ], 8);
-    $assert(count($sites) === 2, 'Multi Site selection failed');
-    foreach ([
-        ['site:campsite_record:101', 'place:place:8'],
-        ['site:campsite_record:101', 'area:map_feature:20'],
-        ['site:campsite_record:999'],
-        ['place:place:99'],
-    ] as $bad) {
-        $rejected = false;
-        try {
-            llama_season_builder_targets($available, $bad, 8);
-        } catch (InvalidArgumentException) {
-            $rejected = true;
-        }
-        $assert($rejected, 'Invalid Site/Place selection was accepted');
-    }
-    $siteQuestions = llama_season_builder_questions('site');
-    $placeQuestions = llama_season_builder_questions('place');
-    $assert(isset($siteQuestions['seasonal_site_closed']),
-        'Normally Closed must be a Site seasonal question');
-    $assert(isset($siteQuestions['site_reservation_method']),
-        'First-come/reservable must be a Site seasonal question');
-    $assert(!isset($placeQuestions['seasonal_site_closed'])
-        && !isset($placeQuestions['site_reservation_method']),
-        'Site-only questions leaked to Place');
-    $assert(isset($placeQuestions['amenity_showers'])
-        && isset($placeQuestions['amenity_toilets']),
-        'Seasonal Place services missing');
-    $assert(!isset($siteQuestions['site_length_feet'])
-        && !isset($siteQuestions['parking_surface']),
-        'Physical Site details cannot change seasonally');
-
-    $view = file_get_contents(dirname(__DIR__) . '/admin/partials/place-report-season-answers.php');
-    $script = file_get_contents(dirname(__DIR__) . '/js/admin/place-season-builder.js');
+$check('Dedicated Campsite Pricing controls seasonal Site availability', static function () use ($assert): void {
+    $controller = file_get_contents(dirname(__DIR__) . '/admin/campsite-pricing.php');
+    $service = file_get_contents(dirname(__DIR__) . '/app/admin-campsite-pricing.php');
+    $script = file_get_contents(dirname(__DIR__) . '/js/admin/campsite-pricing.js');
     $actions = file_get_contents(dirname(__DIR__) . '/app/admin-place-actions.php');
-    $service = file_get_contents(dirname(__DIR__) . '/app/place-report/season-builder.php');
-    $assert(is_string($view) && is_string($script) && is_string($actions)
-        && is_string($service), 'Seasonal builder components missing');
-    $assert(strpos($view, 'name="season_targets[]"') !== false
-        && strpos($view, 'data-season-builder-rows') !== false
-        && strpos($view, 'data-season-builder-config') !== false,
-        'Grouped Site selector or compact answer rows missing');
-    $assert(strpos($view, 'place-season-bulk-status.php') === false
-        && strpos($view, 'admin-place-season-answer-row') === false,
-        'Obsolete giant seasonal form or separate bulk panel still renders');
-    $assert(strpos($view, 'value="save-season-builder"') !== false
-        && strpos($view, 'name="csrf_token"') !== false,
-        'Seasonal builder must submit separately with CSRF');
-    $assert(strpos($actions, "if (\$action === 'save-season-builder')") !== false
-        && strpos($actions, 'llama_season_builder_save(') !== false,
-        'Seasonal builder not wired to its transactional save service');
-    $assert(strpos($service, 'llama_place_report_submission_answer(') !== false
-        && strpos($service, 'llama_report_targets($db, $placeId)') !== false,
-        'Seasonal builder must use canonical question and target validation');
-    $assert(strpos($script, 'data-season-add-row') !== false
-        && strpos($script, 'season_removals[]') !== false,
-        'Compact seasonal row add/delete behavior missing');
-    // Admin runs on admin.llamascout.com; a root-relative /js URL points
-    // to the Admin host rather than the canonical asset host.
-    $assert(strpos($view, 'https://llamascout.com/js/admin/place-season-builder.js?v=') !== false,
-        'Admin seasonal builder must load the versioned script from the canonical asset host');
-    $assert(strpos($view, 'Seasonal changes were not saved.') !== false
-        && strpos($view, 'data-season-builder-change-count') !== false,
-        'Seasonal Save must show errors and a visible pending-changes count');
-    $assert(strpos($view, "'dirty' => true") !== false,
-        'Rejected seasonal Save must restore the submitted changes for correction');
+    $assert(is_string($controller) && is_string($service) && is_string($script)
+        && is_string($actions), 'Campsite pricing components missing');
+    foreach (['available', 'reservable', 'fcfs', 'unavailable'] as $availability) {
+        $assert(str_contains($controller, 'data-availability="' . $availability . '"')
+            && str_contains($service, "'" . $availability . "'"),
+            'Missing current Site seasonal availability: ' . $availability);
+    }
+    $assert(str_contains($service, 'llama_season_save_target_answers(')
+        && str_contains($service, 'site_reservation_method')
+        && str_contains($service, "'campsite_record'")
+        && str_contains($service, 'beginTransaction()')
+        && str_contains($service, 'rollBack()'),
+        'Site availability must use canonical Site identity and atomic seasonal persistence');
+    $assert(str_contains($controller, 'admin_cpr_save(')
+        && str_contains($controller, "['save', 'save-holidays', 'save-season', 'save-review', 'save-group']")
+        && str_contains($script, "action: 'save'")
+        && str_contains($script, "action: 'save-group'")
+        && str_contains($script, "action: 'save-holidays'"),
+        'One Campsite Pricing screen must save Site rates, matching Sites, and Place holidays');
+    $assert(str_contains($actions, 'Site availability is now managed in Campsite Pricing.')
+        && str_contains($actions, 'Site availability and booking methods belong to Campsite Pricing.'),
+        'Legacy Place Report forms must not overwrite dedicated Site availability');
+    $assert(!str_contains($controller, 'place-season-builder.js')
+        && !str_contains($controller, 'place-report-season-answers.php'),
+        'Retired seasonal editor must not be loaded from Campsite Pricing');
 });
 
 $check('Public seasonal answers preserve Site-specific rules and Unknown', static function () use ($assert): void {
@@ -2586,9 +2538,10 @@ $check('Site preview has no duplicate official RIDB cards', static function () u
         $assert(strpos($preview, $old) === false,
             'Duplicated upper RIDB detail card remains: ' . $old);
     }
-    $assert(strpos($preview, 'equipmentMarkup(') !== false
-        && strpos($preview, 'galleryMarkup(') !== false,
-        'Site photos or permitted equipment display missing');
+    $assert(strpos($preview, 'showEquipmentInScoutReport(') !== false
+        && strpos($preview, 'galleryMarkup(') !== false
+        && strpos($preview, 'data-campsite-report-field="site_allowed_setups"') !== false,
+        'Site photos or the canonical RIDB equipment fallback is missing');
     $assert(strpos($catalog, "'ridb_loop' => 'site_loop'") !== false
         && strpos($catalog, "'ridb_type_of_use' => 'site_type_of_use'") !== false
         && strpos($catalog, "llama_site_can_read(") !== false,
