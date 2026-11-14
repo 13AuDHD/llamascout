@@ -432,6 +432,7 @@ require __DIR__ . '/partials/header.php';
             <div class="mapped-area-editor-save-actions">
                 <button type="button" class="is-danger" data-delete-feature disabled>Delete</button>
                 <button type="button" class="is-primary" data-save-feature disabled>Save changes</button>
+                <button type="button" data-discard-site-point hidden>Discard unsaved pin</button>
                 <button type="button" class="is-primary" data-save-site-point hidden>Save Site point</button>
                 <button type="button" class="is-primary" data-facility-save hidden>Save Area point</button>
             </div>
