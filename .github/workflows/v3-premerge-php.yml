@@ -14,6 +14,9 @@ on:
       - 'tools/tests/place-explorer-colors-ui.cjs'
       - 'tools/tests/area-purple-report-ui.cjs'
       - 'tools/tests/area-selection-deep-link-ui.cjs'
+      - 'tools/tests/place-report-scope-visibility-ui.cjs'
+      - 'tools/tests/place-area-scope-registry.php'
+      - 'css/site/features/place-report-form.css'
       - 'js/place-campsites.js'
   workflow_dispatch:
 
@@ -55,6 +58,8 @@ jobs:
           NODE_PATH="$RUNNER_TEMP/llama-pricing-ui/node_modules" node tools/tests/place-explorer-colors-ui.cjs
           NODE_PATH="$RUNNER_TEMP/llama-pricing-ui/node_modules" node tools/tests/area-purple-report-ui.cjs
           NODE_PATH="$RUNNER_TEMP/llama-pricing-ui/node_modules" node tools/tests/area-selection-deep-link-ui.cjs
+          NODE_PATH="$RUNNER_TEMP/llama-pricing-ui/node_modules" node tools/tests/place-report-scope-visibility-ui.cjs
+          php tools/tests/place-area-scope-registry.php
           node --check js/place-campsites.js
           node --check js/place-stay-selection-map.js
           NODE_PATH="$RUNNER_TEMP/llama-pricing-ui/node_modules" node tools/tests/quick-warning-ui.cjs
