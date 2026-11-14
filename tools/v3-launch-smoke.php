@@ -2086,9 +2086,15 @@ $check('Public map Place and Area colors match unified editor', static function 
     );
 
     $assert(
-        preg_match('/\\.place-map-feature--camping-area\\s*\\{[^}]*stroke:\\s*#a855f7;[^}]*fill:\\s*#a855f7;/s', $css) === 1,
+        preg_match('/\\.place-map-feature--camping-area\\s*\\{[^}]*stroke:\\s*#9765cb;[^}]*fill:\\s*#9765cb;/s', $css) === 1,
         'Public Camping Area is not purple'
     );
+    foreach (['parking-area', 'facility-area'] as $areaType) {
+        $assert(
+            preg_match('/\\.place-map-feature--' . $areaType . '\\s*\\{[^}]*stroke:\\s*#9765cb;[^}]*fill:\\s*#9765cb;/s', $css) === 1,
+            'All Areas must retain the same purple color, including parking and facilities'
+        );
+    }
 });
 
 $check('M4-001 recurring Place seasons and overlap protection', static function () use ($assert): void {

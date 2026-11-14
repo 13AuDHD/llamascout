@@ -61,23 +61,23 @@
                 );
         };
 
+        const areaContext = report.querySelector('[data-area-report-context]');
+        const areaContextName = report.querySelector('[data-area-report-name]');
+        const areaContextStatus = report.querySelector('[data-area-report-status]');
+        const placeCompleteness = report.querySelector('.scout-report-completeness');
+        const compareLink = report.querySelector('.scout-report-history-link');
+
         const showReportScope = (scope) => {
-            report.dataset.activeReportScope =
-                scope;
+            report.dataset.activeReportScope = scope;
+            const isArea = scope === 'area';
+            if (areaContext) areaContext.hidden = !isArea;
+            if (placeCompleteness) placeCompleteness.hidden = isArea;
+            if (compareLink) compareLink.hidden = isArea;
 
             restoreItemVisibility();
 
-            // Temporary full-question inventory review: keep Place and Site
-            // question groups on screen for every selected context. Values
-            // still come from the authorized selected target.
-            if (report.dataset.questionInventoryReview === '1') {
-                for (const section of sections) {
-                    section.hidden = false;
-                }
-                return;
-            }
-
             // Every target shows only its own canonical questions.
+            // No inventory-review mode may expose Place cards in an Area.
             // The Area may share a report section with the Place or Site,
             // but it never inherits their UI cards just because of layout.
             for (const section of sections) {
@@ -90,7 +90,13 @@
                     ? sectionScopes.includes('area')
                     : page === scope;
                 section.hidden = !allowedSection;
-                if (!allowedSection) continue;
+                if (!allowedSection) {
+                    // Also hide each card explicitly. Some card display rules
+                    // override the native hidden attribute in legacy layouts.
+                    section.querySelectorAll('.scout-report-item')
+                        .forEach((item) => { item.hidden = true; });
+                    continue;
+                }
 
                 const items = Array.from(
                     section.querySelectorAll('.scout-report-item')
@@ -99,11 +105,13 @@
                     const itemScopes = scopesFor(item);
                     // Non-question cards (e.g. official contact links)
                     // belong to the Place overview only.
-                    const allowedItem = itemScopes.length
-                        ? itemScopes.includes(scope)
-                        : scope === 'place';
+                    const allowedItem = scope === 'area'
+                        ? item.dataset.reportOwner === 'area'
+                        : itemScopes.length
+                            ? itemScopes.includes(scope)
+                            : scope === 'place';
                     item.hidden = !allowedItem
-                        || Boolean(initialItemHidden.get(item))
+                        || (scope !== 'area' && Boolean(initialItemHidden.get(item)))
                         || item.classList.contains('is-applicability-hidden');
                 }
 
@@ -145,16 +153,20 @@
                         || 'place'
                     );
 
-                showReportScope(
-                    kind === 'place'
-                        ? 'place'
-                        : (
-                            kind === 'area'
-                            || kind === 'parking'
-                                ? 'area'
-                                : 'site'
-                        )
-                );
+                const scope = kind === 'place' ? 'place'
+                    : (kind === 'area' || kind === 'parking' ? 'area' : 'site');
+                showReportScope(scope);
+                if (scope === 'area') {
+                    const id = String(event.detail?.id || '');
+                    const row = Array.from(document.querySelectorAll('[data-stay-area-id]'))
+                        .find((candidate) => candidate.dataset.stayAreaId === id);
+                    if (areaContextName) {
+                        areaContextName.textContent = row?.dataset.stayAreaName || 'Selected Area';
+                    }
+                    if (areaContextStatus) {
+                        areaContextStatus.textContent = 'Loading this Area’s Scout Report...';
+                    }
+                }
             }
         );
 
@@ -1134,7 +1146,8 @@
                     // vice versa), even though both share the renderer.
                     const cardScopes = String(card.dataset.reportScopes || '')
                         .split(/\s+/).filter(Boolean);
-                    if (cardScopes.length && !cardScopes.includes(targetScope)) {
+                    if ((cardScopes.length && !cardScopes.includes(targetScope))
+                        || (targetScope === 'area' && card.dataset.reportOwner !== 'area')) {
                         card.hidden = true;
                         return;
                     }
@@ -1385,6 +1398,17 @@
 
         updateTargetContributionPrompts();
 
+        if (targetScope === 'area') {
+            const areaStatus = document.querySelector('[data-area-report-status]');
+            if (areaStatus) {
+                const applicable = Array.from(
+                    document.querySelectorAll('.scout-report-item[data-report-owner="area"]')
+                ).filter((card) => !card.hidden);
+                const addressed = applicable.filter((card) => !card.classList.contains('is-unanswered'));
+                areaStatus.textContent = `${addressed.length} of ${applicable.length} Area questions addressed.`;
+            }
+        }
+
         const warningState = {
             warnings:
                 site.report_warnings
@@ -1466,6 +1490,8 @@
             report_inapplicable_keys: [],
         });
         if (!Number.isSafeInteger(areaId) || areaId < 1 || !hasCompleteAccess) {
+            const status = document.querySelector('[data-area-report-status]');
+            if (status) status.textContent = 'Area Scout Report answers require Complete Access.';
             return;
         }
 
@@ -1487,6 +1513,8 @@
             .catch((error) => {
                 if (token === areaReportRequest) {
                     console.error('Llama Scout Area report error:', error);
+                    const status = document.querySelector('[data-area-report-status]');
+                    if (status) status.textContent = 'The Area report could not be loaded. Place answers are not shown instead.';
                 }
             });
     });

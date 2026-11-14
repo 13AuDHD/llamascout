@@ -423,20 +423,20 @@
 
         camping_area: {
             color:
-                '#a855f7',
+                '#9765cb',
 
             fillColor:
-                '#a855f7'
+                '#9765cb'
         },
 
         parking_area: {
             color:
-                '#2563eb',
+                '#9765cb',
 
             fillColor:
-                '#2563eb'
+                '#9765cb'
         },
-        facility_area: { color: '#7931a9', fillColor: '#7931a9' },
+        facility_area: { color: '#9765cb', fillColor: '#9765cb' },
 
         camping_site: {
             color:
@@ -1270,8 +1270,8 @@
         facilityLng.value = lng.toFixed(7);
         clearFacilityPreview();
         facilityPreview = L.circleMarker([lat, lng], {
-            radius: 9, color: '#7931a9', weight: 3,
-            fillColor: '#7931a9', fillOpacity: .88
+            radius: 9, color: '#9765cb', weight: 3,
+            fillColor: '#9765cb', fillOpacity: .88
         }).addTo(map);
         facilityPreview.bringToFront();
         if (pan) map.setView([lat, lng], Math.max(17, map.getZoom()));
@@ -1527,8 +1527,8 @@
                             feature.geometry,
                             {
                                 pointToLayer: (_, latlng) => L.circleMarker(latlng, {
-                                    radius: 9, color: '#7931a9', weight: 3,
-                                    fillColor: '#7931a9', fillOpacity: .88
+                                    radius: 9, color: '#9765cb', weight: 3,
+                                    fillColor: '#9765cb', fillOpacity: .88
                                 }),
                                 style: {
                                     color:

@@ -629,20 +629,6 @@ $hasSupplementalStayOptions =
 ?>
 
 
-<?php
-/* Labels, order, and answer options come exclusively from canonical fields. */
-$stayFacilityQuestions = [];
-foreach ($stayReportFields as $fieldKey => $field) {
-    if (($field['report_scope_group'] ?? '') !== 'area'
-        || empty($field['facility_kinds'])) continue;
-    $stayFacilityQuestions[$fieldKey] = [
-        'label' => (string) ($field['label'] ?? $fieldKey),
-        'type' => (string) ($field['type'] ?? ''),
-        'options' => (array) ($field['options'] ?? []),
-        'kinds' => array_values((array) $field['facility_kinds']),
-    ];
-}
-?>
 <script src="/js/place-campsite-horizontal-scroll.js"></script>
 
 <link
@@ -816,17 +802,11 @@ foreach ($stayReportFields as $fieldKey => $field) {
 
     </div>
 
-    <div class="place-area-facility-report" data-stay-facility-report hidden></div>
     <div
         class="place-area-photo-detail"
         data-stay-area-photo-detail
         hidden
     ></div>
-    <script type="application/json" data-stay-facility-question-catalog><?= json_encode(
-        $stayFacilityQuestions, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
-        | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
-        | JSON_THROW_ON_ERROR
-    ) ?></script>
 
 </section>
 

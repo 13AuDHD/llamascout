@@ -1450,9 +1450,9 @@
                                 {
                                     pointToLayer: (_, latlng) => L.circleMarker(latlng, {
                                         radius: 9,
-                                        color: '#7931a9',
+                                        color: '#9765cb',
                                         weight: 3,
-                                        fillColor: '#7931a9',
+                                        fillColor: '#9765cb',
                                         fillOpacity: .88,
                                         className: featureClass('facility_area')
                                     }),

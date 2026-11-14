@@ -100,9 +100,9 @@ const state = ({section, report}) => ({
         ctx.section.querySelector('[data-stay-area-kind="parking"]').click();
         await Promise.resolve();
         assert.deepEqual(state(ctx), {
-            sectionScope: 'parking', sectionColor: 'blue',
-            reportScope: 'parking', reportColor: 'blue',
-        }, 'Only parking Areas are blue');
+            sectionScope: 'parking', sectionColor: 'purple',
+            reportScope: 'parking', reportColor: 'purple',
+        }, 'Parking Areas are purple like every other Area');
         ctx.dom.window.close();
     }
 
@@ -120,7 +120,7 @@ const state = ({section, report}) => ({
     assert.doesNotMatch(css, /\.scout-report\[data-explorer-color/);
     assert.match(css, /\[data-stay-area-kind="camping"\]\s*\{[^}]*#9765cb/s);
 
-    console.log('PASS: Place green, Site orange, Area purple, parking Area blue across categories and deep links');
+    console.log('PASS: Place green, Site orange, all Areas purple across categories and deep links');
 })().catch(error => {
     console.error(error);
     process.exitCode = 1;
