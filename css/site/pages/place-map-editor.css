@@ -50,6 +50,11 @@
     cursor: pointer;
 }
 
+/* Explicitly honor hidden controls despite the shared inline-flex button style. */
+.mapped-area-editor button[hidden] {
+    display: none;
+}
+
 .mapped-area-editor button:hover,
 .mapped-area-editor button:focus-visible,
 .mapped-area-editor-back:hover,

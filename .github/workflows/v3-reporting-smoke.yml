@@ -85,6 +85,8 @@ on:
       - 'css/admin/pages/place.css'
       - 'admin/partials/place-report-area-selector.php'
       - 'place-map-editor.php'
+      - 'app/place-map-features-endpoint.php'
+      - 'tools/tests/site-map-pin-removal-ui.cjs'
       - 'js/place-map-editor.js'
       - 'js/admin/place-report-area.js'
       - 'css/site/pages/place-map-editor.css'
@@ -168,6 +170,10 @@ jobs:
         env:
           NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules
         run: node tools/tests/campsite-pricing-contract.cjs
+      - name: Verify saved Site pin removal and map button visibility
+        env:
+          NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules
+        run: node tools/tests/site-map-pin-removal-ui.cjs
       - name: Exercise All Sites consensus and bulk save persistence
         env:
           NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules

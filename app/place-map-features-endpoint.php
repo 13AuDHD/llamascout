@@ -431,6 +431,8 @@ $canEdit =
     );
 $canEditBoundaries = user_has_role('admin', $userId)
     || user_has_role('master-scout', $userId);
+$canRemoveSavedSitePoint = $canEdit
+    && ($canEditBoundaries || user_is_owner($userId));
 
 $mapStats =
     llama_place_map_api_stats(
@@ -487,6 +489,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         ],
 
         'can_edit' => $canEdit,
+        'can_remove_site_point' => $canRemoveSavedSitePoint,
 
         'place' => [
             'id' => $placeId,
@@ -582,6 +585,78 @@ $action =
     );
 
 try {
+    if ($action === 'clear_site_point') {
+        // This clears only a canonical Site's stored coordinates. Never
+        // delete the Site row, linked reports, photos, or Site identity.
+        if (!$canRemoveSavedSitePoint) {
+            llama_place_map_api_json([
+                'ok' => false,
+                'error' => 'Only Master Scouts and Admins may remove saved Site pins.'
+            ], 403);
+        }
+
+        $siteId = (int) ($input['site_id'] ?? 0);
+        $expectedLat = $input['expected_latitude'] ?? null;
+        $expectedLng = $input['expected_longitude'] ?? null;
+        if ($siteId < 1 || !is_numeric($expectedLat) || !is_numeric($expectedLng)) {
+            throw new InvalidArgumentException('Select an existing saved Site pin first.');
+        }
+
+        $ownsTransaction = !$db->inTransaction();
+        if ($ownsTransaction) {
+            $db->beginTransaction();
+        }
+        try {
+            $stmt = $db->prepare(
+                'SELECT latitude, longitude FROM place_campsites
+                 WHERE id = ? AND place_id = ? AND is_active = 1
+                 FOR UPDATE'
+            );
+            $stmt->execute([$siteId, $placeId]);
+            $sitePoint = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$sitePoint) {
+                throw new InvalidArgumentException(
+                    'The selected Site is no longer available in this Place.'
+                );
+            }
+            $currentLat = $sitePoint['latitude'];
+            $currentLng = $sitePoint['longitude'];
+            if ($currentLat === null || $currentLng === null) {
+                throw new InvalidArgumentException(
+                    'This Site has no saved map pin. Refresh the map.'
+                );
+            }
+            if (abs((float) $currentLat - (float) $expectedLat) > 0.00000011
+                || abs((float) $currentLng - (float) $expectedLng) > 0.00000011) {
+                throw new InvalidArgumentException(
+                    'This Site location changed after you loaded it. Refresh before removing the pin.'
+                );
+            }
+
+            $stmt = $db->prepare(
+                'UPDATE place_campsites
+                 SET latitude = NULL, longitude = NULL
+                 WHERE id = ? AND place_id = ? AND is_active = 1'
+            );
+            $stmt->execute([$siteId, $placeId]);
+            if ($ownsTransaction) {
+                $db->commit();
+            }
+        } catch (Throwable $exception) {
+            if ($ownsTransaction && $db->inTransaction()) {
+                $db->rollBack();
+            }
+            throw $exception;
+        }
+
+        llama_place_map_api_json([
+            'ok' => true,
+            'site_id' => $siteId,
+            'features' => llama_place_map_api_features($db, $placeId),
+            'campsites' => llama_place_map_api_sites($db, $placeId),
+        ]);
+    }
+
     if ($action === 'save_site_point') {
         $siteId = (int) ($input['site_id'] ?? 0);
         $siteName = trim((string) ($input['site_name'] ?? ''));
