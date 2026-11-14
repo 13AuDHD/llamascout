@@ -106,3 +106,151 @@
         white-space: normal;
     }
 }
+
+
+/* Ticket conversation, reply editor, and reusable responses */
+
+.admin-support-conversation {
+    display: grid;
+    gap: 16px;
+}
+.admin-support-conversation > h3 {
+    margin: 0;
+}
+.admin-support-thread {
+    display: grid;
+    gap: 12px;
+}
+.admin-support-entry {
+    border: 1px solid var(--border);
+    border-inline-start: 4px solid var(--border);
+    border-radius: var(--admin-control-radius);
+    padding: 14px 16px;
+    background: var(--background);
+    min-width: 0;
+}
+.admin-support-entry.is-customer {
+    border-inline-start-color: #8b5cf6;
+}
+.admin-support-entry.is-staff {
+    border-inline-start-color: #16a34a;
+}
+.admin-support-entry.is-private {
+    border-inline-start-color: #d97706;
+}
+.admin-support-entry header {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 7px 12px;
+    margin-bottom: 8px;
+}
+.admin-support-entry header strong {
+    color: var(--text);
+}
+.admin-support-entry header span,
+.admin-support-entry header time,
+.admin-support-hint {
+    font-size: .8rem;
+    color: var(--text-muted);
+}
+.admin-support-entry header time {
+    margin-inline-start: auto;
+}
+.admin-support-entry .admin-support-message {
+    margin: 0;
+    line-height: 1.55;
+}
+.admin-support-send-error {
+    color: #c2410c !important;
+    font-weight: 800;
+}
+.admin-support-attachment {
+    display: inline-flex;
+    margin-top: 10px;
+    margin-inline-end: 12px;
+    overflow-wrap: anywhere;
+    text-decoration: underline;
+}
+.admin-support-reply-form,
+.admin-support-canned-editor {
+    display: grid;
+    gap: 10px;
+    min-width: 0;
+}
+.admin-support-reply-form label,
+.admin-support-canned-editor label {
+    display: grid;
+    gap: 6px;
+    font-size: .85rem;
+    font-weight: 750;
+}
+.admin-support-reply-form select,
+.admin-support-reply-form textarea,
+.admin-support-reply-form input[type=file],
+.admin-support-canned-editor input[type=text],
+.admin-support-canned-editor textarea {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    border: 1px solid var(--border);
+    border-radius: var(--admin-control-radius);
+    padding: 10px 12px;
+    background: var(--background);
+    color: var(--text);
+    font: inherit;
+}
+.admin-support-reply-form .is-hidden {
+    display: none;
+}
+.admin-support-reply-form > button {
+    justify-self: start;
+}
+.admin-support-canned-panel {
+    margin-top: var(--admin-panel-gap);
+}
+.admin-support-canned-panel summary {
+    padding: var(--admin-panel-padding);
+    font-weight: 800;
+    cursor: pointer;
+}
+.admin-support-canned-inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(240px, .8fr);
+    gap: 20px;
+    padding: var(--admin-panel-padding);
+    border-top: 1px solid var(--border);
+}
+.admin-support-canned-editor label.admin-support-inline-checkbox {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+.admin-support-canned-list {
+    display: grid;
+    gap: 8px;
+    align-content: start;
+    max-height: 560px;
+    overflow-y: auto;
+}
+.admin-support-canned-list a {
+    display: grid;
+    gap: 3px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--admin-control-radius);
+    color: var(--text);
+    text-decoration: none;
+}
+.admin-support-canned-list a:hover {
+    background: var(--background);
+}
+.admin-support-canned-list span {
+    font-size: .78rem;
+    color: var(--text-muted);
+}
+@media (max-width: 760px) {
+    .admin-support-canned-inner {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
