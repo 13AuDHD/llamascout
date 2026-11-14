@@ -13,6 +13,8 @@ on:
       - 'css/site/features/place-explorer.css'
       - 'tools/tests/place-explorer-colors-ui.cjs'
       - 'tools/tests/area-purple-report-ui.cjs'
+      - 'tools/tests/area-selection-deep-link-ui.cjs'
+      - 'js/place-campsites.js'
   workflow_dispatch:
 
 permissions:
@@ -52,6 +54,7 @@ jobs:
           node --check js/place-explorer.js
           NODE_PATH="$RUNNER_TEMP/llama-pricing-ui/node_modules" node tools/tests/place-explorer-colors-ui.cjs
           NODE_PATH="$RUNNER_TEMP/llama-pricing-ui/node_modules" node tools/tests/area-purple-report-ui.cjs
+          NODE_PATH="$RUNNER_TEMP/llama-pricing-ui/node_modules" node tools/tests/area-selection-deep-link-ui.cjs
           node --check js/place-campsites.js
           node --check js/place-stay-selection-map.js
           NODE_PATH="$RUNNER_TEMP/llama-pricing-ui/node_modules" node tools/tests/quick-warning-ui.cjs
