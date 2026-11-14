@@ -277,6 +277,18 @@
     border-left-color: #379c65;
 }
 
+.closure-review-card.is-ended .closure-status-pill {
+    border-color: color-mix(in srgb, #379c65 60%, var(--border));
+    background: color-mix(in srgb, #379c65 15%, var(--surface));
+    color: #72d3a0;
+}
+
+.closure-review-card.is-scheduled .closure-status-pill {
+    border-color: color-mix(in srgb, #3e7ccf 60%, var(--border));
+    background: color-mix(in srgb, #3e7ccf 15%, var(--surface));
+    color: #8ab8ee;
+}
+
 .closure-review-main {
     min-width: 0;
     padding: 14px 15px;
@@ -394,6 +406,10 @@
 }
 
 @media (max-width: 900px) {
+    .closure-summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .closure-form-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
