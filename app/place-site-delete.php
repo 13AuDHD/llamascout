@@ -21,7 +21,7 @@ function llama_site_delete_columns(PDO $db): array
         "SELECT TABLE_NAME, COLUMN_NAME
          FROM information_schema.COLUMNS
          WHERE TABLE_SCHEMA = DATABASE()
-           AND (TABLE_NAME LIKE 'place\\_%' OR TABLE_NAME LIKE 'scout\\_%')"
+           AND (LEFT(TABLE_NAME, 6) = 'place_' OR LEFT(TABLE_NAME, 6) = 'scout_')"
     );
     $columns = [];
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
@@ -41,11 +41,20 @@ function llama_site_delete_photos_in_use(PDO $db, string $path): bool
     if (llama_photo_gallery_path_in_use($db, $path)) {
         return true;
     }
-    $stmt = $db->prepare(
-        'SELECT 1 FROM scout_report_photos WHERE photo_path = ? LIMIT 1'
-    );
-    $stmt->execute([$path]);
-    return (bool) $stmt->fetchColumn();
+    try {
+        $stmt = $db->prepare(
+            'SELECT 1 FROM scout_report_photos WHERE photo_path = ? LIMIT 1'
+        );
+        $stmt->execute([$path]);
+        return (bool) $stmt->fetchColumn();
+    } catch (PDOException $exception) {
+        // Older installations may not have the history table yet.
+        if ((int) ($exception->errorInfo[1] ?? 0) === 1146) {
+            return false;
+        }
+        error_log('Site delete photo reference check failed: ' . $exception->getMessage());
+        return true;
+    }
 }
 
 /**
@@ -276,6 +285,49 @@ function llama_site_delete_permanently(
             }
             $stmt = $db->prepare($query);
             $stmt->execute($params);
+        }
+
+        // Discover real foreign keys to canonical Site IDs, including any
+        // future plugin/add-on tables not listed above. No other Site rows
+        // may be deleted as collateral.
+        $fkStmt = $db->query(
+            "SELECT TABLE_NAME, COLUMN_NAME
+             FROM information_schema.KEY_COLUMN_USAGE
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND REFERENCED_TABLE_NAME = 'place_campsites'
+               AND REFERENCED_COLUMN_NAME = 'id'"
+        );
+        foreach ($fkStmt->fetchAll(PDO::FETCH_ASSOC) ?: [] as $fk) {
+            $table = (string) ($fk['TABLE_NAME'] ?? '');
+            $column = (string) ($fk['COLUMN_NAME'] ?? '');
+            if ($table === 'place_campsites') {
+                throw new RuntimeException(
+                    'Another Site is linked to this Site. Resolve the relationship before deletion.'
+                );
+            }
+            if (preg_match('/^[a-z][a-z0-9_]{0,63}$/D', $table) !== 1
+                || preg_match('/^[a-z][a-z0-9_]{0,63}$/D', $column) !== 1) {
+                throw new RuntimeException('An unsupported Site database relationship was found.');
+            }
+            if ($column === 'campsite_id' && str_starts_with($table, 'place_')) {
+                continue; // Already removed by the canonical Site cleanup above.
+            }
+            if ($table === 'place_pricing_reviews' && $column === 'site_id') {
+                continue; // Removed below.
+            }
+            if (!isset($columns[$table][$column])) {
+                throw new RuntimeException(
+                    'An unrecognized Site relationship prevents safe deletion.'
+                );
+            }
+            $sql = 'DELETE FROM `' . $table . '` WHERE `' . $column . '` = ?';
+            $args = [$siteId];
+            if (isset($columns[$table]['place_id'])) {
+                $sql .= ' AND place_id = ?';
+                $args[] = $placeId;
+            }
+            $stmt = $db->prepare($sql);
+            $stmt->execute($args);
         }
 
         // Dedicated pricing-review records use site_id rather than
