@@ -57,8 +57,8 @@ $bad = $doc; $bad['rows'][0]['source_url'] = 'javascript:alert(1)'; bad(fn() => 
 $bad = $doc; $bad['rows'][0]['match']['site_selection'] = true; $bad['rows'][0]['match']['site_ids'] = []; bad(fn() => llama_pricing_validate($bad), 'An empty explicit Site selection must not apply to all Sites');
 $bad = $doc; $bad['rows'][0]['match']['site_ids'] = ['not-a-site']; bad(fn() => llama_pricing_validate($bad), 'Invalid ID');
 check(llama_pricing_decode('{broken')['invalid'] === true, 'Persisted invalid data fails closed');
-$legacy = llama_pricing_validate([['name' => 'Summer', 'price' => 10, 'season' => 'peak']]);
-check($legacy['rows'][0]['needs_review'], 'Undated legacy season not a flat rate');
+bad(fn() => llama_pricing_validate([['name' => 'Summer', 'price' => 10, 'season' => 'peak']]),
+    'Unversioned legacy rate lists must not be accepted as current price documents');
 $event = $doc; $event['rows'][0]['holiday_prices'] = ['holiday-0' => 80];
 $event = llama_pricing_validate($event);
 check(llama_pricing_for_site($event, $site, '2027-07-03')['amount'] === 80.0, 'Specific event overrides generic summer holiday');
