@@ -944,3 +944,28 @@ input[type="checkbox"] {
 .scout-report-season-inputs button:focus-visible {
     border-color: var(--text);
 }
+
+/* One Scout Report renderer serves Place, Area, and Site.
+   Hidden fields must stay hidden even if a child/legacy card uses
+   display:grid or another script restores the card's old class list.
+   This stylesheet is loaded for every Place, even without a map. */
+.scout-report .scout-report-section[hidden],
+.scout-report .scout-report-item[hidden],
+.scout-report .scout-report-grid[hidden],
+.scout-report .scout-report-subsection[hidden],
+.scout-report .scout-report-area-context[hidden],
+.scout-report .scout-report-completeness[hidden],
+.scout-report .scout-report-history-link[hidden] {
+    display: none !important;
+}
+
+/* A green Place must never display purple Area-only or orange Site-only
+   questions, regardless of when the Area/Site selection JS runs. */
+.scout-report[data-active-report-scope="place"]
+    .scout-report-item[data-report-scopes]:not([data-report-scopes~="place"]),
+.scout-report[data-active-report-scope="area"]
+    .scout-report-item:not([data-report-owner="area"]),
+.scout-report[data-active-report-scope="site"]
+    .scout-report-item:not([data-report-scopes~="site"]) {
+    display: none !important;
+}
