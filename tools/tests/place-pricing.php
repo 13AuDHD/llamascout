@@ -57,8 +57,8 @@ $bad = $doc; $bad['rows'][0]['source_url'] = 'javascript:alert(1)'; bad(fn() => 
 $bad = $doc; $bad['rows'][0]['match']['site_selection'] = true; $bad['rows'][0]['match']['site_ids'] = []; bad(fn() => llama_pricing_validate($bad), 'An empty explicit Site selection must not apply to all Sites');
 $bad = $doc; $bad['rows'][0]['match']['site_ids'] = ['not-a-site']; bad(fn() => llama_pricing_validate($bad), 'Invalid ID');
 check(llama_pricing_decode('{broken')['invalid'] === true, 'Persisted invalid data fails closed');
-$legacy = llama_pricing_validate([['name' => 'Summer', 'price' => 10, 'season' => 'peak']]);
-check($legacy['rows'][0]['needs_review'], 'Undated legacy season not a flat rate');
+bad(fn() => llama_pricing_validate([['name' => 'Summer', 'price' => 10, 'season' => 'peak']]),
+    'Unversioned legacy rate lists must not be accepted as current price documents');
 $event = $doc; $event['rows'][0]['holiday_prices'] = ['holiday-0' => 80];
 $event = llama_pricing_validate($event);
 check(llama_pricing_for_site($event, $site, '2027-07-03')['amount'] === 80.0, 'Specific event overrides generic summer holiday');
@@ -76,14 +76,14 @@ $winter['rows'][] = [
 ];
 check(llama_pricing_for_site($winter, $site, '2027-07-03')['amount'] === 80.0, 'Out-of-season rows cannot mask an active price');
 $fields = llama_place_report_fields();
-check($fields['place_rate_cards_json']['report_scopes'] === ['place'], 'Place owns rates');
-check($fields['place_rate_cards_json']['layout_section'] === 'place', 'Editor belongs on Place page');
+check(!isset($fields['place_rate_cards_json']), 'Legacy pricing JSON must not be a Scout Report answer');
 check(!$fields['fee']['approved_question'], 'No competing base-fee editor');
-$parsed = llama_place_report_parse_answer($fields['place_rate_cards_json'], json_encode($doc));
-check(json_decode($parsed['value'], true)['version'] === 2, 'Shared parser validates and preserves document');
-$built = llama_place_report_build_data(['name' => 'Test Place', 'place_rate_cards_json' => json_encode($doc)]);
-check(json_decode($built['rules']['rate_cards_json'], true)['version'] === 2, 'Full report builder retains pricing document');
-bad(fn() => llama_place_report_parse_answer($fields['place_rate_cards_json'], '{broken'), 'All canonical writes validate');
+check(llama_pricing_validate(json_encode($doc)) === $doc, 'Dedicated pricing validator preserves valid data');
+bad(fn() => llama_pricing_validate('{broken'), 'Invalid pricing documents must be rejected');
+$pricingController = file_get_contents(dirname(__DIR__, 2) . '/admin/campsite-pricing.php');
+check(is_string($pricingController) && str_contains($pricingController, 'admin_cpr_save(')
+    && str_contains($pricingController, 'admin_cpr_save_season('),
+    'Campsite Pricing must own rate and season writes');
 
 // Real SQLite integration checks document persistence reads and batched Site
 // attributes without mutating the public official Site facts.
