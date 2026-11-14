@@ -305,9 +305,6 @@ function llama_support_inbox_persist(
                 $total += strlen($bytes);
             }
             $body = (string) $mail['body'];
-            if ($skipped > 0) {
-                $body .= "\n\n[Some attachments exceeded the Support attachment limits and were not imported.]";
-            }
             $message = $db->prepare(
                 'INSERT INTO support_ticket_messages
                  (support_request_id, author_role, author_user_id,
