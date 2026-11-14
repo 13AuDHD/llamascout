@@ -65,7 +65,8 @@ if ($closurePhase === 'scheduled') {
         </div>
     </section>
     <?php
-    return;
+    // An upcoming closure is informational. Continue evaluating current
+    // access warnings, which may already require attention today.
 }
 
 if ($closurePhase === 'active' && $verifiedClosure) {
