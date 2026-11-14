@@ -105,7 +105,8 @@ function send_llama_mail(
     string $message,
     ?string $html = null,
     string $sender = 'default',
-    array $attachments = []
+    array $attachments = [],
+    ?string $threadMessageId = null
 ): bool {
     $config = llama_mail_config();
 
@@ -186,6 +187,14 @@ function send_llama_mail(
         }
 
         $mail->Subject = $subject;
+
+        if (
+            $sender === 'support'
+            && $threadMessageId !== null
+            && preg_match('/^<ls-ticket-[0-9]+-msg-[0-9]+@llamascout\\.com>$/', $threadMessageId)
+        ) {
+            $mail->MessageID = $threadMessageId;
+        }
 
         if ($html !== null) {
             $mail->isHTML(true);
