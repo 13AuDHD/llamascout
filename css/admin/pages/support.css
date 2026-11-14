@@ -334,3 +334,128 @@
         grid-template-columns: minmax(0, 1fr);
     }
 }
+
+
+/* Support ticket states: colored row edge, pill, and filter counts.
+   Text labels remain visible for accessibility and dark mode. */
+
+.admin-support-status-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    padding: var(--admin-panel-padding);
+    padding-bottom: 0;
+}
+
+.admin-support-status-summary-link,
+.admin-support-status-pill {
+    --support-status-color: #718096;
+    --support-status-tint: color-mix(in srgb, var(--support-status-color) 12%, var(--background));
+}
+
+.admin-support-status-summary-link.is-open,
+.admin-support-status-pill.is-open,
+.admin-support-queue-item.is-open {
+    --support-status-color: #23945a;
+}
+
+.admin-support-status-summary-link.is-waiting,
+.admin-support-status-pill.is-waiting,
+.admin-support-queue-item.is-waiting {
+    --support-status-color: #c18b20;
+}
+
+.admin-support-status-summary-link.is-resolved,
+.admin-support-status-pill.is-resolved,
+.admin-support-queue-item.is-resolved {
+    --support-status-color: #77849a;
+}
+
+.admin-support-status-summary-link {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-width: 0;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--support-status-color);
+    border-radius: var(--admin-control-radius);
+    color: var(--text);
+    background: var(--support-status-tint);
+    font-weight: 750;
+    text-decoration: none;
+}
+
+.admin-support-status-summary-link strong {
+    margin-left: auto;
+    font-variant-numeric: tabular-nums;
+}
+
+.admin-support-status-summary-link.is-selected {
+    outline: 2px solid var(--support-status-color);
+    outline-offset: -2px;
+}
+
+.admin-support-status-summary-link:focus-visible {
+    outline: 2px solid var(--support-status-color);
+    outline-offset: 3px;
+}
+
+.admin-support-status-dot {
+    display: inline-block;
+    flex: 0 0 8px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--support-status-color);
+}
+
+.admin-support-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    width: fit-content;
+    padding: 5px 10px;
+    border: 1px solid var(--support-status-color);
+    border-radius: 999px;
+    background: var(--support-status-tint);
+    color: var(--text);
+    font-size: .75rem;
+    font-weight: 800;
+    line-height: 1.25;
+    white-space: nowrap;
+}
+
+.admin-support-ticket-panel > .admin-panel-header .admin-support-status-pill {
+    font-size: .85rem;
+}
+
+.admin-support-queue .admin-support-queue-item {
+    --support-status-color: #718096;
+    border-left: 5px solid var(--support-status-color);
+}
+
+.admin-support-queue .admin-support-queue-item .admin-support-status-pill {
+    margin-top: 5px;
+}
+
+@media (max-width: 620px) {
+    .admin-support-status-summary {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
+    }
+
+    .admin-support-status-summary-link {
+        flex-wrap: wrap;
+        justify-content: center;
+        padding: 10px 6px;
+        gap: 5px;
+        font-size: .75rem;
+    }
+
+    .admin-support-status-summary-link strong {
+        margin-left: 0;
+        width: 100%;
+        text-align: center;
+    }
+}
