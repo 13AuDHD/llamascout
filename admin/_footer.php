@@ -127,6 +127,10 @@ if (
     <script src="/js/admin-place-access-alert.js"></script>
 <?php endif; ?>
 
+<?php if ($adminFooterScript === 'support.php'): ?>
+    <script src="/js/admin-support.js?v=<?= (int) filemtime(dirname(__DIR__) . '/js/admin-support.js') ?>"></script>
+<?php endif; ?>
+
 <?php if ($adminFooterScript === 'resources.php'): ?>
     <script src="https://llamascout.com/js/photo-gallery-editor.js?v=<?= (int) filemtime(dirname(__DIR__) . '/js/photo-gallery-editor.js') ?>"></script>
     <script src="https://llamascout.com/js/admin/resources.js?v=<?= (int) filemtime(dirname(__DIR__) . '/js/admin/resources.js') ?>"></script>
