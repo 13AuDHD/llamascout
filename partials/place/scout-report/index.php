@@ -153,6 +153,12 @@ $compareReportHistoryUrl =
         <?php endif; ?>
     </header>
 
+    <section class="scout-report-area-context" data-area-report-context hidden>
+        <p class="eyebrow">Area Scout Report</p>
+        <h3 data-area-report-name>Selected Area</h3>
+        <p data-area-report-status role="status" aria-live="polite">Loading this Area’s Scout Report...</p>
+    </section>
+
     <?php if ($publicReportSeasons): ?>
         <form class="scout-report-season-picker" method="get"
               action="/place.php" data-scout-season-form>
