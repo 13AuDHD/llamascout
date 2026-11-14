@@ -1,0 +1,54 @@
+name: Permanent Site Deletion Integration
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/site-delete-integration.yml'
+      - 'tools/tests/site-delete-integration.php'
+      - 'app/place-site-delete.php'
+      - 'app/place-map-features-endpoint.php'
+      - 'place-map-editor.php'
+      - 'js/place-map-editor.js'
+      - 'sql/2026-11-14-permanent-site-deletion.sql'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  hard-delete-site:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: site-delete-test-only
+          MARIADB_ROOT_HOST: "%"
+          MARIADB_DATABASE: llama_site_delete_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "healthcheck.sh --connect --innodb_initialized"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PHP MySQL driver if missing
+        run: |
+          if ! php -m | grep -qi '^pdo_mysql$'; then
+            sudo apt-get update -qq
+            sudo apt-get install -y php-mysql
+          fi
+      - name: Verify delete service syntax
+        run: |
+          php -l app/place-site-delete.php
+          php -l tools/tests/site-delete-integration.php
+          php -l app/place-map-features-endpoint.php
+      - name: Execute disposable MariaDB hard-delete integration
+        env:
+          LLAMA_SITE_DELETE_TEST_DSN: mysql:host=127.0.0.1;port=3306;dbname=llama_site_delete_test;charset=utf8mb4
+          LLAMA_SITE_DELETE_TEST_USER: root
+          LLAMA_SITE_DELETE_TEST_PASSWORD: site-delete-test-only
+        run: php tools/tests/site-delete-integration.php
