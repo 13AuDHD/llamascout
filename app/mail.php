@@ -200,7 +200,7 @@ function send_llama_mail(
 
         return true;
 
-    } catch (Exception $error) {
+    } catch (Throwable $error) {
         error_log(
             'Llama Scout mail error: '
             . $mail->ErrorInfo
