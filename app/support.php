@@ -807,6 +807,7 @@ function llama_support_requests(
                 WHEN "waiting" THEN 2
                 ELSE 3
             END,
+            sr.updated_at DESC,
             sr.created_at DESC
           LIMIT 300';
 
