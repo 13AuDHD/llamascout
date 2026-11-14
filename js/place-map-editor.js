@@ -167,9 +167,9 @@
             '[data-discard-site-point]'
         );
 
-    const removeSavedSitePointButton =
+    const deleteSiteButton =
         editor.querySelector(
-            '[data-remove-saved-site-point]'
+            '[data-delete-site]'
         );
 
     let editorMode =
@@ -184,7 +184,7 @@
     let siteLayers =
         [];
 
-    let canRemoveSavedSitePoint = false;
+    let canDeleteSite = false;
 
     const latitude =
         Number(
@@ -973,13 +973,12 @@
         && Number.isFinite(Number(site.longitude))
         && !(Number(site.latitude) === 0 && Number(site.longitude) === 0);
 
-    const syncSavedSitePointButton = () => {
-        if (!removeSavedSitePointButton) return;
-        removeSavedSitePointButton.hidden = !(
+    const syncDeleteSiteButton = () => {
+        if (!deleteSiteButton) return;
+        deleteSiteButton.hidden = !(
             editorMode === 'site'
-            && canRemoveSavedSitePoint
-            && siteHasSavedPoint(currentSite())
-            && !sitePreviewMarker
+            && canDeleteSite
+            && currentSite() !== null
         );
     };
 
@@ -996,7 +995,7 @@
             if (discardSitePointButton) {
                 discardSitePointButton.hidden = true;
             }
-            syncSavedSitePointButton();
+            syncDeleteSiteButton();
         };
 
     const setSitePoint =
@@ -1041,7 +1040,7 @@
 
             if (sameAsSaved) {
                 if (saveSitePointButton) saveSitePointButton.disabled = true;
-                syncSavedSitePointButton();
+                syncDeleteSiteButton();
                 if (pan) {
                     map.setView([nextLat, nextLng], Math.max(17, map.getZoom()));
                 }
@@ -1088,7 +1087,7 @@
             if (discardSitePointButton) {
                 discardSitePointButton.hidden = false;
             }
-            syncSavedSitePointButton();
+            syncDeleteSiteButton();
         };
 
     const discardSitePoint = () => {
@@ -1096,7 +1095,7 @@
         syncSiteTarget();
         renderExistingLayers();
         setStatus(siteHasSavedPoint(currentSite())
-            ? 'Temporary point discarded. The saved Site pin remains. Select Remove saved Site pin to clear its saved location.'
+            ? 'Temporary point discarded. The saved Site location remains unchanged.'
             : 'Unsaved Site pin discarded.');
     };
 
@@ -1139,7 +1138,7 @@
                     saveSitePointButton.disabled =
                         true;
                 }
-                syncSavedSitePointButton();
+                syncDeleteSiteButton();
 
                 return;
             }
@@ -1158,7 +1157,7 @@
 
                 if (sitePointStatus) {
                     sitePointStatus.textContent =
-                        `${String(site.display_name || site.site_name || `Site #${site.id}`)} (Site #${site.id}) has a saved map pin. Move it to correct the location or select Remove saved Site pin to clear that location.`;
+                        `${String(site.display_name || site.site_name || `Site #${site.id}`)} (Site #${site.id}) has a saved map pin. Move it to correct its GPS or choose Delete Site to permanently remove the Site.`;
                 }
             } else {
                 if (siteLatitude) {
@@ -1173,7 +1172,7 @@
 
                 if (sitePointStatus) {
                     sitePointStatus.textContent =
-                        'This Site has no exact point yet. Place it on the map or use Device GPS.';
+                        'This Site has no exact point yet. Place it on the map or choose Delete Site to remove it.';
                 }
 
                 if (saveSitePointButton) {
@@ -1181,7 +1180,7 @@
                         true;
                 }
             }
-            syncSavedSitePointButton();
+            syncDeleteSiteButton();
         };
 
     const syncSiteOptions =
@@ -1391,7 +1390,7 @@
                 discardSitePointButton.hidden =
                     !siteMode || !sitePreviewMarker;
             }
-            syncSavedSitePointButton();
+            syncDeleteSiteButton();
 
             if (deleteButton) {
                 deleteButton.hidden =
@@ -2014,10 +2013,10 @@
                     ? data.campsites
                     : [];
 
-            if (typeof data.can_remove_site_point === 'boolean') {
-                canRemoveSavedSitePoint = data.can_remove_site_point;
+            if (typeof data.can_delete_site === 'boolean') {
+                canDeleteSite = data.can_delete_site;
             }
-            syncSavedSitePointButton();
+            syncDeleteSiteButton();
         };
 
     const saveFacilityPoint = async () => {
@@ -2324,35 +2323,49 @@
             }
         };
 
-    const removeSavedSitePoint = async () => {
+    const deleteSitePermanently = async () => {
         const site = currentSite();
-        if (!canRemoveSavedSitePoint || !siteHasSavedPoint(site)
-            || sitePreviewMarker || !removeSavedSitePointButton) return;
+        if (!canDeleteSite || !site || !deleteSiteButton) return;
 
+        const id = Number(site.id);
         const name = String(site.display_name || site.site_name || 'Site');
-        if (!window.confirm(
-            `Remove the saved map pin for "${name}" (Site #${site.id})?\n\n`
-            + 'This clears only its GPS coordinates. The Site record, Scout Report, and photos are kept.'
-        )) return;
+        const required = `DELETE SITE ${id}`;
+        const answer = window.prompt(
+            `PERMANENTLY delete "${name}" (Site #${id})?\n\n`
+            + 'This deletes the Site record, its reports, photos, and associated data. '
+            + 'It cannot be undone. The parent Place and other Sites will remain.\n\n'
+            + `Type ${required} to confirm:`
+        );
+        if (answer === null) return;
+        if (answer.trim() !== required) {
+            setStatus('Site deletion canceled. Confirmation did not match.', true);
+            return;
+        }
 
-        removeSavedSitePointButton.disabled = true;
-        setStatus(`Removing saved pin for "${name}"...`);
+        deleteSiteButton.disabled = true;
+        setStatus(`Deleting "${name}" and its Site data...`);
         try {
             const data = await request({
-                action: 'clear_site_point',
-                site_id: Number(site.id),
-                expected_latitude: Number(site.latitude),
-                expected_longitude: Number(site.longitude)
+                action: 'delete_site',
+                site_id: id,
+                confirmation: required
             });
+            clearSitePreview();
             applyApiState(data);
-            syncSiteOptions(Number(site.id));
+            syncSiteOptions('new');
             renderExistingLayers();
-            setStatus(`Saved map pin removed for "${name}" (Site #${site.id}). Site record and Scout Report preserved.`);
+            if (adminReturn) {
+                const url = new URL(adminReturn.href);
+                url.searchParams.delete('site_id');
+                adminReturn.href = url.toString();
+                adminReturn.textContent = 'Return to Place report';
+            }
+            setStatus(`Site "${name}" (#${id}) permanently deleted.`);
         } catch (error) {
-            setStatus(error.message || 'The saved Site pin could not be removed.', true);
+            setStatus(error.message || 'Site deletion failed. No Site data was deleted.', true);
         } finally {
-            removeSavedSitePointButton.disabled = false;
-            syncSavedSitePointButton();
+            deleteSiteButton.disabled = false;
+            syncDeleteSiteButton();
         }
     };
 
@@ -2608,10 +2621,10 @@
             discardSitePoint
         );
 
-    removeSavedSitePointButton
+    deleteSiteButton
         ?.addEventListener(
             'click',
-            removeSavedSitePoint
+            deleteSitePermanently
         );
     facilitySaveButton?.addEventListener('click', saveFacilityPoint);
     facilityNewButton?.addEventListener('click', () => {
