@@ -593,17 +593,6 @@ $selectedSupportPinSet =
 </a>
 <?php endif; ?>
 
-<a
-    class="admin-button"
-    href="mailto:<?= moderation_e(
-        (string) $selected['email']
-    ) ?>?subject=<?= rawurlencode(
-        $replySubject
-    ) ?>"
->
-    Reply by email
-</a>
-
 <button class="admin-button" type="submit">
     Save
 </button>
