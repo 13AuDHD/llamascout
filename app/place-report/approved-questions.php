@@ -569,11 +569,13 @@ function llama_place_report_approved_registry_issues(): array
 
     // The owner's Nov 10 safety update restores the former Cliff Exposure
     // question, using its original key, as one additional approved Site slot.
-    if ($count !== 270) {
+    // The retired pricing JSON editor is not a Scout Report question.
+    // Campsite Pricing persists rate_cards_json through its own Admin workflow.
+    if ($count !== 269) {
         $issues[] =
             'Current approved-question projection contains '
             . $count
-            . ' slots; expected 270 (269 previous approved slots plus restored Cliff Exposure).';
+            . ' slots; expected 269 (270 previous slots less retired Campsite Pricing input).';
     }
 
     $assignedGroups = [];
