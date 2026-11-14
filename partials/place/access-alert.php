@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 $placeId = (int) ($place['id'] ?? 0);
 $db = db();
+require_once dirname(__DIR__, 2) . '/app/operating-closures.php';
 
 /*
  * A verified operating closure is the public source of truth.
@@ -31,7 +32,43 @@ if ($placeId > 0) {
     }
 }
 
-if ($verifiedClosure) {
+$closurePhase = $verifiedClosure
+    ? llama_closure_phase(
+        $verifiedClosure,
+        llama_closure_local_today((string) ($place['state'] ?? ''))
+    )
+    : 'open';
+
+if ($closurePhase === 'scheduled') {
+    $begin = (string) ($verifiedClosure['closure_began'] ?? '');
+    $startsLabel = (new DateTimeImmutable($begin))->format('F j, Y');
+    $end = (string) ($verifiedClosure['expected_reopening'] ?? '');
+    $endLabel = $end !== ''
+        ? (new DateTimeImmutable($end))->format('F j, Y')
+        : '';
+    ?>
+    <section class="place-access-alert is-scheduled-closure"
+             role="status" aria-label="Upcoming Place closure">
+        <i class="place-access-alert-icon" aria-hidden="true">
+            <?= llama_icon('calendar-clock') ?>
+        </i>
+        <div class="place-access-alert-copy">
+            <p class="place-access-alert-eyebrow">Upcoming scheduled closure</p>
+            <h2><?= place_h((string) ($place['name'] ?? 'This Place')) ?>
+                is scheduled to close on <?= place_h($startsLabel) ?></h2>
+            <p>
+                This Place is not closed yet.
+                <?php if ($endLabel !== ''): ?>
+                    Scheduled to reopen on <?= place_h($endLabel) ?>.
+                <?php endif; ?>
+            </p>
+        </div>
+    </section>
+    <?php
+    return;
+}
+
+if ($closurePhase === 'active' && $verifiedClosure) {
     $status = (string) ($verifiedClosure['status'] ?? 'temporary');
     $reason = trim((string) ($verifiedClosure['reason'] ?? 'unknown'));
 
