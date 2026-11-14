@@ -167,6 +167,11 @@
             '[data-discard-site-point]'
         );
 
+    const removeSavedSitePointButton =
+        editor.querySelector(
+            '[data-remove-saved-site-point]'
+        );
+
     let editorMode =
         'place';
 
@@ -178,6 +183,8 @@
 
     let siteLayers =
         [];
+
+    let canRemoveSavedSitePoint = false;
 
     const latitude =
         Number(
@@ -958,6 +965,24 @@
             || null;
         };
 
+    const siteHasSavedPoint = (site) =>
+        site
+        && site.latitude !== null && site.latitude !== ''
+        && site.longitude !== null && site.longitude !== ''
+        && Number.isFinite(Number(site.latitude))
+        && Number.isFinite(Number(site.longitude))
+        && !(Number(site.latitude) === 0 && Number(site.longitude) === 0);
+
+    const syncSavedSitePointButton = () => {
+        if (!removeSavedSitePointButton) return;
+        removeSavedSitePointButton.hidden = !(
+            editorMode === 'site'
+            && canRemoveSavedSitePoint
+            && siteHasSavedPoint(currentSite())
+            && !sitePreviewMarker
+        );
+    };
+
     const clearSitePreview =
         () => {
             if (sitePreviewMarker) {
@@ -971,6 +996,7 @@
             if (discardSitePointButton) {
                 discardSitePointButton.hidden = true;
             }
+            syncSavedSitePointButton();
         };
 
     const setSitePoint =
@@ -1009,14 +1035,13 @@
             const savedSite = currentSite();
             const savedLat = savedSite?.latitude;
             const savedLng = savedSite?.longitude;
-            const sameAsSaved = savedSite
-                && savedLat !== null && savedLat !== ''
-                && savedLng !== null && savedLng !== ''
+            const sameAsSaved = siteHasSavedPoint(savedSite)
                 && Math.abs(Number(savedLat) - nextLat) < 0.00000005
                 && Math.abs(Number(savedLng) - nextLng) < 0.00000005;
 
             if (sameAsSaved) {
                 if (saveSitePointButton) saveSitePointButton.disabled = true;
+                syncSavedSitePointButton();
                 if (pan) {
                     map.setView([nextLat, nextLng], Math.max(17, map.getZoom()));
                 }
@@ -1063,12 +1088,16 @@
             if (discardSitePointButton) {
                 discardSitePointButton.hidden = false;
             }
+            syncSavedSitePointButton();
         };
 
     const discardSitePoint = () => {
-        // Remove only the editable preview. Never delete the Site record.
+        // Discard only the editable preview; saved pins remain intentionally.
         syncSiteTarget();
-        setStatus('Unsaved Site pin discarded.');
+        renderExistingLayers();
+        setStatus(siteHasSavedPoint(currentSite())
+            ? 'Temporary point discarded. The saved Site pin remains. Select Remove saved Site pin to clear its saved location.'
+            : 'Unsaved Site pin discarded.');
     };
 
     const syncSiteTarget =
@@ -1110,6 +1139,7 @@
                     saveSitePointButton.disabled =
                         true;
                 }
+                syncSavedSitePointButton();
 
                 return;
             }
@@ -1118,13 +1148,7 @@
                 currentSite();
 
             if (
-                site
-                && Number.isFinite(
-                    Number(site.latitude)
-                )
-                && Number.isFinite(
-                    Number(site.longitude)
-                )
+                siteHasSavedPoint(site)
             ) {
                 setSitePoint(
                     Number(site.latitude),
@@ -1134,7 +1158,7 @@
 
                 if (sitePointStatus) {
                     sitePointStatus.textContent =
-                        'Existing Site location loaded. Move the point only if this Site needs a correction.';
+                        `${String(site.display_name || site.site_name || `Site #${site.id}`)} (Site #${site.id}) has a saved map pin. Move it to correct the location or select Remove saved Site pin to clear that location.`;
                 }
             } else {
                 if (siteLatitude) {
@@ -1157,6 +1181,7 @@
                         true;
                 }
             }
+            syncSavedSitePointButton();
         };
 
     const syncSiteOptions =
@@ -1366,6 +1391,7 @@
                 discardSitePointButton.hidden =
                     !siteMode || !sitePreviewMarker;
             }
+            syncSavedSitePointButton();
 
             if (deleteButton) {
                 deleteButton.hidden =
@@ -1570,26 +1596,25 @@
                             site.longitude
                         );
 
-                    if (
-                        !Number.isFinite(lat)
-                        || !Number.isFinite(lng)
-                        || (lat === 0 && lng === 0)
-                    ) {
+                    if (!siteHasSavedPoint(site)) {
                         return;
                     }
+
+                    const selected = editorMode === 'site'
+                        && Number(siteTarget?.value || 0) === Number(site.id);
 
                     const marker =
                         L.circleMarker(
                             [lat, lng],
                             {
                                 radius:
-                                    7,
+                                    selected ? 10 : 7,
 
                                 color:
-                                    '#f59e0b',
+                                    selected ? '#fff' : '#f59e0b',
 
                                 weight:
-                                    3,
+                                    selected ? 4 : 3,
 
                                 fillColor:
                                     '#f59e0b',
@@ -1988,6 +2013,11 @@
                 )
                     ? data.campsites
                     : [];
+
+            if (typeof data.can_remove_site_point === 'boolean') {
+                canRemoveSavedSitePoint = data.can_remove_site_point;
+            }
+            syncSavedSitePointButton();
         };
 
     const saveFacilityPoint = async () => {
@@ -2294,6 +2324,38 @@
             }
         };
 
+    const removeSavedSitePoint = async () => {
+        const site = currentSite();
+        if (!canRemoveSavedSitePoint || !siteHasSavedPoint(site)
+            || sitePreviewMarker || !removeSavedSitePointButton) return;
+
+        const name = String(site.display_name || site.site_name || 'Site');
+        if (!window.confirm(
+            `Remove the saved map pin for "${name}" (Site #${site.id})?\n\n`
+            + 'This clears only its GPS coordinates. The Site record, Scout Report, and photos are kept.'
+        )) return;
+
+        removeSavedSitePointButton.disabled = true;
+        setStatus(`Removing saved pin for "${name}"...`);
+        try {
+            const data = await request({
+                action: 'clear_site_point',
+                site_id: Number(site.id),
+                expected_latitude: Number(site.latitude),
+                expected_longitude: Number(site.longitude)
+            });
+            applyApiState(data);
+            syncSiteOptions(Number(site.id));
+            renderExistingLayers();
+            setStatus(`Saved map pin removed for "${name}" (Site #${site.id}). Site record and Scout Report preserved.`);
+        } catch (error) {
+            setStatus(error.message || 'The saved Site pin could not be removed.', true);
+        } finally {
+            removeSavedSitePointButton.disabled = false;
+            syncSavedSitePointButton();
+        }
+    };
+
     const deleteFeature =
         async () => {
             if (
@@ -2545,6 +2607,12 @@
             'click',
             discardSitePoint
         );
+
+    removeSavedSitePointButton
+        ?.addEventListener(
+            'click',
+            removeSavedSitePoint
+        );
     facilitySaveButton?.addEventListener('click', saveFacilityPoint);
     facilityNewButton?.addEventListener('click', () => {
         if (dirty && !window.confirm('Discard unsaved facility changes?')) return;
@@ -2727,7 +2795,10 @@
     siteTarget
         ?.addEventListener(
             'change',
-            syncSiteTarget
+            () => {
+                syncSiteTarget();
+                renderExistingLayers();
+            }
         );
 
     const previewTypedSitePoint =
