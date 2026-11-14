@@ -246,13 +246,6 @@ $selectedTicket = trim(
     )
 );
 
-$replySubject =
-    'Re: '
-    . (string) $selected['subject']
-    . ' [Ticket #'
-    . $selectedTicket
-    . ']';
-
 $selectedPhone =
     trim(
         (string) (
@@ -322,17 +315,7 @@ $selectedSupportPinSet =
 
 <p>
     <strong>Email:</strong>
-    <a
-        href="mailto:<?= moderation_e(
-            (string) $selected['email']
-        ) ?>?subject=<?= rawurlencode(
-            $replySubject
-        ) ?>"
-    >
-        <?= moderation_e(
-            (string) $selected['email']
-        ) ?>
-    </a>
+    <?= moderation_e((string) $selected['email']) ?>
 </p>
 
 <p>
