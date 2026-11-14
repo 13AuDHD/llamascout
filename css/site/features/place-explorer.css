@@ -9,7 +9,7 @@
 }
 
 .place-overnight-options[data-explorer-scope="parking"] {
-    --explorer-color: #337bdc;
+    --explorer-color: #9765cb;
 }
 
 .place-overnight-options[data-explorer-scope="area"] {
@@ -31,7 +31,7 @@
     cursor: pointer;
 }
 
-.place-explorer-overview.is-blue { border-color: #337bdc; }
+.place-explorer-overview.is-blue { border-color: #9765cb; }
 .place-explorer-overview.is-purple { border-color: #9765cb; }
 .place-explorer-overview strong { font-size: 1rem; font-weight: 800; }
 .place-explorer-overview span { font-size: .83rem; color: var(--text-muted, #bbb); }
@@ -55,7 +55,7 @@
 }
 
 .place-overnight-options .place-campsite-row[data-stay-area-kind="parking"] {
-    border: 2px solid #337bdc;
+    border: 2px solid #9765cb;
 }
 
 .place-overnight-options[data-explorer-scope="place"] [data-campsite-selected-detail] {
@@ -92,7 +92,7 @@
     --explorer-report-color: #9765cb;
 }
 .scout-report[data-explorer-scope="parking"] {
-    --explorer-report-color: #337bdc;
+    --explorer-report-color: #9765cb;
 }
 
 .scout-report[data-explorer-scope] .scout-report-section {
@@ -128,7 +128,7 @@
     cursor: pointer;
 }
 .place-explorer-map-card.is-orange { border-color: #e58a17; }
-.place-explorer-map-card.is-blue { border-color: #337bdc; }
+.place-explorer-map-card.is-blue { border-color: #9765cb; }
 .place-explorer-map-card.is-purple { border-color: #9765cb; }
 .place-explorer-map-card img {
     position: absolute;
@@ -168,7 +168,7 @@
 }
 
 .place-map-card .place-map-feature--camping-site.is-explorer-selected {
-    stroke: #ffd28b;
+    stroke: #e58a17;
     stroke-width: 4;
     fill-opacity: .65;
 }
@@ -219,7 +219,7 @@
     background: #222;
     color: #fff;
 }
-.place-explorer-pin-popup.is-blue { border-left-color: #337bdc; }
+.place-explorer-pin-popup.is-blue { border-left-color: #9765cb; }
 .place-explorer-pin-popup.is-purple { border-left-color: #9765cb; }
 .place-explorer-pin-popup > img {
     display: block;
