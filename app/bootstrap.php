@@ -113,6 +113,19 @@ $runMaintenance(
 );
 
 $runMaintenance(
+    'support_inbox',
+    static function (): void {
+        require_once __DIR__ . '/support-inbox.php';
+        $mailConfig = llama_mail_config();
+        if (llama_support_imap_ready($mailConfig)) {
+            // Check at most once every five minutes, with a small message batch.
+            // Disabled until an IMAP-only password is configured privately.
+            llama_support_inbox_sync(db(), 5, false);
+        }
+    }
+);
+
+$runMaintenance(
     'membership_email',
     static function (): void {
         llama_run_membership_email_maintenance(db(), 10);
