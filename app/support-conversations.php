@@ -297,6 +297,14 @@ function llama_support_add_reply(
             $text, $internal ? 'none' : 'pending', $submissionKey,
         ]);
         $messageId = (int) $db->lastInsertId();
+        $threadMessageId = '<ls-ticket-' . $ticketId . '-msg-'
+            . $messageId . '@llamascout.com>';
+        if (!$internal) {
+            $reference = $db->prepare(
+                'UPDATE support_ticket_messages SET external_message_id = ? WHERE id = ?'
+            );
+            $reference->execute([$threadMessageId, $messageId]);
+        }
         $attachments = llama_support_store_attachments(
             $db, $messageId, $upload, $createdPaths
         );
@@ -333,7 +341,8 @@ function llama_support_add_reply(
         . 'Ticket #' . $ticketNumber . "\n"
         . "Llama Scout Support\n";
     $sent = send_llama_mail(
-        (string) $ticket['email'], $subject, $body, null, 'support', $attachments
+        (string) $ticket['email'], $subject, $body, null, 'support',
+        $attachments, $threadMessageId
     );
     $status = $db->prepare(
         'UPDATE support_ticket_messages
