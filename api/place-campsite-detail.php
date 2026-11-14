@@ -175,7 +175,18 @@ try {
 
     $enriched = llama_campsite_closure_enrich($db, $placeId, [$site]);
     $site = $enriched[0] ?? $site;
-    $site['place_verified_closed'] = llama_public_place_verified_closed($db, $placeId);
+    $placeClosure = llama_public_place_active_closure($db, $placeId);
+    $site['place_verified_closed'] = $placeClosure !== null;
+    if ($placeClosure !== null) {
+        $site['is_closed'] = true;
+        if (($site['operating_status'] ?? 'open') === 'open') {
+            $site['operating_status'] = $placeClosure['status'];
+            $site['closure_reason'] = $placeClosure['reason'];
+            $site['closure_began'] = $placeClosure['closure_began'];
+            $site['expected_reopening'] = $placeClosure['expected_reopening'];
+            $site['closure_verified_at'] = $placeClosure['verified_at'];
+        }
+    }
 
     $currentModel =
         llama_place_report_current_answer_model_with_history(

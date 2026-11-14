@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/operating-closures.php';
+
 /**
  * Attach verified operating status to already-authorized map records.
  * This reads only Place-level closures: a closed campsite does not close
@@ -38,13 +40,21 @@ function llama_closure_enrich_map_places(PDO $db, array $places): array
     foreach (array_chunk($ids, 400) as $batch) {
         $placeholder = implode(',', array_fill(0, count($batch), '?'));
         $stmt = $db->prepare(
-            'SELECT place_id, status, reason, expected_reopening '
-            . 'FROM place_operating_closures '
-            . 'WHERE campsite_id IS NULL AND status IN (\'temporary\',\'seasonal\',\'permanent\') '
-            . 'AND place_id IN (' . $placeholder . ')'
+            'SELECT c.place_id, c.status, c.reason, c.closure_began, '
+            . 'c.expected_reopening, p.state '
+            . 'FROM place_operating_closures c '
+            . 'INNER JOIN places p ON p.id = c.place_id '
+            . "WHERE c.campsite_id IS NULL AND c.status IN ('temporary','seasonal','permanent') "
+            . 'AND c.place_id IN (' . $placeholder . ')'
         );
         $stmt->execute($batch);
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            if (!llama_closure_is_active(
+                $row,
+                llama_closure_local_today((string) ($row['state'] ?? ''))
+            )) {
+                continue;
+            }
             $id = (int) $row['place_id'];
             foreach ($indices[$id] ?? [] as $index) {
                 $places[$index]['operating_status'] = (string) $row['status'];

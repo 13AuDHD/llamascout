@@ -2,6 +2,90 @@
 
 declare(strict_types=1);
 
+/**
+ * Closure dates follow the Place's local calendar, not the visitor or
+ * server's timezone. Use state for existing records (no timezone column).
+ * Split-zone states use their predominant zone until per-Place TZ exists.
+ */
+function llama_closure_timezone_for_state(string $state): string
+{
+    $state = strtoupper(trim($state));
+    $zones = [
+        'America/New_York' => [
+            'CT', 'CONNECTICUT', 'DE', 'DELAWARE', 'DC', 'DISTRICT OF COLUMBIA',
+            'FL', 'FLORIDA', 'GA', 'GEORGIA', 'IN', 'INDIANA',
+            'KY', 'KENTUCKY', 'MA', 'MASSACHUSETTS', 'MD', 'MARYLAND',
+            'ME', 'MAINE', 'MI', 'MICHIGAN', 'NC', 'NORTH CAROLINA',
+            'NH', 'NEW HAMPSHIRE', 'NJ', 'NEW JERSEY', 'NY', 'NEW YORK',
+            'OH', 'OHIO', 'PA', 'PENNSYLVANIA', 'RI', 'RHODE ISLAND',
+            'SC', 'SOUTH CAROLINA', 'TN', 'TENNESSEE',
+            'VA', 'VIRGINIA', 'VT', 'VERMONT', 'WV', 'WEST VIRGINIA',
+        ],
+        'America/Chicago' => [
+            'AL', 'ALABAMA', 'AR', 'ARKANSAS', 'IA', 'IOWA',
+            'IL', 'ILLINOIS', 'KS', 'KANSAS', 'LA', 'LOUISIANA',
+            'MN', 'MINNESOTA', 'MO', 'MISSOURI', 'MS', 'MISSISSIPPI',
+            'ND', 'NORTH DAKOTA', 'NE', 'NEBRASKA', 'OK', 'OKLAHOMA',
+            'SD', 'SOUTH DAKOTA', 'TX', 'TEXAS', 'WI', 'WISCONSIN',
+        ],
+        'America/Denver' => [
+            'CO', 'COLORADO', 'ID', 'IDAHO', 'MT', 'MONTANA',
+            'NM', 'NEW MEXICO', 'UT', 'UTAH', 'WY', 'WYOMING',
+        ],
+        'America/Phoenix' => ['AZ', 'ARIZONA'],
+        'America/Los_Angeles' => [
+            'CA', 'CALIFORNIA', 'NV', 'NEVADA', 'OR', 'OREGON',
+            'WA', 'WASHINGTON',
+        ],
+        'America/Anchorage' => ['AK', 'ALASKA'],
+        'Pacific/Honolulu' => ['HI', 'HAWAII'],
+    ];
+    foreach ($zones as $timezone => $states) {
+        if (in_array($state, $states, true)) {
+            return $timezone;
+        }
+    }
+    return 'America/Denver';
+}
+
+function llama_closure_local_today(
+    string $state = '',
+    ?DateTimeImmutable $now = null
+): string {
+    $tz = new DateTimeZone(llama_closure_timezone_for_state($state));
+    return ($now ?? new DateTimeImmutable('now', new DateTimeZone('UTC')))
+        ->setTimezone($tz)
+        ->format('Y-m-d');
+}
+
+/**
+ * A closure is active from the beginning of closure_began until, but not
+ * including, expected_reopening. Empty start = immediately active;
+ * empty reopening = no automatic end. Review dates have NO effect here.
+ */
+function llama_closure_phase(array $closure, string $localToday): string
+{
+    if (!in_array((string) ($closure['status'] ?? ''), [
+        'temporary', 'seasonal', 'permanent',
+    ], true)) {
+        return 'open';
+    }
+    $start = trim((string) ($closure['closure_began'] ?? ''));
+    $end = trim((string) ($closure['expected_reopening'] ?? ''));
+    if ($start !== '' && $start > $localToday) {
+        return 'scheduled';
+    }
+    if ($end !== '' && $localToday >= $end) {
+        return 'ended';
+    }
+    return 'active';
+}
+
+function llama_closure_is_active(array $closure, string $localToday): bool
+{
+    return llama_closure_phase($closure, $localToday) === 'active';
+}
+
 /** Verified administrative operating status. */
 function llama_closure_target_key(
     int $placeId,
@@ -211,6 +295,11 @@ function llama_closure_save(
 
     if ($status === 'permanent') {
         $reopens = null;
+    }
+    if ($began !== null && $reopens !== null && $reopens <= $began) {
+        throw new InvalidArgumentException(
+            'The reopening date must be after the closure start date.'
+        );
     }
 
     $stmt = $db->prepare(

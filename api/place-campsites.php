@@ -58,9 +58,22 @@ try {
             llama_site_can_read($place, $site, $canRead, $restrictedSiteIds)
     ));
     $sites = llama_campsite_closure_enrich($db, $placeId, $sites);
-    $placeVerifiedClosed = llama_public_place_verified_closed($db, $placeId);
+    $placeClosure = llama_public_place_active_closure($db, $placeId);
+    $placeVerifiedClosed = $placeClosure !== null;
     foreach ($sites as &$site) {
         $site['place_verified_closed'] = $placeVerifiedClosed;
+        if ($placeVerifiedClosed) {
+            // A Place-wide closure makes every Site closed, irrespective
+            // of its normal season or Site-specific operating status.
+            $site['is_closed'] = true;
+            if (($site['operating_status'] ?? 'open') === 'open') {
+                $site['operating_status'] = $placeClosure['status'];
+                $site['closure_reason'] = $placeClosure['reason'];
+                $site['closure_began'] = $placeClosure['closure_began'];
+                $site['expected_reopening'] = $placeClosure['expected_reopening'];
+                $site['closure_verified_at'] = $placeClosure['verified_at'];
+            }
+        }
     }
     unset($site);
 

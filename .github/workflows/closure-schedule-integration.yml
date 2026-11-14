@@ -1,0 +1,65 @@
+name: Scheduled Closure Integration
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/closure-schedule-integration.yml'
+      - 'tools/tests/closure-schedule-integration.php'
+      - 'app/operating-closures.php'
+      - 'app/closure-map-status.php'
+      - 'app/campsite-closure-display.php'
+      - 'app/place-report/season-public.php'
+      - 'api/place-campsites.php'
+      - 'api/place-campsite-detail.php'
+      - 'partials/place/access-alert.php'
+      - 'admin/closed-places.php'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scheduled-closure:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: closure-test-only
+          MARIADB_ROOT_HOST: "%"
+          MARIADB_DATABASE: llama_closure_schedule_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "healthcheck.sh --connect --innodb_initialized"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PHP MySQL driver
+        run: |
+          if ! php -m | grep -qi '^pdo_mysql$'; then
+            sudo apt-get update -qq
+            sudo apt-get install -y php-mysql
+          fi
+      - name: PHP syntax checks for the closure pipeline
+        run: |
+          php -l app/operating-closures.php
+          php -l app/closure-map-status.php
+          php -l app/campsite-closure-display.php
+          php -l app/place-report/season-public.php
+          php -l admin/closed-places.php
+          php -l partials/place/access-alert.php
+          php -l api/place-campsites.php
+          php -l api/place-campsite-detail.php
+          php -l tools/tests/closure-schedule-integration.php
+      - name: Verify closure pipeline and Admin edit contract
+        run: node tools/tests/closure-schedule-contract.cjs
+      - name: Test future, active and ended closures in real MariaDB
+        env:
+          LLAMA_CLOSURE_TEST_DSN: mysql:host=127.0.0.1;port=3306;dbname=llama_closure_schedule_test;charset=utf8mb4
+          LLAMA_CLOSURE_TEST_USER: root
+          LLAMA_CLOSURE_TEST_PASSWORD: closure-test-only
+        run: php tools/tests/closure-schedule-integration.php

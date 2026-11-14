@@ -43,7 +43,7 @@
 
 .closure-summary-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 12px;
 }
 
@@ -82,6 +82,10 @@
 
 .closure-summary-card.is-upcoming::before {
     background: #3e7ccf;
+}
+
+.closure-summary-card.is-ended::before {
+    background: #379c65;
 }
 
 .closure-summary-label {
@@ -265,8 +269,24 @@
     border-left-color: #d47c26;
 }
 
-.closure-review-card.is-upcoming {
+.closure-review-card.is-scheduled {
     border-left-color: #3e7ccf;
+}
+
+.closure-review-card.is-ended {
+    border-left-color: #379c65;
+}
+
+.closure-review-card.is-ended .closure-status-pill {
+    border-color: color-mix(in srgb, #379c65 60%, var(--border));
+    background: color-mix(in srgb, #379c65 15%, var(--surface));
+    color: #72d3a0;
+}
+
+.closure-review-card.is-scheduled .closure-status-pill {
+    border-color: color-mix(in srgb, #3e7ccf 60%, var(--border));
+    background: color-mix(in srgb, #3e7ccf 15%, var(--surface));
+    color: #8ab8ee;
 }
 
 .closure-review-main {
@@ -386,6 +406,10 @@
 }
 
 @media (max-width: 900px) {
+    .closure-summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .closure-form-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
