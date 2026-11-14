@@ -158,6 +158,23 @@ $requests = llama_support_requests(
     $status
 );
 
+// Summary counts are independent of the selected queue filter.
+$supportStatusCounts = [
+    'open' => 0,
+    'waiting' => 0,
+    'resolved' => 0,
+];
+$supportStatusStmt = $db->query(
+    'SELECT status, COUNT(*) AS total FROM support_requests GROUP BY status'
+);
+foreach ($supportStatusStmt->fetchAll(PDO::FETCH_ASSOC) as $statusRow) {
+    $statusKey = (string) ($statusRow['status'] ?? '');
+    if (array_key_exists($statusKey, $supportStatusCounts)) {
+        $supportStatusCounts[$statusKey] = (int) $statusRow['total'];
+    }
+}
+
+
 $selected = $requestId > 0
     ? llama_support_request(
         $db,
@@ -306,6 +323,24 @@ require __DIR__ . '/_header.php';
 
 <section class="admin-panel admin-user-filter-panel">
 
+<nav class="admin-support-status-summary" aria-label="Filter support tickets by status">
+    <?php foreach ([
+        'open' => 'Open',
+        'waiting' => 'Waiting',
+        'resolved' => 'Resolved',
+    ] as $statusKey => $statusLabel): ?>
+        <a
+            class="admin-support-status-summary-link is-<?= moderation_e($statusKey) ?><?= $status === $statusKey ? ' is-selected' : '' ?>"
+            href="/support.php?status=<?= moderation_e($statusKey) ?>"
+            <?= $status === $statusKey ? 'aria-current="page"' : '' ?>
+        >
+            <span class="admin-support-status-dot" aria-hidden="true"></span>
+            <span><?= moderation_e($statusLabel) ?></span>
+            <strong><?= number_format($supportStatusCounts[$statusKey]) ?></strong>
+        </a>
+    <?php endforeach; ?>
+</nav>
+
 <form
     method="get"
     class="admin-support-filter-form"
@@ -403,12 +438,9 @@ $selectedSupportPinSet =
     </h2>
 </div>
 
-<span class="admin-status-pill">
-    <?= moderation_e(
-        ucfirst(
-            (string) $selected['status']
-        )
-    ) ?>
+<span class="admin-status-pill admin-support-status-pill is-<?= moderation_e((string) $selected['status']) ?>">
+    <span class="admin-support-status-dot" aria-hidden="true"></span>
+    <?= moderation_e(ucfirst((string) $selected['status'])) ?>
 </span>
 </header>
 
@@ -746,7 +778,7 @@ $requestPreferredLabel =
     );
 ?>
 
-<article class="admin-inbox-item">
+<article class="admin-inbox-item admin-support-queue-item is-<?= moderation_e((string) $request['status']) ?>">
 
 <span class="admin-inbox-icon">
     <i aria-hidden="true">
@@ -771,6 +803,11 @@ $requestPreferredLabel =
     <?= moderation_e(
         $requestPreferredLabel
     ) ?>
+</span>
+
+<span class="admin-support-status-pill is-<?= moderation_e((string) $request['status']) ?>">
+    <span class="admin-support-status-dot" aria-hidden="true"></span>
+    <?= moderation_e(ucfirst((string) $request['status'])) ?>
 </span>
 
 <strong>
@@ -823,7 +860,7 @@ $requestPreferredLabel =
     class="admin-button"
     href="/support.php?id=<?= (int) $request['id'] ?>&amp;status=<?= moderation_e($status) ?>"
 >
-    Open
+    View
 </a>
 
 </article>
