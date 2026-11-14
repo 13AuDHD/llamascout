@@ -162,6 +162,11 @@
             '[data-save-site-point]'
         );
 
+    const discardSitePointButton =
+        editor.querySelector(
+            '[data-discard-site-point]'
+        );
+
     let editorMode =
         'place';
 
@@ -963,6 +968,9 @@
                 sitePreviewMarker =
                     null;
             }
+            if (discardSitePointButton) {
+                discardSitePointButton.hidden = true;
+            }
         };
 
     const setSitePoint =
@@ -995,6 +1003,25 @@
             }
 
             clearSitePreview();
+
+            // A selected existing Site already has a saved marker on the map.
+            // Only draw an additional preview if the coordinates have changed.
+            const savedSite = currentSite();
+            const savedLat = savedSite?.latitude;
+            const savedLng = savedSite?.longitude;
+            const sameAsSaved = savedSite
+                && savedLat !== null && savedLat !== ''
+                && savedLng !== null && savedLng !== ''
+                && Math.abs(Number(savedLat) - nextLat) < 0.00000005
+                && Math.abs(Number(savedLng) - nextLng) < 0.00000005;
+
+            if (sameAsSaved) {
+                if (saveSitePointButton) saveSitePointButton.disabled = true;
+                if (pan) {
+                    map.setView([nextLat, nextLng], Math.max(17, map.getZoom()));
+                }
+                return;
+            }
 
             sitePreviewMarker =
                 L.circleMarker(
@@ -1033,7 +1060,16 @@
                 saveSitePointButton.disabled =
                     false;
             }
+            if (discardSitePointButton) {
+                discardSitePointButton.hidden = false;
+            }
         };
+
+    const discardSitePoint = () => {
+        // Remove only the editable preview. Never delete the Site record.
+        syncSiteTarget();
+        setStatus('Unsaved Site pin discarded.');
+    };
 
     const syncSiteTarget =
         () => {
@@ -1325,6 +1361,10 @@
             if (saveSitePointButton) {
                 saveSitePointButton.hidden =
                     !siteMode;
+            }
+            if (discardSitePointButton) {
+                discardSitePointButton.hidden =
+                    !siteMode || !sitePreviewMarker;
             }
 
             if (deleteButton) {
@@ -2498,6 +2538,12 @@
         ?.addEventListener(
             'click',
             saveSitePoint
+        );
+
+    discardSitePointButton
+        ?.addEventListener(
+            'click',
+            discardSitePoint
         );
     facilitySaveButton?.addEventListener('click', saveFacilityPoint);
     facilityNewButton?.addEventListener('click', () => {
