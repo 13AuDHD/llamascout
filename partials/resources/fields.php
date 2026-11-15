@@ -2,8 +2,15 @@
 
 declare(strict_types=1);
 
-// The standalone and embedded editors submit the same Resource fields.
+// The standalone and embedded editors submit the same Resource/Facility fields.
 $postFailed = !$resource || $form !== $resource;
+$facilityForm = !empty($contributionIsFacility)
+    || (int) ($form['parent_place_id'] ?? $resource['parent_place_id'] ?? 0) > 0;
+$facilityLabel = $facilityForm ? 'Facility' : 'Resource';
+$facilityParentId = $facilityForm
+    ? max(0, (int) ($form['parent_place_id'] ?? $resource['parent_place_id'] ?? 0))
+    : 0;
+$facilityParentName = (string) ($contributionParentPlaceName ?? '');
 $selectedServices = [];
 
 foreach (
@@ -154,8 +161,30 @@ $datetimeLocal =
             <summary><span>Basic</span></summary>
             <div class="contribution-section-body">
                 <div class="contribution-grid">
+                    <?php if ($facilityForm): ?>
+                        <div class="contribution-field contribution-field-wide facility-parent-field"
+                            data-facility-parent-picker data-search-url="/api/facility-parent-places.php">
+                            <label for="facility-parent-query">Parent Place *</label>
+                            <input type="search" id="facility-parent-query"
+                                value="<?= $e($facilityParentName) ?>"
+                                placeholder="Search for a Place by name"
+                                autocomplete="off" role="combobox" aria-autocomplete="list"
+                                aria-expanded="false" aria-controls="facility-parent-results"
+                                data-facility-parent-query>
+                            <input type="hidden" name="parent_place_id"
+                                value="<?= $facilityParentId ?>" data-facility-parent-id>
+                            <div class="facility-parent-results" id="facility-parent-results"
+                                role="listbox" data-facility-parent-results hidden></div>
+                            <p class="facility-parent-selected" data-facility-parent-selected
+                               <?= $facilityParentId > 0 && $facilityParentName !== '' ? '' : 'hidden' ?>>
+                                Selected: <strong><?= $e($facilityParentName) ?></strong>
+                            </p>
+                        </div>
+                    <?php else: ?>
+                        <input type="hidden" name="parent_place_id" value="0">
+                    <?php endif; ?>
                     <label class="contribution-field">
-                        <span>Resource type</span>
+                        <span><?= $e($facilityLabel) ?> type</span>
                         <select
                             name="resource_type"
                             required
@@ -179,7 +208,7 @@ $datetimeLocal =
                     </label>
 
                     <label class="contribution-field">
-                        <span>Resource name *</span>
+                        <span><?= $e($facilityLabel) ?> name *</span>
                         <input
                             type="text"
                             name="name"
@@ -203,7 +232,7 @@ $datetimeLocal =
             <div class="contribution-section-body">
                 <div class="contribution-grid">
                     <div class="contribution-field add-place-locate-panel">
-                        <span>At the Resource right now?</span>
+                        <span>At the <?= $e($facilityLabel) ?> right now?</span>
                         <button class="add-place-locate-button" type="button" data-resource-locate disabled>
                             <?= llama_icon('current-location') ?>
                             Locate me
@@ -219,9 +248,10 @@ $datetimeLocal =
                         </div>
                     </div>
                     <div class="add-place-location-status is-visible is-info" data-resource-location-status role="status">
-                        At the Resource? Tap Locate me. Otherwise, enter coordinates and tap Search.
+                        At the <?= $e($facilityLabel) ?>? Tap Locate me. Otherwise, enter coordinates and tap Search.
                     </div>
 
+                    <?php if (!$facilityForm): ?>
                     <label class="contribution-field">
                         <span>Street address</span>
                         <input
@@ -277,6 +307,7 @@ $datetimeLocal =
                             placeholder="US"
                         >
                     </label>
+                    <?php endif; ?>
                 </div>
             </div>
         </details>
