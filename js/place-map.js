@@ -562,7 +562,7 @@
             'Parking area',
 
         facility_area:
-            'Facility / amenity',
+            'Facility',
 
         camping_site:
             'Individual campsite'
