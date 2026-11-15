@@ -358,3 +358,36 @@
 .facility-parent-search-message {
     padding: 8px 10px;
 }
+
+
+/* On-site Facilities are attached to their Parent Place, not Resource map pins. */
+.place-linked-facilities-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+    gap: 14px;
+}
+.place-linked-facility {
+    overflow: hidden;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+.place-linked-facility > img {
+    display: block;
+    width: 100%;
+    height: 155px;
+    object-fit: cover;
+}
+.place-linked-facility-content {
+    display: grid;
+    gap: 6px;
+    padding: 15px;
+}
+.place-linked-facility-content h3,
+.place-linked-facility-content p {
+    margin: 0;
+}
+.place-linked-facility-content a {
+    justify-self: start;
+    margin-top: 5px;
+}
