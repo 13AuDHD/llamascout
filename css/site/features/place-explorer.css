@@ -1,5 +1,5 @@
-/* Public explorer: accents follow record level.
-   Place is green, Site orange, every Area (including parking) is purple. */
+/* Public explorer: Place green, Site orange, Facility purple.
+   Camping-loop and parking-area records remain administrative. */
 .place-overnight-options {
     --explorer-color: #249b56;
 }
