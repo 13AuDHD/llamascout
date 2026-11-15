@@ -60,7 +60,7 @@ $placeDraftSuffix = $isResourcePage && !empty($contributionReturnDraft)
             : (string) ($areaInitialTab ?? 'place');
     ?>
     <?php foreach ($contributionIntros as $introKey => $intro): ?>
-        <?php if (!$isResourcePage || $introKey === 'resource'): ?>
+        <?php if ($isResourcePage ? $introKey === 'resource' : $introKey !== 'resource'): ?>
             <section class="contribution-type-intro" data-contribution-intro-mode="<?= $introKey ?>"
                 <?= $introKey !== $introMode ? 'hidden' : '' ?>>
                 <h2><?= htmlspecialchars($intro['title'], ENT_QUOTES, 'UTF-8') ?></h2>
