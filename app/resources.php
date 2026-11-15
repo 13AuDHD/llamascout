@@ -285,7 +285,8 @@ function llama_resource_coordinates_valid(
 function llama_resource_services(
     PDO $db,
     int $resourceId,
-    bool $activeOnly = true
+    bool $activeOnly = true,
+    ?int $onlyParentPlaceId = null
 ): array {
     if ($resourceId < 1) {
         return [];
@@ -357,6 +358,30 @@ function llama_resource_has_county(PDO $db): bool
     }
 }
 
+function llama_resource_parent_place_ready(PDO $db): bool
+{
+    try {
+        $db->query('SELECT parent_place_id FROM resources LIMIT 0');
+        return true;
+    } catch (PDOException $exception) {
+        if ($exception->getCode() === '42S22'
+            || str_contains(strtolower($exception->getMessage()), 'unknown column')
+            || str_contains(strtolower($exception->getMessage()), 'no such column')) {
+            return false;
+        }
+        throw $exception;
+    }
+}
+
+/** Approved Facilities reuse the Resource details, services, hours and photos. */
+function llama_place_facilities(PDO $db, int $placeId): array
+{
+    if ($placeId < 1 || !llama_resource_parent_place_ready($db)) {
+        return [];
+    }
+    return llama_resources($db, null, true, $placeId);
+}
+
 function llama_resources(
     PDO $db,
     ?int $onlyResourceId = null,
@@ -366,9 +391,11 @@ function llama_resources(
         return [];
     }
 
+    $parentReady = llama_resource_parent_place_ready($db);
     $sql =
         'SELECT
             id,
+            ' . ($parentReady ? 'parent_place_id' : 'NULL AS parent_place_id') . ',
             resource_type,
             marker_service_type,
             name,
@@ -406,6 +433,16 @@ function llama_resources(
 
     if ($activeOnly) {
         $sql .= ' AND is_active = 1';
+    }
+
+    // Standalone Resource discovery must never expose Place-owned Facilities.
+    if ($parentReady && $onlyResourceId === null) {
+        if ($onlyParentPlaceId !== null && $onlyParentPlaceId > 0) {
+            $sql .= ' AND parent_place_id = ?';
+            $args[] = $onlyParentPlaceId;
+        } else {
+            $sql .= ' AND parent_place_id IS NULL';
+        }
     }
 
     if ($onlyResourceId !== null) {
