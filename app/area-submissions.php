@@ -54,9 +54,9 @@ function llama_area_place_choices(PDO $db, string $needle = '', int $selectedId 
  */
 function llama_area_submission_prepare_bundle(array $input): array
 {
-    $type = trim((string) ($input['area_feature_type'] ?? ''));
+    $type = trim((string) ($input['area_feature_type'] ?? $input['feature_type'] ?? ''));
     $name = trim((string) ($input['area_name'] ?? ''));
-    $kind = trim((string) ($input['area_facility_kind'] ?? ''));
+    $kind = trim((string) ($input['area_facility_kind'] ?? $input['facility_kind'] ?? ''));
     if (!in_array($type, ['camping_area','parking_area','facility_area'], true)) {
         throw new InvalidArgumentException('Choose Camping, Parking or Facility for this Area.');
     }
@@ -75,7 +75,7 @@ function llama_area_submission_prepare_bundle(array $input): array
         'feature_type' => $type, 'facility_kind' => $kind,
     ];
     $fields = llama_report_questions_for_area_target($target);
-    $inputAnswers = (array) ($input['area_answers'] ?? []);
+    $inputAnswers = (array) ($input['area_answers'] ?? $input['answers'] ?? []);
     $unknown = (array) ($input['area_unknown'] ?? []);
     if (count($inputAnswers) > 200 || count($unknown) > 200) {
         throw new InvalidArgumentException('Too many Area answers.');
