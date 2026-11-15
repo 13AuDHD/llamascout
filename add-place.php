@@ -9,6 +9,17 @@ require_once __DIR__ . '/app/area-submissions.php';
 
 require_verified_email();
 
+// Facility creation is now a standalone, one-at-a-time Resource-style form.
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET'
+    && (string) ($_GET['tab'] ?? '') === 'area') {
+    $query = ['kind' => 'facility'];
+    $parentId = (int) ($_GET['area_place_id'] ?? $_GET['place_id'] ?? 0);
+    if ($parentId > 0) $query['parent_place_id'] = $parentId;
+    if ((int) ($_GET['draft'] ?? 0) > 0) $query['return_draft'] = (int) $_GET['draft'];
+    header('Location: /resource-contribution.php?' . http_build_query($query), true, 303);
+    exit;
+}
+
 $user = current_user();
 $userId = (int) ($user['id'] ?? 0);
 
@@ -557,22 +568,13 @@ $placeReportPhotoHelp =
     <div class="contribution-tab-shell" data-contribution-tabs data-contribution-split
         data-contribution-initial="<?= htmlspecialchars($areaInitialTab, ENT_QUOTES, 'UTF-8') ?>">
         <?php require __DIR__ . '/partials/place-report/contribution-tabs.php'; ?>
-        <?php require __DIR__ . '/partials/place-report/add-area-form.php'; ?>
+        <?php // Facilities submit separately through resource-contribution.php. ?>
     <form
         id="add-place-main-form"
         method="post"
         class="contribution-form add-place-form place-report-form"
         data-place-report-completion-form data-contribution-report
     >
-        <input type="hidden" name="area_bundle_json" data-area-bundle-input
-            value="<?= htmlspecialchars(
-                (string) ($_POST['area_bundle_json']
-                    ?? $draft['form_data']['area_bundle_json']
-                    ?? (isset($editSubmission['data']['_first_area'])
-                        ? json_encode($editSubmission['data']['_first_area'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
-                        : '')),
-                ENT_QUOTES, 'UTF-8'
-            ) ?>">
         <input
             type="hidden"
             name="csrf_token"
