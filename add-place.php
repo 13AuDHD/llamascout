@@ -431,73 +431,6 @@ $placeReportPhotoHelp =
     'Add up to 10 current photos. Signs, gates, washouts, road conditions, parking areas, and obstructions are especially useful. Location metadata is removed before storage.';
 
 
-/*
- * The shared renderer emits the canonical browser schema used for
- * applicability and live completion. Add Place only owns its page-level
- * completion display and photo count.
- */
-
-$stagedPhotoData =
-    json_decode(
-        (string) (
-            $_POST['photos_json']
-            ?? '[]'
-        ),
-        true
-    );
-
-$stagedPhotoCount =
-    is_array($stagedPhotoData)
-        ? count($stagedPhotoData)
-        : 0;
-
-$removedExistingPhotos =
-    is_array(
-        $_POST['remove_existing_photos']
-        ?? null
-    )
-        ? array_values(
-            array_filter(
-                array_map(
-                    'strval',
-                    $_POST['remove_existing_photos']
-                ),
-                static fn (string $value): bool =>
-                    trim($value) !== ''
-            )
-        )
-        : [];
-
-$existingPhotoCount = 0;
-
-foreach ($existingSubmissionPhotos as $photo) {
-    $path =
-        llama_place_report_photo_path(
-            $photo
-        );
-
-    if (
-        $path !== ''
-        && !in_array(
-            $path,
-            $removedExistingPhotos,
-            true
-        )
-    ) {
-        $existingPhotoCount++;
-    }
-}
-
-$placeReportInitialPhotoCount =
-    $existingPhotoCount
-    + $stagedPhotoCount;
-
-$placeReportInitialCompletion =
-    llama_place_report_question_completion_summary(
-        $placeReportValues,
-        $placeReportInitialPhotoCount
-    );
-
 ?>
 
 <section class="contribution-page add-place-page">
@@ -518,12 +451,6 @@ $placeReportInitialCompletion =
                 ? 'Revise Place Submission'
                 : 'Add a Place' ?>
         </h1>
-
-        <p>
-            Share what you actually observed. Leave a question untouched when
-            you did not assess it. Choose ? only when you deliberately checked
-            but could not determine the answer.
-        </p>
 
     </header>
 
@@ -707,98 +634,6 @@ $placeReportInitialCompletion =
         <input type="hidden" name="site_photos_json"
                value="<?= htmlspecialchars((string) ($_POST['site_photos_json'] ?? '[]'), ENT_QUOTES, 'UTF-8') ?>">
 
-        <div
-            class="add-place-form-note place-report-completion"
-            data-place-report-completion
-            role="status"
-            aria-live="polite"
-        >
-            <i aria-hidden="true"><?= llama_icon('list-check') ?></i>
-
-            <span>
-                <strong>
-                    Report completion:
-                    <span data-place-report-completion-percent>
-                        <?= (int) (
-                            $placeReportInitialCompletion['percent']
-                            ?? 0
-                        ) ?>%
-                    </span>
-                </strong>
-
-                <span data-place-report-completion-count>
-                    <?= (int) (
-                        $placeReportInitialCompletion['answered']
-                        ?? 0
-                    ) ?>
-                    of
-                    <?= (int) (
-                        $placeReportInitialCompletion['total']
-                        ?? 0
-                    ) ?>
-                    applicable questions addressed.
-                </span>
-
-                <button
-                    type="button"
-                    class="add-place-radio-clear"
-                    data-place-report-missing-toggle
-                    aria-expanded="false"
-                >
-                    Show missing
-                </button>
-
-                <br />
-
-                <span
-                    class="place-report-minimum-status"
-                    data-place-report-minimum-status
-                >
-                    <strong>Minimum to submit:</strong>
-                    name, Place type, date visited, description,
-                    exact location, 1 current photo.
-                </span>
-
-            </span>
-        </div>
-
-        <div
-            class="contribution-message"
-            data-place-report-missing-panel
-            hidden
-        >
-            <strong>Still applicable and unanswered</strong>
-
-            <div data-place-report-missing-list>
-                <?php
-                $initialMissing =
-                    (array) (
-                        $placeReportInitialCompletion['missing']
-                        ?? []
-                    );
-                ?>
-
-                <?php if (!$initialMissing): ?>
-                    <span>Nothing. Every applicable question is addressed.</span>
-                <?php else: ?>
-                    <ul>
-                        <?php foreach ($initialMissing as $missingItem): ?>
-                            <li>
-                                <?= htmlspecialchars(
-                                    (string) (
-                                        $missingItem['label']
-                                        ?? $missingItem['key']
-                                        ?? 'Question'
-                                    ),
-                                    ENT_QUOTES,
-                                    'UTF-8'
-                                ) ?>
-                            </li>
-                        <?php endforeach; ?>
-                    </ul>
-                <?php endif; ?>
-            </div>
-        </div>
         <?php
         require __DIR__
             . '/partials/place-report/form.php';
