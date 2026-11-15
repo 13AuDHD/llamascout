@@ -190,7 +190,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['scoped_report_context']
         $targetId = (int) ($_GET['target_id'] ?? 0);
 
         if ($scope === 'place') {
-            throw new InvalidArgumentException('Select an Area or Site.');
+            throw new InvalidArgumentException('Select a Facility or Site.');
         }
 
         $currentModel =
@@ -254,7 +254,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['scoped_report_context']
 
                 'from' =>
                     (string) ($origin['scope'] ?? '') === 'area'
-                        ? 'Area'
+                        ? 'Facility'
                         : 'Place',
             ];
         }
@@ -471,7 +471,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $requestedSource = (string) ($_GET['report_source'] ?? '');
     if ($requestedSource !== 'map_feature' || $requestedAreaId === false) {
         http_response_code(404);
-        exit('The requested Area is invalid. Return to the Place page and select an Area.');
+        exit('The requested Facility is invalid. Return to the Place page and select a Facility.');
     }
     try {
         $verifiedArea = llama_report_verified_target(
@@ -479,7 +479,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         );
     } catch (InvalidArgumentException) {
         http_response_code(404);
-        exit('This Area is no longer available for the selected Place.');
+        exit('This Facility is no longer available for the selected Place.');
     }
     $reportTargetScope = 'area';
     $reportTargetSource = 'map_feature';

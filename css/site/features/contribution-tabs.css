@@ -38,6 +38,36 @@
 .contribution-scope-picker [data-contribution-mode="area"] {
     --mode-color: #bb94ef;
 }
+.contribution-scope-picker:has([data-contribution-resource-link]) {
+    width: min(100%, 480px);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.contribution-scope-picker [data-contribution-resource-link] {
+    display: grid;
+    place-items: center;
+    min-width: 0;
+    min-height: 44px;
+    padding: 8px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    color: var(--text);
+    background: transparent;
+    font: inherit;
+    font-weight: 750;
+    text-decoration: none;
+}
+.contribution-scope-picker [data-contribution-resource-link]:hover,
+.contribution-scope-picker [data-contribution-resource-link]:focus-visible {
+    border-color: var(--resource-accent);
+    background: color-mix(in srgb, var(--resource-accent) 18%, var(--surface));
+}
+@media (max-width: 360px) {
+    .contribution-scope-picker button,
+    .contribution-scope-picker [data-contribution-resource-link] {
+        font-size: .83rem;
+        padding: 7px 3px;
+    }
+}
 
 
 .contribution-tab-shell {

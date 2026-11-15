@@ -1207,7 +1207,7 @@ html[data-reduced-motion="true"] .map-locate-button.is-locating .map-locate-icon
    Place and Resource cards share .map-result-card.
    ========================================================= */
 
-/* Match Resource result cards to their purple map pins. */
+/* Match Resource result cards to their teal map pins. */
 .map-resource-card {
     border: 3px solid var(--resource-accent);
     background: color-mix(in srgb, var(--resource-accent) 6%, var(--surface));

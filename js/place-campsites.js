@@ -162,10 +162,10 @@
                     const row = Array.from(document.querySelectorAll('[data-stay-area-id]'))
                         .find((candidate) => candidate.dataset.stayAreaId === id);
                     if (areaContextName) {
-                        areaContextName.textContent = row?.dataset.stayAreaName || 'Selected Area';
+                        areaContextName.textContent = row?.dataset.stayAreaName || 'Selected Facility';
                     }
                     if (areaContextStatus) {
-                        areaContextStatus.textContent = 'Loading this Area’s Scout Report...';
+                        areaContextStatus.textContent = 'Loading this Facility’s Scout Report...';
                     }
                 }
             }
@@ -1410,7 +1410,7 @@
                     document.querySelectorAll('.scout-report-item[data-report-owner="area"]')
                 ).filter((card) => !card.hidden);
                 const addressed = applicable.filter((card) => !card.classList.contains('is-unanswered'));
-                areaStatus.textContent = `${addressed.length} of ${applicable.length} Area questions addressed.`;
+                areaStatus.textContent = `${addressed.length} of ${applicable.length} Facility questions addressed.`;
             }
         }
 
@@ -1419,7 +1419,7 @@
                 site.report_warnings
                 || {},
             target:
-                targetScope === 'area' ? 'Area' : 'Site',
+                targetScope === 'area' ? 'Facility' : 'Site',
         };
 
         window.LlamaScoutReportWarningsState =
@@ -1496,7 +1496,7 @@
         });
         if (!Number.isSafeInteger(areaId) || areaId < 1 || !hasCompleteAccess) {
             const status = document.querySelector('[data-area-report-status]');
-            if (status) status.textContent = 'Area Scout Report answers require Complete Access.';
+            if (status) status.textContent = 'Facility Scout Report answers require Complete Access.';
             return;
         }
 
@@ -1519,7 +1519,7 @@
                 if (token === areaReportRequest) {
                     console.error('Llama Scout Area report error:', error);
                     const status = document.querySelector('[data-area-report-status]');
-                    if (status) status.textContent = 'The Area report could not be loaded. Place answers are not shown instead.';
+                    if (status) status.textContent = 'The Facility report could not be loaded. Place answers are not shown instead.';
                 }
             });
     });

@@ -194,7 +194,7 @@ $placeMapEditorUrl =
                     ) ?>
 
                     <?= user_is_admin((int) ($userId ?? 0))
-                        ? 'Edit mapped areas'
+                        ? 'Edit map'
                         : 'Propose a boundary' ?>
                 </a>
             <?php endif; ?>
@@ -435,7 +435,7 @@ $placeMapEditorUrl =
             class="place-map-area-legend"
             data-place-map-area-legend
             hidden
-            aria-label="Mapped area controls"
+            aria-label="Facility map controls"
         >
             <button
                 type="button"
@@ -450,35 +450,13 @@ $placeMapEditorUrl =
 
             <button
                 type="button"
-                class="place-map-area-legend-item is-camping-area"
-                data-map-feature-toggle="camping_area"
-                aria-pressed="true"
-                hidden
-            >
-                <i aria-hidden="true"></i>
-                Camping area
-            </button>
-
-            <button
-                type="button"
-                class="place-map-area-legend-item is-parking-area"
-                data-map-feature-toggle="parking_area"
-                aria-pressed="true"
-                hidden
-            >
-                <i aria-hidden="true"></i>
-                Parking area
-            </button>
-
-            <button
-                type="button"
                 class="place-map-area-legend-item is-facility-area"
                 data-map-feature-toggle="facility_area"
                 aria-pressed="true"
                 hidden
             >
                 <i aria-hidden="true"></i>
-                Facilities / amenities
+                Facilities
             </button>
 
             <button
@@ -498,7 +476,7 @@ $placeMapEditorUrl =
                 data-fit-mapped-areas
                 hidden
             >
-                Fit areas
+                Fit Facilities
             </button>
         </div>
     </div>

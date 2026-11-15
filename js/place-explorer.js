@@ -73,7 +73,6 @@
     const reportColor = (kind) => {
         if (kind === 'place') return placeColor;
         if (kind === 'site' || kind === 'mapped') return 'orange';
-        if (kind === 'parking') return 'purple';
         if (kind === 'area') return 'purple';
         return placeColor;
     };
@@ -260,7 +259,7 @@
 
     const selectArea = (row, origin = 'map') => {
         if (!row) return;
-        const kind = row.dataset.stayAreaKind === 'parking' ? 'parking' : 'area';
+        const kind = 'area';
         // An Area has a separate identity; do not overwrite Place-level facts.
         window.LlamaScoutCampsiteBrowser?.clearSelection();
         if (origin === 'map') {
@@ -276,7 +275,7 @@
 
     const oldIntro = section.querySelector('.place-stay-intro');
     if (oldIntro) {
-        oldIntro.textContent = 'Select this Place or explore Areas and individual Sites.';
+        oldIntro.textContent = 'Select this Place or explore Facilities and individual Sites.';
     }
     overview.addEventListener('click', () => placeView('card'));
     section.addEventListener('click', (event) => {
@@ -289,10 +288,10 @@
         }
     });
 
-    const findAreaRow = (label, parking) => {
+    const findAreaRow = (label) => {
         const rows = Array.from(section.querySelectorAll('[data-stay-area-id]'))
-            .filter((row) => sameName(row.dataset.stayAreaName, label)
-                && (row.dataset.stayAreaKind === 'parking') === parking);
+            .filter((row) => row.dataset.stayAreaKind === 'facility'
+                && sameName(row.dataset.stayAreaName, label));
         return rows.length === 1 ? rows[0] : null;
     };
 
@@ -393,7 +392,7 @@
     map.eachLayer(registerPlacePin);
     map.on('layeradd', (event) => registerPlacePin(event.layer));
 
-    // Camping and parking Area polygons are selectable child records.
+    // Public purple map selection applies only to Facility records.
     map.on('popupopen', (event) => {
         const popup = event.popup;
         const layer = popup?._source;
@@ -416,11 +415,7 @@
                 || ''
             );
 
-        if (
-            featureType !== 'camping_area'
-            && featureType !== 'parking_area'
-            && featureType !== 'facility_area'
-        ) {
+        if (featureType !== 'facility_area') {
             return;
         }
 
@@ -437,9 +432,6 @@
                 ?.trim()
             || '';
 
-        const parking =
-            featureType === 'parking_area';
-
         const area =
             (
                 featureId !== ''
@@ -448,10 +440,7 @@
                     )
                     : null
             )
-            || findAreaRow(
-                label,
-                parking
-            );
+            || findAreaRow(label);
 
         if (!area) {
             return;
@@ -462,11 +451,7 @@
                 label,
                 () => selectArea(area, 'map'),
                 'purple',
-                parking
-                    ? 'Parking area'
-                    : featureType === 'facility_area'
-                        ? 'Facility'
-                        : 'Camping area'
+                'Facility'
             )
         );
 

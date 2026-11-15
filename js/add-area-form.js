@@ -93,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const parsed = parseCoordinates();
             if (coordinates) coordinates.value = parsed || '';
             setLocationStatus(parsed
-                ? 'Coordinates ready. This Area will have a purple marker when it is approved.'
+                ? 'Coordinates ready. This Facility will have a purple marker when it is approved.'
                 : initialLocationHint);
             return true;
         } catch (error) {
@@ -176,7 +176,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         bundleInput.value = JSON.stringify(bundle);
         status.hidden = false;
-        status.textContent = 'Area attached to this new Place submission. Submit the Place and Area together for review; no map point required.';
+        status.textContent = 'Facility attached to this new Place submission. Submit the Place and Facility together for review; no map point required.';
         submitNew.hidden = false;
         return true;
     };

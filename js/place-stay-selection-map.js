@@ -146,7 +146,7 @@
                 'eyebrow';
 
             eyebrow.textContent =
-                'Area photos';
+                'Facility photos';
 
             const title =
                 document.createElement(
@@ -155,7 +155,7 @@
 
             title.textContent =
                 areaName
-                || 'Selected Area';
+                || 'Selected Facility';
 
             heading.append(
                 eyebrow,
@@ -205,7 +205,7 @@
                         String(
                             photo.alt
                             || areaName
-                            || 'Area photo'
+                            || 'Facility photo'
                         );
 
                     image.loading =
@@ -335,7 +335,7 @@
                     'place-campsite-photo-access-note';
 
                 note.textContent =
-                    'Sign in with a free account to enlarge and browse these Area photos.';
+                    'Sign in with a free account to enlarge and browse these Facility photos.';
 
                 areaPhotoDetail.appendChild(
                     note
@@ -524,7 +524,7 @@
 
             if (!response.ok) {
                 throw new Error(
-                    'Unable to retrieve mapped Site and Area information.'
+                    'Unable to retrieve mapped Site and Facility information.'
                 );
             }
 
@@ -661,7 +661,7 @@
 
             label.textContent =
                 kind === 'area'
-                    ? 'Selected Area: '
+                    ? 'Selected Facility: '
                     : 'Viewing Site: ';
 
             const strong =
@@ -1101,7 +1101,7 @@
                             || 'Site'
                         : row.dataset
                             .stayAreaName
-                            || 'Area';
+                            || 'Facility';
 
             const lines =
                 isCanonical

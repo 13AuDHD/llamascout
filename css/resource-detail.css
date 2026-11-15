@@ -7,7 +7,7 @@
     overflow: hidden;
 }
 
-/* Resource identity stays purple even when using shared Place components. */
+/* Resource identity stays teal even when using shared Place components. */
 .resource-page .place-detail-title-block {
     border-inline-start: 4px solid var(--resource-accent);
     padding-inline-start: 16px;
@@ -188,7 +188,7 @@
     border-bottom: 0;
 }
 
-/* The shared Place gallery is green by default; Resource photos are purple. */
+/* The shared Place gallery is green by default; Resource photos are teal. */
 .resource-photo-section .place-photo-thumb {
     border-inline-start: 4px solid var(--resource-accent);
 }

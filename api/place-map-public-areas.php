@@ -68,8 +68,8 @@ try {
                             ?? ''
                         ),
                         [
-                            'camping_area',
-                            'parking_area',
+                            // Camping loops and parking groupings remain
+                            // administrative, not public Facility records.
                             'facility_area',
                         ],
                         true
