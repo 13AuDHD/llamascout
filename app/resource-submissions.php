@@ -120,6 +120,15 @@ function llama_resource_submit(
     }
 
     $resource = llama_resource_prepare_input($db, $resourceId, $data);
+    if ($resource['parentPlaceId'] > 0) {
+        $visibleParent = $db->prepare('SELECT p.id FROM places p WHERE p.id = ?
+            AND p.status IN ("active", "featured")
+            AND ' . llama_place_visibility_sql('p', $userId) . ' LIMIT 1');
+        $visibleParent->execute([$resource['parentPlaceId']]);
+        if (!$visibleParent->fetchColumn()) {
+            throw new InvalidArgumentException('Choose a Parent Place you can access.');
+        }
+    }
     $identity = $resourceId > 0 ? 'resource:' . $resourceId : 'new:' . $resource['slug'];
     $key = hash('sha256', $userId . ':' . $identity);
     $photoContext = $resourceId > 0 ? 'update-resource' : 'add-resource';
