@@ -34,10 +34,12 @@ $db->exec('CREATE TABLE place_campsites (
 $db->exec('CREATE TABLE place_map_features (
     id BIGINT AUTO_INCREMENT PRIMARY KEY, place_id BIGINT NOT NULL,
     feature_type VARCHAR(32), label VARCHAR(120), geometry_type VARCHAR(16) NOT NULL,
-    geometry GEOMETRY NULL, source_type VARCHAR(20), accuracy_m DECIMAL(10,2),
+    geometry GEOMETRY NOT NULL, source_type VARCHAR(20), accuracy_m DECIMAL(10,2),
     metadata_json LONGTEXT NULL, created_by BIGINT, updated_by BIGINT,
     verified_at DATETIME, sort_order INT, is_active TINYINT DEFAULT 1,
-    created_at DATETIME, updated_at DATETIME
+    created_at DATETIME, updated_at DATETIME,
+    INDEX idx_place_feature_type (place_id, feature_type),
+    SPATIAL INDEX idx_spatial_geometry (geometry)
 ) ENGINE=InnoDB');
 $db->exec('CREATE TABLE place_map_area_details (
     feature_id BIGINT, area_use VARCHAR(50), fee_status VARCHAR(25),
@@ -75,7 +77,59 @@ $db->exec('CREATE TABLE place_report_current_answers (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY current_answer (place_id,target_scope,target_source,target_id,question_key)
 ) ENGINE=InnoDB');
+// Reproduce the REAL pre-migration schema, including the geometry SPATIAL
+// index that previously raised MariaDB #1252. Preserve an existing polygon.
+$oldGeometry = 'POLYGON((-83 35,-82 35,-82 36,-83 36,-83 35))';
+$stmt = $db->prepare('INSERT INTO place_map_features
+    (place_id, feature_type, label, geometry_type, geometry, source_type,
+     created_by, updated_by, sort_order, created_at, updated_at)
+    VALUES (1, "place_boundary", "Existing boundary", "polygon",
+        ST_GeomFromText(?, 4326), "manual", 9, 9, 10, UTC_TIMESTAMP(), UTC_TIMESTAMP())');
+$stmt->execute([$oldGeometry]);
+$originalShape = (string) $db->query(
+    'SELECT ST_AsText(geometry) FROM place_map_features WHERE label = "Existing boundary"'
+)->fetchColumn();
+areaCheck($originalShape !== '', 'The mapped Place must start with real geometry.');
+$beforeIndex = (int) $db->query(
+    "SELECT COUNT(*) FROM information_schema.STATISTICS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'place_map_features'
+       AND COLUMN_NAME = 'geometry' AND INDEX_TYPE = 'SPATIAL'"
+)->fetchColumn();
+areaCheck($beforeIndex > 0, 'Integration fixture must reproduce existing SPATIAL index.');
+
 $ddl = file_get_contents(dirname(__DIR__, 2) . '/tools/migrations/20261114_unmapped_areas.sql');
+// Execute the exact production migration statements, not a rewritten
+// equivalent, so SQL syntax and index handling are covered by CI.
+preg_match('/SET @ls_area_spatial_drops = \([\s\S]*?DEALLOCATE PREPARE ls_area_schema_stmt;/i',
+    (string) $ddl, $schemaChange);
+areaCheck(isset($schemaChange[0]), 'Migration must remove the blocking SPATIAL index.');
+foreach (preg_split('/;\s*(?:\n|$)/', trim($schemaChange[0])) ?: [] as $sql) {
+    if (trim($sql) !== '') $db->exec(trim($sql));
+}
+$afterIndex = (int) $db->query(
+    "SELECT COUNT(*) FROM information_schema.STATISTICS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'place_map_features'
+       AND COLUMN_NAME = 'geometry' AND INDEX_TYPE = 'SPATIAL'"
+)->fetchColumn();
+areaCheck($afterIndex === 0, 'Geometry SPATIAL index must be removed for nullable Areas.');
+$placeIndex = (int) $db->query(
+    "SELECT COUNT(*) FROM information_schema.STATISTICS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'place_map_features'
+       AND INDEX_NAME = 'idx_place_feature_type'"
+)->fetchColumn();
+areaCheck($placeIndex > 0, 'Other Place lookup indexes must remain intact.');
+$nullable = (string) $db->query(
+    "SELECT IS_NULLABLE FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'place_map_features'
+       AND COLUMN_NAME = 'geometry'"
+)->fetchColumn();
+areaCheck($nullable === 'YES', 'Geometry must now permit NULL.');
+$preservedShape = (string) $db->query(
+    'SELECT ST_AsText(geometry) FROM place_map_features WHERE label = "Existing boundary"'
+)->fetchColumn();
+areaCheck($preservedShape === $originalShape,
+    'The migration must preserve every existing mapped geometry.');
+
 preg_match('/CREATE TABLE IF NOT EXISTS place_area_submissions[\s\S]*?ENGINE=InnoDB[^;]*;/i', (string) $ddl, $m);
 areaCheck(isset($m[0]), 'Migration must create pending Area table.');
 $db->exec($m[0]);
@@ -126,7 +180,9 @@ $submissionId = llama_area_submission_submit($db, 7, [
     ],
 ]);
 areaCheck($submissionId > 0, 'Area submission not saved.');
-areaCheck((int) $db->query('SELECT COUNT(*) FROM place_map_features')->fetchColumn() === 0,
+areaCheck((int) $db->query(
+    "SELECT COUNT(*) FROM place_map_features WHERE feature_type = 'facility_area'"
+)->fetchColumn() === 0,
     'Unapproved Area must not be a published map record.');
 areaCheck(count(llama_area_submission_queue($db)) === 1,
     'New Area must be visible to moderation.');
@@ -229,4 +285,4 @@ areaCheck((int) $stmt->fetchColumn() === 2,
 areaCheck((int) $db->query('SELECT COUNT(*) FROM place_campsites WHERE id = 5')->fetchColumn() === 1,
     'Bundled Area must not modify sibling Site.');
 
-echo "PASS: Existing Place Area review, new Place first Area bundle, canonical answers, NULL geometry, later mapping, unchanged Site/Place and identities\n";
+echo "PASS: MariaDB #1252 migration with existing SPATIAL index, preserved mapped shapes and other indexes, unmapped Area publication, later mapping and unchanged answers\n";
