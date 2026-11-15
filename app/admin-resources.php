@@ -692,7 +692,6 @@ function admin_resource_save(
                 $db->prepare(
                     'INSERT INTO resources (
                         resource_type,
-                        parent_place_id,
                         marker_service_type,
                         name,
                         slug,
@@ -719,14 +718,13 @@ function admin_resource_save(
                         created_by,
                         updated_by
                      ) VALUES (
-                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
                         ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
                      )'
                 );
 
             $stmt->execute([
                 $resourceType,
-                $parentPlaceId ?: null,
                 $markerServiceType !== ''
                     ? $markerServiceType
                     : null,
@@ -769,7 +767,6 @@ function admin_resource_save(
                 $db->prepare(
                     'UPDATE resources
                      SET resource_type = ?,
-                         parent_place_id = ?,
                          marker_service_type = ?,
                          name = ?,
                          slug = ?,
@@ -800,7 +797,6 @@ function admin_resource_save(
 
             $stmt->execute([
                 $resourceType,
-                $parentPlaceId ?: null,
                 $markerServiceType !== ''
                     ? $markerServiceType
                     : null,
@@ -829,6 +825,12 @@ function admin_resource_save(
                 $actorUserId > 0 ? $actorUserId : null,
                 $resourceId,
             ]);
+        }
+
+        // Resources stay writable before the optional Facility migration is run.
+        if (llama_resource_parent_place_ready($db)) {
+            $parentWrite = $db->prepare('UPDATE resources SET parent_place_id = ? WHERE id = ?');
+            $parentWrite->execute([$parentPlaceId ?: null, $resourceId]);
         }
 
         if ($writeCounty) {
