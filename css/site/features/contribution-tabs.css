@@ -129,3 +129,14 @@
 @media (max-width: 700px) {
     .area-create-identity, .area-question-grid { grid-template-columns: 1fr; }
 }
+
+.area-bundle-toggle {
+    display: flex; align-items: center; gap: 10px;
+    margin: 12px 0; padding: 12px; border: 1px solid #9765cb;
+    border-radius: 10px; background: #9765cb16;
+}
+.area-bundle-toggle input { width: auto; }
+[data-area-bundle-status]:not([hidden]) {
+    display: block; padding: 10px 12px; border-left: 3px solid #9765cb;
+    background: #9765cb14; border-radius: 6px;
+}
