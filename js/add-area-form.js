@@ -44,5 +44,115 @@ document.addEventListener('DOMContentLoaded', () => {
         field.querySelectorAll('input[type="checkbox"]:not([name^="area_unknown["])')
             .forEach(input => { input.checked = false; });
     });
+    // A newly submitted Place may include its first Area in the same
+    // immutable review bundle as the first Site. No preexisting Place ID,
+    // coordinates or Area geometry are required for this path.
+    const newPlaceToggle = document.querySelector('[data-area-bundle-new]');
+    const bundleInput = document.querySelector('[data-area-bundle-input]');
+    const attachButton = form.querySelector('[data-area-attach-new]');
+    const submitNew = form.querySelector('[data-area-submit-new]');
+    const submitExisting = form.querySelector('[data-area-submit-existing]');
+    const parentRow = form.querySelector('[data-area-existing-parent]');
+    const parent = form.querySelector('[name="area_place_id"]');
+    const search = document.querySelector('[data-area-search-existing]');
+    const status = document.querySelector('[data-area-bundle-status]');
+
+    const captureBundle = () => {
+        if (!form.reportValidity()) return false;
+        const data = new FormData(form);
+        const bundle = {
+            area_name: String(data.get('area_name') || '').trim(),
+            area_feature_type: String(data.get('area_feature_type') || ''),
+            area_facility_kind: String(data.get('area_facility_kind') || ''),
+            area_answers: {},
+            area_unknown: {}
+        };
+        for (const [key, value] of data.entries()) {
+            const answer = key.match(/^area_answers\[([^\]]+)\](\[\])?$/);
+            const unknown = key.match(/^area_unknown\[([^\]]+)\]$/);
+            if (answer) {
+                if (answer[2]) {
+                    (bundle.area_answers[answer[1]] ||= []).push(value);
+                } else {
+                    bundle.area_answers[answer[1]] = value;
+                }
+            } else if (unknown) {
+                bundle.area_unknown[unknown[1]] = value;
+            }
+        }
+        if (!bundle.area_name || !bundle.area_feature_type
+            || (bundle.area_feature_type === 'facility_area' && !bundle.area_facility_kind)) {
+            return false;
+        }
+        bundleInput.value = JSON.stringify(bundle);
+        status.hidden = false;
+        status.textContent = 'Area attached to this new Place submission. Submit the Place and Area together for review; no map point required.';
+        submitNew.hidden = false;
+        return true;
+    };
+
+    const showMode = () => {
+        const bundled = Boolean(newPlaceToggle?.checked);
+        if (search) search.hidden = bundled;
+        if (parentRow) parentRow.hidden = bundled;
+        if (parent) {
+            parent.required = !bundled;
+            parent.disabled = bundled;
+        }
+        if (submitExisting) submitExisting.hidden = bundled;
+        if (attachButton) attachButton.hidden = !bundled;
+        if (submitNew) submitNew.hidden = !bundled || !bundleInput?.value;
+        if (status && !bundled) status.hidden = true;
+    };
+
+    const restoreBundle = () => {
+        if (!bundleInput?.value) return;
+        try {
+            const previous = JSON.parse(bundleInput.value);
+            if (!previous || typeof previous !== 'object') return;
+            newPlaceToggle.checked = true;
+            form.querySelector('[name="area_name"]').value = String(previous.area_name || '');
+            type.value = String(previous.area_feature_type || previous.feature_type || 'facility_area');
+            kind.value = String(previous.area_facility_kind || previous.facility_kind || '');
+            update();
+            const answers = previous.area_answers || previous.answers || {};
+            const unknowns = previous.area_unknown || {};
+            for (const field of questions) {
+                for (const input of field.querySelectorAll('input, select, textarea')) {
+                    const name = input.name || '';
+                    const match = name.match(/^area_answers\[([^\]]+)\]/);
+                    const unknown = name.match(/^area_unknown\[([^\]]+)\]/);
+                    const value = match ? answers[match[1]] : undefined;
+                    if (match) {
+                        if (input.type === 'checkbox') {
+                            input.checked = Array.isArray(value) && value.includes(input.value);
+                        } else if (input.type === 'radio') {
+                            input.checked = String(value ?? '') === input.value;
+                        } else {
+                            input.value = typeof value === 'string' || typeof value === 'number'
+                                ? String(value) : '';
+                        }
+                    } else if (unknown) {
+                        input.checked = Boolean(unknowns[unknown[1]]);
+                    }
+                }
+            }
+        } catch (_) {
+            bundleInput.value = '';
+        }
+    };
+    newPlaceToggle?.addEventListener('change', () => {
+        if (!newPlaceToggle.checked && bundleInput) bundleInput.value = '';
+        showMode();
+    });
+    attachButton?.addEventListener('click', captureBundle);
+    submitNew?.addEventListener('click', event => {
+        if (!captureBundle()) event.preventDefault();
+    });
+    form.addEventListener('change', () => {
+        if (newPlaceToggle?.checked && bundleInput?.value) captureBundle();
+    });
+    restoreBundle();
     update();
+    showMode();
 });
