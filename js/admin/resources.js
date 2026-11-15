@@ -33,6 +33,19 @@
             choices.value = '';
             add.disabled = true;
             picker.hidden = added.size === serviceOptions.length;
+
+            // Experience is derived from the same selected Service cards on
+            // Resource and Facility editors. Hidden answers cannot be sent.
+            const experience = section.closest('form')?.querySelector('[data-resource-experience]');
+            if (experience) {
+                for (const fieldset of experience.querySelectorAll('[data-resource-experience-service]')) {
+                    const active = added.has(fieldset.dataset.resourceExperienceService);
+                    fieldset.hidden = !active;
+                    fieldset.disabled = !active;
+                }
+                const noExperience = experience.querySelector('[data-resource-experience-empty]');
+                if (noExperience) noExperience.hidden = added.size > 0;
+            }
         }
 
         choices.addEventListener('change', () => {
@@ -116,7 +129,7 @@
             locate.disabled = search.disabled = true;
             const originalCoordinates = coordinates.value;
             const initialFields = new Map(
-                Object.keys(addressFields).map(name => [name, form.elements[name].value])
+                Object.keys(addressFields).map(name => [name, form.elements[name]?.value || ''])
             );
             try {
                 const [lat, lng] = await readCoordinates();
@@ -126,6 +139,12 @@
                 }
                 const searched = `${lat.toFixed(7)}, ${lng.toFixed(7)}`;
                 coordinates.value = searched;
+                // Place-owned Facilities do not have address inputs.
+                // Their location is the selected coordinates plus Parent Place.
+                if (!form.elements.street_address) {
+                    showStatus('Facility coordinates set.', 'success');
+                    return;
+                }
                 showStatus('Looking up the address and county…', 'info');
                 const params = new URLSearchParams({ mode: 'address', lat, lng });
                 const response = await fetch(`/api/location-lookup.php?${params}`, {
@@ -144,7 +163,7 @@
                 for (const [name, key] of Object.entries(addressFields)) {
                     const field = form.elements[name];
                     const value = address?.[key];
-                    if (typeof value === 'string' && value.trim() && field.value === initialFields.get(name)) {
+                    if (field && typeof value === 'string' && value.trim() && field.value === initialFields.get(name)) {
                         field.value = field.maxLength > 0 ? value.slice(0, field.maxLength) : value;
                     }
                 }
