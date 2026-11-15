@@ -360,3 +360,78 @@
 }
 
 
+
+
+/* Resource and Facility retain one form but have distinct visual identities. */
+.resource-facility-theme {
+    --resource-accent: #9765cb;
+}
+.resource-facility-theme > .contribution-resource-panel {
+    border-inline-start: 4px solid var(--resource-accent);
+}
+.resource-experience-section .resource-experience-empty {
+    margin: 0;
+    color: var(--text-muted);
+}
+.resource-experience-service {
+    min-width: 0;
+    margin: 0 0 15px;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-inline-start: 4px solid var(--resource-accent);
+    border-radius: 12px;
+    background: var(--surface);
+}
+.resource-experience-service[hidden],
+.resource-experience-empty[hidden] {
+    display: none !important;
+}
+.resource-experience-service > legend {
+    padding: 0 8px;
+    font-weight: 800;
+}
+.resource-experience-group + .resource-experience-group {
+    margin-top: 18px;
+}
+.resource-experience-group > h3 {
+    margin: 0 0 12px;
+    font-size: .95rem;
+}
+.resource-experience-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+.resource-experience-question {
+    min-width: 0;
+}
+fieldset.resource-experience-question {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+}
+.resource-experience-question legend {
+    padding-inline: 5px;
+    font-size: .9rem;
+    font-weight: 700;
+}
+.resource-experience-choices {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+}
+.resource-experience-choices > label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: .85rem;
+}
+.resource-experience-choices input {
+    accent-color: var(--resource-accent);
+}
+@media (max-width: 690px) {
+    .resource-experience-grid { grid-template-columns: 1fr; }
+}
