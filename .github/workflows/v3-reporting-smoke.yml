@@ -191,12 +191,6 @@ jobs:
       - name: Run V3 reporting smoke tests
         run: php tools/v3-launch-smoke.php
 
-      - name: Verify four-option navigation across Place, Site, Facility and Resource
-        env:
-          NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules
-        run: |
-          php tools/tests/contribution-four-tab-switcher.php
-          node tools/tests/contribution-four-tab-switcher.cjs
       - name: Verify Place/Site/Area tab ownership
         run: node tools/tests/admin-area-tab-ui.cjs
 
@@ -209,6 +203,12 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/llama-season-ui-tests"
           npm install --prefix "$RUNNER_TEMP/llama-season-ui-tests" --no-save --no-package-lock jsdom@26
+      - name: Verify four-option navigation across Place, Site, Facility and Resource
+        env:
+          NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules
+        run: |
+          php tools/tests/contribution-four-tab-switcher.php
+          node tools/tests/contribution-four-tab-switcher.cjs
       - name: Verify active Campsite Pricing save, security, and season contract
         env:
           NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules
