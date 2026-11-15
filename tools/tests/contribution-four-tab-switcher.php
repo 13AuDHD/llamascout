@@ -93,8 +93,9 @@ tabs_check(str_contains($css, '.contribution-type-intro[hidden]'),
     'Only the selected intro may be visible.');
 tabs_check(!str_contains($addPlace, 'Share what you actually observed'),
     'Remove generic Add Place instructions.');
-tabs_check(!str_contains($addPlace, 'data-place-report-completion'),
-    'Remove redundant top completion banner without changing backend validation.');
+tabs_check(!str_contains($addPlace, 'data-place-report-completion-percent')
+    && !str_contains($addPlace, 'class="add-place-form-note place-report-completion"'),
+    'Remove redundant top completion banner but retain backend and form validation.');
 tabs_check(!str_contains($resourcePage, 'Back to Add a Place'),
     'Resource must not show redundant Back to Add a Place link.');
 tabs_check(str_contains($resourcePage, '$resourceContributionShortLabel'),
