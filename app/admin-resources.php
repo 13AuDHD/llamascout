@@ -833,6 +833,29 @@ function admin_resource_save(
             $parentWrite->execute([$parentPlaceId ?: null, $resourceId]);
         }
 
+        // An Experience section submits its explicit presence flag even when
+        // all answers are blank. Legacy importers without this field preserve
+        // existing observations instead of silently clearing them.
+        if (array_key_exists('experience_present', $input) || array_key_exists('experience', $input)) {
+            $cleanExperience = llama_resource_experience_clean(
+                $input['experience'] ?? [], array_keys($services)
+            );
+            if (!llama_resource_experience_ready($db) && $cleanExperience !== []) {
+                throw new InvalidArgumentException(
+                    'The Experience database migration has not been run yet.'
+                );
+            }
+            if (llama_resource_experience_ready($db)) {
+                $experienceSave = $db->prepare(
+                    'UPDATE resources SET experience_json = ? WHERE id = ?'
+                );
+                $experienceSave->execute([
+                    json_encode($cleanExperience, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
+                    $resourceId,
+                ]);
+            }
+        }
+
         if ($writeCounty) {
             $county = $db->prepare('UPDATE resources SET county = ? WHERE id = ?');
             $county->execute([$clean['county'] ?: null, $resourceId]);
