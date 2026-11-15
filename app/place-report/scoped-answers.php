@@ -848,7 +848,9 @@ function llama_scoped_report_assert_owner(PDO $db, int $placeId, string $scope, 
         $sql = 'SELECT id FROM place_campsites WHERE place_id = ? AND id = ? AND is_active = 1';
         $params = [$placeId, $scopeId];
     } else {
-        $types = $scope === 'site' ? ['camping_site'] : ['camping_area','parking_area'];
+        $types = $scope === 'site'
+            ? ['camping_site']
+            : ['camping_area','parking_area','facility_area'];
         $sql = 'SELECT id FROM place_map_features WHERE place_id = ? AND id = ? AND is_active = 1 AND feature_type IN ('
             . implode(',', array_fill(0, count($types), '?')) . ')';
         $params = array_merge([$placeId,$scopeId],$types);
