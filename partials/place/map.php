@@ -194,7 +194,7 @@ $placeMapEditorUrl =
                     ) ?>
 
                     <?= user_is_admin((int) ($userId ?? 0))
-                        ? 'Edit mapped areas'
+                        ? 'Edit map'
                         : 'Propose a boundary' ?>
                 </a>
             <?php endif; ?>
