@@ -281,7 +281,7 @@ if ($sourceDateRaw !== '') {
 require __DIR__ . '/partials/header.php';
 ?>
 
-<article class="resource-page">
+<article class="resource-page<?= $isFacility ? ' is-facility' : '' ?>">
 
 <header class="place-detail-hero<?= $heroImage ? ' has-image' : ' no-image' ?>">
 
@@ -666,6 +666,57 @@ require __DIR__ . '/partials/header.php';
 
 </section>
 
+<?php
+// Only published, approved Experience answers are shown on the public page.
+$experienceAnswers = is_array($resource['experience'] ?? null) ? $resource['experience'] : [];
+$experienceManifest = llama_resource_experience_manifest();
+$experienceSections = [];
+foreach ($services as $service) {
+    $type = (string) ($service['service_type'] ?? '');
+    foreach ($experienceManifest[$type] ?? [] as $groupKey => $group) {
+        $rows = [];
+        foreach ($group['questions'] as $key => $question) {
+            $answer = $experienceAnswers[$type][$groupKey][$key] ?? null;
+            if ($answer === null || $answer === '' || $answer === []) {
+                continue;
+            }
+            $rows[] = [
+                'label' => (string) $question['label'],
+                'value' => llama_resource_experience_label($question, $answer),
+            ];
+        }
+        if ($rows) {
+            $experienceSections[] = ['service' => llama_resource_service_type_label($type),
+                'group' => (string) $group['label'], 'rows' => $rows];
+        }
+    }
+}
+?>
+<?php if ($experienceSections): ?>
+<section class="resource-detail-section resource-experience-display">
+    <div class="resource-section-heading">
+        <p class="place-detail-eyebrow">Experience</p>
+        <h2>Scout observations</h2>
+    </div>
+    <div class="resource-experience-display-grid">
+        <?php foreach ($experienceSections as $section): ?>
+            <article class="resource-info-card">
+                <p class="place-detail-eyebrow"><?= htmlspecialchars($section['service'], ENT_QUOTES, 'UTF-8') ?></p>
+                <h3><?= htmlspecialchars($section['group'], ENT_QUOTES, 'UTF-8') ?></h3>
+                <dl class="resource-info-list">
+                    <?php foreach ($section['rows'] as $row): ?>
+                        <div>
+                            <dt><?= htmlspecialchars($row['label'], ENT_QUOTES, 'UTF-8') ?></dt>
+                            <dd><?= nl2br(htmlspecialchars($row['value'], ENT_QUOTES, 'UTF-8')) ?></dd>
+                        </div>
+                    <?php endforeach; ?>
+                </dl>
+            </article>
+        <?php endforeach; ?>
+    </div>
+</section>
+<?php endif; ?>
+
 <?php if ($images): ?>
 <section class="place-photo-gallery-section resource-photo-section">
 
@@ -690,7 +741,7 @@ require __DIR__ . '/partials/header.php';
                 class="place-photo-thumb<?= !empty($image['is_featured']) ? ' is-featured' : '' ?>"
                 type="button"
                 data-gallery-open="<?= (int) $index ?>"
-                aria-label="Open Resource photo <?= (int) $index + 1 ?>"
+                aria-label="Open <?= $isFacility ? 'Facility' : 'Resource' ?> photo <?= (int) $index + 1 ?>"
             >
                 <img
                     src="<?= htmlspecialchars(
@@ -727,7 +778,7 @@ require __DIR__ . '/partials/header.php';
 <dialog
     class="place-gallery-lightbox"
     id="place-gallery-lightbox"
-    aria-label="Resource photo viewer"
+    aria-label="<?= $isFacility ? 'Facility' : 'Resource' ?> photo viewer"
 >
     <div class="place-gallery-lightbox-inner">
         <div class="place-gallery-lightbox-top">
