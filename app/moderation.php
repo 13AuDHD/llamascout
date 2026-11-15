@@ -1363,6 +1363,23 @@ $name = trim(
         (int) $firstSite['id']
     );
 
+    // A brand-new Place can submit its first Area in the same review bundle
+    // as its first Site. Create a canonical Area record with no marker and
+    // publish its own answers without changing any Place or Site facts.
+    if (is_array($data['_first_area'] ?? null)) {
+        require_once __DIR__ . '/area-submissions.php';
+        $firstAreaId = llama_area_publish_unmapped(
+            $db, $placeId, (int) $submission['user_id'],
+            $reviewedBy, $data['_first_area']
+        );
+        $firstArea = llama_report_verified_target(
+            $db, $placeId, 'area', 'map_feature', $firstAreaId
+        );
+        if ((int) $firstArea['id'] !== $firstAreaId) {
+            throw new RuntimeException('The first Area was not published. Place approval was rolled back.');
+        }
+    }
+
     // Verify the first Site and every approved Site answer were published
     // in this transaction before the Add Place approval can be committed.
     $firstSiteId = (int) $firstSite['id'];
