@@ -107,11 +107,8 @@ if ($posted) {
     }
 }
 
-$back = $revision
-    ? 'https://account.llamascout.com/contributions.php'
-    : ($isUpdate
-        ? '/resource.php?slug=' . rawurlencode((string) $contributionResource['slug'])
-        : '/add-place.php?tab=place' . ($contributionReturnDraft > 0 ? '&draft=' . $contributionReturnDraft : ''));
+$resourceContributionLevel = llama_user_contribution_level($db, $userId);
+$resourceContributionShortLabel = llama_contribution_level_short_label($resourceContributionLevel);
 $pageTitle = $revision ? 'Revise Resource Submission' : ($isUpdate ? 'Update Resource' : 'Add a Resource');
 $pageStyles = ['site/pages/add-place.css', 'site/features/place-report-form.css', 'site/features/contribution-tabs.css', 'site/features/resource-form.css', 'photo-uploader.css'];
 $e = static fn (mixed $value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
@@ -119,8 +116,10 @@ require __DIR__ . '/partials/header.php';
 ?>
 <section class="contribution-page">
     <header class="contribution-header">
+        <p class="eyebrow"><?= $revision
+            ? 'Changes requested'
+            : $e($resourceContributionShortLabel . ' contribution') ?></p>
         <h1><?= $e($pageTitle) ?></h1>
-        <a href="<?= $e($back) ?>"><?= $revision ? 'My contributions' : ($isUpdate ? 'Back to Resource' : 'Back to Add a Place') ?></a>
     </header>
     <?php $contributionPickerResourcePage = true; ?>
     <?php require __DIR__ . '/partials/place-report/contribution-tabs.php'; ?>
