@@ -8,7 +8,11 @@ on:
       - 'tools/migrations/20261114_unmapped_areas.sql'
       - 'tools/tests/unmapped-area-integration.php'
       - 'tools/tests/unmapped-area-form-ui.cjs'
+      - 'tools/tests/unmapped-area-bundle-ui.cjs'
       - 'app/area-submissions.php'
+      - 'app/place-report/runtime.php'
+      - 'app/moderation.php'
+      - 'admin/moderate-submission.php'
       - 'app/place-map-features.php'
       - 'app/place-report/scoped-answers.php'
       - 'add-place.php'
@@ -52,8 +56,9 @@ jobs:
         run: |
           for file in app/area-submissions.php app/place-map-features.php \
             app/place-report/scoped-answers.php add-place.php \
-            admin/area-submissions.php admin/moderation.php \
-            partials/place-report/add-area-form.php tools/tests/unmapped-area-integration.php; do
+            admin/area-submissions.php admin/moderation.php admin/moderate-submission.php \
+            app/place-report/runtime.php partials/place-report/add-area-form.php \
+            tools/tests/unmapped-area-integration.php; do
             php -l "$file"
           done
           node --check js/add-area-form.js
@@ -63,7 +68,9 @@ jobs:
       - name: Check unmapped Area form
         env:
           NODE_PATH: ${{ runner.temp }}/area-ui/node_modules
-        run: node tools/tests/unmapped-area-form-ui.cjs
+        run: |
+          node tools/tests/unmapped-area-form-ui.cjs
+          node tools/tests/unmapped-area-bundle-ui.cjs
       - name: Submit and approve unmapped Area in MariaDB
         env:
           LLAMA_UNMAPPED_AREA_DSN: mysql:host=127.0.0.1;port=3306;dbname=llama_unmapped_area_test;charset=utf8mb4
