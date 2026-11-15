@@ -13,6 +13,7 @@ declare(strict_types=1);
 function llama_resource_experience_manifest(): array
 {
     require_once __DIR__ . '/place-report.php';
+    $areaQuestions = llama_report_questions();
 
     $extra = [
         'service_water_type' => ['Water classification', 'select', [
@@ -184,7 +185,7 @@ function llama_resource_experience_manifest(): array
                     [$title, $type, $options] = array_pad($extra[$key], 3, []);
                     $field = ['label' => $title, 'type' => $type, 'options' => $options];
                 } else {
-                    $original = llama_report_question($key);
+                    $original = $areaQuestions[$key] ?? null;
                     if ($original === null) {
                         throw new RuntimeException('Missing canonical Area question: ' . $key);
                     }
