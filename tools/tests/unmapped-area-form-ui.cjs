@@ -46,7 +46,7 @@ const dom = new JSDOM(`<!doctype html><body>
     <details class="area-question-group"><div>
       <fieldset data-area-question data-area-types="" data-facility-kinds="restroom">
         <label><input type="radio" name="area_answers[facility_toilet_count]" value="2"></label>
-        <button data-clear-area-answer>Clear</button>
+        <button type="button" data-clear-area-answer>Clear</button>
       </fieldset>
       <fieldset data-area-question data-area-types="" data-facility-kinds="pool">
         <label><input type="radio" name="area_answers[facility_pool_heated]" value="1"></label>
