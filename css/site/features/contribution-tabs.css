@@ -54,15 +54,14 @@
 }
 
 .contribution-area-panel {
-    padding: 16px 18px;
-    border: 1px solid var(--border);
-    border-inline-start: 4px solid #7931a9;
-    border-radius: 12px;
-    background: var(--surface);
+    padding: 0;
+    border: 0;
+    background: transparent;
+    min-width: 0;
 }
-.contribution-area-panel h3 { margin: 0 0 6px; font-size: 1rem; }
+.contribution-area-panel h3 { margin: 0 0 6px; font-size: 1.1rem; }
 .contribution-area-panel p { margin: 0; color: var(--text-muted); line-height: 1.5; }
-.contribution-area-panel a { display: inline-flex; margin-top: 12px; color: var(--text); font-weight: 800; }
+.contribution-area-panel a { display: inline-flex; color: var(--text); font-weight: 700; }
 
 /* Facility Area questions use the normal Admin Place form controls. */
 .admin-facility-questions[hidden],
@@ -91,7 +90,7 @@
 .contribution-area-panel [hidden],
 .area-create-form [hidden] { display: none !important; }
 .area-place-search, .area-create-form { display: grid; gap: 18px; }
-.area-place-search { margin: 18px 0; }
+.area-place-search { margin: 0; }
 .area-place-search-row { display: flex; gap: 10px; }
 .area-place-search-row input { flex: 1; min-width: 0; }
 .area-create-form input:not([type="checkbox"]):not([type="radio"]),
@@ -139,4 +138,120 @@
 [data-area-bundle-status]:not([hidden]) {
     display: block; padding: 10px 12px; border-left: 3px solid #9765cb;
     background: #9765cb14; border-radius: 6px;
+}
+
+
+/* Area uses the same calm, nested report structure as Place and Site.
+   Only Basic and Location open by default; other approved groups collapse. */
+.area-form-intro {
+    margin-bottom: 16px;
+    padding: 12px 16px;
+    border-inline-start: 4px solid #9765cb;
+    background: var(--surface);
+    border-radius: 10px;
+}
+.area-create-form { gap: 20px; min-width: 0; }
+.area-create-form .area-form-section {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: 14px;
+    overflow: visible;
+}
+.area-create-form .area-form-section > summary {
+    padding: 18px 20px;
+    font-weight: 750;
+}
+.area-form-section-body {
+    display: grid;
+    gap: 16px;
+    padding: 14px 16px 20px;
+    min-width: 0;
+}
+.area-create-form .area-question-group {
+    margin: 0;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+}
+.area-create-form .area-question-group > summary {
+    padding: 14px 16px;
+    font-weight: 650;
+    cursor: pointer;
+}
+.area-create-form .area-question-group > .area-question-grid {
+    padding: 12px 14px 16px;
+}
+.area-location-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+.area-create-form .area-location-fields > .contribution-field {
+    min-width: 0;
+    display: grid;
+    align-content: start;
+    gap: 8px;
+}
+.area-create-form .area-location-fields > .contribution-field > span,
+.area-create-form .area-location-fields > .contribution-field > label {
+    font-weight: 650;
+}
+.area-create-form .area-coordinate-row {
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+    min-width: 0;
+}
+.area-create-form .area-coordinate-row input {
+    min-width: 0;
+    flex: 1;
+}
+.area-create-form .area-coordinate-row button,
+.area-create-form .area-location-button,
+.area-create-form [data-area-find-place] {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    background: var(--surface);
+    padding: 10px 16px;
+    font: inherit;
+    cursor: pointer;
+}
+.area-create-form .area-location-button {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 46px;
+}
+.area-create-form [data-area-find-place]:hover,
+.area-create-form [data-area-search-coordinates]:hover,
+.area-create-form .area-location-button:hover {
+    border-color: #9765cb;
+}
+.area-create-form .area-location-button:disabled {
+    opacity: .6;
+    cursor: wait;
+}
+.area-location-status {
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: .9rem;
+}
+.area-location-status.is-error { border-color: #cd7575; }
+.area-location-status.is-success { border-color: #9765cb; }
+.area-create-form .area-question {
+    border-color: var(--border);
+    background: transparent;
+}
+@media (max-width: 760px) {
+    .area-location-fields,
+    .area-create-identity,
+    .area-question-grid {
+        grid-template-columns: 1fr;
+    }
+    .area-create-form .area-coordinate-row { gap: 8px; }
+    .area-create-form .area-coordinate-row button { padding: 9px 12px; }
 }
