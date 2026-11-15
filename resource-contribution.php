@@ -122,15 +122,16 @@ if ($posted) {
 }
 
 // Render a confirmed Parent Place name, never trust typed search text as identity.
-if ($contributionIsFacility && !isset($contributionResourceInput['parent_place_id'])) {
+if ($contributionIsFacility && !$isUpdate && !isset($contributionResourceInput['parent_place_id'])) {
     $contributionResourceInput['parent_place_id'] = max(0, (int) ($_GET['parent_place_id'] ?? 0));
 }
 $contributionParentPlaceName = '';
 $parentPlaceId = (int) ($contributionResourceInput['parent_place_id']
     ?? $contributionResource['parent_place_id'] ?? 0);
 if ($contributionIsFacility && $parentPlaceId > 0) {
-    $parentLookup = $db->prepare('SELECT name FROM places
-        WHERE id = ? AND status NOT IN ("removed", "archived") LIMIT 1');
+    $parentLookup = $db->prepare('SELECT p.name FROM places p
+        WHERE p.id = ? AND p.status IN ("active", "featured")
+        AND ' . llama_place_visibility_sql('p', $userId) . ' LIMIT 1');
     $parentLookup->execute([$parentPlaceId]);
     $contributionParentPlaceName = (string) ($parentLookup->fetchColumn() ?: '');
 }
