@@ -24,7 +24,14 @@ $areaQuestions = llama_report_questions_for_scope('area', true);
     <h3>Add an Area</h3>
     <p>Give this Area a name, select what it is and answer what you observed. A map point or boundary is optional and can be added later.</p>
 
-    <form method="get" action="/add-place.php" class="area-place-search">
+    <label class="area-bundle-toggle">
+        <input type="checkbox" data-area-bundle-new>
+        Include this Area in the new Place I'm adding
+    </label>
+    <p data-area-bundle-status role="status" aria-live="polite" hidden></p>
+
+    <form method="get" action="/add-place.php" class="area-place-search"
+          data-area-search-existing>
         <input type="hidden" name="tab" value="area">
         <label for="area-place-query">Find the parent Place</label>
         <div class="area-place-search-row">
@@ -38,7 +45,7 @@ $areaQuestions = llama_report_questions_for_scope('area', true);
     <form method="post" action="/add-place.php?tab=area" class="area-create-form"
           data-area-create-form>
         <input type="hidden" name="csrf_token" value="<?= $escArea(community_csrf_token()) ?>">
-        <label class="contribution-field">
+        <label class="contribution-field" data-area-existing-parent>
             <span>Parent Place</span>
             <select name="area_place_id" required>
                 <option value="">Select the Place this Area belongs to</option>
@@ -186,8 +193,16 @@ $areaQuestions = llama_report_questions_for_scope('area', true);
         <?php endforeach; ?>
         <?php if ($lastGroup !== null) echo '</div></details>'; ?>
         <div class="contribution-actions">
-            <button type="submit" name="submit_area" value="1" class="contribution-submit">
+            <button type="submit" name="submit_area" value="1" class="contribution-submit"
+                data-area-submit-existing>
                 <?= llama_icon('send') ?> Submit Area for Review
+            </button>
+            <button type="button" class="contribution-submit" data-area-attach-new hidden>
+                Add Area to New Place Submission
+            </button>
+            <button type="submit" form="add-place-main-form" class="contribution-submit"
+                data-area-submit-new hidden>
+                <?= llama_icon('send') ?> Submit Place + Area for Review
             </button>
             <a href="/map.php">Cancel</a>
         </div>
