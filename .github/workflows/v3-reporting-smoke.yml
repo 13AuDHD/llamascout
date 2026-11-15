@@ -26,6 +26,10 @@ on:
       - 'tools/tests/place-explorer-colors-ui.cjs'
       - 'tools/tests/area-purple-report-ui.cjs'
       - 'tools/tests/area-selection-deep-link-ui.cjs'
+      - 'tools/tests/public-facility-resource-roles.cjs'
+      - 'css/site.css'
+      - 'css/map.css'
+      - 'resource-contribution.php'
       - 'tools/tests/place-report-scope-visibility-ui.cjs'
       - 'tools/tests/place-area-scope-registry.php'
       - 'js/place-report-form.js'
@@ -37,6 +41,10 @@ on:
       - 'tools/tests/place-explorer-colors-ui.cjs'
       - 'tools/tests/area-purple-report-ui.cjs'
       - 'tools/tests/area-selection-deep-link-ui.cjs'
+      - 'tools/tests/public-facility-resource-roles.cjs'
+      - 'css/site.css'
+      - 'css/map.css'
+      - 'resource-contribution.php'
       - 'tools/tests/place-report-scope-visibility-ui.cjs'
       - 'tools/tests/place-area-scope-registry.php'
       - 'js/place-report-section-completion.js'
@@ -96,6 +104,7 @@ on:
       - 'app/place-map-features-endpoint.php'
       - 'app/place-site-delete.php'
       - 'tools/tests/site-map-pin-removal-ui.cjs'
+      - 'tools/tests/public-facility-resource-roles.cjs'
       - 'js/place-map-editor.js'
       - 'js/admin/place-report-area.js'
       - 'css/site/pages/place-map-editor.css'
@@ -200,11 +209,13 @@ jobs:
         env:
           NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules
         run: node tools/tests/quick-warning-ui.cjs
-      - name: Verify Place, Site and Area color identities in public explorer
+      - name: Verify public Facility identity and standalone teal Resource submission
+        run: node tools/tests/public-facility-resource-roles.cjs
+      - name: Verify Place, Site and Facility color identities in public explorer
         env:
           NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules
         run: node tools/tests/place-explorer-colors-ui.cjs
-      - name: Verify isolated Area questions and consistent purple Area selection
+      - name: Verify isolated Facility questions and consistent purple Facility selection
         env:
           NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules
         run: node tools/tests/area-purple-report-ui.cjs
