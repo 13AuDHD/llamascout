@@ -18,6 +18,11 @@ on:
       - 'tools/tests/place-area-scope-registry.php'
       - 'css/site/features/place-report-form.css'
       - 'js/place-campsites.js'
+      - 'tools/tests/public-facility-resource-roles.cjs'
+      - 'css/site.css'
+      - 'css/map.css'
+      - 'resource-contribution.php'
+      - 'js/place-map.js'
   workflow_dispatch:
 
 permissions:
@@ -49,6 +54,7 @@ jobs:
           npm install --prefix "$RUNNER_TEMP/llama-pricing-ui" --no-save --ignore-scripts jsdom@26.1.0
           node tools/tests/campsite-pricing-contract.cjs
           node tools/tests/closure-schedule-contract.cjs
+          node tools/tests/public-facility-resource-roles.cjs
           NODE_PATH="$RUNNER_TEMP/llama-pricing-ui/node_modules" node tools/tests/site-map-pin-removal-ui.cjs
           php -l admin/campsite-pricing.php
           node --check js/admin/campsite-pricing.js
