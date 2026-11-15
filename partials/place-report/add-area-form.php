@@ -40,10 +40,6 @@ foreach ($areaQuestions as $key => $field) {
 $areaCoordinates = (string) ($_POST['area_coordinates'] ?? '');
 ?>
 <section class="contribution-area-panel" data-contribution-area-panel hidden>
-    <div class="area-form-intro">
-        <h3>Add a Facility</h3>
-        <p>Describe an onsite Facility belonging to a Place. A map location is optional.</p>
-    </div>
     <form method="post" action="/add-place.php?tab=area"
           id="area-create-form" class="area-create-form" data-area-create-form>
         <input type="hidden" name="csrf_token" value="<?= $escArea(community_csrf_token()) ?>">
