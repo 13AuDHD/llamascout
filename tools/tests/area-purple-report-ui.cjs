@@ -27,11 +27,13 @@ assert.doesNotMatch(areaMapJs, /applyAreaReport\(|renderFacilityDetail\(/,
 assert.match(areaMapJs, /selectedColor = selection.kind === 'area' \? '#9765cb'/);
 assert.doesNotMatch(areaMapJs, /#f8d028/,
     'The Area selection outline must not turn yellow');
-assert.match(explorerJs, /if \(kind === 'parking'\) return 'purple'/,
-    'Parking Areas must also remain purple');
-assert.match(mapCss, /\.place-map-feature--parking-area \{\s*stroke: #9765cb;/);
+assert.match(explorerJs, /featureType !== 'facility_area'/,
+    'Only Facilities should be selectable as purple public map children');
+assert.match(stayPhp, /\$featureType !== 'facility_area'/,
+    'Public Facility tabs must exclude camping loops and parking groupings');
 assert.match(mapCss, /\.place-map-feature--facility-area \{\s*stroke: #9765cb;/);
-assert.match(editorJs, /parking_area:\s*\{\s*color:\s*'#9765cb'/);
+assert.match(editorJs, /parking_area:\s*\{\s*color:\s*'#9765cb'/,
+    'Keep administrative Area polygons untouched');
 
 const markup = `<!doctype html>
 <style>${colorCss}</style>
@@ -102,4 +104,4 @@ assert.equal(siteSection.hidden, false);
 assert.equal(siteCard.hidden, false);
 assert.equal(placeSection.hidden, true);
 dom.window.close();
-console.log('PASS: Area purple identity, scope-only questions, hidden Place cards, no duplicate Facility report');
+console.log('PASS: Purple Facility-only public selection, canonical scope-only questions and unchanged admin shapes');
