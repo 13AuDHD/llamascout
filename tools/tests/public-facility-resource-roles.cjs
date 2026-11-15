@@ -59,22 +59,24 @@ assert.match(report, /Facility Scout Report/);
 assert.doesNotMatch(areaSelector, /Sites and Areas|Select a Site or Area/);
 assert.match(areaSelector, /Sites and Facilities/);
 
-assert.match(tabs, /data-contribution-mode="area"[^>]*>\s*<\?= \$isNewContribution \? 'Facility' : 'Area'/,
-    'Visitor tab says Facility but admin can retain legacy Area terminology');
+assert.match(tabs, /data-contribution-facility-link/,
+    'Visitor Facility now opens an independent contribution form');
+assert.doesNotMatch(addPlace, /require __DIR__ \. '\/partials\/place-report\/add-area-form\.php'/,
+    'No bundled Facility form should remain inside Add Place');
 assert.match(tabs, /data-contribution-resource-link/);
 assert.match(tabs, /resource-contribution\.php/,
     'Resource tab continues to route to its dedicated submission form');
 assert.match(addPlace, /partials\/place-report\/contribution-tabs\.php/);
-assert.match(resources, /\$pageTitle = .*'Add a Resource'/,
-    'New Resource page should have the proper independent title');
+assert.match(resources, /\$resourceLabel = \$contributionIsFacility \? 'Facility' : 'Resource'/,
+    'One Resource editor should label the Facility mode independently');
 assert.doesNotMatch(resources,
     /if \(!\$posted && !\$isUpdate && !\$revision\)\s*\{\s*header\(/s,
     'The new Resource route must never loop back to the Place form');
 assert.match(resources, /llama_resource_submit\(/);
 assert.match(resourceSubmissions, /INSERT INTO resource_submissions/,
     'New Resource uses the already-established moderation queue');
-assert.match(resourceForm, /Submit Resource for Review/);
+assert.match(resourceForm, /'Submit ' \. \$resourceFormLabel \. ' for Review'/);
 assert.match(resources, /account\.llamascout\.com\/contributions\.php\?submitted=/,
     'New Resource should return to contributor submissions');
 
-console.log('PASS: teal Resources with service icons, purple Facilities only, and direct moderated Resource contributions');
+console.log('PASS: standalone Resource pins, legacy Area markers and independently submitted Parent-linked Facilities');
