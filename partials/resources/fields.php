@@ -621,3 +621,5 @@ $datetimeLocal =
                 </div>
             </div>
         </details>
+
+<?php require __DIR__ . '/experience.php'; ?>

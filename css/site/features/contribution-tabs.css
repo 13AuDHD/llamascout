@@ -328,3 +328,9 @@
     .area-create-form .area-coordinate-row { gap: 8px; }
     .area-create-form .area-coordinate-row button { padding: 9px 12px; }
 }
+
+
+/* Facilities are the purple contribution type, not Resource teal. */
+.contribution-scope-picker .contribution-current-resource.is-facility[aria-current="page"] {
+    --mode-color: #9765cb;
+}

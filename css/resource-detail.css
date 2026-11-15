@@ -215,3 +215,25 @@
     }
 }
 
+
+
+/* Resource stays teal; Place-owned Facility detail pages are purple. */
+.resource-page.is-facility {
+    --resource-accent: #9765cb;
+}
+.resource-experience-display-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin-top: 16px;
+}
+.resource-experience-display .resource-info-card h3 {
+    margin: 0;
+    font-size: 1.08rem;
+}
+.resource-experience-display .resource-info-card > p {
+    margin: 0 0 7px;
+}
+@media (max-width: 760px) {
+    .resource-experience-display-grid { grid-template-columns: 1fr; }
+}

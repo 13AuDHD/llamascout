@@ -62,10 +62,16 @@ function llama_resource_submission_input(array $input): array
         'name', 'parent_place_id', 'resource_type', 'marker_service_type', 'status', 'coordinates',
         'hours_mode', 'fixed_open_hour', 'fixed_close_hour', 'weekly_hours',
         'street_address', 'city', 'county', 'state_region', 'postal_code', 'country_code',
-        'phone', 'website_url', 'services', 'notes',
+        'phone', 'website_url', 'services', 'notes', 'experience', 'experience_present',
     ]);
     $data = array_intersect_key($input, $fields);
     foreach ($data as $key => $value) {
+        if ($key === 'experience') {
+            if (!is_array($value)) {
+                throw new InvalidArgumentException('Check the Experience answers.');
+            }
+            continue; // Nested Experience answers are validated against the canonical catalog below.
+        }
         if (in_array($key, ['weekly_hours', 'services'], true)) {
             if (!is_array($value)) {
                 throw new InvalidArgumentException('Check the hours and services.');
@@ -122,6 +128,12 @@ function llama_resource_submit(
     }
 
     $resource = llama_resource_prepare_input($db, $resourceId, $data);
+    $data['experience'] = llama_resource_experience_clean(
+        $data['experience'] ?? [], array_keys($resource['services'])
+    );
+    if ($data['experience'] !== [] && !llama_resource_experience_ready($db)) {
+        throw new InvalidArgumentException('Run the Experience database migration before submitting answers.');
+    }
     if ($resource['parentPlaceId'] > 0) {
         $visibleParent = $db->prepare('SELECT p.id FROM places p WHERE p.id = ?
             AND p.status IN ("active", "featured")

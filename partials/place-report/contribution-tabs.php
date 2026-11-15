@@ -21,7 +21,7 @@ $placeDraftSuffix = $isResourcePage && !empty($contributionReturnDraft)
         <a href="/add-place.php?tab=place<?= $placeDraftSuffix ?>">Place</a>
         <a href="/add-place.php?tab=site<?= $placeDraftSuffix ?>">Site</a>
         <?php if (!empty($contributionIsFacility)): ?>
-            <span class="contribution-current-resource" aria-current="page">Facility</span>
+            <span class="contribution-current-resource is-facility" aria-current="page">Facility</span>
             <a href="/resource-contribution.php<?= !empty($contributionReturnDraft) ? '?return_draft=' . (int) $contributionReturnDraft : '' ?>">Resource</a>
         <?php else: ?>
             <a href="/resource-contribution.php?kind=facility<?= !empty($contributionReturnDraft) ? '&return_draft=' . (int) $contributionReturnDraft : '' ?>">Facility</a>

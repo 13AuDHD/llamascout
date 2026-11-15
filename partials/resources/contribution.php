@@ -14,7 +14,7 @@ $resourceEditorUrl = $resourceStaffFields
     ? 'https://admin.llamascout.com/resources.php'
     : 'https://llamascout.com/resource-contribution.php';
 ?>
-<div data-contribution-resource <?= empty($standaloneResourceForm) ? 'hidden' : '' ?>>
+<div class="<?= $resourceFormIsFacility ? 'resource-facility-theme' : '' ?>" data-contribution-resource <?= empty($standaloneResourceForm) ? 'hidden' : '' ?>>
     <?php if ($resourceStaffFields && isset($contributionPlaceId)): ?>
         <form method="get" action="/place.php" class="resource-target-picker">
             <input type="hidden" name="id" value="<?= (int) $contributionPlaceId ?>">
