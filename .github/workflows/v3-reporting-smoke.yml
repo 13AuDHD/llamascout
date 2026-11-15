@@ -203,6 +203,12 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/llama-season-ui-tests"
           npm install --prefix "$RUNNER_TEMP/llama-season-ui-tests" --no-save --no-package-lock jsdom@26
+      - name: Verify shared Resource and Facility Experience form and canonical answers
+        env:
+          NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules
+        run: |
+          php tools/tests/resource-facility-experience.php
+          node tools/tests/resource-facility-experience-ui.cjs
       - name: Verify four-option navigation across Place, Site, Facility and Resource
         env:
           NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules
