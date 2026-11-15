@@ -27,6 +27,12 @@ on:
       - 'tools/tests/area-purple-report-ui.cjs'
       - 'tools/tests/area-selection-deep-link-ui.cjs'
       - 'tools/tests/public-facility-resource-roles.cjs'
+      - 'tools/tests/contribution-four-tab-switcher.cjs'
+      - 'tools/tests/contribution-four-tab-switcher.php'
+      - 'partials/place-report/contribution-tabs.php'
+      - 'resource-contribution.php'
+      - 'add-place.php'
+      - 'css/site/features/contribution-tabs.css'
       - 'css/site.css'
       - 'css/map.css'
       - 'resource-contribution.php'
@@ -42,6 +48,12 @@ on:
       - 'tools/tests/area-purple-report-ui.cjs'
       - 'tools/tests/area-selection-deep-link-ui.cjs'
       - 'tools/tests/public-facility-resource-roles.cjs'
+      - 'tools/tests/contribution-four-tab-switcher.cjs'
+      - 'tools/tests/contribution-four-tab-switcher.php'
+      - 'partials/place-report/contribution-tabs.php'
+      - 'resource-contribution.php'
+      - 'add-place.php'
+      - 'css/site/features/contribution-tabs.css'
       - 'css/site.css'
       - 'css/map.css'
       - 'resource-contribution.php'
@@ -105,6 +117,12 @@ on:
       - 'app/place-site-delete.php'
       - 'tools/tests/site-map-pin-removal-ui.cjs'
       - 'tools/tests/public-facility-resource-roles.cjs'
+      - 'tools/tests/contribution-four-tab-switcher.cjs'
+      - 'tools/tests/contribution-four-tab-switcher.php'
+      - 'partials/place-report/contribution-tabs.php'
+      - 'resource-contribution.php'
+      - 'add-place.php'
+      - 'css/site/features/contribution-tabs.css'
       - 'js/place-map-editor.js'
       - 'js/admin/place-report-area.js'
       - 'css/site/pages/place-map-editor.css'
@@ -173,6 +191,12 @@ jobs:
       - name: Run V3 reporting smoke tests
         run: php tools/v3-launch-smoke.php
 
+      - name: Verify four-option navigation across Place, Site, Facility and Resource
+        env:
+          NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules
+        run: |
+          php tools/tests/contribution-four-tab-switcher.php
+          node tools/tests/contribution-four-tab-switcher.cjs
       - name: Verify Place/Site/Area tab ownership
         run: node tools/tests/admin-area-tab-ui.cjs
 
