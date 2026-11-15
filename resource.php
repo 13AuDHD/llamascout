@@ -312,9 +312,11 @@ require __DIR__ . '/partials/header.php';
 
     <div class="place-detail-hero-inner">
 
-        <a class="place-detail-back" href="/map.php">
+        <a class="place-detail-back" href="<?= $isFacility
+            ? '/place.php?slug=' . rawurlencode((string) $facilityParent['slug'])
+            : '/map.php' ?>">
             <i aria-hidden="true"><?= llama_icon('arrow-left') ?></i>
-            Explore Map
+            <?= $isFacility ? 'Back to Parent Place' : 'Explore Map' ?>
         </a>
 
         <div class="place-detail-hero-content">
@@ -334,6 +336,14 @@ require __DIR__ . '/partials/header.php';
                     ENT_QUOTES,
                     'UTF-8'
                 ) ?></h1>
+
+                <?php if ($isFacility): ?>
+                    <p class="place-detail-location">
+                        Inside <a href="/place.php?slug=<?= rawurlencode((string) $facilityParent['slug']) ?>"><?= htmlspecialchars(
+                            (string) $facilityParent['name'], ENT_QUOTES, 'UTF-8'
+                        ) ?></a>
+                    </p>
+                <?php endif; ?>
 
                 <?php if ($locationParts): ?>
                     <p class="place-detail-location">
@@ -552,6 +562,15 @@ require __DIR__ . '/partials/header.php';
         <h2>Contact &amp; location</h2>
 
         <dl class="resource-info-list">
+
+            <?php if ($isFacility): ?>
+            <div>
+                <dt>Parent Place</dt>
+                <dd><a href="/place.php?slug=<?= rawurlencode((string) $facilityParent['slug']) ?>"><?= htmlspecialchars(
+                    (string) $facilityParent['name'], ENT_QUOTES, 'UTF-8'
+                ) ?></a></dd>
+            </div>
+            <?php endif; ?>
 
             <?php if ($addressParts): ?>
             <div>
