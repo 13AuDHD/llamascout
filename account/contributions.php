@@ -183,8 +183,16 @@ if (llama_resource_submissions_ready($db)) {
     $statement = $db->prepare(
         "SELECT rs.id, rs.name, rs.status, rs.created_at AS submitted_at,
                 {$notesColumn} AS review_notes, r.slug,
-                CASE WHEN rs.target_resource_id IS NULL THEN 'new-resource' ELSE 'resource-update' END AS kind,
-                CASE WHEN rs.target_resource_id IS NULL THEN 'New Resource' ELSE 'Resource Update' END AS label
+                CASE
+                    WHEN CAST(JSON_UNQUOTE(JSON_EXTRACT(rs.form_data, '$.parent_place_id')) AS UNSIGNED) > 0
+                    THEN CASE WHEN rs.target_resource_id IS NULL THEN 'new-facility' ELSE 'facility-update' END
+                    ELSE CASE WHEN rs.target_resource_id IS NULL THEN 'new-resource' ELSE 'resource-update' END
+                END AS kind,
+                CASE
+                    WHEN CAST(JSON_UNQUOTE(JSON_EXTRACT(rs.form_data, '$.parent_place_id')) AS UNSIGNED) > 0
+                    THEN CASE WHEN rs.target_resource_id IS NULL THEN 'New Facility' ELSE 'Facility Update' END
+                    ELSE CASE WHEN rs.target_resource_id IS NULL THEN 'New Resource' ELSE 'Resource Update' END
+                END AS label
          FROM resource_submissions rs
          LEFT JOIN resources r ON r.id = COALESCE(rs.resource_id, rs.target_resource_id) AND r.is_active = 1
          WHERE rs.submitted_by = ?"
@@ -396,7 +404,8 @@ require dirname(__DIR__) . '/partials/header.php';
                         )
                     );
 
-                $isResource = in_array($item['kind'] ?? '', ['new-resource', 'resource-update'], true);
+                $isFacility = in_array($item['kind'] ?? '', ['new-facility', 'facility-update'], true);
+                $isResource = $isFacility || in_array($item['kind'] ?? '', ['new-resource', 'resource-update'], true);
                 $slug =
                     trim(
                         (string) (
@@ -485,11 +494,11 @@ require dirname(__DIR__) . '/partials/header.php';
                                     'UTF-8'
                                 ) ?>"
                             >
-                                <?= $isResource ? 'View Resource' : 'View place' ?>
+                                <?= $isFacility ? 'View Facility' : ($isResource ? 'View Resource' : 'View place') ?>
                             </a>
 
                         <?php elseif (
-                            in_array($item['kind'] ?? '', ['update', 'resource-update'], true)
+                            in_array($item['kind'] ?? '', ['update', 'resource-update', 'facility-update'], true)
                             && $slug !== ''
                         ): ?>
 
@@ -502,7 +511,7 @@ require dirname(__DIR__) . '/partials/header.php';
                                     'UTF-8'
                                 ) ?>"
                             >
-                                <?= $isResource ? 'View Resource' : 'View place' ?>
+                                <?= $isFacility ? 'View Facility' : ($isResource ? 'View Resource' : 'View place') ?>
                             </a>
 
                         <?php endif; ?>
