@@ -8,10 +8,10 @@ declare(strict_types=1);
  */
 $escArea = static fn (mixed $value): string =>
     htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+// Only actual Facilities can be added publicly. Keep legacy area
+// feature types in storage for administrative Site/loop management.
 $types = [
-    'camping_area' => 'Camping area / loop',
-    'parking_area' => 'Parking area',
-    'facility_area' => 'Facility / amenity',
+    'facility_area' => 'Facility',
 ];
 $facilityKinds = llama_place_facility_kind_options();
 $selectedAreaType = (string) ($_POST['area_feature_type'] ?? 'facility_area');
@@ -41,8 +41,8 @@ $areaCoordinates = (string) ($_POST['area_coordinates'] ?? '');
 ?>
 <section class="contribution-area-panel" data-contribution-area-panel hidden>
     <div class="area-form-intro">
-        <h3>Add an Area</h3>
-        <p>Identify the Area and record what you observed. A map location is optional.</p>
+        <h3>Add a Facility</h3>
+        <p>Describe an onsite Facility belonging to a Place. A map location is optional.</p>
     </div>
     <form method="post" action="/add-place.php?tab=area"
           id="area-create-form" class="area-create-form" data-area-create-form>
@@ -55,7 +55,7 @@ $areaCoordinates = (string) ($_POST['area_coordinates'] ?? '');
             <div class="contribution-section-body area-form-section-body">
                 <label class="area-bundle-toggle">
                     <input type="checkbox" data-area-bundle-new>
-                    Include this Area in the new Place I'm adding
+                    Include this Facility in the new Place I'm adding
                 </label>
                 <p data-area-bundle-status role="status" aria-live="polite" hidden></p>
 
@@ -84,13 +84,13 @@ $areaCoordinates = (string) ($_POST['area_coordinates'] ?? '');
                 </label>
                 <div class="area-create-identity">
                     <label class="contribution-field">
-                        <span>Area name</span>
+                        <span>Facility name</span>
                         <input type="text" name="area_name" maxlength="120" required
                             placeholder="e.g. West Vault Toilets"
                             value="<?= $escArea($_POST['area_name'] ?? '') ?>">
                     </label>
-                    <label class="contribution-field">
-                        <span>Area type</span>
+                    <label class="contribution-field" hidden>
+                        <span>Facility record type</span>
                         <select name="area_feature_type" required data-area-type>
                             <?php foreach ($types as $typeCode => $typeLabel): ?>
                                 <option value="<?= $escArea($typeCode) ?>"
@@ -101,7 +101,7 @@ $areaCoordinates = (string) ($_POST['area_coordinates'] ?? '');
                         </select>
                     </label>
                     <label class="contribution-field" data-area-facility-selector>
-                        <span>Facility type</span>
+                        <span>What kind of Facility?</span>
                         <select name="area_facility_kind" data-area-facility-kind>
                             <option value="">Select facility</option>
                             <?php foreach ($facilityKinds as $kindCode => $kindLabel): ?>
@@ -123,7 +123,7 @@ $areaCoordinates = (string) ($_POST['area_coordinates'] ?? '');
             <div class="contribution-section-body area-form-section-body">
                 <div class="area-location-fields">
                     <div class="contribution-field">
-                        <span>At the Area right now?</span>
+                        <span>At the Facility right now?</span>
                         <button type="button" class="area-location-button" data-area-locate>
                             <?= llama_icon('current-location') ?> Locate me
                         </button>
@@ -142,8 +142,8 @@ $areaCoordinates = (string) ($_POST['area_coordinates'] ?? '');
                 </div>
                 <p class="area-location-status" role="status" aria-live="polite"
                    data-area-location-status>
-                    At the Area? Tap Locate me. Otherwise enter latitude, longitude and tap Search.
-                    You can leave this blank and map the Area later.
+                    At the Facility? Tap Locate me. Otherwise enter latitude, longitude and tap Search.
+                    You can leave this blank and map the Facility later.
                 </p>
             </div>
         </details>
@@ -259,14 +259,14 @@ $areaCoordinates = (string) ($_POST['area_coordinates'] ?? '');
         <div class="contribution-actions">
             <button type="submit" name="submit_area" value="1" class="contribution-submit"
                 data-area-submit-existing>
-                <?= llama_icon('send') ?> Submit Area for Review
+                <?= llama_icon('send') ?> Submit Facility for Review
             </button>
             <button type="button" class="contribution-submit" data-area-attach-new hidden>
-                Add Area to New Place Submission
+                Add Facility to New Place Submission
             </button>
             <button type="submit" form="add-place-main-form" class="contribution-submit"
                 data-area-submit-new hidden>
-                <?= llama_icon('send') ?> Submit Place + Area for Review
+                <?= llama_icon('send') ?> Submit Place + Facility for Review
             </button>
             <a href="/map.php">Cancel</a>
         </div>
