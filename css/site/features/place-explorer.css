@@ -8,10 +8,6 @@
     --explorer-color: #e58a17;
 }
 
-.place-overnight-options[data-explorer-scope="parking"] {
-    --explorer-color: #9765cb;
-}
-
 .place-overnight-options[data-explorer-scope="area"] {
     --explorer-color: #9765cb;
 }
@@ -50,14 +46,6 @@
     box-shadow: 0 0 0 1px #ffb349;
 }
 
-.place-overnight-options .place-campsite-row[data-stay-area-kind="camping"] {
-    border: 2px solid #9765cb;
-}
-
-.place-overnight-options .place-campsite-row[data-stay-area-kind="parking"] {
-    border: 2px solid #9765cb;
-}
-
 .place-overnight-options[data-explorer-scope="place"] [data-campsite-selected-detail] {
     display: none;
 }
@@ -89,9 +77,6 @@
     --explorer-report-color: #e58a17;
 }
 .scout-report[data-explorer-scope="area"] {
-    --explorer-report-color: #9765cb;
-}
-.scout-report[data-explorer-scope="parking"] {
     --explorer-report-color: #9765cb;
 }
 
@@ -258,7 +243,7 @@
     }
 }
 
-/* Facility points share Site/Area explorer cards and retain the Area color. */
+/* Place-owned Facilities retain the purple color; Resources use separate teal. */
 .place-overnight-options .place-campsite-row[data-stay-area-kind="facility"] {
     border: 2px solid #9765cb;
 }
