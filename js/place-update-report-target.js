@@ -60,8 +60,8 @@
 
     function showMode(mode) {
         if (targetPanel) targetPanel.hidden = mode === 'place' || !hasScopedTargets;
-        if (targetLabel) targetLabel.textContent = mode === 'area' ? 'Area to update' : 'Site to update';
-        if (photoTitle) photoTitle.textContent = mode === 'site' ? 'Site photos' : mode === 'area' ? 'Area photos' : 'Place photos';
+        if (targetLabel) targetLabel.textContent = mode === 'area' ? 'Facility to update' : 'Site to update';
+        if (photoTitle) photoTitle.textContent = mode === 'site' ? 'Site photos' : mode === 'area' ? 'Facility photos' : 'Place photos';
 
         for (const option of search.options) {
             const targetScope = labels.get(option.value)?.scope;
@@ -644,7 +644,7 @@
 
         const scopedHeading = scopedFields.querySelector('[data-contribution-scoped-title]');
         if (scopedHeading) {
-            scopedHeading.textContent = t.scope === 'area' ? 'Area details' : 'Site details';
+            scopedHeading.textContent = t.scope === 'area' ? 'Facility details' : 'Site details';
         }
 
         if (switched) {
@@ -667,7 +667,7 @@
         status.textContent = scoped
             ? (
                 initial.locked === true
-                    ? 'Revise the requested Area or Site answers below. The reporting target cannot be changed for this revision.'
+                    ? 'Revise the requested Facility or Site answers below. The reporting target cannot be changed for this revision.'
                     : `Reporting: ${t.label}`
             )
             : 'Reporting: Entire Place';
