@@ -1929,14 +1929,18 @@
                                     || {}
                             }
                         );
-                        if (type === 'facility_area' && feature.geometry?.type === 'Point') {
-                            const [lng, lat] = feature.geometry.coordinates || [];
-                            if (Number.isFinite(Number(lat)) && Number.isFinite(Number(lng))) {
-                                setFacilityPoint(Number(lat), Number(lng));
-                                setDirty(false);
-                            }
+                        if (type === 'facility_area') {
+                            // Unmapped facilities already have a saved name
+                            // and kind. Preserve both when mapping later.
                             if (facilityName) facilityName.value = String(feature.label || '');
                             if (facilityKind) facilityKind.value = String(feature.metadata?.facility_kind || '');
+                            if (feature.geometry?.type === 'Point') {
+                                const [lng, lat] = feature.geometry.coordinates || [];
+                                if (Number.isFinite(Number(lat)) && Number.isFinite(Number(lng))) {
+                                    setFacilityPoint(Number(lat), Number(lng));
+                                    setDirty(false);
+                                }
+                            }
                         }
                     }
                 },
