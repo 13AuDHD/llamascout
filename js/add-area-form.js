@@ -149,6 +149,14 @@ document.addEventListener('DOMContentLoaded', () => {
     submitNew?.addEventListener('click', event => {
         if (!captureBundle()) event.preventDefault();
     });
+    const placeForm = document.querySelector('#add-place-main-form');
+    placeForm?.addEventListener('submit', event => {
+        // The contributor can finish the Place and Site tabs after staging
+        // an Area, then submit from either tab. Capture the latest Area fields.
+        if (newPlaceToggle?.checked && !captureBundle()) {
+            event.preventDefault();
+        }
+    });
     form.addEventListener('change', () => {
         if (newPlaceToggle?.checked && bundleInput?.value) captureBundle();
     });
