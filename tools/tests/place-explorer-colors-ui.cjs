@@ -18,9 +18,7 @@ const setup = (category, url = 'https://llamascout.com/place.php?slug=chimney-ro
       <section class="place-overnight-options" data-stay-options>
         <div data-stay-browser-slot></div>
         <button type="button" data-stay-area-id="21"
-                data-stay-area-name="Camping Area" data-stay-area-kind="camping">Camping Area</button>
-        <button type="button" data-stay-area-id="22"
-                data-stay-area-name="Parking Area" data-stay-area-kind="parking">Parking Area</button>
+                data-stay-area-name="West Vault Toilets" data-stay-area-kind="facility">West Vault Toilets</button>
       </section>
       <div class="scout-report">
         <section class="scout-report-section scout-report-scope-place"
@@ -90,19 +88,16 @@ const state = ({section, report}) => ({
             reportScope: 'place', reportColor: 'green',
         }, 'Returning to Place must restore green, not its parking category color');
 
-        ctx.section.querySelector('[data-stay-area-kind="camping"]').click();
+        ctx.section.querySelector('[data-stay-area-kind="facility"]').click();
         await Promise.resolve();
         assert.deepEqual(state(ctx), {
             sectionScope: 'area', sectionColor: 'purple',
             reportScope: 'area', reportColor: 'purple',
-        }, 'Ordinary Areas retain purple identity');
+        }, 'A Place-owned Facility retains the purple identity');
 
-        ctx.section.querySelector('[data-stay-area-kind="parking"]').click();
-        await Promise.resolve();
-        assert.deepEqual(state(ctx), {
-            sectionScope: 'parking', sectionColor: 'purple',
-            reportScope: 'parking', reportColor: 'purple',
-        }, 'Parking Areas are purple like every other Area');
+        assert.equal(ctx.w.location.searchParams, undefined);
+        assert.equal(new URL(ctx.w.location.href).searchParams.get('area'), '21',
+            'Facility URL keeps its canonical Area ID without renaming schema keys');
         ctx.dom.window.close();
     }
 
@@ -113,14 +108,11 @@ const state = ({section, report}) => ({
     assert.equal(deepLink.report.dataset.explorerColor, 'green');
     deepLink.dom.window.close();
 
-    assert.match(css, /\.place-overnight-options\[data-explorer-scope="parking"\]/);
     assert.match(css, /\.place-overnight-options\[data-explorer-scope="area"\]/);
     assert.match(css, /\.scout-report\[data-explorer-scope="site"\]/);
-    assert.match(css, /\.scout-report\[data-explorer-scope="parking"\]/);
+    assert.match(css, /\[data-stay-area-kind="facility"\]\s*\{[^}]*#9765cb/s);
     assert.doesNotMatch(css, /\.scout-report\[data-explorer-color/);
-    assert.match(css, /\[data-stay-area-kind="camping"\]\s*\{[^}]*#9765cb/s);
-
-    console.log('PASS: Place green, Site orange, all Areas purple across categories and deep links');
+    console.log('PASS: Place (including parking Places) green, Site orange, Facility purple and Area-ID deep links');
 })().catch(error => {
     console.error(error);
     process.exitCode = 1;
