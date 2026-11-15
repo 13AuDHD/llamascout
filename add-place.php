@@ -399,8 +399,12 @@ $areaPlaceChoices = llama_area_place_choices(
     (string) ($_GET['area_q'] ?? ''),
     (int) ($_POST['area_place_id'] ?? $_GET['area_place_id'] ?? $_GET['place_id'] ?? 0)
 );
-$areaInitialTab = (($_GET['tab'] ?? '') === 'area' || isset($_POST['submit_area']))
-    ? 'area' : 'place';
+// Direct links from the Resource page must open the requested panel.
+$requestedContributionTab = (string) ($_GET['tab'] ?? 'place');
+$areaInitialTab = isset($_POST['submit_area'])
+    ? 'area'
+    : (in_array($requestedContributionTab, ['place', 'site', 'area'], true)
+        ? $requestedContributionTab : 'place');
 
 $pageTitle =
     $isNeedsChanges

@@ -30,7 +30,7 @@ if ($contributionRevisionId > 0) {
 }
 
 $contributionReturnPlace = (string) ($_POST['return_place'] ?? '');
-$contributionReturnDraft = (int) ($_POST['return_draft'] ?? 0);
+$contributionReturnDraft = max(0, (int) ($_POST['return_draft'] ?? $_GET['return_draft'] ?? 0));
 $isUpdate = $contributionResourceId > 0;
 if (!llama_contributor_can($db, $userId, $isUpdate ? 'submit_update' : 'submit_place')) {
     http_response_code(403);
@@ -111,9 +111,9 @@ $back = $revision
     ? 'https://account.llamascout.com/contributions.php'
     : ($isUpdate
         ? '/resource.php?slug=' . rawurlencode((string) $contributionResource['slug'])
-        : '/add-place.php?mode=resource' . ($contributionReturnDraft > 0 ? '&draft=' . $contributionReturnDraft : ''));
+        : '/add-place.php?tab=place' . ($contributionReturnDraft > 0 ? '&draft=' . $contributionReturnDraft : ''));
 $pageTitle = $revision ? 'Revise Resource Submission' : ($isUpdate ? 'Update Resource' : 'Add a Resource');
-$pageStyles = ['site/pages/add-place.css', 'site/features/place-report-form.css', 'site/features/resource-form.css', 'photo-uploader.css'];
+$pageStyles = ['site/pages/add-place.css', 'site/features/place-report-form.css', 'site/features/contribution-tabs.css', 'site/features/resource-form.css', 'photo-uploader.css'];
 $e = static fn (mixed $value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 require __DIR__ . '/partials/header.php';
 ?>
@@ -122,6 +122,8 @@ require __DIR__ . '/partials/header.php';
         <h1><?= $e($pageTitle) ?></h1>
         <a href="<?= $e($back) ?>"><?= $revision ? 'My contributions' : ($isUpdate ? 'Back to Resource' : 'Back to Add a Place') ?></a>
     </header>
+    <?php $contributionPickerResourcePage = true; ?>
+    <?php require __DIR__ . '/partials/place-report/contribution-tabs.php'; ?>
     <?php if ($revision && !empty($revision['review_notes'])): ?>
         <p class="contribution-message"><?= nl2br($e($revision['review_notes'])) ?></p>
     <?php endif; ?>

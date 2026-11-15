@@ -58,9 +58,11 @@ assert.match(report, /Facility Scout Report/);
 assert.doesNotMatch(areaSelector, /Sites and Areas|Select a Site or Area/);
 assert.match(areaSelector, /Sites and Facilities/);
 
-assert.match(tabs, /data-contribution-mode="area"[^>]*>\s*<\?= isset\(\$areaInitialTab\) \? 'Facility' : 'Area'/,
+assert.match(tabs, /data-contribution-mode="area"[^>]*>\s*<\?= \$isNewContribution \? 'Facility' : 'Area'/,
     'Visitor tab says Facility but admin can retain legacy Area terminology');
-assert.match(tabs, /href="\/resource-contribution\.php"\s+data-contribution-resource-link/);
+assert.match(tabs, /data-contribution-resource-link/);
+assert.match(tabs, /resource-contribution\.php/,
+    'Resource tab continues to route to its dedicated submission form');
 assert.match(addPlace, /partials\/place-report\/contribution-tabs\.php/);
 assert.match(resources, /\$pageTitle = .*'Add a Resource'/,
     'New Resource page should have the proper independent title');
