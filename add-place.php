@@ -628,10 +628,20 @@ $placeReportInitialCompletion =
         <?php require __DIR__ . '/partials/place-report/contribution-tabs.php'; ?>
         <?php require __DIR__ . '/partials/place-report/add-area-form.php'; ?>
     <form
+        id="add-place-main-form"
         method="post"
         class="contribution-form add-place-form place-report-form"
         data-place-report-completion-form data-contribution-report
     >
+        <input type="hidden" name="area_bundle_json" data-area-bundle-input
+            value="<?= htmlspecialchars(
+                (string) ($_POST['area_bundle_json']
+                    ?? $draft['form_data']['area_bundle_json']
+                    ?? (isset($editSubmission['data']['_first_area'])
+                        ? json_encode($editSubmission['data']['_first_area'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+                        : '')),
+                ENT_QUOTES, 'UTF-8'
+            ) ?>">
         <input
             type="hidden"
             name="csrf_token"
