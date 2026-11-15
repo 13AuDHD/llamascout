@@ -434,14 +434,21 @@ $renderValue =
                 true
             );
 
-        // Shared Place/Area fields already have a Place context on first render.
-        // Site-only dependencies are evaluated when a Site is selected.
-        $hideUntilCampsite =
-            $isCampsiteSwitchable
-            && !empty($field['applicable_if'])
+        // The PHP Place page must never initially expose Area-only or
+        // Site-only questions. The selected child context can reveal its
+        // own cards after the canonical record is loaded.
+        $hiddenOnPlace =
+            $placeReportReadMode === 'scout-report'
             && (
                 !in_array('place', (array) ($field['report_scopes'] ?? []), true)
-                || !llama_place_report_question_applicable($placeReportApplicabilityInput, $key)
+                || (
+                    $isCampsiteSwitchable
+                    && !empty($field['applicable_if'])
+                    && !llama_place_report_question_applicable(
+                        $placeReportApplicabilityInput,
+                        $key
+                    )
+                )
             );
 
         $fieldReportScopes =
@@ -485,7 +492,7 @@ $renderValue =
             <?php if ($isAccessLocked): ?>
                 data-report-access-locked="1"
             <?php endif; ?>
-            <?= $hideUntilCampsite ? 'hidden' : '' ?>
+            <?= $hiddenOnPlace ? 'hidden' : '' ?>
         >
 
             <?php if ($isAccessLocked): ?>
@@ -772,6 +779,8 @@ $renderCompoundValue =
                         )
                     ) ?>"
                 <?php endif; ?>
+                <?= $placeReportReadMode === 'scout-report'
+                    && !in_array('place', $compoundReportScopes, true) ? 'hidden' : '' ?>
             >
                 <div class="scout-report-value-content">
                     <span>
@@ -957,6 +966,8 @@ $renderCompoundValue =
                     )
                 ) ?>"
             <?php endif; ?>
+            <?= $placeReportReadMode === 'scout-report'
+                && !in_array('place', $compoundReportScopes, true) ? 'hidden' : '' ?>
         >
             <div class="scout-report-value-content">
                 <span>

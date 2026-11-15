@@ -40,14 +40,15 @@
                     .map((value) => value.trim())
                     .filter(Boolean);
 
-        const restoreItemVisibility = () => {
+        const restoreItemVisibility = (scope) => {
             for (const item of scopedItems) {
-                // Applicability belongs to the selected Area or Site.
-                // A condition from the previous selection is never reused.
-                item.classList.remove('is-applicability-hidden');
-                item.hidden =
-                    initialItemHidden.get(item)
-                    ?? false;
+                // The parent Place has its own applicability. A Site detail
+                // response has already evaluated Site dependencies and must
+                // not lose that result during a selection event.
+                if (scope === 'place') {
+                    item.classList.remove('is-applicability-hidden');
+                }
+                item.hidden = initialItemHidden.get(item) ?? false;
             }
 
             report
@@ -74,7 +75,7 @@
             if (placeCompleteness) placeCompleteness.hidden = isArea;
             if (compareLink) compareLink.hidden = isArea;
 
-            restoreItemVisibility();
+            restoreItemVisibility(scope);
 
             // Every target shows only its own canonical questions.
             // No inventory-review mode may expose Place cards in an Area.
@@ -111,7 +112,7 @@
                             ? itemScopes.includes(scope)
                             : scope === 'place';
                     item.hidden = !allowedItem
-                        || (scope !== 'area' && Boolean(initialItemHidden.get(item)))
+                        || (scope === 'place' && Boolean(initialItemHidden.get(item)))
                         || item.classList.contains('is-applicability-hidden');
                 }
 
@@ -1160,6 +1161,10 @@
                         return;
                     }
                     card.classList.remove('is-applicability-hidden');
+                    // These child cards are initially hidden on the Place
+                    // page. After loading their own Site/Area answer, they
+                    // become visible only if the selected scope allows them.
+                    card.hidden = false;
 
                     const isStructurallyLocked =
                         card.dataset

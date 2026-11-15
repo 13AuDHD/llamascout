@@ -26,6 +26,8 @@ on:
       - 'tools/tests/place-explorer-colors-ui.cjs'
       - 'tools/tests/area-purple-report-ui.cjs'
       - 'tools/tests/area-selection-deep-link-ui.cjs'
+      - 'tools/tests/place-report-scope-visibility-ui.cjs'
+      - 'tools/tests/place-area-scope-registry.php'
       - 'js/place-report-form.js'
       - 'js/place-report-warnings.js'
       - 'css/site/features/scout-warning-compact.css'
@@ -35,6 +37,8 @@ on:
       - 'tools/tests/place-explorer-colors-ui.cjs'
       - 'tools/tests/area-purple-report-ui.cjs'
       - 'tools/tests/area-selection-deep-link-ui.cjs'
+      - 'tools/tests/place-report-scope-visibility-ui.cjs'
+      - 'tools/tests/place-area-scope-registry.php'
       - 'js/place-report-section-completion.js'
       - 'partials/place-report/form.php'
       - 'css/site/features/place-report-form.css'
@@ -208,6 +212,12 @@ jobs:
         env:
           NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules
         run: node tools/tests/area-selection-deep-link-ui.cjs
+      - name: Protect original Place questions and Area/Site scope isolation
+        env:
+          NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules
+        run: |
+          node tools/tests/place-report-scope-visibility-ui.cjs
+          php tools/tests/place-area-scope-registry.php
       - name: Exercise parent-child questions in the shared Scout Report form
         env:
           NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules
