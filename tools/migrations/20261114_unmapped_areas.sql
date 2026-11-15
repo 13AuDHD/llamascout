@@ -1,9 +1,32 @@
 -- Required once, after a database backup, before saving an unmapped Area.
--- Existing features and their geometries remain unchanged.
--- Site and Place geometries are still required by the PHP validators.
--- NULL geometry is permitted ONLY for intentional unmapped Area identities.
-ALTER TABLE place_map_features
-  MODIFY COLUMN geometry GEOMETRY NULL;
+-- Existing geometry values are preserved. Site/Place geometry remains mandatory
+-- in PHP validation. Only intentional unmapped Area identities may store NULL.
+--
+-- MariaDB error #1252: geometry is currently in a SPATIAL index, whose parts
+-- must be NOT NULL. A nullable geometry cannot keep that SPATIAL index.
+-- Discover its live name, drop only SPATIAL indexes on this geometry column,
+-- and make the column nullable in ONE ALTER TABLE. No index name is guessed.
+-- Existing place_id/feature_type indexes are preserved.
+SET @ls_area_spatial_drops = (
+    SELECT GROUP_CONCAT(
+        DISTINCT CONCAT('DROP INDEX `', REPLACE(INDEX_NAME, '`', '``'), '`')
+        ORDER BY INDEX_NAME SEPARATOR ', '
+    )
+    FROM information_schema.STATISTICS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'place_map_features'
+      AND COLUMN_NAME = 'geometry'
+      AND INDEX_TYPE = 'SPATIAL'
+);
+SET @ls_area_alter = CONCAT(
+    'ALTER TABLE `place_map_features` ',
+    IF(@ls_area_spatial_drops IS NULL, '',
+       CONCAT(@ls_area_spatial_drops, ', ')),
+    'MODIFY COLUMN `geometry` GEOMETRY NULL'
+);
+PREPARE ls_area_schema_stmt FROM @ls_area_alter;
+EXECUTE ls_area_schema_stmt;
+DEALLOCATE PREPARE ls_area_schema_stmt;
 
 -- Unmapped Area identities use geometry_type = 'unmapped', never fake 0,0 GPS.
 -- The existing geometry_type VARCHAR(16) accepts the new label.
