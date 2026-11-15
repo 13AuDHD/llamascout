@@ -264,17 +264,9 @@ foreach ($stayFeatures as $feature) {
             ?? ''
         );
 
-    if (
-        !in_array(
-            $featureType,
-            [
-                'camping_area',
-                'parking_area',
-                'facility_area',
-            ],
-            true
-        )
-    ) {
+    // Only actual Facilities belong in the public purple selector.
+    // Camping loops and parking groupings remain admin/pricing concepts.
+    if ($featureType !== 'facility_area') {
         continue;
     }
 
@@ -650,7 +642,7 @@ $hasSupplementalStayOptions =
     <header class="place-overnight-options-heading">
         <div>
             <p class="eyebrow">
-                Sites and Areas
+                Sites and Facilities
             </p>
 
             <h2 id="place-overnight-options-heading">
@@ -658,7 +650,7 @@ $hasSupplementalStayOptions =
             </h2>
 
             <p class="place-stay-intro">
-                Select a Site or Area to view its location, photos, and Scout Report.
+                Select a Site or Facility to view its location, photos, and Scout Report.
             </p>
         </div>
 
@@ -700,7 +692,7 @@ $hasSupplementalStayOptions =
     <div
         class="place-stay-options-list"
         data-stay-options-list
-        aria-label="Mapped Sites and overnight Areas"
+        aria-label="Sites and Facilities"
         <?= $hasSupplementalStayOptions ? '' : 'hidden' ?>
     >
         <?php foreach ($stayMappedSites as $site): ?>
