@@ -48,6 +48,14 @@ if ($isUpdate && !$contributionResource) {
     http_response_code(404);
     exit('Resource not found.');
 }
+$contributionIsFacility = (string) ($_POST['contribution_kind'] ?? $_GET['kind'] ?? '') === 'facility';
+if ($revision) {
+    $revisionValues = json_decode((string) $revision['form_data'], true);
+    $contributionIsFacility = (int) ($revisionValues['parent_place_id'] ?? 0) > 0;
+}
+if ($isUpdate) {
+    $contributionIsFacility = (int) ($contributionResource['parent_place_id'] ?? 0) > 0;
+}
 $contributionResourceSnapshot = (string) (
     $revision['base_snapshot'] ?? $_POST['resource_snapshot']
     ?? ($contributionResource ? llama_resource_snapshot($contributionResource) : '')
@@ -61,6 +69,12 @@ if ($posted) {
     try {
         if (!community_verify_csrf((string) ($_POST['csrf_token'] ?? ''))) {
             throw new InvalidArgumentException('Your session expired. Reload the page and try again.');
+        }
+        if ($contributionIsFacility && (int) ($_POST['parent_place_id'] ?? 0) < 1) {
+            throw new InvalidArgumentException('Search for and select a Parent Place first.');
+        }
+        if (!$contributionIsFacility) {
+            $_POST['parent_place_id'] = 0;
         }
         // Preserve the original reviewed photo evidence when a contributor
         // resubmits a corrected Resource form after validation errors.
@@ -96,20 +110,34 @@ if ($posted) {
                 : [],
             $publishedOrder
         );
-        $kind = $revision ? 'resource-resubmitted' : ($isUpdate ? 'resource-update' : 'resource');
+        $kind = $revision ? 'resource-resubmitted' : ($isUpdate ? 'resource-update' : ($contributionIsFacility ? 'facility' : 'resource'));
         header('Location: https://account.llamascout.com/contributions.php?submitted=' . $kind, true, 303);
         exit;
     } catch (InvalidArgumentException $exception) {
         $error = $exception->getMessage();
     } catch (Throwable $exception) {
         llama_log_caught_exception($exception, 'resource.contribution');
-        $error = 'The Resource could not be submitted. Try again later.';
+        $error = 'The ' . ($contributionIsFacility ? 'Facility' : 'Resource') . ' could not be submitted. Try again later.';
     }
 }
 
+// Render a confirmed Parent Place name, never trust typed search text as identity.
+if ($contributionIsFacility && !isset($contributionResourceInput['parent_place_id'])) {
+    $contributionResourceInput['parent_place_id'] = max(0, (int) ($_GET['parent_place_id'] ?? 0));
+}
+$contributionParentPlaceName = '';
+$parentPlaceId = (int) ($contributionResourceInput['parent_place_id']
+    ?? $contributionResource['parent_place_id'] ?? 0);
+if ($contributionIsFacility && $parentPlaceId > 0) {
+    $parentLookup = $db->prepare('SELECT name FROM places
+        WHERE id = ? AND status NOT IN ("removed", "archived") LIMIT 1');
+    $parentLookup->execute([$parentPlaceId]);
+    $contributionParentPlaceName = (string) ($parentLookup->fetchColumn() ?: '');
+}
 $resourceContributionLevel = llama_user_contribution_level($db, $userId);
 $resourceContributionShortLabel = llama_contribution_level_short_label($resourceContributionLevel);
-$pageTitle = $revision ? 'Revise Resource Submission' : ($isUpdate ? 'Update Resource' : 'Add a Resource');
+$resourceLabel = $contributionIsFacility ? 'Facility' : 'Resource';
+$pageTitle = $revision ? 'Revise ' . $resourceLabel . ' Submission' : ($isUpdate ? 'Update ' . $resourceLabel : 'Add a ' . $resourceLabel);
 $pageStyles = ['site/pages/add-place.css', 'site/features/place-report-form.css', 'site/features/contribution-tabs.css', 'site/features/resource-form.css', 'photo-uploader.css'];
 $e = static fn (mixed $value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 require __DIR__ . '/partials/header.php';
