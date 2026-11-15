@@ -40,10 +40,6 @@ if (!$isUpdate && $contributionReturnPlace !== '') {
     http_response_code(400);
     exit('Use Add a Place to submit a new Resource.');
 }
-if (!$posted && !$isUpdate && !$revision) {
-    header('Location: /add-place.php?mode=resource', true, 303);
-    exit;
-}
 
 $contributionResource = $isUpdate && admin_resources_tables_ready($db)
     ? llama_resource_active_record($db, $contributionResourceId)
