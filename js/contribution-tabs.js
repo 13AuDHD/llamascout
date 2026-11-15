@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     for (const shell of document.querySelectorAll('[data-contribution-tabs]')) {
         const picker = shell.querySelector('[data-contribution-picker]');
+        const intros = shell.querySelectorAll('[data-contribution-intro-mode]');
         const report = shell.querySelector('[data-contribution-report]');
         if (!picker || !report) continue;
         const buttons = [...picker.querySelectorAll('[data-contribution-mode]')];
@@ -35,6 +36,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             for (const button of buttons) {
                 button.setAttribute('aria-pressed', String(button.dataset.contributionMode === mode));
+            }
+            // The same shared intro follows the switcher on every
+            // contribution type. Only the selected one is visible.
+            for (const intro of intros) {
+                intro.hidden = intro.dataset.contributionIntroMode !== mode;
             }
             // A new Place cannot own Areas until it has a saved Place ID.
             const standaloneArea = mode === 'area' && (isNewPlace || !!emptyAdminAreaPanel);
