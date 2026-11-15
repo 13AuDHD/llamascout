@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/resource-media.php';
+require_once __DIR__ . '/resource-experience.php';
 
 /**
  * V3 standalone Resource model.
@@ -373,6 +374,22 @@ function llama_resource_parent_place_ready(PDO $db): bool
     }
 }
 
+/** Published Experience storage is optional until the migration is installed. */
+function llama_resource_experience_ready(PDO $db): bool
+{
+    try {
+        $db->query('SELECT experience_json FROM resources LIMIT 0');
+        return true;
+    } catch (PDOException $exception) {
+        if ($exception->getCode() === '42S22'
+            || str_contains(strtolower($exception->getMessage()), 'unknown column')
+            || str_contains(strtolower($exception->getMessage()), 'no such column')) {
+            return false;
+        }
+        throw $exception;
+    }
+}
+
 /** Approved Facilities reuse the Resource details, services, hours and photos. */
 function llama_place_facilities(PDO $db, int $placeId): array
 {
@@ -385,13 +402,15 @@ function llama_place_facilities(PDO $db, int $placeId): array
 function llama_resources(
     PDO $db,
     ?int $onlyResourceId = null,
-    bool $activeOnly = true
+    bool $activeOnly = true,
+    ?int $onlyParentPlaceId = null
 ): array {
     if ($onlyResourceId !== null && $onlyResourceId < 1) {
         return [];
     }
 
     $parentReady = llama_resource_parent_place_ready($db);
+    $experienceReady = llama_resource_experience_ready($db);
     $sql =
         'SELECT
             id,
@@ -416,6 +435,7 @@ function llama_resources(
             fixed_close_hour,
             status,
             notes,
+            ' . ($experienceReady ? 'experience_json' : 'NULL AS experience_json') . ',
             source_provider,
             source_external_id,
             source_url,
@@ -461,6 +481,9 @@ function llama_resources(
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
     foreach ($rows as &$row) {
+        $decodedExperience = json_decode((string) ($row['experience_json'] ?? 'null'), true);
+        $row['experience'] = is_array($decodedExperience) ? $decodedExperience : [];
+        unset($row['experience_json']);
         $row['resource_type'] =
             strtolower(
                 trim(
