@@ -1515,6 +1515,13 @@
                         return;
                     }
 
+                    // An Area can exist before its map point or boundary.
+                    // Show it in the record list, but never create fake
+                    // Leaflet geometry or an invented map marker.
+                    if (!feature.geometry) {
+                        return;
+                    }
+
                     const style =
                         featureStyles[
                             feature.feature_type
