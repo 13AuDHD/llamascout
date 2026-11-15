@@ -1,0 +1,72 @@
+name: Unmapped Area Submission Integration
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/unmapped-area-integration.yml'
+      - 'tools/migrations/20261114_unmapped_areas.sql'
+      - 'tools/tests/unmapped-area-integration.php'
+      - 'tools/tests/unmapped-area-form-ui.cjs'
+      - 'app/area-submissions.php'
+      - 'app/place-map-features.php'
+      - 'app/place-report/scoped-answers.php'
+      - 'add-place.php'
+      - 'admin/area-submissions.php'
+      - 'admin/moderation.php'
+      - 'partials/place-report/add-area-form.php'
+      - 'js/add-area-form.js'
+      - 'js/place-map-editor.js'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unmapped-areas:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: area-test-only
+          MARIADB_ROOT_HOST: "%"
+          MARIADB_DATABASE: llama_unmapped_area_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "healthcheck.sh --connect --innodb_initialized"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PHP MySQL and jsdom test dependencies
+        run: |
+          if ! php -m | grep -qi '^pdo_mysql$'; then
+            sudo apt-get update -qq
+            sudo apt-get install -y php-mysql
+          fi
+          npm install --prefix "$RUNNER_TEMP/area-ui" --no-save jsdom@26
+      - name: Syntax and UI check
+        run: |
+          for file in app/area-submissions.php app/place-map-features.php \
+            app/place-report/scoped-answers.php add-place.php \
+            admin/area-submissions.php admin/moderation.php \
+            partials/place-report/add-area-form.php tools/tests/unmapped-area-integration.php; do
+            php -l "$file"
+          done
+          node --check js/add-area-form.js
+          node --check js/place-map-editor.js
+        env:
+          NODE_PATH: ${{ runner.temp }}/area-ui/node_modules
+      - name: Check unmapped Area form
+        env:
+          NODE_PATH: ${{ runner.temp }}/area-ui/node_modules
+        run: node tools/tests/unmapped-area-form-ui.cjs
+      - name: Submit and approve unmapped Area in MariaDB
+        env:
+          LLAMA_UNMAPPED_AREA_DSN: mysql:host=127.0.0.1;port=3306;dbname=llama_unmapped_area_test;charset=utf8mb4
+          LLAMA_UNMAPPED_AREA_USER: root
+          LLAMA_UNMAPPED_AREA_PASS: area-test-only
+        run: php tools/tests/unmapped-area-integration.php
