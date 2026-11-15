@@ -57,7 +57,7 @@ function llama_resource_merge_queue(array $places, array $resources): array
 function llama_resource_submission_input(array $input): array
 {
     $fields = array_flip([
-        'name', 'resource_type', 'marker_service_type', 'status', 'coordinates',
+        'name', 'parent_place_id', 'resource_type', 'marker_service_type', 'status', 'coordinates',
         'hours_mode', 'fixed_open_hour', 'fixed_close_hour', 'weekly_hours',
         'street_address', 'city', 'county', 'state_region', 'postal_code', 'country_code',
         'phone', 'website_url', 'services', 'notes',
