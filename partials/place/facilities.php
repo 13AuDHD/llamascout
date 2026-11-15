@@ -12,6 +12,7 @@ if (!$placeFacilities) {
     return;
 }
 ?>
+<link rel="stylesheet" href="/css/site/features/place-linked-facilities.css">
 <section class="place-section place-linked-facilities" aria-labelledby="place-linked-facilities-heading">
     <header class="scout-report-header">
         <div>
