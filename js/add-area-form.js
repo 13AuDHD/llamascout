@@ -21,9 +21,13 @@ document.addEventListener('DOMContentLoaded', () => {
             fieldset.disabled = !applies;
         }
         // Hide sections without any applicable questions.
-        for (const section of form.querySelectorAll('.area-question-group')) {
-            section.hidden = !Array.from(section.querySelectorAll('[data-area-question]'))
+        for (const group of form.querySelectorAll('[data-area-question-group]')) {
+            group.hidden = !Array.from(group.querySelectorAll('[data-area-question]'))
                 .some(fieldset => !fieldset.hidden);
+        }
+        for (const section of form.querySelectorAll('[data-area-report-section]')) {
+            section.hidden = !Array.from(section.querySelectorAll('[data-area-question-group]'))
+                .some(group => !group.hidden);
         }
     };
     type.addEventListener('change', update);
@@ -57,13 +61,99 @@ document.addEventListener('DOMContentLoaded', () => {
     const search = document.querySelector('[data-area-search-existing]');
     const status = document.querySelector('[data-area-bundle-status]');
 
+    const coordinates = form.querySelector('[data-area-coordinate-input]');
+    const locate = form.querySelector('[data-area-locate]');
+    const searchCoordinates = form.querySelector('[data-area-search-coordinates]');
+    const locationStatus = form.querySelector('[data-area-location-status]');
+    const initialLocationHint = locationStatus?.textContent.trim() || '';
+    const setLocationStatus = (message, error = false) => {
+        if (!locationStatus) return;
+        locationStatus.textContent = message;
+        locationStatus.classList.toggle('is-error', error);
+        locationStatus.classList.toggle('is-success', !error && message !== initialLocationHint);
+    };
+    const parseCoordinates = () => {
+        const raw = (coordinates?.value || '').trim().replace(/\u2212/g, '-');
+        if (!raw) return null;
+        // Same latitude, longitude order and accuracy standard as Place.
+        const match = raw.match(/^([+-]?\d{1,2}\.\d{5,})\s*(?:,\s*|\s+)([+-]?\d{1,3}\.\d{5,})$/);
+        if (!match) {
+            throw new Error('Use latitude, longitude with at least 5 decimal places, for example 37.2522200, -107.2192000.');
+        }
+        const latitude = Number(match[1]);
+        const longitude = Number(match[2]);
+        if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90
+            || !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
+            throw new Error('Latitude must be between -90 and 90; longitude between -180 and 180.');
+        }
+        return `${latitude.toFixed(7)}, ${longitude.toFixed(7)}`;
+    };
+    const validateCoordinates = () => {
+        try {
+            const parsed = parseCoordinates();
+            if (coordinates) coordinates.value = parsed || '';
+            setLocationStatus(parsed
+                ? 'Coordinates ready. This Area will have a purple marker when it is approved.'
+                : initialLocationHint);
+            return true;
+        } catch (error) {
+            setLocationStatus(error.message || 'Check the coordinates.', true);
+            coordinates?.focus();
+            return false;
+        }
+    };
+    searchCoordinates?.addEventListener('click', validateCoordinates);
+    coordinates?.addEventListener('blur', () => {
+        if (coordinates.value.trim()) validateCoordinates();
+        else setLocationStatus(initialLocationHint);
+    });
+    locate?.addEventListener('click', () => {
+        if (!navigator.geolocation) {
+            setLocationStatus('This device does not provide location.', true);
+            return;
+        }
+        locate.disabled = true;
+        setLocationStatus('Checking your device’s GPS...');
+        navigator.geolocation.getCurrentPosition(position => {
+            coordinates.value =
+                `${Number(position.coords.latitude).toFixed(7)}, ${Number(position.coords.longitude).toFixed(7)}`;
+            validateCoordinates();
+            locate.disabled = false;
+        }, () => {
+            setLocationStatus('Location permission was denied or GPS is unavailable. Enter coordinates manually or leave this blank.', true);
+            locate.disabled = false;
+        }, {enableHighAccuracy: true, timeout: 15000, maximumAge: 0});
+    });
+
+    const findPlace = document.querySelector('[data-area-find-place]');
+    const placeQuery = document.querySelector('[data-area-place-query]');
+    const searchExisting = () => {
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', 'area');
+        const value = (placeQuery?.value || '').trim();
+        if (value) url.searchParams.set('area_q', value);
+        else url.searchParams.delete('area_q');
+        window.location.assign(url.pathname + url.search);
+    };
+    findPlace?.addEventListener('click', searchExisting);
+    placeQuery?.addEventListener('keydown', event => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            searchExisting();
+        }
+    });
+    form.addEventListener('submit', event => {
+        if (!validateCoordinates()) event.preventDefault();
+    });
+
     const captureBundle = () => {
-        if (!form.reportValidity()) return false;
+        if (!validateCoordinates() || !form.reportValidity()) return false;
         const data = new FormData(form);
         const bundle = {
             area_name: String(data.get('area_name') || '').trim(),
             area_feature_type: String(data.get('area_feature_type') || ''),
             area_facility_kind: String(data.get('area_facility_kind') || ''),
+            area_coordinates: String(data.get('area_coordinates') || ''),
             area_answers: {},
             area_unknown: {}
         };
@@ -115,6 +205,8 @@ document.addEventListener('DOMContentLoaded', () => {
             type.value = String(previous.area_feature_type || previous.feature_type || 'facility_area');
             kind.value = String(previous.area_facility_kind || previous.facility_kind || '');
             update();
+            const storedCoordinates = previous.area_coordinates || previous.coordinates || '';
+            if (coordinates) coordinates.value = String(storedCoordinates);
             const answers = previous.area_answers || previous.answers || {};
             const unknowns = previous.area_unknown || {};
             for (const field of questions) {
