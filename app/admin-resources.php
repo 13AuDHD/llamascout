@@ -255,6 +255,28 @@ function llama_resource_prepare_input(PDO $db, int $resourceId, array $input): a
         );
     }
 
+    $parentPlaceId = (int) ($input['parent_place_id'] ?? 0);
+    if ($resourceId > 0 && !array_key_exists('parent_place_id', $input)
+        && llama_resource_parent_place_ready($db)) {
+        $existing = $db->prepare('SELECT parent_place_id FROM resources WHERE id = ?');
+        $existing->execute([$resourceId]);
+        $parentPlaceId = (int) $existing->fetchColumn();
+    }
+    if ($parentPlaceId < 0) {
+        throw new InvalidArgumentException('Choose a valid Parent Place.');
+    }
+    if ($parentPlaceId > 0) {
+        if (!llama_resource_parent_place_ready($db)) {
+            throw new RuntimeException('Install the Facility parent Place database migration first.');
+        }
+        $parent = $db->prepare('SELECT id FROM places WHERE id = ?
+            AND status NOT IN ("removed", "archived") LIMIT 1');
+        $parent->execute([$parentPlaceId]);
+        if (!$parent->fetchColumn()) {
+            throw new InvalidArgumentException('Select an existing Parent Place for this Facility.');
+        }
+    }
+
     $name =
         mb_substr(
             trim(
@@ -283,20 +305,26 @@ function llama_resource_prepare_input(PDO $db, int $resourceId, array $input): a
             'Resource name must produce a valid URL slug.'
         );
     }
+    if ($parentPlaceId > 0) {
+        $slug = 'facility-' . $parentPlaceId . '-' . $slug;
+    }
 
     $duplicateName =
         $db->prepare(
             'SELECT id
              FROM resources
              WHERE name = ?
-               AND id <> ?
-             LIMIT 1'
+               AND id <> ?'
+             . (llama_resource_parent_place_ready($db)
+                ? ' AND COALESCE(parent_place_id, 0) = ?' : '')
+             . ' LIMIT 1'
         );
 
-    $duplicateName->execute([
-        $name,
-        max(0, $resourceId),
-    ]);
+    $duplicateNameArgs = [$name, max(0, $resourceId)];
+    if (llama_resource_parent_place_ready($db)) {
+        $duplicateNameArgs[] = $parentPlaceId;
+    }
+    $duplicateName->execute($duplicateNameArgs);
 
     if ($duplicateName->fetchColumn()) {
         throw new InvalidArgumentException(
@@ -604,6 +632,14 @@ function llama_resource_prepare_input(PDO $db, int $resourceId, array $input): a
             );
     }
 
+    if ($parentPlaceId > 0) {
+        // Facilities inherit their address/region from their Parent Place.
+        foreach (['street_address', 'city', 'county', 'state_region', 'postal_code'] as $key) {
+            $clean[$key] = '';
+        }
+        $countryCode = '';
+    }
+
     $notes =
         mb_substr(
             trim(
@@ -620,7 +656,7 @@ function llama_resource_prepare_input(PDO $db, int $resourceId, array $input): a
         'name', 'slug', 'resourceType', 'markerServiceType', 'latitude', 'longitude',
         'clean', 'countryCode', 'websiteUrl', 'hoursText', 'hoursMode', 'fixedOpenHour',
         'fixedCloseHour', 'status', 'notes', 'sourceUrl', 'sourceUpdatedAt', 'verifiedAt',
-        'services', 'weeklyHours'
+        'services', 'weeklyHours', 'parentPlaceId'
     );
 }
 
@@ -656,6 +692,7 @@ function admin_resource_save(
                 $db->prepare(
                     'INSERT INTO resources (
                         resource_type,
+                        parent_place_id,
                         marker_service_type,
                         name,
                         slug,
@@ -682,13 +719,14 @@ function admin_resource_save(
                         created_by,
                         updated_by
                      ) VALUES (
-                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
                         ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
                      )'
                 );
 
             $stmt->execute([
                 $resourceType,
+                $parentPlaceId ?: null,
                 $markerServiceType !== ''
                     ? $markerServiceType
                     : null,
@@ -731,6 +769,7 @@ function admin_resource_save(
                 $db->prepare(
                     'UPDATE resources
                      SET resource_type = ?,
+                         parent_place_id = ?,
                          marker_service_type = ?,
                          name = ?,
                          slug = ?,
@@ -761,6 +800,7 @@ function admin_resource_save(
 
             $stmt->execute([
                 $resourceType,
+                $parentPlaceId ?: null,
                 $markerServiceType !== ''
                     ? $markerServiceType
                     : null,
