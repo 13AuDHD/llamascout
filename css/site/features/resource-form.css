@@ -289,3 +289,74 @@
 .contribution-resource-photos .resource-existing-gallery .admin-attached-photo {
     padding: 6px;
 }
+
+
+/* Facility uses the Resource editor but has a required Place relationship. */
+.facility-parent-field {
+    position: relative;
+    min-width: 0;
+}
+.facility-parent-field > label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 650;
+}
+.facility-parent-field input[type="search"] {
+    width: 100%;
+    min-height: 44px;
+    padding: 9px 12px;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font: inherit;
+}
+.facility-parent-results {
+    position: absolute;
+    z-index: 40;
+    inset-inline: 0;
+    top: calc(100% - 4px);
+    max-height: 280px;
+    overflow-y: auto;
+    padding: 5px;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px #0003;
+}
+.facility-parent-results[hidden],
+.facility-parent-selected[hidden] {
+    display: none;
+}
+.facility-parent-result {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 100%;
+    padding: 10px;
+    color: inherit;
+    background: transparent;
+    border: 0;
+    border-radius: 7px;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.facility-parent-result:hover,
+.facility-parent-result:focus-visible {
+    background: var(--background);
+    outline: 2px solid var(--border);
+}
+.facility-parent-result span,
+.facility-parent-selected,
+.facility-parent-search-message {
+    margin: 4px 0 0;
+    font-size: 0.875rem;
+    color: var(--muted-text, var(--text));
+}
+.facility-parent-search-message {
+    padding: 8px 10px;
+}
+
+

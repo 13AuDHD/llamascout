@@ -7,6 +7,9 @@ require_once dirname(__DIR__, 2) . '/app/resource-submissions.php';
 $resource = $contributionResource ?? [];
 $form = $contributionResourceInput ?? $resource;
 $resourceStaffFields = $contributionResourceAdmin ?? false;
+$resourceFormIsFacility = !empty($contributionIsFacility)
+    || (int) ($form['parent_place_id'] ?? $resource['parent_place_id'] ?? 0) > 0;
+$resourceFormLabel = $resourceFormIsFacility ? 'Facility' : 'Resource';
 $resourceEditorUrl = $resourceStaffFields
     ? 'https://admin.llamascout.com/resources.php'
     : 'https://llamascout.com/resource-contribution.php';
@@ -51,7 +54,7 @@ $resourceEditorUrl = $resourceStaffFields
     <?php endif; ?>
 
     <details open class="contribution-section contribution-resource-panel">
-        <summary><span><?= llama_icon('info-circle') ?> Resources</span></summary>
+        <summary><span><?= llama_icon('info-circle') ?> <?= $e($resourceFormLabel) ?></span></summary>
         <div class="contribution-section-body">
             <?php if (!admin_resources_tables_ready($db) || (!$resourceStaffFields && !llama_resource_submissions_ready($db))): ?>
                 <p>Resource submissions are currently unavailable.</p>
@@ -70,6 +73,7 @@ $resourceEditorUrl = $resourceStaffFields
                         <input type="hidden" name="resource_snapshot" value="<?= $e($contributionResourceSnapshot ?? ($resource ? llama_resource_snapshot($resource) : '')) ?>">
                         <input type="hidden" name="return_place" value="<?= $e($contributionReturnPlace ?? '') ?>">
                         <input type="hidden" name="return_draft" value="<?= (int) ($contributionReturnDraft ?? 0) ?>">
+                        <input type="hidden" name="contribution_kind" value="<?= $resourceFormIsFacility ? 'facility' : 'resource' ?>">
                     <?php endif; ?>
                     <?php require __DIR__ . '/fields.php'; ?>
                     <?php if ($resourceStaffFields): ?>
@@ -80,8 +84,8 @@ $resourceEditorUrl = $resourceStaffFields
                     <div class="<?= $resourceStaffFields ? 'admin-place-report-savebar' : 'contribution-actions add-place-submit-bar' ?>">
                         <button class="<?= $resourceStaffFields ? 'admin-button' : 'contribution-submit' ?>" type="submit">
                             <?= llama_icon($resourceStaffFields ? 'device-floppy' : 'send') ?>
-                            <?= $resourceStaffFields ? 'Save Resource' : (!empty($contributionRevisionId)
-                                ? 'Resubmit for Review' : ($resource ? 'Submit Update for Review' : 'Submit Resource for Review')) ?>
+                            <?= $resourceStaffFields ? 'Save ' . $resourceFormLabel : (!empty($contributionRevisionId)
+                                ? 'Resubmit for Review' : ($resource ? 'Submit Update for Review' : 'Submit ' . $resourceFormLabel . ' for Review')) ?>
                         </button>
                     </div>
                 </form>
@@ -93,3 +97,6 @@ $resourceEditorUrl = $resourceStaffFields
 <script defer src="https://llamascout.com/js/photo-gallery-editor.js?v=<?= (int) filemtime(dirname(__DIR__, 2) . '/js/photo-gallery-editor.js') ?>"></script>
 <?php endif; ?>
 <script defer src="https://llamascout.com/js/admin/resources.js?v=<?= (int) filemtime(dirname(__DIR__, 2) . '/js/admin/resources.js') ?>"></script>
+<?php if ($resourceFormIsFacility): ?>
+<script defer src="https://llamascout.com/js/facility-parent-search.js?v=<?= (int) filemtime(dirname(__DIR__, 2) . '/js/facility-parent-search.js') ?>"></script>
+<?php endif; ?>

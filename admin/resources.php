@@ -420,6 +420,12 @@ if ($showInventory) {
     ], $resources);
 }
 
+$adminFacilityForm = (int) ($resource['parent_place_id'] ?? 0) > 0;
+if ($resourceSubmission) {
+    $submissionForm = json_decode((string) $resourceSubmission['form_data'], true);
+    $adminFacilityForm = (int) ($submissionForm['parent_place_id'] ?? 0) > 0;
+}
+$adminResourceLabel = $adminFacilityForm ? 'Facility' : 'Resource';
 $postedReviewMatches = !$resourceSubmission
     || hash_equals(hash('sha256', $resourceSubmission['form_data']), (string) ($_POST['review_form'] ?? ''));
 $form = ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && $error !== '' && $postedReviewMatches
@@ -441,7 +447,7 @@ $adminNavCounts = [
 
 $adminPageTitle =
     $editing
-        ? 'Edit Resource'
+        ? 'Edit ' . $adminResourceLabel
         : 'Resources';
 
 $adminPageEyebrow =
@@ -499,13 +505,13 @@ $e =
     <header class="admin-panel-header">
         <div>
             <p><?= $resourceSubmission
-                ? ($resourceSubmission['target_resource_id'] ? 'Resource Update' : 'New Resource Submission')
-                : 'Resource Management' ?></p>
+                ? ($resourceSubmission['target_resource_id'] ? $adminResourceLabel . ' Update' : 'New ' . $adminResourceLabel . ' Submission')
+                : $adminResourceLabel . ' Management' ?></p>
 
             <h2>
                 <?= $resourceSubmission
                     ? 'Review ' . $e($resourceSubmission['name'])
-                    : 'Edit ' . $e($resource['name'] ?? 'Resource') ?>
+                    : 'Edit ' . $e($resource['name'] ?? $adminResourceLabel) ?>
             </h2>
         </div>
 
@@ -637,7 +643,7 @@ $e =
                 class="admin-button"
                 type="submit"
             >
-                <?= $resourceSubmission ? 'Approve and Publish' : 'Save Resource' ?>
+                <?= $resourceSubmission ? 'Approve and Publish' : 'Save ' . $adminResourceLabel ?>
             </button>
         </div>
     </form>

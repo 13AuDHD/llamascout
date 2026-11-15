@@ -20,12 +20,22 @@ $placeDraftSuffix = $isResourcePage && !empty($contributionReturnDraft)
     <?php if ($isResourcePage): ?>
         <a href="/add-place.php?tab=place<?= $placeDraftSuffix ?>">Place</a>
         <a href="/add-place.php?tab=site<?= $placeDraftSuffix ?>">Site</a>
-        <a href="/add-place.php?tab=area<?= $placeDraftSuffix ?>">Facility</a>
-        <span class="contribution-current-resource" aria-current="page">Resource</span>
+        <?php if (!empty($contributionIsFacility)): ?>
+            <span class="contribution-current-resource" aria-current="page">Facility</span>
+            <a href="/resource-contribution.php<?= !empty($contributionReturnDraft) ? '?return_draft=' . (int) $contributionReturnDraft : '' ?>">Resource</a>
+        <?php else: ?>
+            <a href="/resource-contribution.php?kind=facility<?= !empty($contributionReturnDraft) ? '&return_draft=' . (int) $contributionReturnDraft : '' ?>">Facility</a>
+            <span class="contribution-current-resource" aria-current="page">Resource</span>
+        <?php endif; ?>
     <?php else: ?>
         <button type="button" data-contribution-mode="place" aria-pressed="true">Place</button>
         <button type="button" data-contribution-mode="site" aria-pressed="false">Site</button>
-        <button type="button" data-contribution-mode="area" aria-pressed="false"><?= $isNewContribution ? 'Facility' : 'Area' ?></button>
+        <?php if ($isNewContribution): ?>
+            <a href="/resource-contribution.php?kind=facility<?= !empty($draftId) ? '&return_draft=' . (int) $draftId : '' ?>"
+                data-contribution-facility-link>Facility</a>
+        <?php else: ?>
+            <button type="button" data-contribution-mode="area" aria-pressed="false">Area</button>
+        <?php endif; ?>
         <?php if ($isNewContribution): ?>
             <a href="/resource-contribution.php<?= !empty($draftId) ? '?return_draft=' . (int) $draftId : '' ?>"
                data-contribution-resource-link
@@ -56,11 +66,13 @@ $placeDraftSuffix = $isResourcePage && !empty($contributionReturnDraft)
             ],
         ];
         $introMode = $isResourcePage
-            ? 'resource'
+            ? (!empty($contributionIsFacility) ? 'area' : 'resource')
             : (string) ($areaInitialTab ?? 'place');
     ?>
     <?php foreach ($contributionIntros as $introKey => $intro): ?>
-        <?php if ($isResourcePage ? $introKey === 'resource' : $introKey !== 'resource'): ?>
+        <?php if ($isResourcePage
+            ? $introKey === (!empty($contributionIsFacility) ? 'area' : 'resource')
+            : in_array($introKey, ['place', 'site'], true)): ?>
             <section class="contribution-type-intro" data-contribution-intro-mode="<?= $introKey ?>"
                 <?= $introKey !== $introMode ? 'hidden' : '' ?>>
                 <h2><?= htmlspecialchars($intro['title'], ENT_QUOTES, 'UTF-8') ?></h2>

@@ -21,6 +21,20 @@ $resource =
         )
         : [];
 
+// Facilities are visible only when their Parent Place is viewable.
+$facilityParent = null;
+if ($resource && (int) ($resource['parent_place_id'] ?? 0) > 0) {
+    $parentLookup = db()->prepare('SELECT slug FROM places WHERE id = ?
+        AND status IN ("active", "featured") LIMIT 1');
+    $parentLookup->execute([(int) $resource['parent_place_id']]);
+    $parentSlug = (string) ($parentLookup->fetchColumn() ?: '');
+    $facilityParent = $parentSlug !== '' ? place_presentation_by_slug($parentSlug) : null;
+    if (!$facilityParent || (int) $facilityParent['id'] !== (int) $resource['parent_place_id']) {
+        $resource = [];
+    }
+}
+$isFacility = $facilityParent !== null;
+
 if (!$resource) {
     http_response_code(404);
 
@@ -153,7 +167,7 @@ $canonicalUrl =
 
 $pageTitle =
     (string) $resource['name']
-    . ' | Llama Scout Resource';
+    . ' | Llama Scout ' . ($isFacility ? 'Facility' : 'Resource');
 
 $pageDescription =
     trim(
@@ -298,9 +312,11 @@ require __DIR__ . '/partials/header.php';
 
     <div class="place-detail-hero-inner">
 
-        <a class="place-detail-back" href="/map.php">
+        <a class="place-detail-back" href="<?= $isFacility
+            ? '/place.php?slug=' . rawurlencode((string) $facilityParent['slug'])
+            : '/map.php' ?>">
             <i aria-hidden="true"><?= llama_icon('arrow-left') ?></i>
-            Explore Map
+            <?= $isFacility ? 'Back to Parent Place' : 'Explore Map' ?>
         </a>
 
         <div class="place-detail-hero-content">
@@ -308,7 +324,7 @@ require __DIR__ . '/partials/header.php';
             <div class="place-detail-title-block">
 
                 <p class="place-detail-eyebrow">
-                    Resource · <?= htmlspecialchars(
+                    <?= $isFacility ? 'Facility' : 'Resource' ?> · <?= htmlspecialchars(
                         $typeLabel,
                         ENT_QUOTES,
                         'UTF-8'
@@ -320,6 +336,14 @@ require __DIR__ . '/partials/header.php';
                     ENT_QUOTES,
                     'UTF-8'
                 ) ?></h1>
+
+                <?php if ($isFacility): ?>
+                    <p class="place-detail-location">
+                        Inside <a href="/place.php?slug=<?= rawurlencode((string) $facilityParent['slug']) ?>"><?= htmlspecialchars(
+                            (string) $facilityParent['name'], ENT_QUOTES, 'UTF-8'
+                        ) ?></a>
+                    </p>
+                <?php endif; ?>
 
                 <?php if ($locationParts): ?>
                     <p class="place-detail-location">
@@ -369,7 +393,7 @@ require __DIR__ . '/partials/header.php';
             <div class="place-detail-actions">
                 <a class="place-detail-action-button" href="/resource-contribution.php?resource_id=<?= $resourceId ?>">
                     <i aria-hidden="true"><?= llama_icon('edit') ?></i>
-                    Update Resource
+                    Update <?= $isFacility ? 'Facility' : 'Resource' ?>
                 </a>
 
                 <?php if ($coordinates !== ''): ?>
@@ -539,6 +563,15 @@ require __DIR__ . '/partials/header.php';
 
         <dl class="resource-info-list">
 
+            <?php if ($isFacility): ?>
+            <div>
+                <dt>Parent Place</dt>
+                <dd><a href="/place.php?slug=<?= rawurlencode((string) $facilityParent['slug']) ?>"><?= htmlspecialchars(
+                    (string) $facilityParent['name'], ENT_QUOTES, 'UTF-8'
+                ) ?></a></dd>
+            </div>
+            <?php endif; ?>
+
             <?php if ($addressParts): ?>
             <div>
                 <dt>Address</dt>
@@ -583,7 +616,7 @@ require __DIR__ . '/partials/header.php';
 
     <article class="resource-info-card">
         <p class="place-detail-eyebrow">Details</p>
-        <h2>Resource notes</h2>
+        <h2><?= $isFacility ? 'Facility' : 'Resource' ?> notes</h2>
 
         <?php if (!empty($resource['notes'])): ?>
             <p class="resource-notes">
@@ -597,7 +630,7 @@ require __DIR__ . '/partials/header.php';
             </p>
         <?php else: ?>
             <p class="resource-notes is-empty">
-                No general Resource notes have been added yet.
+                No general <?= $isFacility ? 'Facility' : 'Resource' ?> notes have been added yet.
             </p>
         <?php endif; ?>
 
@@ -639,7 +672,7 @@ require __DIR__ . '/partials/header.php';
     <div class="place-photo-gallery-heading">
         <div>
             <p class="place-detail-eyebrow">Photos</p>
-            <h2>Resource gallery</h2>
+            <h2><?= $isFacility ? 'Facility' : 'Resource' ?> gallery</h2>
         </div>
 
         <span>

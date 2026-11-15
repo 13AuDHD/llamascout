@@ -33,7 +33,9 @@ function llama_resource_submission_queue(PDO $db, ?bool $updates = null, int $li
     $sql = "SELECT rs.id, rs.name AS place_name, rs.status, rs.target_resource_id,
                    rs.created_at AS submitted_at, u.display_name, u.username,
                    COALESCE(NULLIF(u.display_name, ''), u.username, 'Former Llama Scout Member') AS contributor_name,
-                   1 AS is_resource
+                   1 AS is_resource,
+                   CASE WHEN CAST(JSON_UNQUOTE(JSON_EXTRACT(rs.form_data, '$.parent_place_id'))
+                       AS UNSIGNED) > 0 THEN 1 ELSE 0 END AS is_facility
             FROM resource_submissions rs
             LEFT JOIN users u ON u.id = rs.submitted_by
             WHERE rs.status IN ('pending', 'needs-changes')";
@@ -57,7 +59,7 @@ function llama_resource_merge_queue(array $places, array $resources): array
 function llama_resource_submission_input(array $input): array
 {
     $fields = array_flip([
-        'name', 'resource_type', 'marker_service_type', 'status', 'coordinates',
+        'name', 'parent_place_id', 'resource_type', 'marker_service_type', 'status', 'coordinates',
         'hours_mode', 'fixed_open_hour', 'fixed_close_hour', 'weekly_hours',
         'street_address', 'city', 'county', 'state_region', 'postal_code', 'country_code',
         'phone', 'website_url', 'services', 'notes',
@@ -120,6 +122,15 @@ function llama_resource_submit(
     }
 
     $resource = llama_resource_prepare_input($db, $resourceId, $data);
+    if ($resource['parentPlaceId'] > 0) {
+        $visibleParent = $db->prepare('SELECT p.id FROM places p WHERE p.id = ?
+            AND p.status IN ("active", "featured")
+            AND ' . llama_place_visibility_sql('p', $userId) . ' LIMIT 1');
+        $visibleParent->execute([$resource['parentPlaceId']]);
+        if (!$visibleParent->fetchColumn()) {
+            throw new InvalidArgumentException('Choose a Parent Place you can access.');
+        }
+    }
     $identity = $resourceId > 0 ? 'resource:' . $resourceId : 'new:' . $resource['slug'];
     $key = hash('sha256', $userId . ':' . $identity);
     $photoContext = $resourceId > 0 ? 'update-resource' : 'add-resource';

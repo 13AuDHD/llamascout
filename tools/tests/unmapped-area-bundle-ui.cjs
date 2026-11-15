@@ -2,101 +2,90 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const {JSDOM} = require('jsdom');
+const { JSDOM } = require('jsdom');
 const root = path.resolve(__dirname, '../..');
-const read = pathName => fs.readFileSync(path.join(root,pathName), 'utf8');
-const js = read('js/add-area-form.js');
+const read = name => fs.readFileSync(path.join(root, name), 'utf8');
+
 const addPlace = read('add-place.php');
-const runtime = read('app/place-report/runtime.php');
-const moderation = read('app/moderation.php');
-const review = read('admin/moderate-submission.php');
+const facilityPage = read('resource-contribution.php');
+const formPartial = read('partials/resources/fields.php');
+const service = read('app/resource-submissions.php');
+const saver = read('app/admin-resources.php');
+const linked = read('partials/place/facilities.php');
+const migration = read('tools/migrations/20261115_facility_parent_place.sql');
 
 assert.match(addPlace, /id="add-place-main-form"/);
-assert.match(addPlace, /name="area_bundle_json"/);
-assert.match(runtime, /\$data\['_first_area'\] = llama_area_submission_prepare_bundle/);
-assert.match(moderation, /llama_area_publish_unmapped\(/);
-assert.match(review, /First Area included with this new Place/,
-    'Moderator must see the Area being published with a new Place');
+assert.doesNotMatch(addPlace, /name="area_bundle_json"/,
+    'A new Place must no longer submit a Facility as part of its Place form');
+assert.doesNotMatch(addPlace, /require __DIR__ \. '\/partials\/place-report\/add-area-form\.php'/,
+    'Facility no longer uses the embedded Area submission form');
+assert.match(addPlace, /resource-contribution\.php\?/,
+    'Old Facility links should be routed to the standalone form');
+assert.match(facilityPage, /llama_resource_submit\(/,
+    'Each Facility should submit through its own moderated contribution');
+assert.match(formPartial, /data-facility-parent-query/);
+assert.match(formPartial, /name="parent_place_id"/);
+assert.match(formPartial, /if \(!\$facilityForm\)/,
+    'Facility must not ask for a duplicate postal address');
+assert.match(service, /'parent_place_id'/,
+    'Each submission must save its Parent Place selection');
+assert.match(saver, /SELECT id FROM places WHERE id = \?/,
+    'Parent Place must be validated by the database, not browser text');
+assert.match(linked, /llama_place_facilities\(/,
+    'Published Facilities should be displayed on their Parent Place');
+assert.match(migration, /ADD COLUMN parent_place_id/);
 
+const script = read('js/facility-parent-search.js');
 const dom = new JSDOM(`<!doctype html><body>
-<input type="checkbox" data-area-bundle-new>
-<p data-area-bundle-status hidden></p>
-<div data-area-search-existing></div>
-<form id="add-place-main-form"><input type="hidden" data-area-bundle-input
-    name="area_bundle_json" value=""></form>
-<form data-area-create-form>
-  <label data-area-existing-parent><select required name="area_place_id">
-    <option value="">Select Place</option><option value="1">Place 1</option>
-  </select></label>
-  <input name="area_name" required value="West Vault Toilets">
-  <input data-area-coordinate-input name="area_coordinates" value="37.2522200, -107.2192000">
-  <button type="button" data-area-search-coordinates>Search</button>
-  <p data-area-location-status>Optional coordinates</p>
-  <select name="area_feature_type" data-area-type>
-    <option value="facility_area" selected>Facility</option>
-    <option value="camping_area">Camping</option>
-  </select>
-  <label data-area-facility-selector>
-    <select name="area_facility_kind" data-area-facility-kind>
-      <option value="restroom" selected>Restroom</option>
-    </select>
-  </label>
-  <details class="area-question-group"><div>
-    <fieldset data-area-question data-area-types="" data-facility-kinds="restroom">
-      <input name="area_answers[facility_toilet_count]" value="2">
-    </fieldset>
-    <fieldset data-area-question data-area-types="camping_area" data-facility-kinds="">
-      <input name="area_answers[area_site_count]" value="8">
-    </fieldset>
-  </div></details>
-  <button type="button" data-area-attach-new>Add to new Place</button>
-  <button type="submit" form="add-place-main-form" data-area-submit-new hidden>Submit both</button>
-  <button type="submit" data-area-submit-existing>Submit existing</button>
-</form>
-</body>`, {runScripts:'outside-only'});
-const w = dom.window;
-w.eval(js);
-w.document.dispatchEvent(new w.Event('DOMContentLoaded'));
-const q = sel => w.document.querySelector(sel);
-const toggle = q('[data-area-bundle-new]');
-toggle.checked = true;
-toggle.dispatchEvent(new w.Event('change'));
-assert.equal(q('[data-area-existing-parent]').hidden,true);
-assert.equal(q('[name="area_place_id"]').required,false);
-assert.equal(q('[data-area-submit-existing]').hidden,true);
-q('[data-area-attach-new]').click();
-let bundle = JSON.parse(q('[data-area-bundle-input]').value);
-assert.equal(bundle.area_name,'West Vault Toilets');
-assert.equal(bundle.area_feature_type,'facility_area');
-assert.equal(bundle.area_facility_kind,'restroom');
-assert.equal(bundle.area_coordinates, '37.2522200, -107.2192000',
-    'The new Place submission must preserve its first Area location');
-assert.equal(bundle.area_answers.facility_toilet_count,'2');
-assert.equal(bundle.area_answers.area_site_count,undefined,
-    'The wrong Area type must not leak answers into the new Place bundle');
-assert.equal(q('[data-area-submit-new]').hidden,false);
+    <form>
+      <div data-facility-parent-picker data-search-url="/api/facility-parent-places.php">
+        <input type="search" data-facility-parent-query>
+        <input type="hidden" name="parent_place_id" data-facility-parent-id value="">
+        <div data-facility-parent-results hidden></div>
+        <p data-facility-parent-selected hidden><strong></strong></p>
+      </div>
+      <button type="submit">Submit Facility</button>
+    </form>
+</body>`, { url: 'https://llamascout.com/resource-contribution.php?kind=facility', runScripts: 'outside-only' });
+const window = dom.window;
+const requests = [];
+window.fetch = async url => {
+    requests.push(String(url));
+    return {
+        ok: true,
+        json: async () => ({ ok: true, results: [
+            { id: 13, name: 'Cedar Canyon', location: 'Durango, CO' },
+            { id: 27, name: 'Cedar Valley', location: 'Silverton, CO' }
+        ] })
+    };
+};
+window.eval(script);
+window.document.dispatchEvent(new window.Event('DOMContentLoaded'));
+const q = selector => window.document.querySelector(selector);
+const search = q('[data-facility-parent-query]');
+const id = q('[data-facility-parent-id]');
+const form = q('form');
+const results = q('[data-facility-parent-results]');
+const tick = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-q('[data-area-coordinate-input]').value = '';
-q('[data-area-type]').value='camping_area';
-q('[data-area-type]').dispatchEvent(new w.Event('change'));
-q('[data-area-attach-new]').click();
-bundle = JSON.parse(q('[data-area-bundle-input]').value);
-assert.equal(bundle.area_feature_type,'camping_area');
-assert.equal(bundle.area_coordinates, '',
-    'A new Place can bundle an unmapped Area without coordinates');
-assert.equal(bundle.area_facility_kind,'');
-assert.equal(bundle.area_answers.area_site_count,'8');
-assert.equal(bundle.area_answers.facility_toilet_count,undefined,
-    'Facility questions cannot enter a camping Area report');
-const submit = new w.Event('submit', {cancelable:true});
-q('#add-place-main-form').dispatchEvent(submit);
-assert.equal(submit.defaultPrevented,false);
-
-toggle.checked=false;
-toggle.dispatchEvent(new w.Event('change'));
-assert.equal(q('[data-area-bundle-input]').value,'',
-    'Switching back to an existing Place must not attach a stale Area to a new Place');
-assert.equal(q('[name="area_place_id"]').required,true);
-assert.equal(q('[data-area-submit-existing]').hidden,false);
-dom.window.close();
-console.log('PASS: First Area staged with new Place, no geometry, parent not required, type-filtered answers and safe mode switch');
+(async () => {
+    search.value = 'cedar';
+    search.dispatchEvent(new window.Event('input', { bubbles: true }));
+    await tick(290);
+    assert.equal(requests.length, 1);
+    assert.ok(requests[0].includes('q=cedar'));
+    assert.equal(results.querySelectorAll('button').length, 2);
+    results.querySelector('button').click();
+    assert.equal(id.value, '13', 'Selected Parent Place ID must be persisted');
+    assert.equal(search.value, 'Cedar Canyon');
+    assert.equal(q('[data-facility-parent-selected] strong').textContent, 'Cedar Canyon');
+    search.value = 'different place';
+    search.dispatchEvent(new window.Event('input', { bubbles: true }));
+    assert.equal(id.value, '', 'Changing query must clear previously selected Place');
+    const submission = new window.Event('submit', { cancelable: true, bubbles: true });
+    form.dispatchEvent(submission);
+    assert.equal(submission.defaultPrevented, true,
+        'A Facility cannot submit without selecting a Parent Place');
+    window.close();
+    console.log('PASS: Facilities submit separately with database-owned Parent Places and live search selection');
+})().catch(err => { console.error(err); process.exitCode = 1; });

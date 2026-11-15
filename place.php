@@ -787,6 +787,8 @@ require
     ?>
 
     <?php
+    require __DIR__ . '/partials/place/facilities.php';
+
     require
         __DIR__
         . '/partials/place/history.php';
