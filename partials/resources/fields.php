@@ -11,6 +11,11 @@ $facilityParentId = $facilityForm
     ? max(0, (int) ($form['parent_place_id'] ?? $resource['parent_place_id'] ?? 0))
     : 0;
 $facilityParentName = (string) ($contributionParentPlaceName ?? '');
+if ($facilityParentId > 0 && $facilityParentName === '') {
+    $parentNameLookup = $db->prepare('SELECT name FROM places WHERE id = ? LIMIT 1');
+    $parentNameLookup->execute([$facilityParentId]);
+    $facilityParentName = (string) ($parentNameLookup->fetchColumn() ?: '');
+}
 $selectedServices = [];
 
 foreach (
@@ -165,6 +170,9 @@ $datetimeLocal =
                         <div class="contribution-field contribution-field-wide facility-parent-field"
                             data-facility-parent-picker data-search-url="/api/facility-parent-places.php">
                             <label for="facility-parent-query">Parent Place *</label>
+                            <?php if ($resourceStaffFields): ?>
+                                <strong><?= $e($facilityParentName ?: 'Unknown Place') ?> (#<?= $facilityParentId ?>)</strong>
+                            <?php else: ?>
                             <input type="search" id="facility-parent-query"
                                 value="<?= $e($facilityParentName) ?>"
                                 placeholder="Search for a Place by name"
@@ -175,6 +183,7 @@ $datetimeLocal =
                                 value="<?= $facilityParentId ?>" data-facility-parent-id>
                             <div class="facility-parent-results" id="facility-parent-results"
                                 role="listbox" data-facility-parent-results hidden></div>
+                            <?php endif; ?>
                             <p class="facility-parent-selected" data-facility-parent-selected
                                <?= $facilityParentId > 0 && $facilityParentName !== '' ? '' : 'hidden' ?>>
                                 Selected: <strong><?= $e($facilityParentName) ?></strong>
