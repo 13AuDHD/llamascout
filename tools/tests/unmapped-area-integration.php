@@ -39,8 +39,23 @@ $db->exec('CREATE TABLE place_map_features (
     verified_at DATETIME, sort_order INT, is_active TINYINT DEFAULT 1,
     created_at DATETIME, updated_at DATETIME
 ) ENGINE=InnoDB');
+$db->exec('CREATE TABLE place_map_area_details (
+    feature_id BIGINT, area_use VARCHAR(50), fee_status VARCHAR(25),
+    overnight_status VARCHAR(25)
+) ENGINE=InnoDB');
 $db->exec('CREATE TABLE place_map_camping_sites (
-    feature_id BIGINT, camping_area_feature_id BIGINT, site_code VARCHAR(80)
+    feature_id BIGINT, camping_area_feature_id BIGINT, site_class_id BIGINT,
+    site_code VARCHAR(80), site_type VARCHAR(40), parking_style VARCHAR(40),
+    hookup_status VARCHAR(40), accessible_status VARCHAR(40)
+) ENGINE=InnoDB');
+$db->exec('CREATE TABLE place_map_feature_rates (
+    id BIGINT, feature_id BIGINT, rate_type VARCHAR(40), label VARCHAR(120),
+    amount DECIMAL(12,2), currency VARCHAR(3), season_start DATE, season_end DATE,
+    notes TEXT, sort_order INT, is_active TINYINT
+) ENGINE=InnoDB');
+$db->exec('CREATE TABLE place_map_camping_site_classes (
+    id BIGINT, camping_area_feature_id BIGINT, name VARCHAR(100),
+    description TEXT, sort_order INT, is_active TINYINT
 ) ENGINE=InnoDB');
 $db->exec('CREATE TABLE place_campsite_area_links (
     place_id BIGINT, campsite_id BIGINT, area_feature_id BIGINT
@@ -130,6 +145,18 @@ areaCheck(json_decode($row['metadata_json'], true)['facility_kind'] === 'restroo
 $target = llama_report_verified_target($db, 1, 'area', 'map_feature', $areaId);
 areaCheck($target['label'] === 'West Vault Toilets', 'Area not listed as canonical target.');
 areaCheck($target['facility_kind'] === 'restroom', 'Facility type not in canonical target.');
+// Public Area list uses this same map-feature projection, including records
+// with no geometry. The map JS intentionally draws only real geometries.
+$publicAreas = llama_place_map_features($db, 1, true, true);
+$unmappedPublic = array_values(array_filter(
+    $publicAreas, static fn(array $feature): bool =>
+        (int) $feature['id'] === $areaId
+));
+areaCheck(count($unmappedPublic) === 1,
+    'Unmapped Area must remain visible in the public Area catalog.');
+areaCheck($unmappedPublic[0]['geometry'] === null
+    && $unmappedPublic[0]['is_mapped'] === false,
+    'Public Area must not invent geometry for an unmapped Area.');
 $stmt = $db->prepare('SELECT field_key,value_json FROM place_report_scoped_answers
     WHERE scope_type = "area" AND scope_id = ?');
 $stmt->execute([$areaId]);
@@ -184,6 +211,10 @@ $db->commit();
 areaCheck($firstAreaId > 0 && $firstAreaId !== $areaId,
     'First Area bundled with new Place not created.');
 $firstArea = llama_report_verified_target($db, 2, 'area', 'map_feature', $firstAreaId);
+$firstAreaCatalog = llama_place_map_features($db, 2);
+areaCheck(count($firstAreaCatalog) === 1
+    && $firstAreaCatalog[0]['geometry'] === null,
+    'An approved new Place must list its first Area without geometry.');
 areaCheck($firstArea['label'] === 'East Loop',
     'Bundled Area must attach to the newly published parent.');
 $stmt = $db->prepare('SELECT geometry FROM place_map_features WHERE id = ?');
