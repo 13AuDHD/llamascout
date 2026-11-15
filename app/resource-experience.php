@@ -223,10 +223,16 @@ function llama_resource_experience_clean(mixed $raw, array $enabledServices): ar
                 }
                 $type = $question['type'];
                 if ($type === 'multiselect') {
-                    if (!is_array($value) || count($value) > count($question['options'])) {
+                    if (!is_array($value) || !array_is_list($value)
+                        || count($value) > count($question['options'])) {
                         throw new InvalidArgumentException('Invalid choice for ' . $question['label'] . '.');
                     }
-                    $value = array_values(array_unique($value));
+                    foreach ($value as $choice) {
+                        if (!is_string($choice) && !is_int($choice)) {
+                            throw new InvalidArgumentException('Invalid choice for ' . $question['label'] . '.');
+                        }
+                    }
+                    $value = array_values(array_unique(array_map('strval', $value)));
                     if (array_diff($value, array_keys($question['options']))) {
                         throw new InvalidArgumentException('Invalid choice for ' . $question['label'] . '.');
                     }
