@@ -72,10 +72,6 @@
     border-color: color-mix(in srgb, var(--mode-color) 55%, var(--border));
     background: color-mix(in srgb, var(--mode-color) 24%, var(--surface));
 }
-.contribution-page > .contribution-scope-picker {
-    margin-top: 16px;
-    margin-bottom: 24px;
-}
 @media (max-width: 360px) {
     .contribution-scope-picker button,
     .contribution-scope-picker a,
@@ -187,15 +183,46 @@
 }
 
 
-/* Area uses the same calm, nested report structure as Place and Site.
-   Only Basic and Location open by default; other approved groups collapse. */
-.area-form-intro {
-    margin-bottom: 16px;
-    padding: 12px 16px;
-    border-inline-start: 4px solid #9765cb;
+/* One type-specific explanation sits immediately below the identical
+   four-option switcher on all contributor forms. */
+.contribution-type-navigation {
+    display: grid;
+    gap: 16px;
+    min-width: 0;
+}
+.contribution-type-intro {
+    --intro-color: #70bd87;
+    padding: 16px 18px;
+    min-width: 0;
+    border-inline-start: 4px solid var(--intro-color);
     background: var(--surface);
     border-radius: 10px;
 }
+.contribution-type-intro[hidden] {
+    display: none !important;
+}
+.contribution-type-intro[data-contribution-intro-mode="site"] {
+    --intro-color: #f2a44e;
+}
+.contribution-type-intro[data-contribution-intro-mode="area"] {
+    --intro-color: #9765cb;
+}
+.contribution-type-intro[data-contribution-intro-mode="resource"] {
+    --intro-color: var(--resource-accent);
+}
+.contribution-type-intro h2 {
+    margin: 0 0 6px;
+    font-size: 1.1rem;
+    font-weight: 750;
+}
+.contribution-type-intro p {
+    margin: 0;
+    line-height: 1.5;
+    color: var(--text-muted);
+}
+
+/* Facility uses the same nested report structure as Place and Site.
+   Basic and Location open by default; other groups stay collapsed. */
 .area-create-form { gap: 20px; min-width: 0; }
 .area-create-form .area-form-section {
     border: 1px solid var(--border);
