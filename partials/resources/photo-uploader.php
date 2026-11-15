@@ -18,15 +18,15 @@ $resourcePhotoLimit = llama_location_gallery_photo_limit('resource');
 $resourcePhotoRemaining = max(0, $resourcePhotoLimit - count($resourceSavedPhotos));
 ?>
 <details open class="contribution-section contribution-resource-photos">
-    <summary><span><?= llama_icon('camera') ?> Resource Photos</span></summary>
+    <summary><span><?= llama_icon('camera') ?> <?= $e($facilityLabel) ?> Photos</span></summary>
     <div class="contribution-section-body">
         <p>
             <?= (int) count($resourceSavedPhotos) ?> of <?= (int) $resourcePhotoLimit ?>
-            photos attached to this Resource. Photos of services, entrances,
+            photos attached to this <?= $e($facilityLabel) ?>. Photos of services, entrances,
             facilities, and helpful signs belong here.
         </p>
         <p>Drag photos to reorder. The first remaining photo becomes Hero.
-           Changes to descriptions, order and removals save with the Resource.</p>
+           Changes to descriptions, order and removals save with the <?= $e($facilityLabel) ?>.</p>
         <script type="application/json" data-resource-photo-catalog><?=
             json_encode(array_map(static fn (array $photo): array => [
                 'id' => (int) $photo['id'],
@@ -48,7 +48,7 @@ $resourcePhotoRemaining = max(0, $resourcePhotoLimit - count($resourceSavedPhoto
                          data-admin-photo-id="<?= (int) $photo['id'] ?>">
                     <div class="admin-attached-photo-preview">
                         <img src="<?= $e(llama_photo_public_url((string) $photo['src'])) ?>"
-                             alt="<?= $e((string) ($photo['alt_text'] ?? 'Resource photo')) ?>"
+                             alt="<?= $e((string) ($photo['alt_text'] ?? ($facilityLabel . ' photo'))) ?>"
                              loading="lazy" draggable="false">
                         <?php if ($position === 0): ?>
                             <span class="admin-attached-photo-hero">Hero</span>
@@ -71,11 +71,11 @@ $resourcePhotoRemaining = max(0, $resourcePhotoLimit - count($resourceSavedPhoto
              data-photo-field="resource_photos_json"
              data-photo-csrf="<?= $e(llama_photo_csrf_token()) ?>"
              data-photo-endpoint="/photo-upload.php"
-             data-photo-title="Photos of <?= $e((string) ($resource['name'] ?? 'this Resource')) ?>"
-             data-photo-save-action="Save Resource"
-             data-photo-help="Upload photos here, then save the Resource to attach them. You may add <?= (int) $resourcePhotoRemaining ?> more."></div>
+             data-photo-title="Photos of <?= $e((string) ($resource['name'] ?? 'this ' . $facilityLabel)) ?>"
+             data-photo-save-action="Save <?= $e($facilityLabel) ?>"
+             data-photo-help="Upload photos here, then save the <?= $e($facilityLabel) ?> to attach them. You may add <?= (int) $resourcePhotoRemaining ?> more."></div>
         <?php else: ?>
-        <p>This Resource has reached its 10-photo limit. Remove an existing photo before adding another.</p>
+        <p>This <?= $e($facilityLabel) ?> has reached its 10-photo limit. Remove an existing photo before adding another.</p>
         <?php endif; ?>
     </div>
 </details>
