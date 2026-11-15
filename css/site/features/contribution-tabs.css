@@ -38,32 +38,48 @@
 .contribution-scope-picker [data-contribution-mode="area"] {
     --mode-color: #bb94ef;
 }
-.contribution-scope-picker:has([data-contribution-resource-link]) {
+.contribution-scope-picker:has([data-contribution-resource-link]),
+.contribution-scope-picker[data-contribution-resource-page] {
     width: min(100%, 480px);
     grid-template-columns: repeat(4, minmax(0, 1fr));
 }
-.contribution-scope-picker [data-contribution-resource-link] {
+
+/* Both pages share the exact same four-column segmented control. The first
+   page switches local panels; the Resource editor uses navigation links. */
+.contribution-scope-picker a,
+.contribution-scope-picker .contribution-current-resource {
     display: grid;
     place-items: center;
     min-width: 0;
     min-height: 44px;
-    padding: 8px;
+    padding: 8px 12px;
     border: 1px solid transparent;
     border-radius: 10px;
     color: var(--text);
     background: transparent;
     font: inherit;
     font-weight: 750;
+    text-align: center;
     text-decoration: none;
 }
-.contribution-scope-picker [data-contribution-resource-link]:hover,
-.contribution-scope-picker [data-contribution-resource-link]:focus-visible {
-    border-color: var(--resource-accent);
-    background: color-mix(in srgb, var(--resource-accent) 18%, var(--surface));
+.contribution-scope-picker a:hover,
+.contribution-scope-picker a:focus-visible {
+    border-color: var(--border);
+    background: color-mix(in srgb, var(--text) 7%, var(--surface));
+}
+.contribution-scope-picker .contribution-current-resource[aria-current="page"] {
+    --mode-color: var(--resource-accent);
+    border-color: color-mix(in srgb, var(--mode-color) 55%, var(--border));
+    background: color-mix(in srgb, var(--mode-color) 24%, var(--surface));
+}
+.contribution-page > .contribution-scope-picker {
+    margin-top: 16px;
+    margin-bottom: 24px;
 }
 @media (max-width: 360px) {
     .contribution-scope-picker button,
-    .contribution-scope-picker [data-contribution-resource-link] {
+    .contribution-scope-picker a,
+    .contribution-scope-picker .contribution-current-resource {
         font-size: .83rem;
         padding: 7px 3px;
     }
