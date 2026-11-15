@@ -136,6 +136,12 @@ if (
         ),
         $_POST
     );
+    $firstSiteCoordinates = $editSubmission['data']['_first_site_coordinates'] ?? null;
+    if (is_array($firstSiteCoordinates)
+        && isset($firstSiteCoordinates['latitude'], $firstSiteCoordinates['longitude'])) {
+        $_POST['site_coordinates'] = $firstSiteCoordinates['latitude']
+            . ', ' . $firstSiteCoordinates['longitude'];
+    }
 }
 
 $placeReportExistingSitePhotos = $isNeedsChanges
@@ -685,6 +691,14 @@ $placeReportPhotoHelp =
         ENT_QUOTES,
         'UTF-8'
     ) ?>"
+></script>
+
+<script
+    src="<?= htmlspecialchars(
+        $siteUrl . '/js/add-site-location.js?v=' . (int) filemtime(__DIR__ . '/js/add-site-location.js'),
+        ENT_QUOTES, 'UTF-8'
+    ) ?>"
+    defer
 ></script>
 
 <script
