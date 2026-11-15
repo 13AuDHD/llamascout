@@ -19,6 +19,12 @@ on:
       - 'css/site/features/place-report-form.css'
       - 'js/place-campsites.js'
       - 'tools/tests/public-facility-resource-roles.cjs'
+      - 'tools/tests/contribution-four-tab-switcher.cjs'
+      - 'tools/tests/contribution-four-tab-switcher.php'
+      - 'partials/place-report/contribution-tabs.php'
+      - 'css/site/features/contribution-tabs.css'
+      - 'resource-contribution.php'
+      - 'add-place.php'
       - 'css/site.css'
       - 'css/map.css'
       - 'resource-contribution.php'
@@ -59,6 +65,8 @@ jobs:
           php -l admin/campsite-pricing.php
           node --check js/admin/campsite-pricing.js
           node --check js/contribution-tabs.js
+          php tools/tests/contribution-four-tab-switcher.php
+          NODE_PATH="$RUNNER_TEMP/llama-pricing-ui/node_modules" node tools/tests/contribution-four-tab-switcher.cjs
           node --check js/place-report-warnings.js
           node --check js/place-explorer.js
           NODE_PATH="$RUNNER_TEMP/llama-pricing-ui/node_modules" node tools/tests/place-explorer-colors-ui.cjs
