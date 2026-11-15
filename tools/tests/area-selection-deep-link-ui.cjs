@@ -38,7 +38,7 @@ function setupExplorer(url) {
             <button type="button" data-stay-area-id="55"
                     data-stay-area-kind="facility" data-stay-area-name="West Vault Toilets">West Vault Toilets</button>
             <button type="button" data-stay-area-id="56"
-                    data-stay-area-kind="parking" data-stay-area-name="Parking Lot">Parking Lot</button>
+                    data-stay-area-kind="facility" data-stay-area-name="East Showers">East Showers</button>
         </section>
         <section class="scout-report"></section>
     </body>`, { url, runScripts: 'outside-only' });
@@ -78,7 +78,7 @@ function setupExplorer(url) {
     ctx.row(56).click();
     await Promise.resolve();
     assert.equal(ctx.href().searchParams.get('area'), '56');
-    assert.equal(ctx.events.at(-1).kind, 'parking');
+    assert.equal(ctx.events.at(-1).kind, 'area');
     assert.equal(ctx.update().searchParams.get('report_target'), '56');
 
     ctx.w.dispatchEvent(new ctx.w.CustomEvent('llama:explorer-browser-site-selected', {
@@ -127,7 +127,7 @@ function setupExplorer(url) {
         </section>
         <section data-stay-options>
           <button data-stay-area-id="55" data-stay-area-name="West Vault Toilets"></button>
-          <button data-stay-area-id="56" data-stay-area-name="Parking Lot"></button>
+          <button data-stay-area-id="56" data-stay-area-name="East Showers"></button>
         </section>
         <div data-place-campsites-mount data-place-slug="north-mills-river" data-complete-access="1"></div>
     </body>`, {
@@ -146,7 +146,7 @@ function setupExplorer(url) {
             }
             return Promise.resolve({ ok: true, json: async () => ({
                 ok: true, area: { id: 56, report_target_scope: 'area',
-                    report_effective_values: {area_note: 'Answer from Parking Lot'},
+                    report_effective_values: {area_note: 'Answer from East Showers'},
                     report_inapplicable_keys: [], report_answer_sources: {} }
             }) });
         }
@@ -162,7 +162,7 @@ function setupExplorer(url) {
     fire(56);
     await new Promise(resolve => setImmediate(resolve));
     const value = v.document.querySelector('[data-campsite-report-field="area_note"] strong');
-    assert.equal(value.textContent, 'Answer from Parking Lot',
+    assert.equal(value.textContent, 'Answer from East Showers',
         'Selected Area answers must load from the selected canonical API record');
     assert.equal(v.document.querySelector('[data-area-report-status]').textContent.includes('Loading'), false);
     resolve55({ ok: true, json: async () => ({
@@ -171,7 +171,7 @@ function setupExplorer(url) {
             report_inapplicable_keys: [], report_answer_sources: {} }
     }) });
     await new Promise(resolve => setImmediate(resolve));
-    assert.equal(value.textContent, 'Answer from Parking Lot',
+    assert.equal(value.textContent, 'Answer from East Showers',
         'An older Area response must not overwrite the newly selected Area');
     assert.ok(requests.some(item => item.includes('area=55')));
     assert.ok(requests.some(item => item.includes('area=56')));
