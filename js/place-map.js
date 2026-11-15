@@ -1405,6 +1405,11 @@
                             (feature) =>
                                 feature
                                 && feature.geometry
+                                // Members may use the full map-features API,
+                                // but camping loops and parking groupings are
+                                // now administrative, not visitor map layers.
+                                && feature.feature_type !== 'camping_area'
+                                && feature.feature_type !== 'parking_area'
                         );
 
                 syncMappedAreaControls(
