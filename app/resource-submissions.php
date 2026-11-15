@@ -33,7 +33,9 @@ function llama_resource_submission_queue(PDO $db, ?bool $updates = null, int $li
     $sql = "SELECT rs.id, rs.name AS place_name, rs.status, rs.target_resource_id,
                    rs.created_at AS submitted_at, u.display_name, u.username,
                    COALESCE(NULLIF(u.display_name, ''), u.username, 'Former Llama Scout Member') AS contributor_name,
-                   1 AS is_resource
+                   1 AS is_resource,
+                   CASE WHEN CAST(JSON_UNQUOTE(JSON_EXTRACT(rs.form_data, '$.parent_place_id'))
+                       AS UNSIGNED) > 0 THEN 1 ELSE 0 END AS is_facility
             FROM resource_submissions rs
             LEFT JOIN users u ON u.id = rs.submitted_by
             WHERE rs.status IN ('pending', 'needs-changes')";
