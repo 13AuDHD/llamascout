@@ -1297,7 +1297,8 @@ $name = trim(
         llama_place_report_create_submission_site(
             $db,
             $placeId,
-            $submissionAnswers['site_answers']
+            $submissionAnswers['site_answers'],
+            $data['_first_site_coordinates'] ?? null
         );
 
     $photos =

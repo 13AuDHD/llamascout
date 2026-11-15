@@ -135,11 +135,47 @@ function llama_place_report_submission_answers(array $data): array
     ];
 }
 
+/**
+ * Site GPS belongs to the child Site record and is not a Scout Report
+ * question. Never overwrite or borrow the parent Place latitude/longitude.
+ * The text form keeps latitude/longitude together to avoid partial points.
+ */
+function llama_place_report_parse_first_site_coordinates(mixed $raw): ?array
+{
+    if ($raw === null || $raw === '') {
+        return null;
+    }
+    if (!is_string($raw)) {
+        throw new InvalidArgumentException('Enter Site coordinates as latitude, longitude.');
+    }
+    $raw = trim($raw);
+    if ($raw === '') {
+        return null;
+    }
+    $parts = array_map('trim', explode(',', $raw));
+    if (count($parts) !== 2
+        || preg_match('/^[+-]?(?:\d+\.?\d*|\.\d+)$/D', $parts[0]) !== 1
+        || preg_match('/^[+-]?(?:\d+\.?\d*|\.\d+)$/D', $parts[1]) !== 1) {
+        throw new InvalidArgumentException('Enter Site coordinates as latitude, longitude.');
+    }
+    [$latitude, $longitude] = array_map('floatval', $parts);
+    if (!is_finite($latitude) || !is_finite($longitude)
+        || abs($latitude) > 90 || abs($longitude) > 180
+        || ($latitude === 0.0 && $longitude === 0.0)) {
+        throw new InvalidArgumentException('Enter a valid Site latitude and longitude.');
+    }
+    return [
+        'latitude' => round($latitude, 7),
+        'longitude' => round($longitude, 7),
+    ];
+}
+
 /** Create the required first Site identity without publishing its answers yet. */
 function llama_place_report_create_submission_site(
     PDO $db,
     int $placeId,
-    array $siteAnswers
+    array $siteAnswers,
+    ?array $siteCoordinates = null
 ): array {
     if (!$db->inTransaction()) { throw new RuntimeException('Report publication requires an active transaction.'); }
 
@@ -148,11 +184,23 @@ function llama_place_report_create_submission_site(
 
     $label = $number !== '' ? 'Site ' . $number : 'Reported Site';
 
+    $siteLatitude = $siteCoordinates['latitude'] ?? null;
+    $siteLongitude = $siteCoordinates['longitude'] ?? null;
+    if (($siteLatitude === null) !== ($siteLongitude === null)
+        || ($siteLatitude !== null && (
+            !is_numeric($siteLatitude) || !is_numeric($siteLongitude)
+            || abs((float) $siteLatitude) > 90 || abs((float) $siteLongitude) > 180
+            || ((float) $siteLatitude === 0.0 && (float) $siteLongitude === 0.0)
+        ))) {
+        throw new InvalidArgumentException('Invalid first Site coordinates.');
+    }
+
     $statement = $db->prepare('INSERT INTO place_campsites
-        (place_id, site_code, site_name, raw_site_type, source_provider, source_external_id, is_active)
-        VALUES (?, ?, ?, ?, ?, ?, 1)');
+        (place_id, site_code, site_name, latitude, longitude,
+         raw_site_type, source_provider, source_external_id, is_active)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)');
     $statement->execute([$placeId, $number !== '' ? $number : null,
-        $label, 'Llama Scout Site',
+        $label, $siteLatitude, $siteLongitude, 'Llama Scout Site',
         'Llama Scout', 'place-submission:' . $placeId]);
 
     $siteId = (int) $db->lastInsertId();
@@ -181,7 +229,9 @@ function llama_place_report_publish_submission(
     $siteAnswers = $answers['site_answers'];
 
     if ($siteId === null) {
-        $site = llama_place_report_create_submission_site($db, $placeId, $siteAnswers);
+        $site = llama_place_report_create_submission_site(
+            $db, $placeId, $siteAnswers, $data['_first_site_coordinates'] ?? null
+        );
         $siteId = (int) $site['id'];
     }
 

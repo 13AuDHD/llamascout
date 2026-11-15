@@ -366,9 +366,6 @@
 .resource-facility-theme {
     --resource-accent: #9765cb;
 }
-.resource-facility-theme > .contribution-resource-panel {
-    border-inline-start: 4px solid var(--resource-accent);
-}
 .resource-experience-section .resource-experience-empty {
     margin: 0;
     color: var(--text-muted);

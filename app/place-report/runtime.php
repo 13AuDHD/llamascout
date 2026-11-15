@@ -1357,6 +1357,14 @@ function llama_place_report_submit_new_place(
             $input
         );
 
+    // First Site GPS is optional Site metadata, never a parent Place answer.
+    $siteCoordinates = llama_place_report_parse_first_site_coordinates(
+        $input['site_coordinates'] ?? ''
+    );
+    if ($siteCoordinates !== null) {
+        $data['_first_site_coordinates'] = $siteCoordinates;
+    }
+
     // Optional first Area is part of the same pending Place bundle as the
     // first Site. Do not save a mapped feature until the Place is approved.
     $areaJson = trim((string) ($input['area_bundle_json'] ?? ''));
@@ -1559,6 +1567,16 @@ function llama_place_report_resubmit_new_place(
 
     $existingData = is_array($existing['data'] ?? null) ? $existing['data'] : [];
     $data = llama_place_report_build_data($input, $existingData);
+    if (array_key_exists('site_coordinates', $input)) {
+        $siteCoordinates = llama_place_report_parse_first_site_coordinates(
+            $input['site_coordinates']
+        );
+        if ($siteCoordinates !== null) {
+            $data['_first_site_coordinates'] = $siteCoordinates;
+        } else {
+            unset($data['_first_site_coordinates']);
+        }
+    }
     $areaJson = trim((string) ($input['area_bundle_json'] ?? ''));
     if (strlen($areaJson) > 60000) {
         throw new InvalidArgumentException('The Area report is too large.');

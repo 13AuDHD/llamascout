@@ -209,6 +209,13 @@ jobs:
         run: |
           php tools/tests/resource-facility-experience.php
           node tools/tests/resource-facility-experience-ui.cjs
+      - name: Verify Site Location field, independent GPS behavior and contribution styling
+        env:
+          NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules
+        run: |
+          php tools/tests/contribution-site-location-and-styling.php
+          node --check js/add-site-location.js
+          node tools/tests/contribution-site-location-ui.cjs
       - name: Verify four-option navigation across Place, Site, Facility and Resource
         env:
           NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules
