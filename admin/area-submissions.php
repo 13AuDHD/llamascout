@@ -69,8 +69,12 @@ $escape = static fn(mixed $value): string => moderation_e((string) $value);
 <?php else: ?>
     <?php foreach ($items as $item): ?>
         <?php
-        $answers = json_decode((string) ($item['answers_json'] ?? '{}'), true);
-        $answers = is_array($answers) ? $answers : [];
+        $submission = json_decode((string) ($item['answers_json'] ?? '{}'), true);
+        $submission = is_array($submission) ? $submission : [];
+        $hasEnvelope = isset($submission['answers']) && is_array($submission['answers']);
+        $answers = $hasEnvelope ? $submission['answers'] : $submission;
+        $areaCoordinates = $hasEnvelope
+            ? (string) ($submission['coordinates'] ?? '') : '';
         $target = [
             'scope' => 'area', 'source' => 'map_feature',
             'feature_type' => $item['feature_type'],
@@ -89,7 +93,9 @@ $escape = static fn(mixed $value): string => moderation_e((string) $value);
                             · <?= $escape($item['facility_kind']) ?>
                         <?php endif; ?>
                     </p>
-                    <p>No map marker or boundary requested.</p>
+                    <p><?= $areaCoordinates !== ''
+                ? 'Map point provided: ' . $escape($areaCoordinates)
+                : 'No map marker or boundary requested; mapping remains optional.' ?></p>
                 </div>
             </header>
             <details>

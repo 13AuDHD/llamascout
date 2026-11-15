@@ -842,7 +842,14 @@ require __DIR__
             <?= !empty($pendingArea['facility_kind'])
                 ? ' · ' . moderation_e((string) $pendingArea['facility_kind']) : '' ?>
         </p>
-        <p>This Area will be published without a map point or polygon.</p>
+        <p>
+            <?php if (!empty($pendingArea['coordinates'])): ?>
+                Location: <?= moderation_e((string) $pendingArea['coordinates']) ?>.
+                Approval will create this Area's own purple map point.
+            <?php else: ?>
+                No location provided. Approval will publish an unmapped Area.
+            <?php endif; ?>
+        </p>
         <dl>
             <?php foreach ($areaAnswers as $key => $value): ?>
                 <?php if (!isset($areaQuestions[$key])) continue; ?>

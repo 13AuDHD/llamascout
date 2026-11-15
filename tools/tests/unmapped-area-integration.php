@@ -168,6 +168,16 @@ try {
     ]);
 } catch (InvalidArgumentException) { $badKind = true; }
 areaCheck($badKind, 'Invalid facility kind should be rejected.');
+areaCheck(llama_area_coordinates_normalize('') === '',
+    'Blank Area coordinates must stay optional.');
+areaCheck(llama_area_coordinates_normalize('37.25222 -107.21920')
+    === '37.2522200, -107.2192000',
+    'Area location should use the Place latitude/longitude convention.');
+$invalidCoordinates = false;
+try {
+    llama_area_coordinates_normalize('95.0000000, -107.2192000');
+} catch (InvalidArgumentException) { $invalidCoordinates = true; }
+areaCheck($invalidCoordinates, 'Coordinates outside latitude range must be rejected.');
 
 $submissionId = llama_area_submission_submit($db, 7, [
     'area_place_id'=>1,
@@ -285,4 +295,42 @@ areaCheck((int) $stmt->fetchColumn() === 2,
 areaCheck((int) $db->query('SELECT COUNT(*) FROM place_campsites WHERE id = 5')->fetchColumn() === 1,
     'Bundled Area must not modify sibling Site.');
 
-echo "PASS: MariaDB #1252 migration with existing SPATIAL index, preserved mapped shapes and other indexes, unmapped Area publication, later mapping and unchanged answers\n";
+// The same form also accepts an *optional* precise Area point. Approving
+// this Area must place only its own marker, never modify the parent Place.
+$pointSubmissionId = llama_area_submission_submit($db, 7, [
+    'area_place_id' => 1,
+    'area_name' => 'East Vault Toilet',
+    'area_feature_type' => 'facility_area',
+    'area_facility_kind' => 'restroom',
+    'area_coordinates' => '37.2522200, -107.2192000',
+    'area_answers' => ['facility_toilet_count' => '1'],
+]);
+$pointSubmission = $db->prepare(
+    'SELECT answers_json FROM place_area_submissions WHERE id = ?'
+);
+$pointSubmission->execute([$pointSubmissionId]);
+$pointPayload = json_decode((string) $pointSubmission->fetchColumn(), true);
+areaCheck(($pointPayload['coordinates'] ?? '') === '37.2522200, -107.2192000',
+    'Moderation must retain submitted coordinates separately from question answers.');
+areaCheck(isset($pointPayload['answers']['facility_toilet_count'])
+    && !isset($pointPayload['answers']['coordinates']),
+    'GPS must not be saved as a canonical Area questionnaire answer.');
+$pointAreaId = llama_area_submission_moderate(
+    $db, $pointSubmissionId, 9, 'approved', 'Point checked'
+);
+$stmt = $db->prepare('SELECT geometry_type,
+    ST_AsText(geometry) AS wkt,
+    ST_SRID(geometry) AS srid
+    FROM place_map_features WHERE id = ?');
+$stmt->execute([$pointAreaId]);
+$point = $stmt->fetch(PDO::FETCH_ASSOC);
+areaCheck($point['geometry_type'] === 'point'
+    && $point['srid'] == 4326
+    && str_contains((string) $point['wkt'], '-107.2192')
+    && str_contains((string) $point['wkt'], '37.25222'),
+    'Submitted Area coordinates must create a real, correctly ordered point.');
+areaCheck(llama_report_verified_target($db, 1, 'area', 'map_feature', $pointAreaId)['id']
+    === $pointAreaId,
+    'Area with optional point must keep canonical Area identity.');
+
+echo "PASS: MariaDB #1252 migration, unmapped and mapped Area submission, optional precise GPS, protected sibling Place/Site data and unchanged answers\n";

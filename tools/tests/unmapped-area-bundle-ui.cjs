@@ -29,6 +29,9 @@ const dom = new JSDOM(`<!doctype html><body>
     <option value="">Select Place</option><option value="1">Place 1</option>
   </select></label>
   <input name="area_name" required value="West Vault Toilets">
+  <input data-area-coordinate-input name="area_coordinates" value="37.2522200, -107.2192000">
+  <button type="button" data-area-search-coordinates>Search</button>
+  <p data-area-location-status>Optional coordinates</p>
   <select name="area_feature_type" data-area-type>
     <option value="facility_area" selected>Facility</option>
     <option value="camping_area">Camping</option>
@@ -66,16 +69,21 @@ let bundle = JSON.parse(q('[data-area-bundle-input]').value);
 assert.equal(bundle.area_name,'West Vault Toilets');
 assert.equal(bundle.area_feature_type,'facility_area');
 assert.equal(bundle.area_facility_kind,'restroom');
+assert.equal(bundle.area_coordinates, '37.2522200, -107.2192000',
+    'The new Place submission must preserve its first Area location');
 assert.equal(bundle.area_answers.facility_toilet_count,'2');
 assert.equal(bundle.area_answers.area_site_count,undefined,
     'The wrong Area type must not leak answers into the new Place bundle');
 assert.equal(q('[data-area-submit-new]').hidden,false);
 
+q('[data-area-coordinate-input]').value = '';
 q('[data-area-type]').value='camping_area';
 q('[data-area-type]').dispatchEvent(new w.Event('change'));
 q('[data-area-attach-new]').click();
 bundle = JSON.parse(q('[data-area-bundle-input]').value);
 assert.equal(bundle.area_feature_type,'camping_area');
+assert.equal(bundle.area_coordinates, '',
+    'A new Place can bundle an unmapped Area without coordinates');
 assert.equal(bundle.area_facility_kind,'');
 assert.equal(bundle.area_answers.area_site_count,'8');
 assert.equal(bundle.area_answers.facility_toilet_count,undefined,
