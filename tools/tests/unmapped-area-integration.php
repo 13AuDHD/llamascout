@@ -168,4 +168,34 @@ try {
 } catch (InvalidArgumentException) { $repeat = true; }
 areaCheck($repeat, 'Double approval must be blocked.');
 
-echo "PASS: Submit/approve unmapped Area, canonically scoped answers, no fake point, unchanged Area ID after mapping, unchanged Place/Site, no double approval\n";
+// A first Area can be included when the parent Place has just been
+// approved, without waiting for a separate mapped record.
+$firstAreaPayload = llama_area_submission_prepare_bundle([
+    'area_name' => 'East Loop',
+    'area_feature_type' => 'camping_area',
+    'area_answers' => [
+        'area_site_count' => '10',
+        'area_surface' => 'gravel',
+    ],
+]);
+$db->beginTransaction();
+$firstAreaId = llama_area_publish_unmapped($db, 2, 7, 9, $firstAreaPayload);
+$db->commit();
+areaCheck($firstAreaId > 0 && $firstAreaId !== $areaId,
+    'First Area bundled with new Place not created.');
+$firstArea = llama_report_verified_target($db, 2, 'area', 'map_feature', $firstAreaId);
+areaCheck($firstArea['label'] === 'East Loop',
+    'Bundled Area must attach to the newly published parent.');
+$stmt = $db->prepare('SELECT geometry FROM place_map_features WHERE id = ?');
+$stmt->execute([$firstAreaId]);
+areaCheck($stmt->fetchColumn() === null,
+    'Bundled first Area must not require map coordinates.');
+$stmt = $db->prepare('SELECT COUNT(*) FROM place_report_scoped_answers
+    WHERE place_id = 2 AND scope_id = ?');
+$stmt->execute([$firstAreaId]);
+areaCheck((int) $stmt->fetchColumn() === 2,
+    'Bundled first Area questions were not published.');
+areaCheck((int) $db->query('SELECT COUNT(*) FROM place_campsites WHERE id = 5')->fetchColumn() === 1,
+    'Bundled Area must not modify sibling Site.');
+
+echo "PASS: Existing Place Area review, new Place first Area bundle, canonical answers, NULL geometry, later mapping, unchanged Site/Place and identities\n";
