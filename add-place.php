@@ -619,7 +619,7 @@ $placeReportInitialCompletion =
 
     <?php if (isset($_GET['area_submitted'])): ?>
         <div class="contribution-success" role="status">
-            Area submitted for review. It will appear under its parent Place once approved.
+            Facility submitted for review. It will appear under its parent Place once approved.
             No map marker is required.
         </div>
     <?php endif; ?>
