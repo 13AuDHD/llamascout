@@ -36,18 +36,18 @@ $photoSpace = max(0, $resourcePhotoLimit - $publicPhotoCount - count($pendingPho
 $photoContext = !empty($contributionResourceId) ? 'update-resource' : 'add-resource';
 ?>
 <details open class="contribution-section contribution-resource-photos">
-    <summary><span><?= llama_icon('camera') ?> Resource Photos</span></summary>
+    <summary><span><?= llama_icon('camera') ?> <?= $e($facilityLabel) ?> Photos</span></summary>
     <div class="contribution-section-body">
         <p>
-            Add photos that help document this Resource: entrances, facilities,
+            Add photos that help document this <?= $e($facilityLabel) ?>: entrances, facilities,
             pumps, toilets, water, signs, and other useful details.
-            Up to <?= (int) $resourcePhotoLimit ?> photos per Resource.
+            Up to <?= (int) $resourcePhotoLimit ?> photos per <?= $e($facilityLabel) ?>.
             New photos are reviewed before publication.
         </p>
         <?php if ($publishedPhotos): ?>
             <div class="add-place-existing-photos resource-published-photos">
-                <strong>Published Resource photos (<?= (int) $publicPhotoCount ?>)</strong>
-                <p>These photos are already on the Resource page. Drag a handle
+                <strong>Published <?= $e($facilityLabel) ?> photos (<?= (int) $publicPhotoCount ?>)</strong>
+                <p>These photos are already on the <?= $e($facilityLabel) ?> page. Drag a handle
                    to propose a different order. The first photo is the Hero.
                    Any change is reviewed before it appears publicly.</p>
                 <script type="application/json" data-resource-photo-catalog><?=
@@ -73,7 +73,7 @@ $photoContext = !empty($contributionResourceId) ? 'update-resource' : 'add-resou
                                  data-admin-photo-id="<?= (int) $photo['id'] ?>">
                             <div class="admin-attached-photo-preview">
                                 <img src="<?= $e(llama_photo_public_url((string) $photo['src'])) ?>"
-                                     alt="<?= $e((string) ($photo['alt_text'] ?? 'Resource photo')) ?>"
+                                     alt="<?= $e((string) ($photo['alt_text'] ?? ($facilityLabel . ' photo'))) ?>"
                                      loading="lazy" draggable="false">
                                 <?php if ($index === 0): ?>
                                     <span class="admin-attached-photo-hero">Hero</span>
@@ -88,12 +88,12 @@ $photoContext = !empty($contributionResourceId) ? 'update-resource' : 'add-resou
         <?php endif; ?>
         <?php if ($pendingPhotos): ?>
             <div class="add-place-existing-photos">
-                <strong>Photos already submitted for this Resource</strong>
+                <strong>Photos already submitted for this <?= $e($facilityLabel) ?></strong>
                 <div class="add-place-existing-photo-grid">
                     <?php foreach ($pendingPhotos as $photo): ?>
                         <label class="add-place-existing-photo">
                             <img src="<?= $e(llama_photo_public_url((string) ($photo['path'] ?? ''))) ?>"
-                                 alt="<?= $e((string) ($photo['alt'] ?? 'Submitted Resource photo')) ?>"
+                                 alt="<?= $e((string) ($photo['alt'] ?? ('Submitted ' . $facilityLabel . ' photo'))) ?>"
                                  loading="lazy">
                             <span>
                                 <input type="checkbox" name="resource_remove_photos[]"
@@ -118,11 +118,11 @@ $photoContext = !empty($contributionResourceId) ? 'update-resource' : 'add-resou
                  data-photo-field="resource_photos_json"
                  data-photo-csrf="<?= $e(llama_photo_csrf_token()) ?>"
                  data-photo-endpoint="/photo-upload.php"
-                 data-photo-title="Photos of this Resource"
-                 data-photo-save-action="Submit Resource for Review"
-                 data-photo-help="Photos are attached to this Resource submission and reviewed before they appear publicly."></div>
+                 data-photo-title="Photos of this <?= $e($facilityLabel) ?>"
+                 data-photo-save-action="Submit <?= $e($facilityLabel) ?> for Review"
+                 data-photo-help="Photos are attached to this <?= $e($facilityLabel) ?> submission and reviewed before they appear publicly."></div>
         <?php else: ?>
-            <p>All 10 Resource photo positions are occupied. Remove an existing
+            <p>All 10 <?= $e($facilityLabel) ?> photo positions are occupied. Remove an existing
                submission photo before adding another.</p>
         <?php endif; ?>
     </div>
