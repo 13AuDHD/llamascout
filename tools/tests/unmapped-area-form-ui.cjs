@@ -16,8 +16,18 @@ const service = read('app/area-submissions.php');
 assert.match(php, /submit_area/);
 assert.match(php, /!isset\(\$_POST\['submit_area'\]\)/,
     'Area submissions must never fall through into new Place submission');
-assert.match(php, /partials\/place-report\/add-area-form\.php/,
-    'Add Place Area tab must display working Area creation form');
+assert.doesNotMatch(php, /require __DIR__ \. '\/partials\/place-report\/add-area-form\.php'/,
+    'New Place form must not embed a Facility or Area submission');
+assert.match(php, /resource-contribution\.php\?' \./,
+    'Legacy Facility links must redirect to the independent Facility submission');
+const resourcePage = read('resource-contribution.php');
+const sharedForm = read('partials/resources/fields.php');
+assert.match(resourcePage, /\$contributionIsFacility/,
+    'The standalone contributor form must support Facilities');
+assert.match(sharedForm, /data-facility-parent-picker/,
+    'Facility form must select a Parent Place');
+assert.match(sharedForm, /if \(!\$facilityForm\)/,
+    'Facility form must omit Resource address inputs');
 assert.doesNotMatch(areaForm, /required.*(?:latitude|longitude|geometry|marker)/i,
     'Map coordinates must not be required in the Area form');
 assert.match(areaForm, /name="area_name"/);
