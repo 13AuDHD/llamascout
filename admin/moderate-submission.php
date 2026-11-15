@@ -822,6 +822,39 @@ require __DIR__
     <?php endif; ?>
 </section>
 
+<?php if (is_array($data['_first_area'] ?? null)): ?>
+    <?php
+        $pendingArea = $data['_first_area'];
+        require_once dirname(__DIR__) . '/app/area-submissions.php';
+        $areaTarget = [
+            'scope' => 'area', 'source' => 'map_feature',
+            'feature_type' => $pendingArea['feature_type'] ?? '',
+            'facility_kind' => $pendingArea['facility_kind'] ?? '',
+        ];
+        $areaQuestions = llama_report_questions_for_area_target($areaTarget);
+        $areaAnswers = is_array($pendingArea['answers'] ?? null)
+            ? $pendingArea['answers'] : [];
+    ?>
+    <section class="admin-panel">
+        <h2>First Area included with this new Place</h2>
+        <p><strong><?= moderation_e((string) ($pendingArea['area_name'] ?? 'Area')) ?></strong>
+            · <?= moderation_e(str_replace('_', ' ', (string) ($pendingArea['feature_type'] ?? ''))) ?>
+            <?= !empty($pendingArea['facility_kind'])
+                ? ' · ' . moderation_e((string) $pendingArea['facility_kind']) : '' ?>
+        </p>
+        <p>This Area will be published without a map point or polygon.</p>
+        <dl>
+            <?php foreach ($areaAnswers as $key => $value): ?>
+                <?php if (!isset($areaQuestions[$key])) continue; ?>
+                <dt><strong><?= moderation_e((string) $areaQuestions[$key]['label']) ?></strong></dt>
+                <dd><?= moderation_e($value === llama_place_report_unknown_token()
+                    ? '? Unknown'
+                    : (is_array($value) ? implode(', ', array_map('strval',$value)) : (string) $value)) ?></dd>
+            <?php endforeach; ?>
+        </dl>
+    </section>
+<?php endif; ?>
+
 <section class="scout-report">
     <header class="scout-report-header">
         <p class="admin-moderation-eyebrow">

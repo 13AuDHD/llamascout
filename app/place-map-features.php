@@ -8,6 +8,7 @@ require_once __DIR__ . '/place-map-site-classes.php';
 
 const LLAMA_PLACE_MAP_FEATURE_GEOMETRY_POLYGON = 'polygon';
 const LLAMA_PLACE_MAP_FEATURE_GEOMETRY_POINT = 'point';
+const LLAMA_PLACE_MAP_FEATURE_GEOMETRY_UNMAPPED = 'unmapped';
 const LLAMA_PLACE_MAP_FEATURE_SRID = 4326;
 const LLAMA_PLACE_MAP_FEATURE_CRS = 'EPSG:4326';
 
@@ -863,6 +864,7 @@ function llama_place_map_features(
             ) AS geometry_point_count,
 
             CASE
+                WHEN place_map_features.geometry IS NULL THEN NULL
                 WHEN place_map_features.geometry_type = "point"
                     THEN ST_AsGeoJSON(place_map_features.geometry, 7)
                 WHEN ST_NumPoints(
@@ -966,7 +968,12 @@ function llama_place_map_features(
                 true
             );
 
-        if (!is_array($geometry)) {
+        $unmappedArea = $row['geometry_type'] === LLAMA_PLACE_MAP_FEATURE_GEOMETRY_UNMAPPED
+            && $row['geometry_geojson'] === null
+            && in_array((string) ($row['feature_type'] ?? ''), [
+                'camping_area', 'parking_area', 'facility_area'
+            ], true);
+        if (!is_array($geometry) && !$unmappedArea) {
             continue;
         }
 
@@ -976,10 +983,14 @@ function llama_place_map_features(
          * record and leave the rest of the Place layout usable.
          */
         try {
-            $geometry = (string) ($row['geometry_type'] ?? '')
-                === LLAMA_PLACE_MAP_FEATURE_GEOMETRY_POINT
-                    ? llama_place_map_feature_validate_point($geometry)
-                    : llama_place_map_feature_validate_polygon($geometry);
+            if (!$unmappedArea) {
+                $geometry = (string) ($row['geometry_type'] ?? '')
+                    === LLAMA_PLACE_MAP_FEATURE_GEOMETRY_POINT
+                        ? llama_place_map_feature_validate_point($geometry)
+                        : llama_place_map_feature_validate_polygon($geometry);
+            } else {
+                $geometry = null;
+            }
         } catch (InvalidArgumentException $exception) {
             error_log(
                 'Llama Scout skipped invalid map feature #'
@@ -1137,6 +1148,8 @@ function llama_place_map_features(
 
             'geometry' =>
                 $geometry,
+            'is_mapped' =>
+                $geometry !== null,
         ];
     }
 

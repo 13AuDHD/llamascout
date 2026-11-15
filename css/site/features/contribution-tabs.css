@@ -84,3 +84,59 @@
     min-height: 42px;
 }
 .admin-facility-question small { color: var(--text-muted); line-height: 1.45; }
+
+
+/* New Area contributions use the same question styling as Place/Site,
+   but never require a marker or map geometry to be saved. */
+.contribution-area-panel [hidden],
+.area-create-form [hidden] { display: none !important; }
+.area-place-search, .area-create-form { display: grid; gap: 18px; }
+.area-place-search { margin: 18px 0; }
+.area-place-search-row { display: flex; gap: 10px; }
+.area-place-search-row input { flex: 1; min-width: 0; }
+.area-create-form input:not([type="checkbox"]):not([type="radio"]),
+.area-create-form select, .area-create-form textarea,
+.area-place-search input {
+    width: 100%; padding: 12px; color: var(--text, #eee);
+    background: var(--surface, #242424); border: 1px solid #515151;
+    border-radius: 9px;
+}
+.area-place-search button, .area-create-form button {
+    cursor: pointer;
+}
+.area-create-identity, .area-question-grid {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px;
+}
+.area-create-form .contribution-field { display: grid; gap: 7px; }
+.area-question { margin: 0; padding: 13px; min-width: 0;
+    border: 1px solid #484848; border-radius: 9px; }
+.area-question legend { font-weight: 650; padding: 0 5px; }
+.area-question small { display: block; color: var(--text-muted, #aaa); margin-top: 7px; }
+.area-choice-row, .area-multi-options { display: flex; gap: 8px; flex-wrap: wrap; }
+.area-choice-row label, .area-multi-options label {
+    padding: 7px 10px; border: 1px solid #4a4a4a; border-radius: 8px;
+}
+.area-choice-row label:has(input:checked), .area-multi-options label:has(input:checked) {
+    border-color: #9765cb; background: #9765cb26;
+}
+.area-choice-row button { padding: 7px 11px; }
+.area-map-optional { border-left: 3px solid #9765cb; padding: 10px 12px;
+    background: #9765cb12; }
+.area-report-heading { font-size: 1.15rem; margin-bottom: 0; }
+.area-create-form .contribution-section { margin: 0; }
+.area-create-form .contribution-actions { position: static; display: flex;
+    flex-wrap: wrap; gap: 12px; }
+@media (max-width: 700px) {
+    .area-create-identity, .area-question-grid { grid-template-columns: 1fr; }
+}
+
+.area-bundle-toggle {
+    display: flex; align-items: center; gap: 10px;
+    margin: 12px 0; padding: 12px; border: 1px solid #9765cb;
+    border-radius: 10px; background: #9765cb16;
+}
+.area-bundle-toggle input { width: auto; }
+[data-area-bundle-status]:not([hidden]) {
+    display: block; padding: 10px 12px; border-left: 3px solid #9765cb;
+    background: #9765cb14; border-radius: 6px;
+}

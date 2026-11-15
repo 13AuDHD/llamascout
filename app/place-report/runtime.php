@@ -1357,6 +1357,24 @@ function llama_place_report_submit_new_place(
             $input
         );
 
+    // Optional first Area is part of the same pending Place bundle as the
+    // first Site. Do not save a mapped feature until the Place is approved.
+    $areaJson = trim((string) ($input['area_bundle_json'] ?? ''));
+    if ($areaJson !== '') {
+        if (strlen($areaJson) > 60000) {
+            throw new InvalidArgumentException('The Area report is too large.');
+        }
+        require_once dirname(__DIR__) . '/area-submissions.php';
+        $areaInput = json_decode($areaJson, true, 512, JSON_THROW_ON_ERROR);
+        if (!is_array($areaInput)) {
+            throw new InvalidArgumentException('The attached Area is invalid.');
+        }
+        if (!llama_area_submissions_ready(db())) {
+            throw new RuntimeException('Install the unmapped Areas SQL migration before submitting a Place with an Area.');
+        }
+        $data['_first_area'] = llama_area_submission_prepare_bundle($areaInput);
+    }
+
     $photoToken =
         trim(
             (string) (
@@ -1541,6 +1559,23 @@ function llama_place_report_resubmit_new_place(
 
     $existingData = is_array($existing['data'] ?? null) ? $existing['data'] : [];
     $data = llama_place_report_build_data($input, $existingData);
+    $areaJson = trim((string) ($input['area_bundle_json'] ?? ''));
+    if (strlen($areaJson) > 60000) {
+        throw new InvalidArgumentException('The Area report is too large.');
+    }
+    $bundle = $areaJson !== ''
+        ? json_decode($areaJson, true, 512, JSON_THROW_ON_ERROR)
+        : ($existingData['_first_area'] ?? null);
+    if ($bundle !== null) {
+        if (!is_array($bundle)) {
+            throw new InvalidArgumentException('The attached Area is invalid.');
+        }
+        require_once dirname(__DIR__) . '/area-submissions.php';
+        if (!llama_area_submissions_ready(db())) {
+            throw new RuntimeException('Install the unmapped Areas SQL migration before resubmitting a Place with an Area.');
+        }
+        $data['_first_area'] = llama_area_submission_prepare_bundle($bundle);
+    }
 
     $existingPhotos =
         is_array($existingData['photos'] ?? null)

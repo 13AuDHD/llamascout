@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/app/bootstrap.php';
 require_once __DIR__ . '/app/place-drafts.php';
 require_once __DIR__ . '/app/place-report.php';
+require_once __DIR__ . '/app/area-submissions.php';
 
 require_verified_email();
 
@@ -238,7 +239,30 @@ if (
     }
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// Area submissions have their own form and review queue. Never feed one
+// into the Place submission handler or its required Place/photo fields.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_area'])) {
+    if (!community_verify_csrf((string) ($_POST['csrf_token'] ?? ''))) {
+        $error = 'Your session expired. Reload the Area form and try again.';
+    } else {
+        try {
+            llama_area_submission_submit(db(), $userId, $_POST);
+            header('Location: /add-place.php?tab=area&area_submitted=1'
+                . '&area_place_id=' . (int) ($_POST['area_place_id'] ?? 0), true, 303);
+            exit;
+        } catch (Throwable $exception) {
+            $reference = llama_log_caught_exception(
+                $exception, 'area.submit',
+                ['user_id' => $userId, 'place_id' => (int) ($_POST['area_place_id'] ?? 0)],
+                [InvalidArgumentException::class, RuntimeException::class]
+            );
+            $error = $reference === null ? $exception->getMessage()
+                : llama_error_message_with_reference('The Area could not be submitted.', $reference);
+        }
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['submit_area'])) {
     if (
         !community_verify_csrf(
             (string) ($_POST['csrf_token'] ?? '')
@@ -369,6 +393,14 @@ if (
         $userId
     );
 }
+
+$areaPlaceChoices = llama_area_place_choices(
+    db(),
+    (string) ($_GET['area_q'] ?? ''),
+    (int) ($_POST['area_place_id'] ?? $_GET['area_place_id'] ?? $_GET['place_id'] ?? 0)
+);
+$areaInitialTab = (($_GET['tab'] ?? '') === 'area' || isset($_POST['submit_area']))
+    ? 'area' : 'place';
 
 $pageTitle =
     $isNeedsChanges
@@ -585,19 +617,31 @@ $placeReportInitialCompletion =
         </div>
     <?php endif; ?>
 
+    <?php if (isset($_GET['area_submitted'])): ?>
+        <div class="contribution-success" role="status">
+            Area submitted for review. It will appear under its parent Place once approved.
+            No map marker is required.
+        </div>
+    <?php endif; ?>
     <div class="contribution-tab-shell" data-contribution-tabs data-contribution-split
-        data-contribution-initial="place">
+        data-contribution-initial="<?= htmlspecialchars($areaInitialTab, ENT_QUOTES, 'UTF-8') ?>">
         <?php require __DIR__ . '/partials/place-report/contribution-tabs.php'; ?>
-        <section class="contribution-area-panel" data-contribution-area-panel hidden>
-            <h3>Areas belong to an existing Place</h3>
-            <p>Save and publish the Place first. Then use its map editor to define camping loops, facilities and other Areas.</p>
-            <a href="/map.php">Find an existing Place</a>
-        </section>
+        <?php require __DIR__ . '/partials/place-report/add-area-form.php'; ?>
     <form
+        id="add-place-main-form"
         method="post"
         class="contribution-form add-place-form place-report-form"
         data-place-report-completion-form data-contribution-report
     >
+        <input type="hidden" name="area_bundle_json" data-area-bundle-input
+            value="<?= htmlspecialchars(
+                (string) ($_POST['area_bundle_json']
+                    ?? $draft['form_data']['area_bundle_json']
+                    ?? (isset($editSubmission['data']['_first_area'])
+                        ? json_encode($editSubmission['data']['_first_area'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+                        : '')),
+                ENT_QUOTES, 'UTF-8'
+            ) ?>">
         <input
             type="hidden"
             name="csrf_token"
@@ -789,6 +833,10 @@ $placeReportInitialCompletion =
     </form>
     </div>
 </section>
+<script src="<?= htmlspecialchars(
+    $siteUrl . '/js/add-area-form.js?v=' . (int) filemtime(__DIR__ . '/js/add-area-form.js'),
+    ENT_QUOTES, 'UTF-8'
+) ?>" defer></script>
 
 <script
     src="<?= htmlspecialchars(

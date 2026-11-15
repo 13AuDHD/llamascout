@@ -7,6 +7,7 @@ require_once dirname(__DIR__) . '/app/admin-users.php';
 require_once dirname(__DIR__) . '/app/admin-moderation.php';
 require_once __DIR__ . '/_dashboard.php';
 require_once dirname(__DIR__) . '/app/resource-submissions.php';
+require_once dirname(__DIR__) . '/app/area-submissions.php';
 
 $adminUser = moderation_require_admin();
 $db = db();
@@ -14,6 +15,7 @@ $db = db();
 $queueStats =
     admin_moderation_stats($db);
 
+$newAreas = llama_area_submission_queue($db, 40);
 $newResources = llama_resource_submission_queue($db, false, 40);
 $resourceUpdates = llama_resource_submission_queue($db, true, 40);
 $newPlaces = array_slice(llama_resource_merge_queue(admin_moderation_new_places($db), $newResources), 0, 40);
@@ -49,6 +51,12 @@ require __DIR__ . '/_header.php';
 ?>
 
 <section class="admin-moderation-overview-grid">
+
+<a href="/area-submissions.php">
+    <span>New Areas</span>
+    <strong><?= number_format(count($newAreas)) ?></strong>
+    <small>Map points and boundaries are optional</small>
+</a>
 
 <a href="/submissions.php">
     <span>New Places and Resources</span>
