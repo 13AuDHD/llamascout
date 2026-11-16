@@ -82,6 +82,13 @@ on:
       - 'js/admin/place-report-seasons.js'
       - 'admin/partials/place-map.php'
       - 'css/admin/pages/place.css'
+      - 'admin/places.php'
+      - 'admin/partials/place-inventory.php'
+      - 'app/admin-place-image-status.php'
+      - 'css/admin/pages/places.css'
+      - 'js/admin/place-image-borders.js'
+      - 'tools/tests/admin-place-image-borders.php'
+      - 'tools/tests/admin-place-image-borders-ui.cjs'
   pull_request:
     branches: [main]
     paths:
@@ -111,6 +118,13 @@ on:
       - 'js/admin/place-map.js'
       - 'js/contribution-tabs.js'
       - 'css/admin/pages/place.css'
+      - 'admin/places.php'
+      - 'admin/partials/place-inventory.php'
+      - 'app/admin-place-image-status.php'
+      - 'css/admin/pages/places.css'
+      - 'js/admin/place-image-borders.js'
+      - 'tools/tests/admin-place-image-borders.php'
+      - 'tools/tests/admin-place-image-borders-ui.cjs'
       - 'admin/partials/place-report-area-selector.php'
       - 'place-map-editor.php'
       - 'app/place-map-features-endpoint.php'
@@ -212,6 +226,13 @@ jobs:
           node --check js/admin/place-report-area.js
           node --check js/contribution-tabs.js
           node tools/tests/admin-place-facility-ui.cjs
+      - name: Verify Admin Place images share map closure, partner and pricing borders
+        env:
+          NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules
+        run: |
+          php tools/tests/admin-place-image-borders.php
+          node --check js/admin/place-image-borders.js
+          node tools/tests/admin-place-image-borders-ui.cjs
       - name: Verify Place Administration save routing, styling and Site GPS
         env:
           NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules
