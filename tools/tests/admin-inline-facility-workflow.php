@@ -64,4 +64,8 @@ $expect(str_contains($map, "'facilities' => \$mapFacilities")
     && str_contains($mapJs, "const value = 'resource:' + id"),
     'Coordinates created in Admin must display as selectable purple Facility markers.');
 
+$migration = $read('tools/migrations/20261115_facility_names_per_place.sql');
+$expect(str_contains($migration, 'DROP INDEX uq_resources_name')
+    && str_contains($migration, 'ADD INDEX idx_resources_name (name)'),
+    'Different Places must be able to use the same Facility name.');
 echo "PASS: Admin in-place Add/Edit Facility, GPS marker and three-column tabs.\n";
