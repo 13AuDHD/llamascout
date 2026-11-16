@@ -412,10 +412,70 @@ function admin_place_parse_site_target(string $value): array
     ];
 }
 
+/**
+ * Save the child Site's optional GPS point without rewriting Place coordinates.
+ * A mapped Site is moved only through Edit Map, which owns its linked geometry.
+ * The caller has verified the Site belongs to the Place and owns the transaction.
+ */
+function admin_place_save_selected_site_coordinates(
+    PDO $db, int $actorUserId, int $placeId, int $siteId, array $input
+): bool {
+    if ((string) ($input['admin_site_coordinates_changed'] ?? '') !== '1') {
+        return false;
+    }
+    $coordinates = llama_place_report_parse_first_site_coordinates(
+        $input['site_coordinates'] ?? ''
+    );
+    $lookup = $db->prepare(
+        'SELECT latitude, longitude, map_feature_id
+         FROM place_campsites WHERE id = ? AND place_id = ? AND is_active = 1 FOR UPDATE'
+    );
+    $lookup->execute([$siteId, $placeId]);
+    $current = $lookup->fetch(PDO::FETCH_ASSOC);
+    if (!$current) {
+        throw new InvalidArgumentException('The selected Site was not found.');
+    }
+    if ((int) ($current['map_feature_id'] ?? 0) > 0) {
+        throw new InvalidArgumentException(
+            'This Site has a map pin. Use Edit Map to move the pin and its coordinates together.'
+        );
+    }
+
+    $latitude = $coordinates['latitude'] ?? null;
+    $longitude = $coordinates['longitude'] ?? null;
+    if (($current['latitude'] === null && $latitude === null
+            && $current['longitude'] === null && $longitude === null)
+        || ($latitude !== null && $longitude !== null
+            && $current['latitude'] !== null && $current['longitude'] !== null
+            && round((float) $current['latitude'], 7) === $latitude
+            && round((float) $current['longitude'], 7) === $longitude)) {
+        return false;
+    }
+
+    $write = $db->prepare(
+        'UPDATE place_campsites SET latitude = ?, longitude = ?
+         WHERE id = ? AND place_id = ? AND is_active = 1'
+    );
+    $write->execute([$latitude, $longitude, $siteId, $placeId]);
+    if ($write->rowCount() !== 1) {
+        throw new RuntimeException('Site coordinates could not be saved.');
+    }
+    admin_users_audit($db, $actorUserId, null,
+        'place.site_location_updated', 'Updated an individual Site location.',
+        ['place_id' => $placeId, 'site_id' => $siteId,
+         'latitude' => $latitude, 'longitude' => $longitude]);
+    return true;
+}
+
 function admin_place_save_selected_campsite_answers(PDO $db, int $actorUserId, int $placeId, array $input): ?int
 {
     $selected = trim((string) ($input['selected_campsite_id'] ?? ''));
-    if ($selected === '') { return null; }
+    if ($selected === '') {
+        if ((string) ($input['admin_site_coordinates_changed'] ?? '') === '1') {
+            throw new InvalidArgumentException('Choose an individual Site before saving Site coordinates.');
+        }
+        return null;
+    }
     $parsed = admin_place_parse_site_target($selected);
     $source = (string) $parsed['source'];
     $siteId = (int) $parsed['id'];
@@ -451,6 +511,9 @@ function admin_place_save_selected_campsite_answers(PDO $db, int $actorUserId, i
         llama_scoped_report_save($db, $placeId, 'site', $siteId, $source, $key, $raw);
         ++$saved;
     }
+    admin_place_save_selected_site_coordinates(
+        $db, $actorUserId, $placeId, $siteId, $input
+    );
     admin_users_audit($db, $actorUserId, null, 'place.site_report_updated',
         'Updated an individual Site report.', ['place_id'=>$placeId,'site_id'=>$siteId,'answers_saved'=>$saved]);
     return $siteId;
