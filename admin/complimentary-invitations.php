@@ -682,7 +682,7 @@ require __DIR__ . '/_header.php';
                     <?= llama_icon('send') ?>
                 </i>
 
-                Create + Send Invitation
+                <span data-invite-submit-label>Create + Send Invitation</span>
             </button>
 
         </form>
@@ -850,7 +850,7 @@ require __DIR__ . '/_header.php';
                                             <?= llama_icon('refresh') ?>
                                         </i>
 
-                                        Send Fresh Invitation
+                                        <span data-invite-submit-label>Send Fresh Invitation</span>
                                     </button>
                                 </form>
 
