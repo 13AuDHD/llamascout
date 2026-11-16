@@ -5,6 +5,10 @@ declare(strict_types=1);
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/admin-users.php';
 require_once dirname(__DIR__) . '/app/admin-places.php';
+require_once dirname(__DIR__) . '/app/camping-fee-map.php';
+require_once dirname(__DIR__) . '/app/map-partner-branding.php';
+require_once dirname(__DIR__) . '/app/closure-map-status.php';
+require_once dirname(__DIR__) . '/app/admin-place-image-status.php';
 require_once __DIR__ . '/_dashboard.php';
 
 $adminUser = moderation_require_admin();
@@ -25,6 +29,12 @@ $places = admin_places_list(
     $status,
     $state
 );
+
+// Reuse the exact same confirmed pricing, partner and Place closure data
+// that powers the main map. "Active" does not automatically mean "Open".
+$places = llama_camping_fee_enrich_map_places($db, $places);
+$places = llama_map_partner_branding($db, $places);
+$places = llama_closure_enrich_map_places($db, $places);
 
 $states =
     admin_places_states($db);
@@ -69,6 +79,7 @@ $inventoryRows = array_map(static fn (array $place): array => [
         default => 'neutral',
     },
     'image_url' => empty($place['featured_image']) ? '' : llama_photo_public_url((string) $place['featured_image']),
+    'image_status' => llama_admin_place_image_status($place),
     'location' => [$place['city'] ?? null, $place['county'] ?? null, $place['state'] ?? null, $place['land_manager'] ?? null],
     'facts' => [
         ['icon' => 'photo', 'text' => number_format((int) $place['image_count'])],
