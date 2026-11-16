@@ -590,7 +590,9 @@ function llama_scout_report_record_approved_update(
     int $reviewedBy,
     string $reviewNotes,
     array $submittedPhotos,
-    array $permanentPhotoPaths
+    array $permanentPhotoPaths,
+    bool $allowIdentityOnly = false,
+    array $siteIdentityChanges = []
 ): int {
     if ($updateId < 1) {
         throw new InvalidArgumentException('Invalid approved Place update identity.');
@@ -619,7 +621,9 @@ function llama_scout_report_record_approved_update(
         $permanentPhotoPaths,
         [
             'place_update_submission_id' => $updateId,
-        ]
+            'site_identity_changes' => $siteIdentityChanges,
+        ],
+        $allowIdentityOnly
     );
 }
 
