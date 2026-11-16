@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/report-targets.php';
 require_once __DIR__ . '/scoped-answers.php';
 require_once __DIR__ . '/target-model.php';
+require_once __DIR__ . '/site-identity-update.php';
 require_once dirname(__DIR__) . '/photo-staging.php';
 require_once dirname(__DIR__) . '/place-update.php';
 
@@ -105,11 +106,17 @@ function llama_scoped_update_build_payload(
         ]];
     }
 
-    if (
-        !$submitted
-    ) {
+    $identityProposal = ['changes' => [], 'original' => []];
+    if ($scope === 'site') {
+        $identityProposal = llama_update_site_identity_proposal(
+            $db, $placeId, $target, $input['site_identity_json'] ?? ''
+        );
+    } elseif (!empty($input['site_identity_json'])) {
+        throw new InvalidArgumentException('Only Site reports can change Site identity.');
+    }
+    if (!$submitted && !$identityProposal['changes']) {
         throw new InvalidArgumentException(
-            'Answer at least one question in this report.'
+            'Answer at least one question or propose a Site detail correction.'
         );
     }
 
@@ -238,9 +245,9 @@ function llama_scoped_update_build_payload(
         ];
     }
 
-    if (!$answers) {
+    if (!$answers && !$identityProposal['changes']) {
         throw new InvalidArgumentException(
-            'Answer at least one Area or Site question before submitting.'
+            'Answer at least one Facility or Site question before submitting.'
         );
     }
 
@@ -268,11 +275,13 @@ function llama_scoped_update_build_payload(
                     $target['label']
                     ?? ''
                 ),
+            'site_identity' => $identityProposal['changes'],
         ],
 
         'original' => [
             'answers' =>
                 $originalAnswers,
+            'site_identity' => $identityProposal['original'],
         ],
 
         'visited' =>
@@ -974,10 +983,11 @@ function llama_scoped_update_point_estimate(
         ];
     }
 
+    if (!$answers && empty($payload['site_identity'])) {
+        throw new RuntimeException('Invalid scoped update answers.');
+    }
     if (!$answers) {
-        throw new RuntimeException(
-            'Invalid scoped update answers.'
-        );
+        return ['estimated_points' => 0];
     }
 
     $resolved = llama_place_report_target_model($db, $placeId, $target);
@@ -1107,12 +1117,14 @@ function llama_scoped_update_approve(
         ];
     }
 
-    if (
-        !$answers
-    ) {
-        throw new RuntimeException(
-            'Invalid scoped update answers.'
-        );
+    $siteIdentityChanges = (array) ($payload['site_identity'] ?? []);
+    $oldSiteIdentity = (array) ($before['site_identity'] ?? []);
+
+    if (!$answers && !$siteIdentityChanges) {
+        throw new RuntimeException('Invalid scoped update answers.');
+    }
+    if ($siteIdentityChanges && $scope !== 'site') {
+        throw new RuntimeException('Site identity changes require a Site target.');
     }
 
     if (!$db->inTransaction()) { throw new RuntimeException('Scoped approval requires an active transaction.'); }
@@ -1281,8 +1293,18 @@ function llama_scoped_update_approve(
         $reviewedBy,
         $notes,
         $photos,
-        $reportPhotoPaths
+        $reportPhotoPaths,
+        (bool) $siteIdentityChanges,
+        $siteIdentityChanges
     );
+
+    // Identity corrections are reviewed alongside canonical answers and
+    // committed in the same moderator transaction, never at submission.
+    if ($siteIdentityChanges) {
+        llama_update_site_identity_apply(
+            $db, $placeId, $target, $siteIdentityChanges, $oldSiteIdentity
+        );
+    }
 
     foreach ($answers as $key => $value) {
         llama_scoped_report_save(
