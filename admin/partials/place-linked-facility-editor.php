@@ -39,6 +39,8 @@ $contributionParentPlaceName = (string) ($place['name'] ?? '');
         <input type="hidden" name="csrf_token" value="<?= $e(moderation_csrf_token()) ?>">
         <input type="hidden" name="place_admin_action" value="save-linked-facility">
         <input type="hidden" name="facility_resource_id" value="<?= (int) ($resource['id'] ?? 0) ?>">
+        <input type="hidden" name="selected_facility_id"
+               value="<?= $creatingFacility ? 'new' : 'resource:' . (int) ($resource['id'] ?? 0) ?>">
         <input type="hidden" name="parent_place_id" value="<?= (int) $placeId ?>">
         <?php require dirname(__DIR__, 2) . '/partials/resources/fields.php'; ?>
         <?php if (!$creatingFacility): ?>
