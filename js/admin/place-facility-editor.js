@@ -6,7 +6,7 @@
     // (resource table IDs). Neither route ever creates a new Facility.
     const form = document.getElementById('place-report');
     const shell = form?.closest('[data-contribution-tabs]');
-    const selector = form?.querySelector('[data-admin-facility-selector]');
+    const selector = shell?.querySelector('[data-admin-facility-selector]');
     const catalogNode = form?.querySelector('[data-admin-facility-map-catalog]');
     const panel = form?.querySelector('[data-admin-facility-metadata]');
     if (!form || !shell || !selector || !panel || !catalogNode) return;
