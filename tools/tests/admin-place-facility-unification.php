@@ -44,10 +44,11 @@ $assert($polygon['coordinates_editable'] === false,
 $root = dirname(__DIR__, 2);
 $source = static fn (string $p): string => (string) file_get_contents($root . '/' . $p);
 $tabs = $source('partials/place-report/contribution-tabs.php');
-$assert(str_contains($tabs, 'data-contribution-mode="facility"')
-    && !str_contains($tabs, 'data-contribution-mode="area"')
-    && !str_contains($tabs, 'data-contribution-resource-link')
-        ? true : false,
+$adminFragment = explode('<?php elseif ($isNewContribution): ?>',
+    explode('<?php if ($isAdminPlacePage): ?>', $tabs, 2)[1] ?? '', 2)[0];
+$assert(str_contains($adminFragment, 'data-contribution-mode="facility"')
+    && !str_contains($adminFragment, 'data-contribution-mode="area"')
+    && !str_contains($adminFragment, 'data-contribution-resource-link'),
     'Admin tabs should not expose old Areas or Resource controls.');
 $assert(str_contains($source('admin/partials/place-summary-report.php'),
     "'/place-linked-facility-editor.php'"), 'Newer Facilities need in-place Admin editor.');
