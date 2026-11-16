@@ -45,14 +45,37 @@ $assert(str_contains($page, "\$currentValues,\n    \$publishedUnknownFields")
     && str_contains($page, '$placeReportInitiallyTouchedKeys = [];')
     && str_contains($form, '$placeReportInitiallyTouchedKeys ?? array_keys($placeReportValues)'),
     'Prefilled published answers must not turn into automatically submitted Place changes.');
+$assert(str_contains($form, "'initial_answer_keys' => array_values(")
+    && str_contains($form, "\$placeReportMode === 'update-report'")
+    && str_contains($form, "if (\$placeReportMode === 'update-report') {\n            return '';"),
+    'Prefilled Place values must not be touched and repeated Current Answer text must be hidden in Updates.');
+
+$unchanged = llama_place_update_build_changes(
+    ['_report_partial' => '1', '_report_touched' => ['description' => '1'],
+     'description' => 'Existing public description'],
+    [$descriptionPath => 'Existing public description'], [], true
+);
+$assert(($unchanged['proposed'] ?? null) === [],
+    'Reselecting or reverting an existing Place value must not create a moderation proposal.');
+$changed = llama_place_update_build_changes(
+    ['_report_partial' => '1', '_report_touched' => ['description' => '1'],
+     'description' => 'Updated public description'],
+    [$descriptionPath => 'Existing public description'], [], true
+);
+$assert(($changed['proposed'][$descriptionPath] ?? null) === 'Updated public description',
+    'An actual edited Place value must still reach moderation.');
 $assert(str_contains($tabs, 'data-contribution-mode="area" aria-pressed="false">Facility</button>')
     && str_contains($page, "'area' => 'Facilities'"),
     'Public Update navigation must say Facility while retaining legacy target IDs.');
-$assert(str_contains($js, 'function prefillSiteFact(field)')
-    && str_contains($js, "'selection_type', 'reservations_pricing'")
-    && !str_contains($js, "SITE_FACT_GROUPS.add('connectivity_services')")
+$assert(str_contains($js, 'function prefillRecordedFact(field)')
+    && str_contains($js, 'FRESH_OBSERVATION_GROUPS')
+    && str_contains($js, "'sensory_environment'")
+    && str_contains($js, "'connectivity_services'")
+    && str_contains($js, "'experience_recommendations'")
+    && str_contains($js, "scope.value === 'area'")
+    && !str_contains($js, 'data.scopedExisting')
     && str_contains($js, 'identityDrafts.set(activeTarget, changes)'),
-    'Site facts should be editable and visit experience should not be reused.');
+    'Site and Facility policies must be prefilled, personal observations must start fresh, and duplicated answer notes must be absent.');
 $assert(str_contains($page, 'data-place-update-site-identity')
     && str_contains($page, 'data-site-identity-coordinates')
     && str_contains($page, "'site_identity' => \$siteIdentity"),
