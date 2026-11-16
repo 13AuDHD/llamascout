@@ -40,7 +40,7 @@ $placeDraftSuffix = $isResourcePage && !empty($contributionReturnDraft)
                data-contribution-resource-link
                title="Create a separate, searchable Resource">Resource</a>
         <?php else: ?>
-            <button type="button" data-contribution-mode="area" aria-pressed="false">Area</button>
+            <button type="button" data-contribution-mode="area" aria-pressed="false">Facility</button>
         <?php endif; ?>
     <?php endif; ?>
 </div>
