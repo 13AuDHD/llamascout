@@ -1050,6 +1050,9 @@ $renderContributionPrompt =
 ></script>
 <?php
 
+// Quick Warnings are the first Site cards, not part of the late Safety group.
+// Keep their existing server-side warning rules and Site switching hooks.
+$quickWarningsRendered = false;
 foreach (
     $placeReportSections
     as $sectionKey => $section
@@ -1265,7 +1268,8 @@ foreach (
     ?>
     <?php if (
         $placeReportReadMode === 'scout-report'
-        && (string) $sectionKey === 'safety_public'
+        && $reportPageKey === 'site'
+        && !$quickWarningsRendered
     ): ?>
         <section
             class="scout-report-section scout-report-warning-section scout-report-scope-site"
@@ -1292,10 +1296,13 @@ foreach (
             ></div>
         </section>
         <?php
-        // The public hazard answers are represented by the derived Quick
-        // Warnings cards above. Keep the complete Safety and Hazards
-        // question inventory in the contributor and Admin views only.
-        // Do not remove answers or change the shared warning rules.
+        $quickWarningsRendered = true;
+        ?>
+    <?php endif; ?>
+    <?php if ($placeReportReadMode === 'scout-report' && (string) $sectionKey === 'safety_public'): ?>
+        <?php
+        // Derived warnings are displayed once at the start of the Site.
+        // Raw hazard questions remain in the editable Admin/contributor forms.
         continue;
         ?>
     <?php endif; ?>

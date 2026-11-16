@@ -9,6 +9,11 @@ on:
       - 'tools/tests/campsite-pricing-contract.cjs'
       - 'tools/tests/place-report-applicability-ui.cjs'
       - 'app/place-report/**'
+      - 'account/update-place.php'
+      - 'js/place-update-report-target.js'
+      - 'admin/moderate-update.php'
+      - 'tools/tests/update-place-prefill-and-warnings.php'
+      - 'tools/tests/update-place-site-prefill-ui.cjs'
       - 'app/admin-place-actions.php'
       - 'admin/place.php'
       - 'admin/campsite-pricing.php'
@@ -108,6 +113,11 @@ on:
       - 'tools/v3-launch-smoke.php'
       - 'app/place-report.php'
       - 'app/place-report/**'
+      - 'account/update-place.php'
+      - 'js/place-update-report-target.js'
+      - 'admin/moderate-update.php'
+      - 'tools/tests/update-place-prefill-and-warnings.php'
+      - 'tools/tests/update-place-site-prefill-ui.cjs'
       - 'partials/place/overnight-options.php'
       - 'js/place-stay-selection-map.js'
       - 'js/place-explorer.js'
@@ -225,6 +235,13 @@ jobs:
           node --check js/admin/place-map.js
           node --check js/admin/place-report-area.js
           node tools/tests/admin-inline-facility-ui.cjs
+      - name: Verify Update This Place prefilled facts, fresh Site reports and Quick Warnings order
+        env:
+          NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules
+        run: |
+          php tools/tests/update-place-prefill-and-warnings.php
+          node --check js/place-update-report-target.js
+          node tools/tests/update-place-site-prefill-ui.cjs
       - name: Verify unified historical Area and modern Facility Admin editing
         env:
           NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules

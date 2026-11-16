@@ -1001,7 +1001,7 @@ $formatTime =
                     (array) $proposed[
                         '__scoped_report__'
                     ]['answers']
-                )
+                ) + count((array) ($proposed['__scoped_report__']['site_identity'] ?? []))
                 : count(
                     array_filter(
                         array_keys($proposed),
@@ -1051,6 +1051,39 @@ $formatTime =
 
     <?php endif; ?>
 
+
+    <?php
+    $siteIdentityChanges = (array) ($proposed['__scoped_report__']['site_identity'] ?? []);
+    $siteIdentityBefore = (array) ($original['__scoped_report__']['site_identity'] ?? []);
+    ?>
+    <?php if ($siteIdentityChanges): ?>
+        <section class="admin-update-change-group">
+            <h3><?= llama_icon('map-pin') ?> Site name, type &amp; GPS</h3>
+            <div class="admin-update-change-grid">
+                <?php foreach ($siteIdentityChanges as $identityKey => $identityValue): ?>
+                    <?php $identityLabels = [
+                        'name' => 'Site name',
+                        'type' => 'Site type',
+                        'coordinates' => 'Site coordinates',
+                    ]; ?>
+                    <article class="admin-update-change-card">
+                        <h4><?= $e($identityLabels[$identityKey] ?? (string) $identityKey) ?></h4>
+                        <div class="admin-update-before-after">
+                            <div class="is-before">
+                                <span>Original when submitted</span>
+                                <strong><?= $e((string) ($siteIdentityBefore[$identityKey] ?? 'Not recorded')) ?></strong>
+                            </div>
+                            <i aria-hidden="true"><?= llama_icon('arrow-right') ?></i>
+                            <div class="is-after">
+                                <span>Proposed</span>
+                                <strong><?= $e((string) $identityValue) ?></strong>
+                            </div>
+                        </div>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+        </section>
+    <?php endif; ?>
 
     <?php foreach (
         $groupedChanges

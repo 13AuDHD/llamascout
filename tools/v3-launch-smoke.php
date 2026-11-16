@@ -1811,18 +1811,20 @@ $check('Reviewed observational groups are Site-only', static function () use ($a
         'Private moderator notes unexpectedly lost multi-scope ownership');
 });
 
-$check('Quick Warnings render only in Site Safety and Hazards', static function () use ($assert): void {
+$check('Quick Warnings lead the Site report without duplicate hazard cards', static function () use ($assert): void {
     $source = file_get_contents(dirname(__DIR__) . '/partials/place-report/read-only.php');
     $assert(is_string($source), 'Unable to inspect Scout Report read-only renderer');
 
     $warningPos = strpos($source, 'data-report-warnings');
+    $firstSiteGatePos = strpos($source, "&& \$reportPageKey === 'site'");
     $safetyGatePos = strpos($source, '(string) $sectionKey === \'safety_public\'');
     $placeWarningText = 'Important conditions reported for this Place.';
     $siteWarningText = 'Important conditions reported for this Site.';
 
     $assert($warningPos !== false, 'Quick Warnings container is missing');
-    $assert($safetyGatePos !== false && $safetyGatePos < $warningPos,
-        'Quick Warnings is not gated to Site Safety & Hazards');
+    $assert($firstSiteGatePos !== false && $firstSiteGatePos < $warningPos
+        && $safetyGatePos !== false && $safetyGatePos > $warningPos,
+        'Quick Warnings must precede the other Site sections, not wait for Safety and Hazards');
     $assert(strpos($source, 'data-report-page="site"') !== false,
         'Quick Warnings is not marked as Site presentation');
     $assert(strpos($source, 'data-report-scopes="site"') !== false,
@@ -1832,19 +1834,13 @@ $check('Quick Warnings render only in Site Safety and Hazards', static function 
     $assert(strpos($source, $siteWarningText) !== false,
         'Site-level Quick Warnings summary is missing');
 
-    // Public pages must render the derived Quick Warnings section, then
-    // skip the duplicate safety question grid. Other renderer modes must
-    // continue through the standard Safety and Hazards section.
-    $warningBlockEnd = strpos($source, '<?php endif; ?>', $warningPos);
-    $warningRegion = substr(
-        $source, $warningPos,
-        $warningBlockEnd === false ? 0 : $warningBlockEnd - $warningPos
-    );
-    $assert(str_contains($warningRegion, 'continue;'),
-        'Public Site Safety and Hazards still duplicates the Quick Warnings cards');
-    $assert(str_contains($source, "\$placeReportReadMode === 'scout-report'")
-        && $safetyGatePos < $warningBlockEnd,
-        'Safety and Hazards must only be skipped in public Scout Report mode');
+    // Derived warnings appear first; the later public Safety section is
+    // skipped so the same cards do not appear twice.
+    $safetyRegion = substr($source, $safetyGatePos, 520);
+    $assert(str_contains($safetyRegion, 'continue;'),
+        'Public Safety and Hazards must not duplicate Quick Warnings');
+    $assert(str_contains($safetyRegion, "\$placeReportReadMode === 'scout-report'"),
+        'Only the public Scout Report should skip the raw hazard questions');
 
     // The source fields remain canonical and available to the Admin form,
     // and the JS warning UI only shows the section when there is a warning.

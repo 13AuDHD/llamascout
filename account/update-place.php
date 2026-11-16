@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/place-update.php';
+require_once dirname(__DIR__) . '/app/place-report/site-identity-update.php';
 require_once dirname(__DIR__) . '/app/contribution-presentation.php';
 
 require_verified_email();
@@ -259,8 +260,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['scoped_report_context']
             ];
         }
 
+        $siteIdentity = [];
+        if ($scope === 'site') {
+            // The current-answer loader has already verified this target.
+            $verifiedSite = llama_report_verified_target(
+                $db, $placeId, $scope, $source, $targetId
+            );
+            $siteIdentity = llama_update_site_identity_current(
+                $db, $placeId, $verifiedSite
+            );
+        }
+
         echo json_encode(
-            ['direct' => $direct, 'inherited' => $inherited],
+            ['direct' => $direct, 'inherited' => $inherited,
+             'site_identity' => $siteIdentity],
             JSON_HEX_TAG
                 | JSON_HEX_AMP
                 | JSON_HEX_APOS
@@ -653,11 +666,12 @@ $publishedUnknownFields =
 
 /*
  * =========================================================
- * CURRENT ANSWERS AS REFERENCE
+ * CURRENT ANSWERS FOR EDITING
  * =========================================================
  *
- * Update This Place creates a new report. Current published answers are
- * reference context only and must not preload the Scout's new report.
+ * Place facts are loaded into their editable controls, as requested.
+ * They are NOT automatically submitted as new observations. Only fields
+ * the contributor actually changes acquire _report_touched markers.
  */
 
 $placeCurrentAnswerModel =
@@ -696,25 +710,36 @@ $placeReportReferenceValues =
  * REPORT DRAFT VALUES
  * =========================================================
  *
- * A new report starts blank.
- *
- * Needs Changes:
- *     preload only the contributor's own proposed report answers so the
- *     requested revision can be corrected without turning current published
- *     Place state into editable form data.
+ * Show current Place answers in the form so contributors can correct them
+ * or fill unanswered fields. A populated value alone is never a proposal.
+ * Moderator-requested revisions keep the contributor's proposed answers.
  */
+$placeReportValues = llama_place_update_shared_form_values(
+    $currentValues,
+    $publishedUnknownFields,
+    $isNeedsChanges ? $editProposed : [],
+    $isNeedsChanges ? $editProposedUnknownFields : []
+);
 
-$placeReportValues =
-    llama_place_update_shared_form_values(
-        [],
-        [],
-        $isNeedsChanges
-            ? $editProposed
-            : [],
-        $isNeedsChanges
-            ? $editProposedUnknownFields
-            : []
+// The shared renderer previously treated every nonempty initial value as a
+// touched answer. Decouple displayed Place facts from proposed changes.
+$placeReportInitiallyTouchedKeys = [];
+if ($isNeedsChanges) {
+    foreach (llama_place_update_definitions() as $storage => $definition) {
+        if (array_key_exists($storage, $editProposed)) {
+            $placeReportInitiallyTouchedKeys[] =
+                (string) ($definition['shared']['key'] ?? '');
+        }
+    }
+}
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && $error !== null) {
+    $placeReportInitiallyTouchedKeys = array_keys(
+        (array) ($_POST['_report_touched'] ?? [])
     );
+}
+$placeReportInitiallyTouchedKeys = array_values(array_filter(
+    array_unique($placeReportInitiallyTouchedKeys)
+));
 
 
 /*
@@ -1206,6 +1231,8 @@ $e =
                 'id' => $reportTargetId,
                 'answers' => $initialScopedAnswers,
                 'locked' => $isScopedNeedsChanges,
+                'site_identity' => $isScopedNeedsChanges
+                    ? (array) ($editScopedPayload['site_identity'] ?? []) : [],
             ];
             ?>
             <div class="contribution-update-content" data-contribution-update>
@@ -1219,7 +1246,7 @@ $e =
                             data-report-target-search
                             <?= $isScopedNeedsChanges ? 'disabled' : '' ?>
                         >
-                            <?php foreach (['place' => 'Entire Place', 'area' => 'Areas', 'site' => 'Sites'] as $targetGroup => $targetGroupLabel): ?>
+                            <?php foreach (['place' => 'Entire Place', 'area' => 'Facilities', 'site' => 'Sites'] as $targetGroup => $targetGroupLabel): ?>
                                 <?php
                                 $groupTargets = array_values(array_filter(
                                     $availableReportTargets,
@@ -1298,6 +1325,40 @@ $e =
                     <div data-scoped-report-questions></div>
                     <input type="hidden" name="scoped_answers_json" value="" data-scoped-answers-json>
                     <p data-scoped-field-notice role="status"></p>
+                </div>
+            </details>
+            <details class="contribution-section place-update-site-identity" data-place-update-site-identity hidden>
+                <summary><span>Site name, type &amp; location</span></summary>
+                <div class="contribution-section-body">
+                    <p class="place-report-answer-context">
+                        Existing Site details are filled in for comparison. Only the fields
+                        you change are proposed, and changes require moderator approval.
+                    </p>
+                    <div class="contribution-grid">
+                        <label class="contribution-field">
+                            <span>Site name</span>
+                            <input type="text" maxlength="160" autocomplete="off"
+                                   data-site-identity-name>
+                        </label>
+                        <label class="contribution-field">
+                            <span>Type of camping / Site</span>
+                            <select data-site-identity-type>
+                                <option value="">Not recorded</option>
+                                <?php foreach (llama_update_site_identity_types() as $typeKey => $typeLabel): ?>
+                                    <option value="<?= $e($typeKey) ?>"><?= $e($typeLabel) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </label>
+                        <label class="contribution-field contribution-field-wide">
+                            <span>Site coordinates (latitude, longitude)</span>
+                            <input type="text" inputmode="decimal" autocomplete="off"
+                                   placeholder="37.2522200, -107.2192000"
+                                   data-site-identity-coordinates>
+                        </label>
+                    </div>
+                    <small data-site-identity-status role="status"></small>
+                    <input type="hidden" name="site_identity_json" value=""
+                           data-site-identity-json>
                 </div>
             </details>
             <?php

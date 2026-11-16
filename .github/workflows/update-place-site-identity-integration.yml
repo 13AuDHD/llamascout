@@ -1,0 +1,60 @@
+name: Update Place Site Identity MariaDB Integration
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/update-place-site-identity-integration.yml'
+      - 'account/update-place.php'
+      - 'app/place-report/site-identity-update.php'
+      - 'app/place-report/scoped-update-review.php'
+      - 'app/place-report/immutable-history.php'
+      - 'tools/tests/update-place-site-identity-mariadb.php'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  site-identity:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: site-identity-test-only
+          MARIADB_ROOT_HOST: "%"
+          MARIADB_DATABASE: llama_site_identity_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "healthcheck.sh --connect --innodb_initialized"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 15
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PHP MySQL adapter if needed
+        run: |
+          if ! php -m | grep -qi '^pdo_mysql$'; then
+            sudo apt-get update -qq
+            sudo apt-get install -y php-mysql
+          fi
+
+      - name: Check PHP syntax and review adapters
+        run: |
+          php -l account/update-place.php
+          php -l app/place-report/site-identity-update.php
+          php -l app/place-report/scoped-update-review.php
+          php -l app/place-report/immutable-history.php
+          php -l admin/moderate-update.php
+          php -l partials/place-report/read-only.php
+          php -l tools/tests/update-place-site-identity-mariadb.php
+
+      - name: Propose and apply Site identity in disposable MariaDB
+        env:
+          LLAMA_SITE_IDENTITY_TEST_DSN: mysql:host=127.0.0.1;port=3306;dbname=llama_site_identity_test;charset=utf8mb4
+          LLAMA_SITE_IDENTITY_TEST_USER: root
+          LLAMA_SITE_IDENTITY_TEST_PASSWORD: site-identity-test-only
+        run: php tools/tests/update-place-site-identity-mariadb.php
