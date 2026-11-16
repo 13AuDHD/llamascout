@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/place-update.php';
+require_once dirname(__DIR__) . '/app/place-report/site-identity-update.php';
 require_once dirname(__DIR__) . '/app/contribution-presentation.php';
 
 require_verified_email();
@@ -259,8 +260,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['scoped_report_context']
             ];
         }
 
+        $siteIdentity = [];
+        if ($scope === 'site') {
+            // The current-answer loader has already verified this target.
+            $verifiedSite = llama_report_verified_target(
+                $db, $placeId, $scope, $source, $targetId
+            );
+            $siteIdentity = llama_update_site_identity_current(
+                $db, $placeId, $verifiedSite
+            );
+        }
+
         echo json_encode(
-            ['direct' => $direct, 'inherited' => $inherited],
+            ['direct' => $direct, 'inherited' => $inherited,
+             'site_identity' => $siteIdentity],
             JSON_HEX_TAG
                 | JSON_HEX_AMP
                 | JSON_HEX_APOS
@@ -1218,6 +1231,8 @@ $e =
                 'id' => $reportTargetId,
                 'answers' => $initialScopedAnswers,
                 'locked' => $isScopedNeedsChanges,
+                'site_identity' => $isScopedNeedsChanges
+                    ? (array) ($editScopedPayload['site_identity'] ?? []) : [],
             ];
             ?>
             <div class="contribution-update-content" data-contribution-update>
@@ -1310,6 +1325,40 @@ $e =
                     <div data-scoped-report-questions></div>
                     <input type="hidden" name="scoped_answers_json" value="" data-scoped-answers-json>
                     <p data-scoped-field-notice role="status"></p>
+                </div>
+            </details>
+            <details class="contribution-section place-update-site-identity" data-place-update-site-identity hidden>
+                <summary><span>Site name, type &amp; location</span></summary>
+                <div class="contribution-section-body">
+                    <p class="place-report-answer-context">
+                        Existing Site details are filled in for comparison. Only the fields
+                        you change are proposed, and changes require moderator approval.
+                    </p>
+                    <div class="contribution-grid">
+                        <label class="contribution-field">
+                            <span>Site name</span>
+                            <input type="text" maxlength="160" autocomplete="off"
+                                   data-site-identity-name>
+                        </label>
+                        <label class="contribution-field">
+                            <span>Type of camping / Site</span>
+                            <select data-site-identity-type>
+                                <option value="">Not recorded</option>
+                                <?php foreach (llama_update_site_identity_types() as $typeKey => $typeLabel): ?>
+                                    <option value="<?= $e($typeKey) ?>"><?= $e($typeLabel) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </label>
+                        <label class="contribution-field contribution-field-wide">
+                            <span>Site coordinates (latitude, longitude)</span>
+                            <input type="text" inputmode="decimal" autocomplete="off"
+                                   placeholder="37.2522200, -107.2192000"
+                                   data-site-identity-coordinates>
+                        </label>
+                    </div>
+                    <small data-site-identity-status role="status"></small>
+                    <input type="hidden" name="site_identity_json" value=""
+                           data-site-identity-json>
                 </div>
             </details>
             <?php
