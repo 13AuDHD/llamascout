@@ -20,14 +20,17 @@ $saveController = $get('app/admin-place-actions.php');
 $css = $get('css/admin/pages/place.css');
 $mainSave = $get('js/admin/place-report-save.js');
 
+$adminFragment = explode('<?php elseif ($isNewContribution): ?>',
+    explode('<?php if ($isAdminPlacePage): ?>', $adminTabs, 2)[1] ?? '', 2)[0];
 $assert(str_contains($adminTabs, 'contributionAdminPlaceId')
-    && str_contains($adminTabs, 'data-contribution-facility-link')
-    && str_contains($adminTabs, 'data-contribution-resource-link'),
-    'Admin navigation must link separately to Facility and Resource.');
-$assert(str_contains($adminSummary, 'Facilities at this Place')
-    && str_contains($adminSummary, 'Edit Facility')
+    && str_contains($adminFragment, 'data-contribution-mode="facility"')
+    && !str_contains($adminFragment, 'data-contribution-resource-link')
+    && !str_contains($adminFragment, 'data-contribution-mode="area"'),
+    'Admin must show only Place, Site, and Facility tabs.');
+$assert(str_contains($adminSummary, "place-report-area-selector.php")
+    && str_contains($adminSummary, "place-linked-facility-editor.php")
     && str_contains($adminSummary, 'data-admin-save-report-label'),
-    'Admin must show linked Facility records and a target-aware save action.');
+    'Admin must use one Facility selector for both mapped and linked Facility editors.');
 $assert(str_contains($css, '@import url("../../site/features/contribution-tabs.css")')
     && str_contains($css, 'data-report-main-section="site"')
     && str_contains($css, '--admin-report-accent'),
@@ -46,7 +49,7 @@ $assert(str_contains($saveController, 'admin_report_mode')
     && str_contains($mainSave, "saveData.delete('admin_area_answers_json')")
     && str_contains($mainSave, "saveData.delete('site_coordinates')")
     && str_contains($mainSave, "saveData.set('admin_report_mode', mode)"),
-    'Save routing must keep Site and Area payloads out of unrelated Place saves.');
+    'Save routing must keep Site and mapped Facility payloads out of unrelated Place saves.');
 $assert(!str_contains($admin, 'ALTER TABLE'), 'Admin page must not mutate the database schema.');
 
 $good = llama_place_report_parse_first_site_coordinates('37.2522200, -107.2192000');
@@ -60,4 +63,4 @@ foreach (['999, -107', '0, 0', '37, -181', '37', '<script>'] as $bad) {
         // Correct input rejection.
     }
 }
-echo "PASS: Admin Place/Area/Site editor styling, terminology, targeted saves, and Site GPS contract.\n";
+echo "PASS: Admin Place/Facility/Site editor styling, terminology, targeted saves, and Site GPS contract.\n";
