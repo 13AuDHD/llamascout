@@ -54,7 +54,8 @@ $placeReportSelectedSite = isset($placeReportSiteOptions[$requestedSite]) ? $req
 </section>
 
 <nav class="admin-place-section-nav">
-    <a href="#place-report">Place Report</a>
+    <a href="#place-report">Scout Report</a>
+    <a href="#linked-facilities">Facilities</a>
     <a href="/campsite-pricing.php?place_id=<?= (int) $placeId ?>">Campsite Pricing</a>
     <a href="#photos">Photos</a>
     <a href="#notes">Notes</a>
@@ -65,6 +66,43 @@ $placeReportSelectedSite = isset($placeReportSiteOptions[$requestedSite]) ? $req
 
 <?php require __DIR__ . '/place-map.php'; ?>
 
+<section class="admin-place-linked-facilities" id="linked-facilities">
+    <header class="admin-place-linked-facilities-heading">
+        <div>
+            <p>On-site services</p>
+            <h2>Facilities at this Place</h2>
+            <span class="admin-place-muted">
+                Facilities belong to this Place and use the shared Facility / Resource editor.
+                Camping and parking Areas remain separate map records.
+            </span>
+        </div>
+        <?php if (in_array((string) ($place['status'] ?? ''), ['active', 'featured'], true)): ?>
+            <a class="admin-button is-muted"
+               href="https://llamascout.com/resource-contribution.php?kind=facility&amp;parent_place_id=<?= (int) $placeId ?>">
+                <?= llama_icon('plus') ?> Add Facility
+            </a>
+        <?php endif; ?>
+    </header>
+    <?php if (!empty($adminPlaceFacilities)): ?>
+        <div class="admin-place-linked-facilities-list">
+            <?php foreach ($adminPlaceFacilities as $facility): ?>
+                <div class="admin-place-linked-facility">
+                    <div>
+                        <strong><?= $e($facility['name'] ?? '') ?></strong>
+                        <span><?= $e($facility['resource_type_label'] ?? 'Facility') ?></span>
+                    </div>
+                    <a href="/resources.php?id=<?= (int) ($facility['id'] ?? 0) ?>"
+                       class="admin-button is-muted">Edit Facility</a>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    <?php else: ?>
+        <p class="admin-place-muted">
+            No approved Facilities are linked to this Place yet.
+        </p>
+    <?php endif; ?>
+</section>
+
 <div class="contribution-tab-shell" data-contribution-tabs data-contribution-split
     data-contribution-initial="<?= ($_GET['mode'] ?? '') === 'area' ? 'area' : ($placeReportSelectedSite !== '' ? 'site' : 'place') ?>">
     <?php require dirname(__DIR__, 2) . '/partials/place-report/contribution-tabs.php'; ?>
@@ -74,22 +112,22 @@ $placeReportSelectedSite = isset($placeReportSiteOptions[$requestedSite]) ? $req
                  aria-labelledby="admin-add-area-heading"
                  hidden>
             <header class="admin-place-report-header">
-                <p>Area Scout Report</p>
-                <h2 id="admin-add-area-heading">Add an Area</h2>
+                <p>Map Areas</p>
+                <h2 id="admin-add-area-heading">No Areas to edit</h2>
                 <span class="admin-place-muted">
                     This Place has no Areas yet. Add an Area on the existing map editor
                     before filling out its Scout Report.
                 </span>
             </header>
             <p>
-                Create a camping Area, parking Area, or facility point on the map.
+                Create a camping or parking Area on the map.
                 Then return here and refresh the page to select that Area.
             </p>
             <a class="admin-button"
                href="https://llamascout.com/place-map-editor.php?slug=<?= rawurlencode((string) ($place['slug'] ?? '')) ?>&amp;from=admin"
                target="_blank" rel="noopener">
                 <?= llama_icon('map') ?>
-                Open Add Area Map Editor
+                Open Map Editor
             </a>
         </section>
     <?php endif; ?>
@@ -131,10 +169,10 @@ $placeReportSelectedSite = isset($placeReportSiteOptions[$requestedSite]) ? $req
 
     <section class="admin-place-report-shell">
         <header class="admin-place-report-header">
-            <p>Canonical Scout Report</p>
+            <p>Place Administration</p>
             <h2 data-admin-report-mode-heading>Edit Place Report</h2>
             <span class="admin-place-muted">
-                This is the same question set and control system used by Add Place and moderation.
+                Use the same canonical questions as Add a Place and Add a Site. Facilities and off-site Resources have their own editors.
             </span>
         </header>
 
