@@ -19,10 +19,11 @@
     const facilityPanel = form.querySelector('[data-admin-facility-questions]');
     const facilityFields = [...form.querySelectorAll('[data-area-question]')];
     const areasById = new Map(areas.map(area => [String(area.id), area]));
+    const isModernFacility = value => /^resource:[1-9][0-9]*$/.test(String(value));
     const areaShell = form.closest('[data-contribution-tabs]');
     const areaPicker = form.querySelector('[data-admin-area-picker]');
     const currentMode = () =>
-        areaShell?.querySelector('[data-contribution-mode="area"]')
+        areaShell?.querySelector('[data-contribution-mode="facility"]')
             ?.getAttribute('aria-pressed') === 'true';
     let previouslyEditingArea = false;
     const areaDrafts = new Map();
@@ -49,7 +50,7 @@
                 write(areaDrafts.get(selected) || effectiveValues(selected));
             }
         }
-        if (!areas.length) return;
+        if (!areas.length || isModernFacility(selector.value)) return;
         if (!allowed.has(selector.value)) {
             selector.value = String(areas[0].id);
             selector.dispatchEvent(new Event('change', {bubbles: true}));
@@ -364,6 +365,18 @@
             const next =
                 selector.value;
 
+            if (isModernFacility(next)) {
+                if (dirty && selected && !window.confirm('Discard unsaved Facility answers?')) {
+                    selector.value = selected;
+                    return;
+                }
+                const url = new URL(window.location.href);
+                url.searchParams.set('mode', 'facility');
+                url.searchParams.set('facility', next);
+                url.hash = 'place-report';
+                window.location.assign(url.toString());
+                return;
+            }
             if (
                 (
                     next
@@ -380,7 +393,7 @@
                 dirty
                 && selected
                 && !window.confirm(
-                    'Discard unsaved Area answers?'
+                    'Discard unsaved Facility answers?'
                 )
             ) {
                 selector.value =
@@ -413,6 +426,9 @@
                     : placeValues
             );
             syncFacilityQuestions(selected);
+            form.dispatchEvent(new CustomEvent('llama:admin-facility-selected', {
+                detail: {facilityId: selected}
+            }));
         }
     );
 
