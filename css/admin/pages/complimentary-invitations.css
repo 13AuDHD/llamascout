@@ -304,3 +304,23 @@
         width: 100%;
     }
 }
+
+
+/* Keep audit history available without filling the default list with revoked duplicates. */
+.complimentary-invite-history-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.complimentary-invite-history-actions > span {
+    color: var(--text-muted);
+    font-size: .63rem;
+}
+.complimentary-invite-history-actions .admin-button {
+    white-space: nowrap;
+}
+[data-complimentary-send-form] button[aria-busy="true"] {
+    opacity: .65;
+    cursor: progress;
+}
