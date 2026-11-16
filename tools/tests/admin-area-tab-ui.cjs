@@ -15,7 +15,7 @@ const shared = read('app/admin-place-areas.php');
 const css = read('css/site/pages/place-map-editor.css');
 
 for (const [file, content, pattern] of [
-    ['report tabs', tabs, /data-contribution-mode="place"[\s\S]*data-contribution-mode="site"[\s\S]*data-contribution-mode="area"/],
+    ['report tabs', tabs, /data-contribution-mode="place"[\s\S]*data-contribution-mode="site"[\s\S]*data-contribution-mode="facility"/],
     ['map editor tabs', standalone, /data-map-mode-button="place"[\s\S]*data-map-mode-button="site"[\s\S]*data-map-mode-button="area"/],
 ]) {
     assert.match(content, pattern, `${file} must use Place, Site, Facility order`);
