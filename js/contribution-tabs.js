@@ -11,6 +11,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const areaPanel = shell.querySelector('[data-contribution-area-panel]');
         const emptyAdminAreaPanel = shell.querySelector('[data-contribution-area-empty]');
         const areaTools = shell.querySelector('[data-contribution-area-tools]');
+        const modernFacilityEditor = shell.querySelector('[data-admin-resource-facility-editor]');
+        const modernFacilitySelected = shell.dataset.adminFacilitySource === 'resource';
         const adminAreaSection = report.querySelector('[data-admin-area-picker]');
         const adminSitePicker = report.querySelector('[data-admin-campsite-selector]');
         const adminAreaPicker = report.querySelector('[data-admin-area-selector]');
@@ -29,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         const select = mode => {
             if (!buttons.some(button => button.dataset.contributionMode === mode && !button.disabled)) return;
-            if (mode === 'area' && isNewPlace && activeMode !== 'area'
+            if (mode === 'facility' && isNewPlace && activeMode !== 'area'
                 && hasStagedPhotos()) {
                 window.alert('Save or remove staged Place and Site photos before switching to Areas.');
                 return;
@@ -43,21 +45,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 intro.hidden = intro.dataset.contributionIntroMode !== mode;
             }
             // A new Place cannot own Areas until it has a saved Place ID.
-            const standaloneArea = mode === 'area' && (isNewPlace || !!emptyAdminAreaPanel);
+            const standaloneArea = mode === 'facility'
+                && (isNewPlace || modernFacilitySelected || !!emptyAdminAreaPanel);
             report.hidden = standaloneArea;
-            if (areaPanel) areaPanel.hidden = !(mode === 'area' && isNewPlace);
-            if (emptyAdminAreaPanel) emptyAdminAreaPanel.hidden = mode !== 'area';
-            if (areaTools) areaTools.hidden = mode !== 'area';
-            if (adminAreaSection) adminAreaSection.hidden = mode !== 'area';
+            if (areaPanel) areaPanel.hidden = !(mode === 'facility' && isNewPlace);
+            if (modernFacilityEditor) modernFacilityEditor.hidden =
+                !(mode === 'facility' && modernFacilitySelected);
+            if (emptyAdminAreaPanel) emptyAdminAreaPanel.hidden = mode !== 'facility';
+            if (areaTools) areaTools.hidden = mode !== 'facility';
+            if (adminAreaSection) adminAreaSection.hidden = mode !== 'facility';
             const reportHeading = report.querySelector('[data-admin-report-mode-heading]');
             if (reportHeading) reportHeading.textContent =
-                mode === 'area' ? 'Edit Area Report'
+                mode === 'facility' ? 'Edit Facility Report'
                 : mode === 'site' ? 'Edit Site Report' : 'Edit Place Report';
             if (shell.hasAttribute('data-contribution-split')) {
                 for (const group of groups) {
                     const site = group.dataset.reportMainSection === 'site';
                     group.toggleAttribute('data-contribution-inactive',
-                        mode === 'area' && Boolean(adminAreaPicker)
+                        mode === 'facility' && Boolean(adminAreaPicker)
                             || (site ? mode !== 'site' : mode === 'site'));
                     if (site && mode === 'site') group.open = true;
                 }
