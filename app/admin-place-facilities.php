@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/admin-place-areas.php';
+require_once __DIR__ . '/admin-users.php';
 require_once __DIR__ . '/admin-resources.php';
 require_once __DIR__ . '/place-map-features.php';
 
