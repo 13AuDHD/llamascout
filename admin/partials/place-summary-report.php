@@ -71,6 +71,7 @@ $placeReportSelectedSite = isset($placeReportSiteOptions[$requestedSite]) ? $req
     data-admin-facility-source="<?= $selectedFacilityResource ? 'resource' : 'map_feature' ?>"
     data-contribution-initial="<?= in_array((string) ($_GET['mode'] ?? ''), ['facility', 'area'], true) ? 'facility' : ($placeReportSelectedSite !== '' ? 'site' : 'place') ?>">
     <?php require dirname(__DIR__, 2) . '/partials/place-report/contribution-tabs.php'; ?>
+    <?php require __DIR__ . '/place-report-area-selector.php'; ?>
     <?php if (empty($adminFacilityCatalog)): ?>
         <section class="admin-place-report-shell"
                  data-contribution-area-empty
@@ -142,7 +143,6 @@ $placeReportSelectedSite = isset($placeReportSiteOptions[$requestedSite]) ? $req
             </span>
         </header>
 
-        <?php require __DIR__ . '/place-report-area-selector.php'; ?>
         <?php require __DIR__ . '/place-report-facility-metadata.php'; ?>
         <?php require __DIR__ . '/place-report-facility-questions.php'; ?>
 
