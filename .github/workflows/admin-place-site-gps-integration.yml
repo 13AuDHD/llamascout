@@ -10,6 +10,8 @@ on:
       - 'app/admin-place-actions.php'
       - 'app/admin-place-facilities.php'
       - 'tools/tests/admin-place-facility-mariadb.php'
+      - 'tools/tests/admin-inline-facility-create-mariadb.php'
+      - 'tools/migrations/20261115_facility_names_per_place.sql'
   workflow_dispatch:
 
 permissions:
@@ -47,6 +49,7 @@ jobs:
           php -l tools/tests/admin-place-site-gps-mariadb.php
           php -l tools/tests/admin-place-facility-mariadb.php
           php -l app/admin-place-facilities.php
+          php -l tools/tests/admin-inline-facility-create-mariadb.php
       - name: Save and roll back Site GPS changes in disposable MariaDB
         env:
           LLAMA_ADMIN_SITE_TEST_DSN: mysql:host=127.0.0.1;port=3306;dbname=llama_admin_site_test;charset=utf8mb4
@@ -60,3 +63,10 @@ jobs:
           LLAMA_ADMIN_SITE_TEST_USER: root
           LLAMA_ADMIN_SITE_TEST_PASSWORD: admin-site-test-only
         run: php tools/tests/admin-place-facility-mariadb.php
+
+      - name: Create and edit GPS-only Facilities directly in MariaDB
+        env:
+          LLAMA_ADMIN_SITE_TEST_DSN: mysql:host=127.0.0.1;port=3306;dbname=llama_admin_site_test;charset=utf8mb4
+          LLAMA_ADMIN_SITE_TEST_USER: root
+          LLAMA_ADMIN_SITE_TEST_PASSWORD: admin-site-test-only
+        run: php tools/tests/admin-inline-facility-create-mariadb.php
