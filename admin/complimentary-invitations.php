@@ -176,7 +176,7 @@ if (
                     );
 
                 $created =
-                    llama_create_complimentary_invitation(
+                    llama_create_complimentary_invitation_once(
                         $db,
                         $email,
                         $durationDays,
@@ -284,7 +284,7 @@ if (
                  * raw token cannot be recovered by design.
                  */
                 $created =
-                    llama_create_complimentary_invitation(
+                    llama_create_complimentary_invitation_once(
                         $db,
                         (string) $old['email'],
                         (int) $old['grant_duration_days'],
@@ -449,6 +449,14 @@ try {
 }
 
 
+$showRevokedHistory = (string) ($_GET['show_revoked'] ?? '') === '1';
+$visibleInvitations = array_values(array_filter(
+    $invitations,
+    static fn (array $invitation): bool =>
+        $showRevokedHistory
+        || llama_complimentary_invitation_status($invitation) !== LLAMA_COMPLIMENTARY_INVITE_STATUS_REVOKED
+));
+
 $inviteCounts = [
     'pending' => 0,
     'accepted' => 0,
@@ -475,6 +483,7 @@ require __DIR__ . '/_header.php';
     rel="stylesheet"
     href="https://llamascout.com/css/admin/pages/complimentary-invitations.css"
 >
+<script defer src="https://llamascout.com/js/admin/complimentary-invitations.js?v=<?= (int) filemtime(dirname(__DIR__) . '/js/admin/complimentary-invitations.js') ?>"></script>
 
 
 <?php if ($notice !== ''): ?>
@@ -581,6 +590,7 @@ require __DIR__ . '/_header.php';
         <form
             class="complimentary-invite-form"
             method="post"
+            data-complimentary-send-form
         >
 
             <input
@@ -672,7 +682,7 @@ require __DIR__ . '/_header.php';
                     <?= llama_icon('send') ?>
                 </i>
 
-                Create + Send Invitation
+                <span data-invite-submit-label>Create + Send Invitation</span>
             </button>
 
         </form>
@@ -688,22 +698,26 @@ require __DIR__ . '/_header.php';
                 <h2>Complimentary Invitations</h2>
             </div>
 
-            <span>
-                Latest 250
-            </span>
+            <div class="complimentary-invite-history-actions">
+                <span>Latest 250</span>
+                <a class="admin-button is-secondary"
+                   href="/complimentary-invitations.php<?= $showRevokedHistory ? '' : '?show_revoked=1' ?>">
+                    <?= $showRevokedHistory ? 'Hide Revoked' : 'Show Revoked (' . number_format($inviteCounts['revoked']) . ')' ?>
+                </a>
+            </div>
         </header>
 
-        <?php if (!$invitations): ?>
+        <?php if (!$visibleInvitations): ?>
 
             <div class="admin-empty-state">
-                <p>No complimentary invitations yet.</p>
+                <p><?= $invitations ? 'No active invitations to show. Use Show Revoked to view history.' : 'No complimentary invitations yet.' ?></p>
             </div>
 
         <?php else: ?>
 
             <div class="complimentary-invite-list">
 
-                <?php foreach ($invitations as $invitation): ?>
+                <?php foreach ($visibleInvitations as $invitation): ?>
                     <?php
                     $status =
                         llama_complimentary_invitation_status(
@@ -799,11 +813,11 @@ require __DIR__ . '/_header.php';
                         </dl>
 
 
-                        <?php if ($status !== 'accepted'): ?>
+                        <?php if ($status !== 'accepted' && $status !== 'revoked'): ?>
 
                             <div class="complimentary-invite-row-actions">
 
-                                <form method="post">
+                                <form method="post" data-complimentary-send-form>
                                     <input
                                         type="hidden"
                                         name="csrf_token"
@@ -836,7 +850,7 @@ require __DIR__ . '/_header.php';
                                             <?= llama_icon('refresh') ?>
                                         </i>
 
-                                        Send Fresh Invitation
+                                        <span data-invite-submit-label>Send Fresh Invitation</span>
                                     </button>
                                 </form>
 
