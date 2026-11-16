@@ -220,7 +220,7 @@ $placeReportSelectedSite = isset($placeReportSiteOptions[$requestedSite]) ? $req
     <div class="admin-place-report-savebar">
         <button class="admin-button" type="submit" formnovalidate data-place-report-admin-save>
             <i aria-hidden="true"><?= llama_icon('device-floppy') ?></i>
-            Save Place Report
+            <span data-admin-save-report-label>Save Place Report</span>
         </button>
     </div>
 </form>
