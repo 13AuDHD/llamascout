@@ -45,7 +45,7 @@
         );
 
     const areaSelector =
-        form.querySelector(
+        form.closest('[data-contribution-tabs]')?.querySelector(
             '[data-admin-area-selector]'
         );
 
