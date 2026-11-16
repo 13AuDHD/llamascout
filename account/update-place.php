@@ -653,11 +653,12 @@ $publishedUnknownFields =
 
 /*
  * =========================================================
- * CURRENT ANSWERS AS REFERENCE
+ * CURRENT ANSWERS FOR EDITING
  * =========================================================
  *
- * Update This Place creates a new report. Current published answers are
- * reference context only and must not preload the Scout's new report.
+ * Place facts are loaded into their editable controls, as requested.
+ * They are NOT automatically submitted as new observations. Only fields
+ * the contributor actually changes acquire _report_touched markers.
  */
 
 $placeCurrentAnswerModel =
@@ -696,25 +697,36 @@ $placeReportReferenceValues =
  * REPORT DRAFT VALUES
  * =========================================================
  *
- * A new report starts blank.
- *
- * Needs Changes:
- *     preload only the contributor's own proposed report answers so the
- *     requested revision can be corrected without turning current published
- *     Place state into editable form data.
+ * Show current Place answers in the form so contributors can correct them
+ * or fill unanswered fields. A populated value alone is never a proposal.
+ * Moderator-requested revisions keep the contributor's proposed answers.
  */
+$placeReportValues = llama_place_update_shared_form_values(
+    $currentValues,
+    $publishedUnknownFields,
+    $isNeedsChanges ? $editProposed : [],
+    $isNeedsChanges ? $editProposedUnknownFields : []
+);
 
-$placeReportValues =
-    llama_place_update_shared_form_values(
-        [],
-        [],
-        $isNeedsChanges
-            ? $editProposed
-            : [],
-        $isNeedsChanges
-            ? $editProposedUnknownFields
-            : []
+// The shared renderer previously treated every nonempty initial value as a
+// touched answer. Decouple displayed Place facts from proposed changes.
+$placeReportInitiallyTouchedKeys = [];
+if ($isNeedsChanges) {
+    foreach (llama_place_update_definitions() as $storage => $definition) {
+        if (array_key_exists($storage, $editProposed)) {
+            $placeReportInitiallyTouchedKeys[] =
+                (string) ($definition['shared']['key'] ?? '');
+        }
+    }
+}
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && $error !== null) {
+    $placeReportInitiallyTouchedKeys = array_keys(
+        (array) ($_POST['_report_touched'] ?? [])
     );
+}
+$placeReportInitiallyTouchedKeys = array_values(array_filter(
+    array_unique($placeReportInitiallyTouchedKeys)
+));
 
 
 /*
@@ -1219,7 +1231,7 @@ $e =
                             data-report-target-search
                             <?= $isScopedNeedsChanges ? 'disabled' : '' ?>
                         >
-                            <?php foreach (['place' => 'Entire Place', 'area' => 'Areas', 'site' => 'Sites'] as $targetGroup => $targetGroupLabel): ?>
+                            <?php foreach (['place' => 'Entire Place', 'area' => 'Facilities', 'site' => 'Sites'] as $targetGroup => $targetGroupLabel): ?>
                                 <?php
                                 $groupTargets = array_values(array_filter(
                                     $availableReportTargets,
