@@ -1317,7 +1317,7 @@ $renderCompoundField =
 
 <?php if ($placeReportMode === 'update-report'): ?>
     <input type="hidden" name="_report_partial" value="1">
-    <?php foreach (array_keys($placeReportValues) as $initialAnswerKey): ?>
+    <?php foreach (($placeReportInitiallyTouchedKeys ?? array_keys($placeReportValues)) as $initialAnswerKey): ?>
         <input
             type="hidden"
             name="_report_touched[<?= $e((string) $initialAnswerKey) ?>]"
