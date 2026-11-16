@@ -541,7 +541,7 @@
         if (Object.prototype.hasOwnProperty.call(context.direct, f.key)) {
             return {
                 value: context.direct[f.key],
-                from: `Recorded for this ${scope.value}`
+                from: `Recorded for this ${scope.value === 'area' ? 'Facility' : 'Site'}`
             };
         }
 
