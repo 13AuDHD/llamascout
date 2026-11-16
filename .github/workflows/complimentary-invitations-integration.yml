@@ -1,0 +1,63 @@
+name: Complimentary Invitations Duplicate Prevention
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/complimentary-invitations-integration.yml'
+      - 'admin/complimentary-invitations.php'
+      - 'app/membership-invitations.php'
+      - 'js/admin/complimentary-invitations.js'
+      - 'tools/tests/complimentary-invitations-ui.cjs'
+      - 'tools/tests/complimentary-invitation-duplicate-mariadb.php'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  complimentary-invitations:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: invitation-test-only
+          MARIADB_ROOT_HOST: "%"
+          MARIADB_DATABASE: llama_invitation_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "healthcheck.sh --connect --innodb_initialized"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install PHP MySQL adapter if required
+        run: |
+          if ! php -m | grep -qi '^pdo_mysql$'; then
+            sudo apt-get update -qq
+            sudo apt-get install -y php-mysql
+          fi
+
+      - name: Check Admin invitation syntax
+        run: |
+          php -l admin/complimentary-invitations.php
+          php -l app/membership-invitations.php
+          php -l tools/tests/complimentary-invitation-duplicate-mariadb.php
+          node --check js/admin/complimentary-invitations.js
+
+      - name: Check iPad and Safari double-click behavior
+        run: |
+          npm install --prefix "$RUNNER_TEMP/llama-invite-tests" --no-save --no-package-lock jsdom@26
+          NODE_PATH="$RUNNER_TEMP/llama-invite-tests/node_modules" node tools/tests/complimentary-invitations-ui.cjs
+
+      - name: Verify two rapid invitations do not revoke the first in MariaDB
+        env:
+          LLAMA_INVITE_TEST_DSN: mysql:host=127.0.0.1;port=3306;dbname=llama_invitation_test;charset=utf8mb4
+          LLAMA_INVITE_TEST_USER: root
+          LLAMA_INVITE_TEST_PASSWORD: invitation-test-only
+        run: php tools/tests/complimentary-invitation-duplicate-mariadb.php
