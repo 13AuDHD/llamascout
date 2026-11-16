@@ -350,7 +350,7 @@
         );
         payload.set(
             'selected_area_id',
-            currentMode() === 'area'
+            currentMode() === 'facility'
                 ? String(areaSelector?.value || '')
                 : ''
         );
