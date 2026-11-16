@@ -2,9 +2,10 @@
     'use strict';
 
     const form = document.getElementById('place-report');
-    const catalogNode = form?.querySelector('[data-admin-place-areas]');
-    const selector = form?.querySelector('[data-admin-area-selector]');
-    const target = form?.querySelector('[name="selected_area_id"]');
+    const shell = form?.closest('[data-contribution-tabs]');
+    const catalogNode = shell?.querySelector('[data-admin-place-areas]');
+    const selector = shell?.querySelector('[data-admin-area-selector]');
+    const target = shell?.querySelector('[name="selected_area_id"]');
     const siteSelector = form?.querySelector('[data-admin-campsite-selector]');
     if (!form || !catalogNode || !selector || !target) return;
 
@@ -21,7 +22,7 @@
     const areasById = new Map(areas.map(area => [String(area.id), area]));
     const isModernFacility = value => /^resource:[1-9][0-9]*$/.test(String(value));
     const areaShell = form.closest('[data-contribution-tabs]');
-    const areaPicker = form.querySelector('[data-admin-area-picker]');
+    const areaPicker = areaShell?.querySelector('[data-admin-area-picker]');
     const currentMode = () =>
         areaShell?.querySelector('[data-contribution-mode="facility"]')
             ?.getAttribute('aria-pressed') === 'true';
