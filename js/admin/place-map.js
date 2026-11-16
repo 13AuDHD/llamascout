@@ -48,6 +48,9 @@
             ? config.features
             : [];
 
+    const linkedFacilities = Array.isArray(config.facilities)
+        ? config.facilities : [];
+
     const selection =
         panel.querySelector(
             '[data-admin-place-map-selection]'
@@ -418,6 +421,41 @@
             );
         }
     );
+
+    // Facilities created directly with GPS appear as purple points.
+    // Their map position comes from the canonical child Facility record,
+    // not a duplicate map feature or a manual Edit Map step.
+    for (const facility of linkedFacilities) {
+        const lat = Number(facility.latitude);
+        const lng = Number(facility.longitude);
+        const id = Number(facility.id);
+        if (!Number.isSafeInteger(id) || id < 1
+            || !Number.isFinite(lat) || !Number.isFinite(lng)
+            || Math.abs(lat) > 90 || Math.abs(lng) > 180) continue;
+
+        const marker = L.circleMarker([lat, lng], {
+            pane: 'llama-area',
+            radius: 8,
+            color: resourceColor,
+            fillColor: resourceColor,
+            weight: 2,
+            opacity: 1,
+            fillOpacity: .85,
+            bubblingMouseEvents: false
+        }).addTo(map);
+        const tooltip = document.createElement('span');
+        tooltip.textContent = String(facility.label || 'Facility');
+        marker.bindTooltip(tooltip);
+        marker.on('click', () => {
+            const picker = document.querySelector('[data-admin-facility-selector]');
+            if (!picker) return;
+            const value = 'resource:' + id;
+            if (!Array.from(picker.options).some(option => option.value === value)) return;
+            picker.value = value;
+            picker.dispatchEvent(new Event('change', {bubbles: true}));
+        });
+        allBounds.extend([lat, lng]);
+    }
 
     const sitePins = new Map();
     for (const site of config.sites ?? []) {
