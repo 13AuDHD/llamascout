@@ -31,9 +31,9 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         const select = mode => {
             if (!buttons.some(button => button.dataset.contributionMode === mode && !button.disabled)) return;
-            if (mode === 'facility' && isNewPlace && activeMode !== 'area'
+            if (mode === 'facility' && isNewPlace && activeMode !== 'facility'
                 && hasStagedPhotos()) {
-                window.alert('Save or remove staged Place and Site photos before switching to Areas.');
+                window.alert('Save or remove staged Place and Site photos before switching to Facility.');
                 return;
             }
             for (const button of buttons) {
@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (event.target.value) select('site');
         });
         adminAreaPicker?.addEventListener('change', event => {
-            if (event.target.value) select('area');
+            if (event.target.value) select('facility');
         });
         picker.hidden = false;
         select(shell.dataset.contributionInitial || 'place');
