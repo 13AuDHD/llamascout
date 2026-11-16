@@ -24,6 +24,11 @@ const field = (key, group, type, label = key) => ({
 const fields = [
     field('site_number','selection_type','text','Site number'),
     field('parking_surface','parking_maneuvering','select','Parking surface'),
+    {...field('overnight_camping_allowed','place_rules','select','Overnight stay permitted?'),
+        layout_section:'place', layout_section_label:'Place', scopes:['place','site'],
+        options:{'1':'Yes','0':'No'}},
+    {...field('pets_allowed','place_rules','tri','Pets Allowed'),
+        layout_section:'place', layout_section_label:'Place', scopes:['place','site']},
     field('daytime_noise','sensory_environment','select','Daytime noise'),
     field('connectivity_verizon','connectivity_services','select','Verizon signal'),
     field('experience_summary','experience_recommendations','textarea','Experience'),
@@ -36,6 +41,10 @@ const editable = fields.map(f => {
         ? '<select name="' + f.key + '"><option value=""></option>'
             + Object.entries(f.options).map(([k,v]) => '<option value="' + k + '">' + v + '</option>').join('')
             + '</select>'
+        : f.type === 'tri'
+            ? '<label><input type="radio" name="' + f.key + '" value="1">Yes</label>'
+                + '<label><input type="radio" name="' + f.key + '" value="0">No</label>'
+                + '<label><input type="radio" name="' + f.key + '" value="__LLAMA_UNKNOWN__">?</label>'
         : f.type === 'textarea'
             ? '<textarea name="' + f.key + '"></textarea>'
             : '<input name="' + f.key + '" type="text">';
@@ -104,7 +113,10 @@ const html = [
                     daytime_noise:'two', connectivity_verizon:'three',
                     experience_summary:'Old review', scout_note_1:'Old tip'
                 },
-                inherited:{},
+                inherited:{
+                    overnight_camping_allowed:{value:'1',from:'Place'},
+                    pets_allowed:{value:'1',from:'Place'}
+                },
                 site_identity:{
                     name:'Rocky Camp', label:'Rocky Camp Site', type:'tent_site',
                     coordinates:'37.2522200, -107.2192000',
@@ -115,7 +127,10 @@ const html = [
                     site_number:'15', parking_surface:'dirt',
                     daytime_noise:'one', connectivity_verizon:'two'
                 },
-                inherited:{},
+                inherited:{
+                    overnight_camping_allowed:{value:'0',from:'Place'},
+                    pets_allowed:{value:'0',from:'Place'}
+                },
                 site_identity:{
                     name:'Pine Camp', label:'Pine Camp Site', type:'rv_site',
                     coordinates:'37.3000000, -107.3000000',
@@ -144,6 +159,10 @@ const html = [
     assert.deepEqual(seen,[10]);
     assert.equal(value('site_number'),'14', 'Site identifier must be prefilled.');
     assert.equal(value('parking_surface'),'gravel','Site surface must be prefilled.');
+    assert.equal(value('overnight_camping_allowed'),'1',
+        'Inherited Place overnight policy must select Yes, not show a note.');
+    const selectedPet = () => get('pets_allowed').querySelector('input[type="radio"]:checked')?.value;
+    assert.equal(selectedPet(),'1','Inherited Pets Allowed: 1 must check the Yes radio.');
     assert.equal(value('daytime_noise'),'','Daytime ratings must start fresh.');
     assert.equal(value('connectivity_verizon'),'','Connectivity must start fresh.');
     assert.equal(value('experience_summary'),'','Personal experience must start fresh.');
@@ -153,8 +172,33 @@ const html = [
     assert.deepEqual(JSON.parse(report.value),[],
         'Prefilled physical Site facts must not be submitted until edited.');
     assert.equal(identity.value,'', 'Displayed identity must not submit without edits.');
-    assert.match(get('daytime_noise').textContent, /Previous report: Two/,
-        'Old sensory answers must be visible as reference, not input defaults.');
+    assert.equal(d.querySelector('[data-scoped-existing]'),null,
+        'Do not show redundant Previous report or Current Answer notes anywhere.');
+
+    // A changed policy is submitted, but restoring its recorded value
+    // removes it from the proposal; inherited facts do not count as answers.
+    const overnight = get('overnight_camping_allowed').querySelector('select');
+    overnight.value = '0';
+    overnight.dispatchEvent(new w.Event('change',{bubbles:true}));
+    assert.deepEqual(JSON.parse(report.value),[
+        {key:'overnight_camping_allowed',value:'0'}
+    ]);
+    overnight.value = '1';
+    overnight.dispatchEvent(new w.Event('change',{bubbles:true}));
+    assert.deepEqual(JSON.parse(report.value),[],
+        'Returning a policy to its existing value must not reach moderation.');
+    const petNo = [...get('pets_allowed').querySelectorAll('input[type="radio"]')]
+        .find(input=>input.value==='0');
+    petNo.checked = true;
+    petNo.dispatchEvent(new w.Event('change',{bubbles:true}));
+    assert.deepEqual(JSON.parse(report.value),[{key:'pets_allowed',value:'0'}],
+        'Changing Yes to No must submit one clear policy correction.');
+    const petYes = [...get('pets_allowed').querySelectorAll('input[type="radio"]')]
+        .find(input=>input.value==='1');
+    petYes.checked = true;
+    petYes.dispatchEvent(new w.Event('change',{bubbles:true}));
+    assert.deepEqual(JSON.parse(report.value),[],
+        'Restoring Yes must remove the policy from the proposed report.');
 
     const number = get('site_number').querySelector('input');
     number.value = '14B';
@@ -170,6 +214,8 @@ const html = [
     assert.equal(value('site_number'),'15','Different Site must load its own fact.');
     assert.equal(name.value,'Pine Camp', 'Different Site must load its own identity.');
     assert.equal(value('daytime_noise'),'');
+    assert.equal(value('overnight_camping_allowed'),'0');
+    assert.equal(selectedPet(),'0');
     assert.deepEqual(JSON.parse(report.value),[], 'One Site draft must not leak to another.');
     assert.equal(identity.value,'');
 
@@ -177,6 +223,8 @@ const html = [
     selected.dispatchEvent(new w.Event('change',{bubbles:true}));
     await flush();
     assert.equal(value('site_number'),'14B','Returning must restore first Site draft.');
+    assert.equal(value('overnight_camping_allowed'),'1');
+    assert.equal(selectedPet(),'1');
     assert.equal(name.value,'Rocky Camp East','Identity correction draft must survive Site switch.');
     assert.deepEqual(JSON.parse(identity.value),{name:'Rocky Camp East'});
 
