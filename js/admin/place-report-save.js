@@ -33,6 +33,22 @@
     const originalHtml =
         button.innerHTML;
 
+    const contributionTabs = form.closest('[data-contribution-tabs]');
+    const activeReportMode = () =>
+        contributionTabs?.querySelector('[data-contribution-mode][aria-pressed="true"]')
+            ?.dataset.contributionMode
+            || (form.querySelector('[data-admin-campsite-selector]')?.value ? 'site' : 'place');
+    const reportTargetLabel = () => {
+        const mode = activeReportMode();
+        return mode === 'site' ? 'Site' : (mode === 'area' ? 'Area' : 'Place');
+    };
+    const refreshSaveLabel = () => {
+        const label = button.querySelector('[data-admin-save-report-label]');
+        if (label) label.textContent = 'Save ' + reportTargetLabel() + ' Report';
+    };
+    contributionTabs?.addEventListener('llama:contribution-mode', refreshSaveLabel);
+    refreshSaveLabel();
+
     const saveBar =
         button.closest(
             '.admin-place-report-savebar'
@@ -259,6 +275,7 @@
 
         button.innerHTML =
             originalHtml;
+        refreshSaveLabel();
     };
 
     const setButtonState = (
@@ -521,6 +538,11 @@
         );
 
     let campsiteDirty = false;
+    // Site Location is independent metadata; it still participates in the
+    // existing unsaved-Site-switch warning and the atomic Save Site action.
+    form.addEventListener('llama:admin-site-location-dirty', () => {
+        if (activeCampsiteId !== '') campsiteDirty = true;
+    });
     let activeCampsiteId = '';
 
     let siteAnswersField =
@@ -1491,6 +1513,15 @@
             return;
         }
 
+        const beforeSave = new CustomEvent('llama:admin-place-report-before-save', {
+            bubbles: true, cancelable: true,
+            detail: {mode: activeReportMode()}
+        });
+        form.dispatchEvent(beforeSave);
+        if (beforeSave.defaultPrevented) {
+            return; // The Site GPS validator owns its field-level message.
+        }
+
         busy = true;
 
         syncPhotoUploader();
@@ -1511,8 +1542,8 @@
 
         setStatus(
             expectedPhotos > 0
-                ? `Saving Place Report and ${expectedPhotos} photo${expectedPhotos === 1 ? '' : 's'}...`
-                : 'Saving Place Report to the database...'
+                ? `Saving ${reportTargetLabel()} Report and ${expectedPhotos} photo${expectedPhotos === 1 ? '' : 's'}...`
+                : `Saving ${reportTargetLabel()} Report to the database...`
         );
 
         const controller =
@@ -1529,10 +1560,20 @@
             // The Site selector can retain its previous value after changing
             // back to the Place tab. Do not save hidden Site answers or route
             // a Place-only save through that stale Site target.
-            const activeReportMode = form.closest('[data-contribution-tabs]')
-                ?.querySelector('[data-contribution-mode][aria-pressed="true"]')
-                ?.dataset.contributionMode || (activeCampsiteId !== '' ? 'site' : 'place');
-            if (activeReportMode !== 'site' && !bulkPayload) {
+            const mode = activeReportMode();
+            saveData.set('admin_report_mode', mode);
+            if (mode !== 'area') {
+                // An old Area payload must not be saved while editing Place
+                // or Site, even if the selector keeps a previous value.
+                saveData.delete('selected_area_id');
+                saveData.delete('admin_area_answers_json');
+            }
+            if (mode !== 'site') {
+                // Site coordinates only belong to the explicitly selected Site.
+                saveData.delete('admin_site_coordinates_changed');
+                saveData.delete('site_coordinates');
+            }
+            if (mode !== 'site' && !bulkPayload) {
                 saveData.delete('selected_campsite_id');
                 saveData.delete('admin_site_answers_json');
             }
@@ -1712,7 +1753,7 @@
 
             setStatus(
                 photosAdded > 0
-                    ? `Saved to the database at ${savedAt}. ${photosAdded} photo${photosAdded === 1 ? '' : 's'} attached to this Place.`
+                    ? `Saved to the database at ${savedAt}. ${photosAdded} photo${photosAdded === 1 ? '' : 's'} attached to this ${reportTargetLabel()}.`
                     : `Saved to the database at ${savedAt}.`
             );
 

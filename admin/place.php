@@ -12,6 +12,7 @@ require_once dirname(__DIR__) . '/app/admin-place-actions.php';
 require_once dirname(__DIR__) . '/app/place-verifications.php';
 require_once dirname(__DIR__) . '/app/place-map-features.php';
 require_once dirname(__DIR__) . '/app/place-site-identity.php';
+require_once dirname(__DIR__) . '/app/resources.php';
 require_once __DIR__ . '/_dashboard.php';
 
 $adminUser = moderation_require_admin();
@@ -75,6 +76,7 @@ if (
 }
 
 $reportData = admin_place_shared_report_data($db, $placeId);
+$adminPlaceFacilities = llama_place_facilities($db, $placeId);
 $adminPlaceCampsites =
     array_values(
         array_filter(
@@ -359,6 +361,7 @@ if (!(($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && $error !== '')) {
 }
 
 $placeReportMode = 'moderator';
+$contributionAdminPlaceId = $placeId;
 $placeReportExistingPhotos = $images;
 $placeReportShowLocate = true;
 $placeReportShowNameSuggestion = true;
@@ -391,6 +394,8 @@ $placeReportPhotoHelp = 'Add photos to the currently selected Place, Area, or Si
 </div>
 
 <script src="https://llamascout.com/js/add-place-location.js?v=<?= (int) filemtime(dirname(__DIR__) . '/js/add-place-location.js') ?>"></script>
+<script defer src="https://llamascout.com/js/add-site-location.js?v=<?= (int) filemtime(dirname(__DIR__) . '/js/add-site-location.js') ?>"></script>
+<script defer src="https://llamascout.com/js/admin/place-site-location.js?v=<?= (int) filemtime(dirname(__DIR__) . '/js/admin/place-site-location.js') ?>"></script>
 <script src="https://llamascout.com/js/add-place-name.js"></script>
 <?php
 $sharedReportAsset = dirname(__DIR__) . '/js/place-report-form.js';

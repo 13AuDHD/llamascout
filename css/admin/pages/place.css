@@ -1,5 +1,6 @@
 @import url("../../site/pages/add-place.css");
 @import url("../../site/features/place-report-form.css");
+@import url("../../site/features/contribution-tabs.css");
 @import url("https://unpkg.com/leaflet@1.9.4/dist/leaflet.css");
 
 /* =========================================================
@@ -1124,4 +1125,107 @@
 }
 .admin-place-report-form [data-admin-area-picker] h3 {
     color: #bb94ef;
+}
+
+
+/*
+ * Match the published Resource/Facility contribution panels in Administration.
+ * Only visual styling is shared: canonical report question ownership is intact.
+ */
+.admin-place-shared-page .contribution-scope-picker {
+    width: min(100%, 660px);
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+.admin-place-shared-page .contribution-scope-picker > [data-contribution-mode="area"] {
+    --mode-color: #9765cb;
+}
+.admin-place-shared-page .contribution-scope-picker > [data-contribution-facility-link]:hover,
+.admin-place-shared-page .contribution-scope-picker > [data-contribution-facility-link]:focus-visible {
+    border-color: #9765cb;
+}
+.admin-place-shared-page .admin-place-report-form > [data-report-main-section] > .contribution-section-body {
+    display: grid;
+    gap: 12px;
+    padding-top: 14px;
+}
+.admin-place-shared-page .admin-place-report-form > [data-report-main-section] > .contribution-section-body > .contribution-section {
+    --admin-report-accent: #70bd87;
+    margin: 0;
+    border-inline-start: 4px solid var(--admin-report-accent);
+    background: var(--background);
+}
+.admin-place-shared-page .admin-place-report-form > [data-report-main-section="site"] > .contribution-section-body > .contribution-section {
+    --admin-report-accent: #f2a44e;
+}
+.admin-place-shared-page .admin-place-report-form > [data-report-main-section] > .contribution-section-body > .contribution-section > summary {
+    border-radius: 10px 10px 0 0;
+    background: var(--background);
+}
+.admin-place-shared-page .admin-place-report-form > [data-report-main-section] > .contribution-section-body > .contribution-section:not([open]) > summary {
+    border-radius: 10px;
+}
+.admin-place-shared-page .admin-place-report-form > [data-report-main-section] > .contribution-section-body > .contribution-section > .contribution-section-body {
+    border-radius: 0 0 10px 10px;
+    background: var(--surface);
+}
+.admin-place-linked-facilities {
+    display: grid;
+    gap: 14px;
+    padding: 20px 22px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--surface);
+}
+.admin-place-linked-facilities-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
+}
+.admin-place-linked-facilities-heading > div {
+    display: grid;
+    gap: 5px;
+    min-width: 0;
+}
+.admin-place-linked-facilities-heading h2,
+.admin-place-linked-facilities-heading p {
+    margin: 0;
+}
+.admin-place-linked-facilities-heading p {
+    font-size: .68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--text-muted);
+}
+.admin-place-linked-facilities-list {
+    display: grid;
+    gap: 10px;
+}
+.admin-place-linked-facility {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-inline-start: 4px solid #9765cb;
+    border-radius: 10px;
+    background: var(--background);
+}
+.admin-place-linked-facility > div {
+    display: grid;
+    gap: 4px;
+}
+.admin-place-linked-facility > div span {
+    color: var(--text-muted);
+    font-size: .75rem;
+}
+@media (max-width: 560px) {
+    .admin-place-shared-page .contribution-scope-picker {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .admin-place-linked-facilities { padding: 16px; }
 }

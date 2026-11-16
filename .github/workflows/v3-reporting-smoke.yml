@@ -203,6 +203,14 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/llama-season-ui-tests"
           npm install --prefix "$RUNNER_TEMP/llama-season-ui-tests" --no-save --no-package-lock jsdom@26
+      - name: Verify Place Administration save routing, styling and Site GPS
+        env:
+          NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules
+        run: |
+          php tools/tests/admin-place-editor-contract.php
+          node --check js/admin/place-site-location.js
+          node tools/tests/admin-place-site-location-ui.cjs
+          node tools/tests/admin-place-save-targets-ui.cjs
       - name: Verify shared Resource and Facility Experience form and canonical answers
         env:
           NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules

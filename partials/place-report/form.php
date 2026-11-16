@@ -1577,7 +1577,9 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
                 </div>
             </details>
             <?php if ($reportMainKey === 'site' && $approvedKey === 'site_info'
-                && $placeReportMode === 'contributor' && $placeReportShowLocate): ?>
+                && $placeReportShowLocate
+                && ($placeReportMode === 'contributor'
+                    || ($placeReportMode === 'moderator' && $hasAdminSitePicker))): ?>
                 <?php require __DIR__ . '/site-location.php'; ?>
             <?php endif; ?>
         <?php endforeach; ?>
