@@ -21,6 +21,13 @@ $assert = static function (bool $yes, string $message): void {
     if (!$yes) throw new RuntimeException('FAIL: ' . $message);
 };
 
+$db->exec('CREATE TABLE users (
+    id BIGINT UNSIGNED PRIMARY KEY,
+    username VARCHAR(80),
+    display_name VARCHAR(140)
+) ENGINE=InnoDB');
+$db->exec("INSERT INTO users (id, username, display_name) VALUES (9, 'admin-test', 'Admin Test')");
+
 $db->exec('CREATE TABLE membership_invitations (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(254) NOT NULL,
