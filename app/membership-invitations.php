@@ -94,6 +94,70 @@ function llama_membership_invitation_normalize_email(
 }
 
 
+/**
+ * Admin create/resend guard: an accidental second POST must not revoke the
+ * invitation created by the first POST or send a second email.
+ *
+ * The short per-recipient MariaDB advisory lock also serializes overlapping
+ * requests before checking the most recently created invitation. It is
+ * connection-scoped and always released, including on validation errors.
+ * Deliberate later resends still use the existing revocation behavior.
+ */
+function llama_create_complimentary_invitation_once(
+    PDO $db,
+    string $email,
+    int $durationDays,
+    ?string $reason,
+    ?string $notes,
+    int $invitedBy,
+    int $expiresInDays = LLAMA_COMPLIMENTARY_INVITE_DEFAULT_EXPIRY_DAYS
+): array {
+    llama_ensure_membership_invitation_storage($db);
+    $email = llama_membership_invitation_normalize_email($email);
+    $lockName = 'llama_invite_' . hash('sha1', $email);
+
+    $lockStmt = $db->prepare('SELECT GET_LOCK(?, 10)');
+    $lockStmt->execute([$lockName]);
+    if ((int) $lockStmt->fetchColumn() !== 1) {
+        throw new RuntimeException(
+            'Another invitation request is being processed for this email. Check History before trying again.'
+        );
+    }
+
+    try {
+        $recentStmt = $db->prepare(
+            'SELECT id
+             FROM membership_invitations
+             WHERE LOWER(email) = ?
+               AND accepted_at IS NULL
+               AND revoked_at IS NULL
+               AND expires_at > UTC_TIMESTAMP()
+               AND created_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 SECOND)
+             ORDER BY id DESC LIMIT 1'
+        );
+        $recentStmt->execute([$email]);
+        if ($recentStmt->fetchColumn() !== false) {
+            throw new InvalidArgumentException(
+                'An invitation was already created for this email moments ago. Check History instead of sending it twice.'
+            );
+        }
+
+        return llama_create_complimentary_invitation(
+            $db, $email, $durationDays, $reason, $notes, $invitedBy, $expiresInDays
+        );
+    } finally {
+        try {
+            $unlockStmt = $db->prepare('SELECT RELEASE_LOCK(?)');
+            $unlockStmt->execute([$lockName]);
+        } catch (Throwable $exception) {
+            // The connection is about to be released; never conceal the
+            // actual invite creation/validation result with an unlock error.
+            error_log('Llama Scout invitation guard could not release its database lock.');
+        }
+    }
+}
+
+
 /* =========================================================
    CREATE
    ========================================================= */
