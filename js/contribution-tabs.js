@@ -13,9 +13,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const areaTools = shell.querySelector('[data-contribution-area-tools]');
         const modernFacilityEditor = shell.querySelector('[data-admin-resource-facility-editor]');
         const modernFacilitySelected = shell.dataset.adminFacilitySource === 'resource';
-        const adminAreaSection = report.querySelector('[data-admin-area-picker]');
+        const adminAreaSection = shell.querySelector('[data-admin-area-picker]');
         const adminSitePicker = report.querySelector('[data-admin-campsite-selector]');
-        const adminAreaPicker = report.querySelector('[data-admin-area-selector]');
+        const adminAreaPicker = shell.querySelector('[data-admin-area-selector]');
         const isNewPlace = shell.hasAttribute('data-contribution-split') && !adminSitePicker;
         let activeMode = shell.dataset.contributionInitial || 'place';
         const hasStagedPhotos = () => ['photos_json', 'site_photos_json']
