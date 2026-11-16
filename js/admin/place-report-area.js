@@ -20,7 +20,8 @@
     const facilityPanel = form.querySelector('[data-admin-facility-questions]');
     const facilityFields = [...form.querySelectorAll('[data-area-question]')];
     const areasById = new Map(areas.map(area => [String(area.id), area]));
-    const isModernFacility = value => /^resource:[1-9][0-9]*$/.test(String(value));
+    const isModernFacility = value =>
+        String(value) === 'new' || /^resource:[1-9][0-9]*$/.test(String(value));
     const areaShell = form.closest('[data-contribution-tabs]');
     const areaPicker = areaShell?.querySelector('[data-admin-area-picker]');
     const currentMode = () =>
