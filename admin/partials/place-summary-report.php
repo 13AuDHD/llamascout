@@ -68,6 +68,7 @@ $placeReportSelectedSite = isset($placeReportSiteOptions[$requestedSite]) ? $req
 
 
 <div class="contribution-tab-shell" data-contribution-tabs data-contribution-split
+    data-admin-facility-source="<?= $selectedFacilityResource ? 'resource' : 'map_feature' ?>"
     data-contribution-initial="<?= in_array((string) ($_GET['mode'] ?? ''), ['facility', 'area'], true) ? 'facility' : ($placeReportSelectedSite !== '' ? 'site' : 'place') ?>">
     <?php require dirname(__DIR__, 2) . '/partials/place-report/contribution-tabs.php'; ?>
     <?php if (empty($adminFacilityCatalog)): ?>
