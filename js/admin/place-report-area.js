@@ -100,7 +100,20 @@
         if (!controls.has(name)) controls.set(name, []);
         controls.get(name).push(control);
     }
-    if (!controls.size) return;
+    if (!controls.size) {
+        // A Place with no mapped Areas still has an Admin Facility picker.
+        // New and resource-backed Facilities must remain selectable.
+        selector.addEventListener('change', () => {
+            const next = String(selector.value || '');
+            if (next === '') return;
+            const url = new URL(window.location.href);
+            url.searchParams.set('mode', 'facility');
+            url.searchParams.set('facility', next);
+            url.hash = 'place-report';
+            window.location.assign(url.toString());
+        });
+        return;
+    }
 
     /*
      * `original` stores only explicit Area overrides. Effective values are
