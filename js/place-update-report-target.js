@@ -85,8 +85,9 @@
         photoButton.addEventListener('click', () => q('[data-photo-uploader] [data-photo-files]')?.click());
     }
 
-    // Draft answers belong to an individual reporting target, not to the
-    // reusable set of Site questions. Switching Site must never carry over
+    // Only user-changed answers belong to a draft. Prefilled Site facts are
+    // not submitted unless the contributor explicitly changes them.
+    // Switching Sites must never carry over
     // values from a different Site, even while answers remain unsent.
     const initialTargetKey =
         `${initialTarget.scope}:${initialTarget.source}:${initialTarget.id}`;
@@ -478,6 +479,21 @@
         return null;
     }
 
+    // Persistent Site facts are the starting point for corrections. Every
+    // new visit-specific observation begins unanswered even if another Scout
+    // previously rated the same Site. Use canonical layout metadata so this
+    // classification stays aligned with the shared question registry.
+    const SITE_FACT_GROUPS = new Set([
+        'selection_type', 'reservations_pricing', 'site_dimensions',
+        'parking_maneuvering', 'camping_equipment', 'site_features',
+        'site_accessibility', 'safety_hazards'
+    ]);
+    function prefillSiteFact(field) {
+        return scope.value === 'site'
+            && field.layout_section === 'site'
+            && SITE_FACT_GROUPS.has(field.layout_group);
+    }
+
     function showExisting() {
         for (const f of fields.filter(eligible)) {
             const card = [...questions.querySelectorAll('[data-scoped-question]')]
@@ -486,23 +502,22 @@
             const note = card.querySelector('[data-scoped-existing]');
             if (!note) continue;
 
-            /*
-             * Current answers are reference context only. The input contains
-             * only this report's draft answer, if the Scout has supplied one.
-             */
-            const draft = values.has(f.key)
-                ? normalizedControlValue(f, values.get(f.key))
-                : '';
-
-            setScopedValue(card, f, draft);
-
             const reference = currentReference(f);
+            const hasDraft = values.has(f.key);
+            // Prefilling a Site fact does not add it to values or the review
+            // payload. An actual edit is required to create an observation.
+            const displayValue = hasDraft
+                ? normalizedControlValue(f, values.get(f.key))
+                : (prefillSiteFact(f) && reference
+                    ? normalizedControlValue(f, reference.value) : '');
+
+            setScopedValue(card, f, displayValue);
 
             if (reference) {
                 const displayed = displayReferenceValue(f, reference.value);
                 note.textContent = displayed !== ''
-                    ? `Current answer: ${displayed} · ${reference.from}`
-                    : `Current answer: ${reference.from}`;
+                    ? `${prefillSiteFact(f) ? 'Existing Site fact' : 'Previous report'}: ${displayed} · ${reference.from}`
+                    : `Existing answer: ${reference.from}`;
             } else {
                 note.textContent = 'Current answer: Not reported';
             }
