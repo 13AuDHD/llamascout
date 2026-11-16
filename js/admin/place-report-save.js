@@ -36,7 +36,8 @@
     const contributionTabs = form.closest('[data-contribution-tabs]');
     const activeReportMode = () =>
         contributionTabs?.querySelector('[data-contribution-mode][aria-pressed="true"]')
-            ?.dataset.contributionMode || 'place';
+            ?.dataset.contributionMode
+            || (form.querySelector('[data-admin-campsite-selector]')?.value ? 'site' : 'place');
     const reportTargetLabel = () => {
         const mode = activeReportMode();
         return mode === 'site' ? 'Site' : (mode === 'area' ? 'Area' : 'Place');
