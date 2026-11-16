@@ -453,7 +453,10 @@
                     }
                 }
                 const value = scopedValue(card, f);
-                if (value !== '') values.set(f.key, value);
+                const reference = currentReference(f);
+                const unchangedFact = prefillRecordedFact(f) && reference
+                    && equalRecordedValue(f, value, reference.value);
+                if (value !== '' && !unchangedFact) values.set(f.key, value);
                 else values.delete(f.key);
                 draftsByTarget.set(activeTarget, new Map(values));
                 sync();
@@ -474,9 +477,6 @@
                 });
             }
 
-            const existing = make('small', 'place-report-answer-context');
-            existing.dataset.scopedExisting = f.key;
-            card.append(existing);
             grid.append(card);
         }
 
@@ -521,38 +521,6 @@
         return match ? match[0] : raw;
     }
 
-    function displayReferenceValue(f, value) {
-        const normalized = normalizedControlValue(f, value);
-
-        if (normalized === unknown) return 'Unknown';
-
-        const options =
-            f.options && typeof f.options === 'object'
-                ? f.options
-                : (optionValues(f) || {});
-
-        if (Array.isArray(normalized)) {
-            return normalized
-                .map(item => String(options[String(item)] ?? item))
-                .join(', ');
-        }
-
-        const key = String(normalized ?? '');
-
-        if (key === '') return '';
-
-        if (Object.prototype.hasOwnProperty.call(options, key)) {
-            return String(options[key]);
-        }
-
-        if (f.type === 'checkbox') {
-            if (key === '1') return 'Yes';
-            if (key === '0') return 'No';
-        }
-
-        return key;
-    }
-
     function currentReference(f) {
         if (Object.prototype.hasOwnProperty.call(context.direct, f.key)) {
             return {
@@ -571,19 +539,32 @@
         return null;
     }
 
-    // Persistent Site facts are the starting point for corrections. Every
-    // new visit-specific observation begins unanswered even if another Scout
-    // previously rated the same Site. Use canonical layout metadata so this
-    // classification stays aligned with the shared question registry.
-    const SITE_FACT_GROUPS = new Set([
-        'selection_type', 'reservations_pricing', 'site_dimensions',
-        'parking_maneuvering', 'camping_equipment', 'site_features',
-        'site_accessibility', 'safety_hazards'
+    // Structural facts, rules and policies must be selected in the actual
+    // control for updates. A fresh visit should ask for the Scout's own
+    // sensory, connectivity, experience, recommendations and notes.
+    // Layout comes from the canonical registry; scopes stay unchanged.
+    const FRESH_OBSERVATION_GROUPS = new Set([
+        'sensory_environment',
+        'connectivity_services',
+        'experience_recommendations',
+        'site_photos'
     ]);
-    function prefillSiteFact(field) {
-        return scope.value === 'site'
-            && field.layout_section === 'site'
-            && SITE_FACT_GROUPS.has(field.layout_group);
+    function prefillRecordedFact(field) {
+        return (scope.value === 'site' || scope.value === 'area')
+            && !FRESH_OBSERVATION_GROUPS.has(field.layout_group);
+    }
+
+    function equalRecordedValue(field, candidate, recorded) {
+        const a = normalizedControlValue(field, candidate);
+        const b = normalizedControlValue(field, recorded);
+        if (Array.isArray(a) || Array.isArray(b)) {
+            if (!Array.isArray(a) || !Array.isArray(b)) return false;
+            const left = a.map(String).sort();
+            const right = b.map(String).sort();
+            return left.length === right.length
+                && left.every((item, index) => item === right[index]);
+        }
+        return String(a ?? '') === String(b ?? '');
     }
 
     function showExisting() {
@@ -591,28 +572,18 @@
             const card = [...questions.querySelectorAll('[data-scoped-question]')]
                 .find(el => el.dataset.scopedQuestion === f.key);
             if (!card) continue;
-            const note = card.querySelector('[data-scoped-existing]');
-            if (!note) continue;
-
             const reference = currentReference(f);
             const hasDraft = values.has(f.key);
-            // Prefilling a Site fact does not add it to values or the review
-            // payload. An actual edit is required to create an observation.
             const displayValue = hasDraft
                 ? normalizedControlValue(f, values.get(f.key))
-                : (prefillSiteFact(f) && reference
-                    ? normalizedControlValue(f, reference.value) : '');
+                : (prefillRecordedFact(f) && reference
+                    ? normalizedControlValue(f, reference.value)
+                    : '');
 
+            // Existing Yes/No (1/0), options and multiselects are all
+            // selected using the same canonical field renderer controls.
+            // They do not become proposed answers until actually changed.
             setScopedValue(card, f, displayValue);
-
-            if (reference) {
-                const displayed = displayReferenceValue(f, reference.value);
-                note.textContent = displayed !== ''
-                    ? `${prefillSiteFact(f) ? 'Existing Site fact' : 'Previous report'}: ${displayed} · ${reference.from}`
-                    : `Existing answer: ${reference.from}`;
-            } else {
-                note.textContent = 'Current answer: Not reported';
-            }
         }
     }
 
