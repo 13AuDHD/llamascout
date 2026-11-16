@@ -36,10 +36,10 @@ $areaCampingFields = array_filter(
 <section class="contribution-area-panel admin-facility-questions"
          data-admin-facility-questions hidden>
     <?php foreach ([
-        ['fields' => $areaCampingFields, 'heading' => 'Area Scout Report',
-         'description' => 'Answers describe this camping or parking Area, not the entire Place.'],
-        ['fields' => $areaFacilityFields, 'heading' => 'Facility Scout Report',
-         'description' => 'Answers describe the selected facility, not the entire Place.'],
+        ['fields' => $areaCampingFields, 'heading' => 'Facility Scout Report',
+         'description' => 'Answers describe this camping or parking Facility, not the entire Place.'],
+        ['fields' => $areaFacilityFields, 'heading' => 'Facility Experience',
+         'description' => 'Answers describe the selected Facility, not the entire Place.'],
     ] as $group): ?>
         <?php if (empty($group['fields'])) continue; ?>
         <div data-admin-area-question-group hidden>
