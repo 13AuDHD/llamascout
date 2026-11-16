@@ -296,3 +296,70 @@
         grid-column: auto;
     }
 }
+
+
+/*
+ * Place thumbnail borders follow the main map result cards, with the same
+ * confirmed data and priority: Closed > branded partner > Featured > Paid.
+ * The shared inventory is also used for Resources, so these styles only
+ * apply when the Place status class is provided.
+ *
+ * Reference colors are from css/map.css .map-place-card states.
+ */
+.admin-place-list-image[class*=" is-"] {
+    position: relative;
+    box-sizing: border-box;
+    border-width: 3px;
+    isolation: isolate;
+}
+
+.admin-place-list-image.is-closed {
+    border-color: #c9363e;
+}
+
+.admin-place-list-image.is-partner {
+    border-color: var(--admin-place-partner-color, #FBD318);
+}
+
+.admin-place-list-image.is-featured {
+    border-color: #226CD4;
+}
+
+.admin-place-list-image.is-paid {
+    border-color: #237A4B;
+}
+
+.admin-place-image-badge {
+    position: absolute;
+    inset-inline-start: 5px;
+    bottom: 5px;
+    max-width: calc(100% - 10px);
+    overflow: hidden;
+    padding: 3px 6px;
+    border: 1px solid rgba(255, 255, 255, .3);
+    border-radius: 999px;
+    background: rgba(0, 0, 0, .76);
+    color: #fff;
+    font-size: .6rem;
+    font-weight: 800;
+    line-height: 1.15;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+.admin-place-list-image.is-closed .admin-place-image-badge {
+    background: #c9363e;
+}
+
+.admin-place-list-image.is-featured .admin-place-image-badge {
+    background: #226CD4;
+}
+
+.admin-place-list-image.is-paid .admin-place-image-badge {
+    background: #237A4B;
+}
+
+.admin-place-list-image.is-partner .admin-place-image-badge {
+    background: rgba(0, 0, 0, .8);
+}
