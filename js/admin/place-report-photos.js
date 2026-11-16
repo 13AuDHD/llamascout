@@ -135,7 +135,7 @@
 
             // The Area picker retains its last selection across tabs.
             // Only the active Area tab may use that value as a photo owner.
-            if (mode === 'area') {
+            if (mode === 'facility') {
                 const areaValue = String(areaSelector?.value || '').trim();
                 return areaValue !== '' ? 'area:' + areaValue : null;
             }
