@@ -6,6 +6,9 @@ on:
     paths:
       - '.github/workflows/complimentary-invitations-integration.yml'
       - 'admin/complimentary-invitations.php'
+      - 'account/complimentary-invite.php'
+      - 'app/icons.php'
+      - 'tools/tests/complimentary-invite-render.php'
       - 'app/membership-invitations.php'
       - 'js/admin/complimentary-invitations.js'
       - 'tools/tests/complimentary-invitations-ui.cjs'
@@ -46,9 +49,14 @@ jobs:
       - name: Check Admin invitation syntax
         run: |
           php -l admin/complimentary-invitations.php
+          php -l account/complimentary-invite.php
           php -l app/membership-invitations.php
           php -l tools/tests/complimentary-invitation-duplicate-mariadb.php
+          php -l tools/tests/complimentary-invite-render.php
           node --check js/admin/complimentary-invitations.js
+
+      - name: Render every complimentary invitation page state with real SVG icons
+        run: php tools/tests/complimentary-invite-render.php
 
       - name: Check iPad and Safari double-click behavior
         run: |
