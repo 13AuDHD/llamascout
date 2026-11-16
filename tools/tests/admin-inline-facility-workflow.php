@@ -48,9 +48,12 @@ $expect(str_contains($fields, 'name="coordinates" required')
     && str_contains($fields, 'data-resource-locate')
     && str_contains($fields, "if (!\$facilityForm)"),
     'Facility creation must use GPS location without address fields.');
-$expect(str_contains($css, 'grid-template-columns: repeat(3, minmax(0, 1fr))')
-    && !str_contains($css, 'grid-template-columns: repeat(5, minmax(0, 1fr));')
-    && str_contains($css, '.admin-place-shared-page .contribution-scope-picker'),
+$pickerStyleStart = strpos($css, '.admin-place-shared-page .contribution-scope-picker {');
+$expect($pickerStyleStart !== false, 'Admin picker style must exist.');
+$pickerStyle = substr($css, $pickerStyleStart,
+    strpos($css, '}', $pickerStyleStart) - $pickerStyleStart);
+$expect(str_contains($pickerStyle, 'grid-template-columns: repeat(3, minmax(0, 1fr))')
+    && !str_contains($pickerStyle, 'repeat(5'),
     'Admin tabs must have exactly three equal columns, not two empty slots.');
 $expect(str_contains($siteJs, "modernFacilitySelected")
     && str_contains($areaJs, "String(value) === 'new'")
