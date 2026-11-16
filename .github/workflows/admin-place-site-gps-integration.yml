@@ -1,0 +1,51 @@
+name: Admin Place Site GPS MariaDB Integration
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/admin-place-site-gps-integration.yml'
+      - 'tools/tests/admin-place-site-gps-mariadb.php'
+      - 'app/admin-place-sites.php'
+      - 'app/admin-place-actions.php'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  site-gps-save:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: admin-site-test-only
+          MARIADB_ROOT_HOST: "%"
+          MARIADB_DATABASE: llama_admin_site_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "healthcheck.sh --connect --innodb_initialized"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PHP MySQL adapter if required
+        run: |
+          if ! php -m | grep -qi '^pdo_mysql$'; then
+            sudo apt-get update -qq
+            sudo apt-get install -y php-mysql
+          fi
+      - name: Check PHP syntax
+        run: |
+          php -l app/admin-place-sites.php
+          php -l app/admin-place-actions.php
+          php -l tools/tests/admin-place-site-gps-mariadb.php
+      - name: Save and roll back Site GPS changes in disposable MariaDB
+        env:
+          LLAMA_ADMIN_SITE_TEST_DSN: mysql:host=127.0.0.1;port=3306;dbname=llama_admin_site_test;charset=utf8mb4
+          LLAMA_ADMIN_SITE_TEST_USER: root
+          LLAMA_ADMIN_SITE_TEST_PASSWORD: admin-site-test-only
+        run: php tools/tests/admin-place-site-gps-mariadb.php
