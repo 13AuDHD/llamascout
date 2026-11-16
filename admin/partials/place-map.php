@@ -15,6 +15,23 @@ foreach ($adminPlaceCampsites as $site) {
     $mapSites[] = array_intersect_key($site, array_flip(['id', 'latitude', 'longitude', 'label']));
 }
 
+// Link child Facilities to the Place map using their own coordinates.
+// No duplicate map_feature record or Edit Map workflow is required.
+$mapFacilities = [];
+foreach ((array) ($adminPlaceFacilities ?? []) as $facility) {
+    if (!llama_resource_coordinates_valid(
+        $facility['latitude'] ?? null, $facility['longitude'] ?? null
+    )) {
+        continue;
+    }
+    $mapFacilities[] = [
+        'id' => (int) ($facility['id'] ?? 0),
+        'label' => (string) ($facility['name'] ?? 'Facility'),
+        'latitude' => (float) $facility['latitude'],
+        'longitude' => (float) $facility['longitude'],
+    ];
+}
+
 $mapLatitude =
     isset($place['latitude'])
     && is_numeric($place['latitude'])
@@ -115,6 +132,7 @@ $mapLongitude =
             ],
             'features' => $mapFeatures,
             'sites' => $mapSites,
+            'facilities' => $mapFacilities,
         ],
         JSON_UNESCAPED_SLASHES
         | JSON_UNESCAPED_UNICODE
