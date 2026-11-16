@@ -52,7 +52,10 @@ $input = [
     'coordinates' => '37.2522200, -107.2192000',
     'hours_mode' => '24_hours', 'status' => 'available',
     'parent_place_id' => 1, 'notes' => 'Two stalls',
-    'experience_present' => '1', 'services' => [],
+    'experience_present' => '1',
+    'services' => [
+        'toilet' => ['enabled' => '1', 'status' => 'available', 'fee_status' => 'free'],
+    ],
 ];
 
 $db->beginTransaction();
