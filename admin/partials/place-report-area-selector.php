@@ -16,7 +16,7 @@ $areas =
         ? $adminPlaceAreas
         : [];
 
-if (!$areas) {
+if (empty($adminFacilityCatalog)) {
     return;
 }
 
@@ -64,6 +64,7 @@ $encode =
                         ?? ''
                     )
                 ) ?>"
+                <?= (string) ($facility['id'] ?? '') === $selectedFacility ? 'selected' : '' ?>
             >
                 <?= $encode(
                     (string) (
