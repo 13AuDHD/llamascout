@@ -170,6 +170,36 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
         }
 
         if ($action === 'save-report') {
+            // A new editor sends the active report target explicitly. Older
+            // Admin clients that do not send it keep the legacy save path.
+            $reportMode = trim((string) ($_POST['admin_report_mode'] ?? ''));
+            if ($reportMode !== '') {
+                if (!in_array($reportMode, ['place', 'site', 'area'], true)) {
+                    throw new InvalidArgumentException('Choose a valid Place, Site, or Area report.');
+                }
+                $selectedSite = trim((string) ($_POST['selected_campsite_id'] ?? ''));
+                $selectedArea = trim((string) ($_POST['selected_area_id'] ?? ''));
+                $bulkSites = trim((string) ($_POST['admin_bulk_site_answers_json'] ?? ''));
+                if ($reportMode === 'site' && $selectedSite === '' && $bulkSites === '') {
+                    throw new InvalidArgumentException(
+                        'Choose an individual Site or All Sites before saving the Site report.'
+                    );
+                }
+                if ($reportMode === 'area' && $selectedArea === '') {
+                    throw new InvalidArgumentException('Choose an Area before saving its report.');
+                }
+                if ($reportMode === 'place' && ($selectedSite !== '' || $selectedArea !== '')) {
+                    throw new InvalidArgumentException(
+                        'A Place save cannot include a Site or Area target. Reload and try again.'
+                    );
+                }
+                if ($reportMode !== 'site'
+                    && (string) ($_POST['admin_site_coordinates_changed'] ?? '') === '1') {
+                    throw new InvalidArgumentException(
+                        'Site coordinates can only be saved while editing that Site.'
+                    );
+                }
+            }
             // Save staged photos without rewriting unrelated report answers.
             // This uses the same existing staging and publication functions.
             $photoOnly = $backgroundPlaceSave
@@ -432,7 +462,11 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
 
                 admin_place_background_save_respond(200, [
                     'success' => true,
-                    'message' => $photoOnly ? 'Photos saved.' : 'Place Report saved.',
+                    'message' => $photoOnly ? 'Photos saved.' : (match ($reportMode ?? '') {
+                        'site' => 'Site Report saved.',
+                        'area' => 'Area Report saved.',
+                        default => 'Place Report saved.',
+                    }),
                     'photos_added' => $photosAdded,
                     'gallery' => $gallery,
                     'gallery_target' => (string) ($photoTarget['scope'] ?? '')
