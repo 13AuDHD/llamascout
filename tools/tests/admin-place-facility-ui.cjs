@@ -18,7 +18,7 @@ function setup(source) {
         '<button type="button" data-contribution-mode="facility" aria-pressed="false">Facility</button>',
         '</nav>',
         '<section data-admin-area-picker hidden>',
-        '<select data-admin-area-selector><option value="map_feature:20">Bath House</option>',
+        '<select data-admin-area-selector data-admin-facility-selector><option value="map_feature:20">Bath House</option>',
         '<option value="resource:7">Laundry Room</option></select>',
         '</section>',
         '<form id="place-report" data-contribution-report>',
