@@ -366,7 +366,12 @@
             const next =
                 selector.value;
 
-            if (isModernFacility(next)) {
+            // The entire resource-backed editor uses a distinct, existing
+            // Facility save adapter. Rebind on a fresh page when switching
+            // from one storage owner to the other, never leave the wrong
+            // editor visible for the selected Facility.
+            if (areaShell?.dataset.adminFacilitySource === 'resource'
+                || isModernFacility(next)) {
                 if (dirty && selected && !window.confirm('Discard unsaved Facility answers?')) {
                     selector.value = selected;
                     return;
