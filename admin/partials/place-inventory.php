@@ -70,11 +70,22 @@
     $location = implode(' · ', array_filter($row['location']));
     ?>
     <article class="admin-place-list-card<?= $services ? ' has-service-pills' : '' ?>">
-        <div class="admin-place-list-image">
+        <?php $imageStatus = is_array($row['image_status'] ?? null) ? $row['image_status'] : null; ?>
+        <div class="admin-place-list-image<?= $imageStatus ? ' is-' . moderation_e($imageStatus['state']) : '' ?>"
+             <?= $imageStatus ? 'title="' . moderation_e($imageStatus['title']) . '"' : '' ?>
+             <?= $imageStatus && $imageStatus['partner_id'] > 0
+                ? 'data-partner-id="' . (int) $imageStatus['partner_id'] . '"' : '' ?>
+             <?= $imageStatus && $imageStatus['partner_color'] !== ''
+                ? 'data-partner-color="' . moderation_e($imageStatus['partner_color']) . '"' : '' ?>>
             <?php if ($row['image_url'] !== ''): ?>
                 <img src="<?= moderation_e($row['image_url']) ?>" alt="" loading="lazy">
             <?php else: ?>
                 <i aria-hidden="true"><?= llama_icon('photo') ?></i>
+            <?php endif; ?>
+            <?php if ($imageStatus && $imageStatus['badge'] !== ''): ?>
+                <span class="admin-place-image-badge" aria-label="<?= moderation_e($imageStatus['title']) ?>">
+                    <?= moderation_e($imageStatus['badge']) ?>
+                </span>
             <?php endif; ?>
         </div>
 
