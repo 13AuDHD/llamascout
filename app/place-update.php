@@ -307,11 +307,10 @@ function llama_place_update_build_changes(
             );
 
 
-        if (
-            !$partialReport
-            && !$valueChanged
-            && !$answerStateChanged
-        ) {
+        // A prefilled fact is not a new report. Even if a control was
+        // touched, reverting it to the published value must not create a
+        // meaningless "changed" item for moderation.
+        if (!$valueChanged && !$answerStateChanged) {
             continue;
         }
 

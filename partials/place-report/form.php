@@ -297,7 +297,13 @@ $placeReportBrowserConfig = [
     'unknown_token' => llama_place_report_unknown_token(),
     'unanswered_token' => llama_place_report_unanswered_token(),
     'mode' => $placeReportMode,
-    'initial_answer_keys' => array_values(array_keys($placeReportValues)),
+    // Prefilled published answers are display values, not submitted changes.
+    // Only actual contributor edits or resubmitted draft answers are touched.
+    'initial_answer_keys' => array_values(
+        $placeReportMode === 'update-report'
+            ? ($placeReportInitiallyTouchedKeys ?? array_keys($placeReportValues))
+            : array_keys($placeReportValues)
+    ),
     'fields' => $placeReportBrowserFields,
 ];
 
@@ -320,8 +326,14 @@ $referenceFor =
     static function (
         string $key
     ) use (
-        $placeReportReferenceValues
+        $placeReportReferenceValues,
+        $placeReportMode
     ): string {
+        // The update form already shows current facts in the actual inputs.
+        // Repeating "Current answer: ..." underneath is distracting.
+        if ($placeReportMode === 'update-report') {
+            return '';
+        }
         if (
             !array_key_exists(
                 $key,
