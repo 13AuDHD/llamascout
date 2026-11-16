@@ -100,5 +100,8 @@ $inventoryRows = array_map(static fn (array $place): array => [
 ], $places);
 
 require __DIR__ . '/_header.php';
+?>
+<script defer src="https://llamascout.com/js/admin/place-image-borders.js?v=<?= (int) filemtime(dirname(__DIR__) . '/js/admin/place-image-borders.js') ?>"></script>
+<?php
 require __DIR__ . '/partials/place-inventory.php';
 require __DIR__ . '/_footer.php';
