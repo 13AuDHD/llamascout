@@ -38,7 +38,7 @@ $mapLongitude =
             <p>Map</p>
             <h2>Place layout</h2>
             <span class="admin-place-muted">
-                Tap the Place boundary, an Area, or a Site to edit that selection below.
+                Tap the Place boundary, a Facility, or a Site to edit that selection below.
             </span>
         </div>
 
@@ -87,7 +87,7 @@ $mapLongitude =
         <div
             class="admin-place-map"
             data-admin-place-map
-            aria-label="Place, Area, and Site map"
+            aria-label="Place, Facility, and Site map"
         ></div>
     </div>
 

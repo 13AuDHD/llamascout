@@ -2,9 +2,10 @@
     'use strict';
 
     const form = document.getElementById('place-report');
-    const catalogNode = form?.querySelector('[data-admin-place-areas]');
-    const selector = form?.querySelector('[data-admin-area-selector]');
-    const target = form?.querySelector('[name="selected_area_id"]');
+    const shell = form?.closest('[data-contribution-tabs]');
+    const catalogNode = shell?.querySelector('[data-admin-place-areas]');
+    const selector = shell?.querySelector('[data-admin-area-selector]');
+    const target = shell?.querySelector('[name="selected_area_id"]');
     const siteSelector = form?.querySelector('[data-admin-campsite-selector]');
     if (!form || !catalogNode || !selector || !target) return;
 
@@ -19,10 +20,11 @@
     const facilityPanel = form.querySelector('[data-admin-facility-questions]');
     const facilityFields = [...form.querySelectorAll('[data-area-question]')];
     const areasById = new Map(areas.map(area => [String(area.id), area]));
+    const isModernFacility = value => /^resource:[1-9][0-9]*$/.test(String(value));
     const areaShell = form.closest('[data-contribution-tabs]');
-    const areaPicker = form.querySelector('[data-admin-area-picker]');
+    const areaPicker = areaShell?.querySelector('[data-admin-area-picker]');
     const currentMode = () =>
-        areaShell?.querySelector('[data-contribution-mode="area"]')
+        areaShell?.querySelector('[data-contribution-mode="facility"]')
             ?.getAttribute('aria-pressed') === 'true';
     let previouslyEditingArea = false;
     const areaDrafts = new Map();
@@ -49,7 +51,7 @@
                 write(areaDrafts.get(selected) || effectiveValues(selected));
             }
         }
-        if (!areas.length) return;
+        if (!areas.length || isModernFacility(selector.value)) return;
         if (!allowed.has(selector.value)) {
             selector.value = String(areas[0].id);
             selector.dispatchEvent(new Event('change', {bubbles: true}));
@@ -364,6 +366,23 @@
             const next =
                 selector.value;
 
+            // The entire resource-backed editor uses a distinct, existing
+            // Facility save adapter. Rebind on a fresh page when switching
+            // from one storage owner to the other, never leave the wrong
+            // editor visible for the selected Facility.
+            if (areaShell?.dataset.adminFacilitySource === 'resource'
+                || isModernFacility(next)) {
+                if (dirty && selected && !window.confirm('Discard unsaved Facility answers?')) {
+                    selector.value = selected;
+                    return;
+                }
+                const url = new URL(window.location.href);
+                url.searchParams.set('mode', 'facility');
+                url.searchParams.set('facility', next);
+                url.hash = 'place-report';
+                window.location.assign(url.toString());
+                return;
+            }
             if (
                 (
                     next
@@ -380,7 +399,7 @@
                 dirty
                 && selected
                 && !window.confirm(
-                    'Discard unsaved Area answers?'
+                    'Discard unsaved Facility answers?'
                 )
             ) {
                 selector.value =
@@ -413,6 +432,9 @@
                     : placeValues
             );
             syncFacilityQuestions(selected);
+            form.dispatchEvent(new CustomEvent('llama:admin-facility-selected', {
+                detail: {facilityId: selected}
+            }));
         }
     );
 

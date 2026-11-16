@@ -32,12 +32,7 @@ $placeDraftSuffix = $isResourcePage && !empty($contributionReturnDraft)
         <button type="button" data-contribution-mode="place" aria-pressed="true">Place</button>
         <button type="button" data-contribution-mode="site" aria-pressed="false">Site</button>
         <?php if ($isAdminPlacePage): ?>
-            <a href="https://llamascout.com/resource-contribution.php?kind=facility&amp;parent_place_id=<?= (int) $contributionAdminPlaceId ?>"
-               data-contribution-facility-link title="Add a Facility belonging to this Place">Facility</a>
-            <a href="/resources.php" data-contribution-resource-link
-               title="Manage independent off-site Resources">Resource</a>
-            <button type="button" data-contribution-mode="area" aria-pressed="false"
-                    title="Edit legacy mapped Area records">Areas</button>
+            <button type="button" data-contribution-mode="facility" aria-pressed="false">Facility</button>
         <?php elseif ($isNewContribution): ?>
             <a href="/resource-contribution.php?kind=facility<?= !empty($draftId) ? '&return_draft=' . (int) $draftId : '' ?>"
                 data-contribution-facility-link>Facility</a>

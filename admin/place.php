@@ -13,6 +13,7 @@ require_once dirname(__DIR__) . '/app/place-verifications.php';
 require_once dirname(__DIR__) . '/app/place-map-features.php';
 require_once dirname(__DIR__) . '/app/place-site-identity.php';
 require_once dirname(__DIR__) . '/app/resources.php';
+require_once dirname(__DIR__) . '/app/admin-place-facilities.php';
 require_once __DIR__ . '/_dashboard.php';
 
 $adminUser = moderation_require_admin();
@@ -27,8 +28,8 @@ if ($placeId < 1) {
 
 $actionState = admin_place_handle_actions($db, $actorUserId, $placeId);
 $notice = (string) ($actionState['notice'] ?? '');
-if (($_GET['resource_saved'] ?? '') === '1') {
-    $notice = 'Resource saved.';
+if (($_GET['facility_saved'] ?? '') === '1') {
+    $notice = 'Facility saved.';
 }
 $error = (string) ($actionState['error'] ?? '');
 $action = (string) ($actionState['action'] ?? '');
@@ -76,7 +77,8 @@ if (
 }
 
 $reportData = admin_place_shared_report_data($db, $placeId);
-$adminPlaceFacilities = llama_place_facilities($db, $placeId);
+$adminPlaceFacilities = llama_resource_parent_place_ready($db)
+    ? llama_resources($db, null, false, $placeId) : [];
 $adminPlaceCampsites =
     array_values(
         array_filter(
@@ -92,6 +94,28 @@ $adminPlaceCampsites =
         )
     );
 $adminPlaceAreas = admin_place_area_form_catalog($db, $placeId);
+$adminFacilityCatalog = admin_place_facility_catalog($adminPlaceAreas, $adminPlaceFacilities);
+$requestedFacility = (string) ($_GET['facility'] ?? $_POST['selected_facility_id'] ?? '');
+$validFacilityIds = array_column($adminFacilityCatalog, 'id');
+$selectedFacility = in_array($requestedFacility, $validFacilityIds, true)
+    ? $requestedFacility : (string) ($adminFacilityCatalog[0]['id'] ?? '');
+$selectedFacilityResource = null;
+if (str_starts_with($selectedFacility, 'resource:')) {
+    $resourceId = (int) substr($selectedFacility, strlen('resource:'));
+    foreach ($adminPlaceFacilities as $candidate) {
+        if ((int) ($candidate['id'] ?? 0) === $resourceId) {
+            $selectedFacilityResource = $candidate;
+            break;
+        }
+    }
+}
+$adminFacilityMapInfo = [];
+foreach (llama_place_map_features($db, $placeId, true, true) as $feature) {
+    if (in_array((string) ($feature['feature_type'] ?? ''), ['camping_area', 'parking_area', 'facility_area'], true)) {
+        $adminFacilityMapInfo['map_feature:' . (int) $feature['id']] =
+            admin_place_facility_map_details($feature);
+    }
+}
 
 $adminPlaceMapFeatures = array_values(
     array_map(
@@ -369,7 +393,7 @@ $placeReportPhotoEndpoint = '/photo-upload.php';
 $placeReportPhotoCsrf = llama_photo_csrf_token();
 $placeReportPhotoMax = 10;
 $placeReportPhotoTitle = 'Place photos';
-$placeReportPhotoHelp = 'Add photos to the currently selected Place, Area, or Site.';
+$placeReportPhotoHelp = 'Add photos to the selected Place, Facility, or Site.';
 ?>
 
 <?php if ($notice !== ''): ?>
@@ -404,6 +428,8 @@ $sharedReportVersion = is_file($sharedReportAsset) ? (int) filemtime($sharedRepo
 <script src="https://llamascout.com/js/place-report-form.js?v=<?= $sharedReportVersion ?>"></script>
 <script src="https://llamascout.com/js/admin/place-report-save.js?v=<?= (int) filemtime(dirname(__DIR__) . '/js/admin/place-report-save.js') ?>"></script>
 <script src="https://llamascout.com/js/admin/place-report-seasons.js"></script>
+<script src="https://llamascout.com/js/admin/place-facility-editor.js?v=<?= (int) filemtime(dirname(__DIR__) . '/js/admin/place-facility-editor.js') ?>"></script>
+<script src="https://llamascout.com/js/admin/resources.js?v=<?= (int) filemtime(dirname(__DIR__) . '/js/admin/resources.js') ?>"></script>
 <script src="https://llamascout.com/js/admin/place-report-area.js?v=<?= (int) filemtime(dirname(__DIR__) . '/js/admin/place-report-area.js') ?>"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://llamascout.com/js/admin/place-map.js?v=<?= (int) filemtime(dirname(__DIR__) . '/js/admin/place-map.js') ?>"></script>

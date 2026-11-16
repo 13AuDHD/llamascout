@@ -1,6 +1,7 @@
 @import url("../../site/pages/add-place.css");
 @import url("../../site/features/place-report-form.css");
 @import url("../../site/features/contribution-tabs.css");
+@import url("../../site/features/resource-form.css");
 @import url("https://unpkg.com/leaflet@1.9.4/dist/leaflet.css");
 
 /* =========================================================
@@ -147,7 +148,7 @@
 
 .admin-place-operations-strip {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 1px;
     overflow: hidden;
 }
@@ -1136,7 +1137,7 @@
     width: min(100%, 660px);
     grid-template-columns: repeat(5, minmax(0, 1fr));
 }
-.admin-place-shared-page .contribution-scope-picker > [data-contribution-mode="area"] {
+.admin-place-shared-page .contribution-scope-picker > [data-contribution-mode="facility"] {
     --mode-color: #9765cb;
 }
 .admin-place-shared-page .contribution-scope-picker > [data-contribution-facility-link]:hover,
@@ -1228,4 +1229,31 @@
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
     .admin-place-linked-facilities { padding: 16px; }
+}
+
+
+/* The mapped and newer Facility editors share the same tab and accent. */
+.admin-place-shared-page [data-admin-facility-metadata] .contribution-section,
+.admin-place-shared-page [data-admin-resource-facility-editor] .contribution-section {
+    border-inline-start: 4px solid #9765cb;
+    background: var(--background);
+    margin-bottom: 12px;
+}
+.admin-place-shared-page [data-admin-resource-facility-editor] {
+    display: grid;
+    gap: 16px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+}
+.admin-place-shared-page [data-admin-resource-facility-editor][hidden],
+.admin-place-shared-page [data-admin-facility-metadata][hidden] {
+    display: none !important;
+}
+.admin-place-shared-page [data-admin-facility-selector] {
+    width: 100%;
+}
+.admin-place-shared-page [data-admin-facility-metadata] .contribution-grid {
+    margin-top: 4px;
 }

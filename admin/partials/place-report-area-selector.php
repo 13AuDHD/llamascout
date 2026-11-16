@@ -16,7 +16,7 @@ $areas =
         ? $adminPlaceAreas
         : [];
 
-if (!$areas) {
+if (empty($adminFacilityCatalog)) {
     return;
 }
 
@@ -42,41 +42,45 @@ $encode =
 >
     <header>
         <h3 id="admin-place-area-heading">
-            Area Scout Report
+            Facility Scout Report
         </h3>
 
     </header>
 
     <label for="admin-place-area-target">
-        Area to edit
+        Facility to edit
     </label>
 
     <select
         id="admin-place-area-target"
         data-admin-area-selector
+        data-admin-facility-selector
     >
-        <?php foreach ($areas as $area): ?>
+        <?php foreach ($adminFacilityCatalog as $facility): ?>
             <option
                 value="<?= $encode(
                     (string) (
-                        $area['id']
+                        $facility['id']
                         ?? ''
                     )
                 ) ?>"
+                <?= (string) ($facility['id'] ?? '') === $selectedFacility ? 'selected' : '' ?>
             >
                 <?= $encode(
                     (string) (
-                        $area['label']
-                        ?? 'Unnamed Area'
+                        $facility['label']
+                        ?? 'Unnamed Facility'
                     )
                 ) ?>
             </option>
         <?php endforeach; ?>
     </select>
+    <p class="admin-place-muted">Select a Facility to edit its information and location. Changes save to the existing record.</p>
 
     <input
         type="hidden"
         name="selected_area_id"
+        form="place-report"
         value=""
     >
 

@@ -45,7 +45,7 @@
         );
 
     const areaSelector =
-        form.querySelector(
+        form.closest('[data-contribution-tabs]')?.querySelector(
             '[data-admin-area-selector]'
         );
 
@@ -135,7 +135,7 @@
 
             // The Area picker retains its last selection across tabs.
             // Only the active Area tab may use that value as a photo owner.
-            if (mode === 'area') {
+            if (mode === 'facility') {
                 const areaValue = String(areaSelector?.value || '').trim();
                 return areaValue !== '' ? 'area:' + areaValue : null;
             }
@@ -350,7 +350,7 @@
         );
         payload.set(
             'selected_area_id',
-            currentMode() === 'area'
+            currentMode() === 'facility'
                 ? String(areaSelector?.value || '')
                 : ''
         );

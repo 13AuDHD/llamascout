@@ -40,7 +40,7 @@
             || (form.querySelector('[data-admin-campsite-selector]')?.value ? 'site' : 'place');
     const reportTargetLabel = () => {
         const mode = activeReportMode();
-        return mode === 'site' ? 'Site' : (mode === 'area' ? 'Area' : 'Place');
+        return mode === 'site' ? 'Site' : (mode === 'facility' ? 'Facility' : 'Place');
     };
     const refreshSaveLabel = () => {
         const label = button.querySelector('[data-admin-save-report-label]');
@@ -1562,11 +1562,13 @@
             // a Place-only save through that stale Site target.
             const mode = activeReportMode();
             saveData.set('admin_report_mode', mode);
-            if (mode !== 'area') {
+            if (mode !== 'facility') {
                 // An old Area payload must not be saved while editing Place
                 // or Site, even if the selector keeps a previous value.
                 saveData.delete('selected_area_id');
                 saveData.delete('admin_area_answers_json');
+                for (const name of ['facility_name', 'facility_kind', 'facility_notes',
+                    'facility_coordinates', 'facility_coordinates_changed']) saveData.delete(name);
             }
             if (mode !== 'site') {
                 // Site coordinates only belong to the explicitly selected Site.

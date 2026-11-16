@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/admin-place-sites.php';
 require_once __DIR__ . '/admin-place-areas.php';
+require_once __DIR__ . '/admin-place-facilities.php';
 require_once __DIR__ . '/admin-place-report.php';
 require_once __DIR__ . '/place-verifications.php';
 require_once __DIR__ . '/place-site-identity.php';
@@ -169,13 +170,69 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
             );
         }
 
+        if ($action === 'save-linked-facility') {
+            $resourceId = (int) ($_POST['facility_resource_id'] ?? 0);
+            $existing = $resourceId > 0 ? admin_resource_get($db, $resourceId) : [];
+            if (!$existing || (int) ($existing['parent_place_id'] ?? 0) !== $placeId) {
+                throw new InvalidArgumentException(
+                    'The selected Facility does not belong to this Place.'
+                );
+            }
+            // The parent is server-owned, never taken from a submitted
+            // form. This action can only UPDATE an existing Facility.
+            $facilityData = $_POST;
+            $facilityData['parent_place_id'] = $placeId;
+            $newPhotos = llama_photo_decode_form_photos(
+                $facilityData['resource_photos_json'] ?? '[]'
+            );
+            $photoToken = trim((string) ($facilityData['resource_photo_stage_token'] ?? ''));
+            $newPhotoPaths = [];
+            $removedPhotoPaths = [];
+            $db->beginTransaction();
+            try {
+                admin_resource_save($db, $actorUserId, $resourceId, $facilityData);
+                $removedPhotoPaths = admin_resource_apply_gallery_edits(
+                    $db, $resourceId, $actorUserId,
+                    trim((string) ($facilityData['resource_gallery_json'] ?? '')),
+                    $facilityData['resource_remove_photo_ids'] ?? []
+                );
+                if ($newPhotos) {
+                    admin_resource_attach_staged_photos(
+                        $db, $actorUserId, $resourceId, $photoToken,
+                        $newPhotos, $newPhotoPaths
+                    );
+                }
+                $db->commit();
+            } catch (Throwable $exception) {
+                if ($db->inTransaction()) $db->rollBack();
+                foreach ($newPhotoPaths as $photo) {
+                    llama_photo_delete_owned_permanent_path(
+                        (string) ($photo['path'] ?? ''), ['uploads/resources']
+                    );
+                }
+                throw $exception;
+            }
+            foreach (array_unique($removedPhotoPaths) as $removedPath) {
+                if ($removedPath !== ''
+                    && !llama_photo_gallery_path_in_use($db, $removedPath)) {
+                    llama_photo_delete_owned_permanent_path(
+                        $removedPath, ['uploads/resources']
+                    );
+                }
+            }
+            header('Location: /place.php?id=' . $placeId
+                . '&mode=facility&facility=resource:' . $resourceId
+                . '&facility_saved=1#place-report', true, 303);
+            exit;
+        }
+
         if ($action === 'save-report') {
             // A new editor sends the active report target explicitly. Older
             // Admin clients that do not send it keep the legacy save path.
             $reportMode = trim((string) ($_POST['admin_report_mode'] ?? ''));
             if ($reportMode !== '') {
-                if (!in_array($reportMode, ['place', 'site', 'area'], true)) {
-                    throw new InvalidArgumentException('Choose a valid Place, Site, or Area report.');
+                if (!in_array($reportMode, ['place', 'site', 'facility', 'area'], true)) {
+                    throw new InvalidArgumentException('Choose a valid Place, Site, or Facility report.');
                 }
                 $selectedSite = trim((string) ($_POST['selected_campsite_id'] ?? ''));
                 $selectedArea = trim((string) ($_POST['selected_area_id'] ?? ''));
@@ -185,12 +242,12 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
                         'Choose an individual Site or All Sites before saving the Site report.'
                     );
                 }
-                if ($reportMode === 'area' && $selectedArea === '') {
-                    throw new InvalidArgumentException('Choose an Area before saving its report.');
+                if (in_array($reportMode, ['area', 'facility'], true) && $selectedArea === '') {
+                    throw new InvalidArgumentException('Choose a Facility before saving its report.');
                 }
                 if ($reportMode === 'place' && ($selectedSite !== '' || $selectedArea !== '')) {
                     throw new InvalidArgumentException(
-                        'A Place save cannot include a Site or Area target. Reload and try again.'
+                        'A Place save cannot include a Site or Facility target. Reload and try again.'
                     );
                 }
                 if ($reportMode !== 'site'
@@ -276,11 +333,16 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
                     $bulkResult = admin_place_bulk_save_site_answers($db, $actorUserId, $placeId, $_POST);
 
                     if ($areaId > 0) {
+                        if ($reportMode === 'facility' && array_key_exists('facility_name', $_POST)) {
+                            admin_place_save_map_facility(
+                                $db, $actorUserId, $placeId, $areaId, $_POST
+                            );
+                        }
                         $saved = admin_place_save_area_answers($db, $placeId, $areaId, $areaAnswers);
                         admin_users_audit(
                             $db, $actorUserId, null,
                             'place.area_report_updated',
-                            'Updated an individual Area report.',
+                            'Updated an individual Facility report.',
                             ['place_id' => $placeId, 'area_id' => $areaId, 'answers_saved' => $saved]
                         );
                     }
@@ -464,7 +526,7 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
                     'success' => true,
                     'message' => $photoOnly ? 'Photos saved.' : (match ($reportMode ?? '') {
                         'site' => 'Site Report saved.',
-                        'area' => 'Area Report saved.',
+                        'area', 'facility' => 'Facility Report saved.',
                         default => 'Place Report saved.',
                     }),
                     'photos_added' => $photosAdded,

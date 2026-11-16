@@ -14,7 +14,7 @@ const html = [
     '<nav data-contribution-picker>',
     '<button type="button" data-contribution-mode="place" aria-pressed="true">Place</button>',
     '<button type="button" data-contribution-mode="site" aria-pressed="false">Site</button>',
-    '<button type="button" data-contribution-mode="area" aria-pressed="false">Areas</button>',
+    '<button type="button" data-contribution-mode="facility" aria-pressed="false">Facility</button>',
     '</nav>',
     '<form id="place-report" action="/place.php?id=42">',
     '<input name="place_id" value="42">',
@@ -90,8 +90,8 @@ const save = async mode => {
     assert.equal(payload.admin_site_coordinates_changed, '1');
     assert.equal(payload.site_coordinates, '37.25222, -107.21920');
 
-    payload = await save('area');
-    assert.equal(payload.admin_report_mode, 'area');
+    payload = await save('facility');
+    assert.equal(payload.admin_report_mode, 'facility');
     assert.equal(payload.selected_campsite_id, undefined);
     assert.equal(payload.admin_site_coordinates_changed, undefined);
     assert.equal(payload.site_coordinates, undefined);
@@ -99,7 +99,7 @@ const save = async mode => {
     assert.equal(payload.admin_area_answers_json, '{}');
 
     dom.window.close();
-    console.log('PASS: Admin Place/Site/Area saves isolate targets and keep GPS in Site-only submissions.');
+    console.log('PASS: Admin Place/Site/Facility saves isolate targets and keep GPS in Site-only submissions.');
 })().catch(error => {
     dom.window.close();
     console.error(error);
