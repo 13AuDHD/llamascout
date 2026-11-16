@@ -20,7 +20,8 @@
     const facilityPanel = form.querySelector('[data-admin-facility-questions]');
     const facilityFields = [...form.querySelectorAll('[data-area-question]')];
     const areasById = new Map(areas.map(area => [String(area.id), area]));
-    const isModernFacility = value => /^resource:[1-9][0-9]*$/.test(String(value));
+    const isModernFacility = value =>
+        String(value) === 'new' || /^resource:[1-9][0-9]*$/.test(String(value));
     const areaShell = form.closest('[data-contribution-tabs]');
     const areaPicker = areaShell?.querySelector('[data-admin-area-picker]');
     const currentMode = () =>
@@ -99,7 +100,20 @@
         if (!controls.has(name)) controls.set(name, []);
         controls.get(name).push(control);
     }
-    if (!controls.size) return;
+    if (!controls.size) {
+        // A Place with no mapped Areas still has an Admin Facility picker.
+        // New and resource-backed Facilities must remain selectable.
+        selector.addEventListener('change', () => {
+            const next = String(selector.value || '');
+            if (next === '') return;
+            const url = new URL(window.location.href);
+            url.searchParams.set('mode', 'facility');
+            url.searchParams.set('facility', next);
+            url.hash = 'place-report';
+            window.location.assign(url.toString());
+        });
+        return;
+    }
 
     /*
      * `original` stores only explicit Area overrides. Effective values are

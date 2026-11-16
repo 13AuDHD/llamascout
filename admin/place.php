@@ -97,8 +97,11 @@ $adminPlaceAreas = admin_place_area_form_catalog($db, $placeId);
 $adminFacilityCatalog = admin_place_facility_catalog($adminPlaceAreas, $adminPlaceFacilities);
 $requestedFacility = (string) ($_GET['facility'] ?? $_POST['selected_facility_id'] ?? '');
 $validFacilityIds = array_column($adminFacilityCatalog, 'id');
-$selectedFacility = in_array($requestedFacility, $validFacilityIds, true)
-    ? $requestedFacility : (string) ($adminFacilityCatalog[0]['id'] ?? '');
+$selectedFacility = $requestedFacility === 'new' || !$adminFacilityCatalog
+    ? 'new'
+    : (in_array($requestedFacility, $validFacilityIds, true)
+        ? $requestedFacility : (string) $adminFacilityCatalog[0]['id']);
+$creatingFacility = $selectedFacility === 'new';
 $selectedFacilityResource = null;
 if (str_starts_with($selectedFacility, 'resource:')) {
     $resourceId = (int) substr($selectedFacility, strlen('resource:'));
@@ -109,6 +112,8 @@ if (str_starts_with($selectedFacility, 'resource:')) {
         }
     }
 }
+// All linked Facility records are managed here; a newly created one is
+// immediately available in the same selector on redirect.
 $adminFacilityMapInfo = [];
 foreach (llama_place_map_features($db, $placeId, true, true) as $feature) {
     if (in_array((string) ($feature['feature_type'] ?? ''), ['camping_area', 'parking_area', 'facility_area'], true)) {

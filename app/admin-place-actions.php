@@ -172,14 +172,19 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
 
         if ($action === 'save-linked-facility') {
             $resourceId = (int) ($_POST['facility_resource_id'] ?? 0);
-            $existing = $resourceId > 0 ? admin_resource_get($db, $resourceId) : [];
-            if (!$existing || (int) ($existing['parent_place_id'] ?? 0) !== $placeId) {
-                throw new InvalidArgumentException(
-                    'The selected Facility does not belong to this Place.'
-                );
+            if ($resourceId < 0) {
+                throw new InvalidArgumentException('Invalid Facility ID.');
             }
-            // The parent is server-owned, never taken from a submitted
-            // form. This action can only UPDATE an existing Facility.
+            if ($resourceId > 0) {
+                $existing = admin_resource_get($db, $resourceId);
+                if (!$existing || (int) ($existing['parent_place_id'] ?? 0) !== $placeId) {
+                    throw new InvalidArgumentException(
+                        'The selected Facility does not belong to this Place.'
+                    );
+                }
+            }
+            // Admin can create a Facility directly with coordinates or
+            // update an existing one. Never trust a submitted Parent Place.
             $facilityData = $_POST;
             $facilityData['parent_place_id'] = $placeId;
             $newPhotos = llama_photo_decode_form_photos(
@@ -190,12 +195,16 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
             $removedPhotoPaths = [];
             $db->beginTransaction();
             try {
-                admin_resource_save($db, $actorUserId, $resourceId, $facilityData);
-                $removedPhotoPaths = admin_resource_apply_gallery_edits(
-                    $db, $resourceId, $actorUserId,
-                    trim((string) ($facilityData['resource_gallery_json'] ?? '')),
-                    $facilityData['resource_remove_photo_ids'] ?? []
+                $resourceId = admin_resource_save(
+                    $db, $actorUserId, $resourceId, $facilityData
                 );
+                if (!empty($existing)) {
+                    $removedPhotoPaths = admin_resource_apply_gallery_edits(
+                        $db, $resourceId, $actorUserId,
+                        trim((string) ($facilityData['resource_gallery_json'] ?? '')),
+                        $facilityData['resource_remove_photo_ids'] ?? []
+                    );
+                }
                 if ($newPhotos) {
                     admin_resource_attach_staged_photos(
                         $db, $actorUserId, $resourceId, $photoToken,

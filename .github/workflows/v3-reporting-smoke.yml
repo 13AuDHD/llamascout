@@ -217,6 +217,14 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/llama-season-ui-tests"
           npm install --prefix "$RUNNER_TEMP/llama-season-ui-tests" --no-save --no-package-lock jsdom@26
+      - name: Verify direct Admin Add Facility with coordinates and three complete tabs
+        env:
+          NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules
+        run: |
+          php tools/tests/admin-inline-facility-workflow.php
+          node --check js/admin/place-map.js
+          node --check js/admin/place-report-area.js
+          node tools/tests/admin-inline-facility-ui.cjs
       - name: Verify unified historical Area and modern Facility Admin editing
         env:
           NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules

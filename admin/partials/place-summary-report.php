@@ -68,35 +68,11 @@ $placeReportSelectedSite = isset($placeReportSiteOptions[$requestedSite]) ? $req
 
 
 <div class="contribution-tab-shell" data-contribution-tabs data-contribution-split
-    data-admin-facility-source="<?= $selectedFacilityResource ? 'resource' : 'map_feature' ?>"
+    data-admin-facility-source="<?= $selectedFacilityResource || $creatingFacility ? 'resource' : 'map_feature' ?>"
     data-contribution-initial="<?= in_array((string) ($_GET['mode'] ?? ''), ['facility', 'area'], true) ? 'facility' : ($placeReportSelectedSite !== '' ? 'site' : 'place') ?>">
     <?php require dirname(__DIR__, 2) . '/partials/place-report/contribution-tabs.php'; ?>
     <?php require __DIR__ . '/place-report-area-selector.php'; ?>
-    <?php if (empty($adminFacilityCatalog)): ?>
-        <section class="admin-place-report-shell"
-                 data-contribution-area-empty
-                 aria-labelledby="admin-add-area-heading"
-                 hidden>
-            <header class="admin-place-report-header">
-                <p>Facilities</p>
-                <h2 id="admin-add-area-heading">No Facilities to edit</h2>
-                <span class="admin-place-muted">
-                    This Place has no Facility records yet. Add a Facility to this Place
-                    before editing it here.
-                </span>
-            </header>
-            <p>
-                Facilities added from the contribution workflow and existing mapped
-                Facilities will both appear in the same selector.
-            </p>
-            <a class="admin-button"
-               href="https://llamascout.com/place-map-editor.php?slug=<?= rawurlencode((string) ($place['slug'] ?? '')) ?>&amp;from=admin"
-               target="_blank" rel="noopener">
-                <?= llama_icon('map') ?>
-                Edit Map
-            </a>
-        </section>
-    <?php endif; ?>
+
 <form method="post" class="admin-place-report-form place-report-form" id="place-report" data-contribution-report
     <?php if ($placeReportSelectedSite !== ''): ?>data-admin-site-report-id="<?= $requestedSiteId ?>"<?php endif; ?>>
     <input type="hidden" name="csrf_token" value="<?= $e(moderation_csrf_token()) ?>">

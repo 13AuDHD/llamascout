@@ -16,10 +16,6 @@ $areas =
         ? $adminPlaceAreas
         : [];
 
-if (empty($adminFacilityCatalog)) {
-    return;
-}
-
 $areaFields =
     array_keys(
         admin_place_area_fields()
@@ -41,9 +37,11 @@ $encode =
     hidden
 >
     <header>
-        <h3 id="admin-place-area-heading">
-            Facility Scout Report
-        </h3>
+        <h3 id="admin-place-area-heading">Facilities</h3>
+        <a class="admin-button is-muted" data-admin-add-facility
+           href="/place.php?id=<?= (int) $placeId ?>&amp;mode=facility&amp;facility=new#place-report">
+            <?= llama_icon('plus') ?> Add Facility
+        </a>
 
     </header>
 
@@ -56,6 +54,7 @@ $encode =
         data-admin-area-selector
         data-admin-facility-selector
     >
+        <option value="new" <?= $creatingFacility ? 'selected' : '' ?>>+ New Facility</option>
         <?php foreach ($adminFacilityCatalog as $facility): ?>
             <option
                 value="<?= $encode(
@@ -75,7 +74,7 @@ $encode =
             </option>
         <?php endforeach; ?>
     </select>
-    <p class="admin-place-muted">Select a Facility to edit its information and location. Changes save to the existing record.</p>
+    <p class="admin-place-muted">Select an existing Facility to edit it, or add a new Facility here using its coordinates. No map editing required.</p>
 
     <input
         type="hidden"

@@ -1135,7 +1135,7 @@
  */
 .admin-place-shared-page .contribution-scope-picker {
     width: min(100%, 660px);
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 .admin-place-shared-page .contribution-scope-picker > [data-contribution-mode="facility"] {
     --mode-color: #9765cb;
