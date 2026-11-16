@@ -11,6 +11,14 @@
     const questions = q('[data-scoped-report-questions]');
     const queueInput = q('[data-scoped-answers-json]');
     const notice = q('[data-scoped-field-notice]');
+    const siteIdentityPanel = q('[data-place-update-site-identity]');
+    const siteIdentityOutput = q('[data-site-identity-json]');
+    const siteIdentityStatus = q('[data-site-identity-status]');
+    const identityControls = {
+        name: q('[data-site-identity-name]'),
+        type: q('[data-site-identity-type]'),
+        coordinates: q('[data-site-identity-coordinates]')
+    };
     const targetData = q('#place-update-report-target-data');
     const fieldData = q('#place-update-scoped-fields-data');
     const initialData = q('#place-update-report-initial-data');
@@ -25,7 +33,7 @@
             : {};
     } catch (_) { return; }
 
-    // PHP renders the native select, grouping Place, Areas, and Sites.
+    // PHP renders the native select, grouping Place, Facilities, and Sites.
     // There must be no second search control or dynamic replacement.
     const labels = new Map(
         targets.map(t => [`${t.scope}:${t.source}:${t.id}`, t])
@@ -105,6 +113,74 @@
     }
 
     let values = new Map();
+    let identityCurrent = {};
+    const identityDrafts = new Map();
+    if (initial.site_identity && typeof initial.site_identity === 'object') {
+        identityDrafts.set(initialTargetKey, {...initial.site_identity});
+    }
+    const identityFields = ['name', 'type', 'coordinates'];
+
+    function identityChanges() {
+        if (scope.value !== 'site' || !identityCurrent.label) return {};
+        const changed = {};
+        for (const key of identityFields) {
+            const control = identityControls[key];
+            if (!control || control.disabled) continue;
+            const next = control.value.trim();
+            if (next !== String(identityCurrent[key] || '').trim()) {
+                changed[key] = next;
+            }
+        }
+        return changed;
+    }
+
+    function syncSiteIdentity() {
+        if (!siteIdentityOutput) return 0;
+        const changes = identityChanges();
+        if (scope.value === 'site') {
+            identityDrafts.set(activeTarget, changes);
+        }
+        siteIdentityOutput.value = Object.keys(changes).length > 0
+            ? JSON.stringify(changes) : '';
+        if (siteIdentityStatus && scope.value === 'site') {
+            const n = Object.keys(changes).length;
+            siteIdentityStatus.textContent = n
+                ? `${n} Site detail${n === 1 ? '' : 's'} proposed for review.`
+                : 'Current Site name, type and coordinates are shown above. Change a field to propose a correction.';
+        }
+        return Object.keys(changes).length;
+    }
+
+    function showSiteIdentity(target) {
+        if (!siteIdentityPanel) return;
+        const active = Boolean(target && target.scope === 'site');
+        siteIdentityPanel.hidden = !active;
+        if (!active) {
+            if (siteIdentityOutput) siteIdentityOutput.value = '';
+            return;
+        }
+        siteIdentityPanel.open = true;
+        const draft = identityDrafts.get(activeTarget) || {};
+        for (const key of identityFields) {
+            const control = identityControls[key];
+            if (!control) continue;
+            const editable = key === 'coordinates'
+                ? identityCurrent.editable_coordinates !== false
+                : key === 'type' ? Boolean(identityCurrent.editable_type)
+                : true;
+            control.disabled = !identityCurrent.label || !editable;
+            const known = String(identityCurrent[key] ?? '');
+            if (key === 'name') control.placeholder = String(identityCurrent.label || 'Site name');
+            if (key === 'type' && known && ![...control.options].some(o => o.value === known)) {
+                const option = new Option(`Recorded: ${known}`, known);
+                option.dataset.siteExistingType = '1';
+                control.add(option);
+            }
+            control.value = Object.prototype.hasOwnProperty.call(draft, key)
+                ? draft[key] : known;
+        }
+        syncSiteIdentity();
+    }
     // Every control type is validated by the same canonical PHP parser.
     const supported = new Set(['tri', 'permission', 'rating', 'select', 'text', 'textarea', 'number', 'date', 'url', 'checkbox', 'multiselect']);
 
@@ -551,6 +627,8 @@
                 direct: data.direct || {},
                 inherited: data.inherited || {}
             };
+            identityCurrent = data.site_identity || {};
+            showSiteIdentity(target);
 
             showExisting();
             applyDependencies();
@@ -558,6 +636,8 @@
             if (sequence === loadSequence) {
                 status.textContent = 'Existing answers could not be loaded. Please retry before submitting.';
                 context = {direct: {}, inherited: {}};
+                identityCurrent = {};
+                showSiteIdentity(target);
                 applyDependencies();
             }
         }
@@ -606,6 +686,11 @@
         }
     }
 
+    for (const control of Object.values(identityControls)) {
+        control?.addEventListener('input', syncSiteIdentity);
+        control?.addEventListener('change', syncSiteIdentity);
+    }
+
     function update() {
         const t = labels.get(search.value);
 
@@ -635,6 +720,7 @@
         // switching back to an earlier Site without losing its draft.
         if (switched && activeTarget !== '') {
             draftsByTarget.set(activeTarget, new Map(values));
+            if (scope.value === 'site') syncSiteIdentity();
         }
 
         activeTarget = targetKey;
@@ -646,6 +732,10 @@
 
         placeFields.hidden = scoped;
         scopedFields.hidden = !scoped;
+        if (switched) {
+            identityCurrent = {};
+        }
+        showSiteIdentity(t);
 
         for (const card of placeFields.querySelectorAll('[data-report-field]')) {
             const field = fields.find(f => f.key === card.dataset.reportField);
@@ -715,13 +805,14 @@
             sync();
 
             const count = JSON.parse(queueInput.value).length;
+            const identityCount = t.scope === 'site' ? syncSiteIdentity() : 0;
 
-            if (count === 0 || count > 50) {
+            if (count + identityCount === 0 || count > 50) {
                 event.preventDefault();
                 scopedFields.open = true;
                 status.textContent = count > 50
                     ? 'Submit no more than 50 answers at once.'
-                    : 'Answer at least one question before submitting.';
+                    : 'Answer at least one question or change a Site detail before submitting.';
             }
         }
     });
