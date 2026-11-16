@@ -80,6 +80,7 @@ $encode =
     <input
         type="hidden"
         name="selected_area_id"
+        form="place-report"
         value=""
     >
 
