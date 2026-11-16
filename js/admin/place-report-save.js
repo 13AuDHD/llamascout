@@ -1752,7 +1752,7 @@
 
             setStatus(
                 photosAdded > 0
-                    ? `Saved to the database at ${savedAt}. ${photosAdded} photo${photosAdded === 1 ? '' : 's'} attached to this Place.`
+                    ? `Saved to the database at ${savedAt}. ${photosAdded} photo${photosAdded === 1 ? '' : 's'} attached to this ${reportTargetLabel()}.`
                     : `Saved to the database at ${savedAt}.`
             );
 
