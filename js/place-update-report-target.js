@@ -161,6 +161,22 @@
         }
         siteIdentityPanel.open = true;
         const draft = identityDrafts.get(activeTarget) || {};
+        // The async context may not have arrived yet. Never overwrite a
+        // saved draft with empty inputs during a Site switch.
+        if (!identityCurrent.label) {
+            for (const control of Object.values(identityControls)) {
+                if (control) {
+                    control.disabled = true;
+                    control.value = '';
+                }
+            }
+            if (siteIdentityOutput) siteIdentityOutput.value = '';
+            if (siteIdentityStatus) siteIdentityStatus.textContent = 'Loading this Site’s current details…';
+            return;
+        }
+        for (const oldOption of identityControls.type?.querySelectorAll('[data-site-existing-type]') || []) {
+            oldOption.remove();
+        }
         for (const key of identityFields) {
             const control = identityControls[key];
             if (!control) continue;
