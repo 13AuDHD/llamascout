@@ -55,9 +55,8 @@ llama_new_place_assert_single_target_input([
 // Build the sample Site answer through the canonical nested storage path.
 $siteOnly = array_filter(
     llama_report_questions_for_scope('site', true),
-    static fn (array $field): bool => !in_array(
-        'place', (array) ($field['report_scopes'] ?? []), true
-    )
+    static fn (array $field, string $key): bool => $key !== 'visited_at'
+        && !in_array('place', (array) ($field['report_scopes'] ?? []), true)
 );
 $siteField = reset($siteOnly);
 if (!is_array($siteField)) {
