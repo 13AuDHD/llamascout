@@ -52,8 +52,23 @@ llama_new_place_assert_single_target_input([
     'site_coordinates' => '', 'site_photos_json' => '[]', 'area_bundle_json' => ''
 ]);
 
+// Build the sample Site answer through the canonical nested storage path.
+$siteOnly = array_filter(
+    llama_report_questions_for_scope('site', true),
+    static fn (array $field): bool => !in_array(
+        'place', (array) ($field['report_scopes'] ?? []), true
+    )
+);
+$siteField = reset($siteOnly);
+if (!is_array($siteField)) {
+    throw new RuntimeException('No Site-only question was found for the isolation test.');
+}
+$withSiteAnswer = $place;
+llama_place_report_set_path(
+    $withSiteAnswer, (string) $siteField['storage'], '1'
+);
 $expectInvalid(
-    static fn () => llama_new_place_assert_single_target($place + ['site_number' => '22']),
+    static fn () => llama_new_place_assert_single_target($withSiteAnswer),
     'Site answers in a Place-only report'
 );
 $expectInvalid(
