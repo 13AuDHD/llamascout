@@ -1177,7 +1177,11 @@ function moderation_approve_new_place(
 $data = $submission['data'];
 // New one-target Place reports never manufacture a child Site or Area.
 // Existing unmarked pending submissions retain their original approved bundle.
-$placeOnlySubmission = (string) ($data['_submission_target_kind'] ?? '') === 'place';
+$submissionTargetKind = (string) ($data['_submission_target_kind'] ?? '');
+if ($submissionTargetKind !== '' && $submissionTargetKind !== 'place') {
+    throw new InvalidArgumentException('Unsupported new Place report target kind.');
+}
+$placeOnlySubmission = $submissionTargetKind === 'place';
 if ($placeOnlySubmission) {
     llama_new_place_assert_single_target($data);
 }
