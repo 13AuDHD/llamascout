@@ -53,6 +53,8 @@ jobs:
           done
       - name: Verify reporting contract
         run: php tools/v3-launch-smoke.php
+      - name: Verify single-target Admin save routing
+        run: php tools/tests/admin-report-single-target.php
       - name: Verify shared Place pricing
         run: php tools/tests/place-pricing.php
       - name: Verify dedicated Campsite Pricing and Admin asset loading

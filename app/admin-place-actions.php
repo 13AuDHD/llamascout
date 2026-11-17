@@ -8,6 +8,7 @@ require_once __DIR__ . '/admin-place-facilities.php';
 require_once __DIR__ . '/admin-place-report.php';
 require_once __DIR__ . '/place-verifications.php';
 require_once __DIR__ . '/place-site-identity.php';
+require_once __DIR__ . '/place-report/admin-save-routing.php';
 
 /** POST controller for the existing Admin Place page. */
 function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): array
@@ -236,8 +237,8 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
         }
 
         if ($action === 'save-report') {
-            // A new editor sends the active report target explicitly. Older
-            // Admin clients that do not send it keep the legacy save path.
+            // Every report save must name one active target. Photo-only saves
+            // are separate and verify their own gallery owner.
             $reportMode = trim((string) ($_POST['admin_report_mode'] ?? ''));
             if ($reportMode !== '') {
                 if (!in_array($reportMode, ['place', 'site', 'facility', 'area'], true)) {
@@ -254,9 +255,21 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
                 if (in_array($reportMode, ['area', 'facility'], true) && $selectedArea === '') {
                     throw new InvalidArgumentException('Choose a Facility before saving its report.');
                 }
-                if ($reportMode === 'place' && ($selectedSite !== '' || $selectedArea !== '')) {
+                if ($reportMode === 'place'
+                    && ($selectedSite !== '' || $selectedArea !== '' || $bulkSites !== '')) {
                     throw new InvalidArgumentException(
-                        'A Place save cannot include a Site or Facility target. Reload and try again.'
+                        'A Place save cannot include Site or Facility targets. Reload and try again.'
+                    );
+                }
+                if ($reportMode === 'site' && $selectedArea !== '') {
+                    throw new InvalidArgumentException(
+                        'A Site save cannot include a Facility target. Reload and try again.'
+                    );
+                }
+                if (in_array($reportMode, ['area', 'facility'], true)
+                    && ($selectedSite !== '' || $bulkSites !== '')) {
+                    throw new InvalidArgumentException(
+                        'A Facility save cannot include Site targets. Reload and try again.'
                     );
                 }
                 if ($reportMode !== 'site'
@@ -270,6 +283,7 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
             // This uses the same existing staging and publication functions.
             $photoOnly = $backgroundPlaceSave
                 && (string) ($_POST['admin_photo_only'] ?? '') === '1';
+            $saveTargets = llama_admin_report_save_targets($reportMode, $photoOnly);
             $photosAdded = 0;
             $bulkResult = ['sites' => 0, 'answers' => 0];
             $committedPhotosForCleanup = [];
@@ -337,11 +351,18 @@ function admin_place_handle_actions(PDO $db, int $actorUserId, int $placeId): ar
                         ? admin_place_report_photo_target_from_owner($db, $placeId, $explicitPhotoOwner)
                         : admin_place_report_photo_target($db, $placeId, $_POST);
 
-                    admin_place_save_shared_report($db, $actorUserId, $placeId, $_POST);
-                    admin_place_save_selected_campsite_answers($db, $actorUserId, $placeId, $_POST);
-                    $bulkResult = admin_place_bulk_save_site_answers($db, $actorUserId, $placeId, $_POST);
+                    // Route only the selected report type to its writer. The
+                    // form can contain other hidden inputs, but they must
+                    // never cause another entity's answers to be saved.
+                    if (in_array('place', $saveTargets, true)) {
+                        admin_place_save_shared_report($db, $actorUserId, $placeId, $_POST);
+                    }
+                    if (in_array('site', $saveTargets, true)) {
+                        admin_place_save_selected_campsite_answers($db, $actorUserId, $placeId, $_POST);
+                        $bulkResult = admin_place_bulk_save_site_answers($db, $actorUserId, $placeId, $_POST);
+                    }
 
-                    if ($areaId > 0) {
+                    if ($areaId > 0 && in_array('area', $saveTargets, true)) {
                         if ($reportMode === 'facility' && array_key_exists('facility_name', $_POST)) {
                             admin_place_save_map_facility(
                                 $db, $actorUserId, $placeId, $areaId, $_POST
