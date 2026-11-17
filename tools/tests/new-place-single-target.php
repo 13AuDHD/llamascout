@@ -56,7 +56,8 @@ llama_new_place_assert_single_target_input([
 $siteOnly = array_filter(
     llama_report_questions_for_scope('site', true),
     static fn (array $field, string $key): bool => $key !== 'visited_at'
-        && !in_array('place', (array) ($field['report_scopes'] ?? []), true)
+        && !in_array('place', (array) ($field['report_scopes'] ?? []), true),
+    ARRAY_FILTER_USE_BOTH
 );
 $siteField = reset($siteOnly);
 if (!is_array($siteField)) {
