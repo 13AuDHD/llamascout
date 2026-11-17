@@ -649,7 +649,11 @@ function llama_scout_report_record_approved_new_place_only(
     if ($submissionId < 1 || $placeId < 1 || $contributorId < 1) {
         throw new InvalidArgumentException('Invalid approved Place-only report identity.');
     }
-    if (!empty($answers['site_answers'])) {
+    // "visited_at" is visit-date provenance for a Place-only submission,
+    // even though legacy Site reports also expose it as a Site question.
+    $siteAnswers = (array) ($answers['site_answers'] ?? []);
+    unset($siteAnswers['visited_at']);
+    if ($siteAnswers !== []) {
         throw new InvalidArgumentException('A Place-only report cannot contain Site answers.');
     }
 
