@@ -628,6 +628,64 @@ function llama_scout_report_record_approved_update(
 }
 
 /**
+ * Record exactly one Place target for a new Place-only contribution.
+ * Old bundled submissions continue to use the separate legacy function.
+ */
+function llama_scout_report_record_approved_new_place_only(
+    PDO $db,
+    int $submissionId,
+    array $submission,
+    int $placeId,
+    array $answers,
+    int $reviewedBy,
+    string $reviewNotes,
+    array $submittedPhotos,
+    array $permanentPhotoPaths
+): int {
+    $contributorId = (int) ($submission['user_id'] ?? 0);
+    $data = is_array($submission['data'] ?? null) ? $submission['data'] : [];
+    $bundleKey = 'place-submission:' . $submissionId;
+
+    if ($submissionId < 1 || $placeId < 1 || $contributorId < 1) {
+        throw new InvalidArgumentException('Invalid approved Place-only report identity.');
+    }
+    // "visited_at" is visit-date provenance for a Place-only submission,
+    // even though legacy Site reports also expose it as a Site question.
+    $siteAnswers = (array) ($answers['site_answers'] ?? []);
+    unset($siteAnswers['visited_at']);
+    if ($siteAnswers !== []) {
+        throw new InvalidArgumentException('A Place-only report cannot contain Site answers.');
+    }
+
+    return llama_scout_report_record_approved(
+        $db,
+        [
+            'place_id' => $placeId,
+            'contributor_id' => $contributorId,
+            'role_at_submission' => (string) ($submission['role_at_submission'] ?? 'user'),
+            'visit_date' => (string) ($data['visited_at'] ?? ''),
+            'submitted_at' => (string) ($submission['submitted_at'] ?? ''),
+            'logical_report_key' => $bundleKey . ':place',
+            'submission_bundle_key' => $bundleKey,
+            'client_submission_key' => 'web:' . $bundleKey . ':place',
+            'source_channel' => 'web',
+        ],
+        [
+            'scope' => 'place',
+            'source' => 'place',
+            'id' => $placeId,
+            'label' => (string) ($data['name'] ?? $submission['place_name'] ?? ''),
+        ],
+        is_array($answers['place_answers'] ?? null) ? $answers['place_answers'] : [],
+        $reviewedBy,
+        $reviewNotes,
+        $submittedPhotos,
+        $permanentPhotoPaths,
+        ['place_submission_id' => $submissionId, 'target_kind' => 'place']
+    );
+}
+
+/**
  * Record the Place and first Site reports created by one approved Add Place
  * submission. Both rows share a bundle key but retain separate target identity.
  */

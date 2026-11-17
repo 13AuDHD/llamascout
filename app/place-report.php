@@ -24,6 +24,7 @@ require_once __DIR__ . '/place-report/flow-scopes.php';
 require_once __DIR__ . '/place-report/question-catalog.php';
 require_once __DIR__ . '/place-report/answers.php';
 require_once __DIR__ . '/place-report/persistence.php';
+require_once __DIR__ . '/place-report/single-target-new-place.php';
 require_once __DIR__ . '/place-report/current-answers.php';
 require_once __DIR__ . '/place-report/current-answer-store.php';
 require_once __DIR__ . '/place-report/immutable-history.php';

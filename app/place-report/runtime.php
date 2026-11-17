@@ -1357,6 +1357,15 @@ function llama_place_report_submit_new_place(
             $input
         );
 
+    // New Place-only reports are explicit. Unmarked pending submissions keep
+    // their legacy first-Site bundle until their review has finished.
+    $submissionKind = llama_new_place_submission_kind($input);
+    if ($submissionKind === 'place') {
+        llama_new_place_assert_single_target_input($input);
+        $data['_submission_target_kind'] = 'place';
+        llama_new_place_assert_single_target($data);
+    }
+
     // First Site GPS is optional Site metadata, never a parent Place answer.
     $siteCoordinates = llama_place_report_parse_first_site_coordinates(
         $input['site_coordinates'] ?? ''
@@ -1566,7 +1575,15 @@ function llama_place_report_resubmit_new_place(
     }
 
     $existingData = is_array($existing['data'] ?? null) ? $existing['data'] : [];
+    $submissionKind = llama_new_place_submission_kind($input, $existingData);
+    if ($submissionKind === 'place') {
+        llama_new_place_assert_single_target_input($input);
+    }
     $data = llama_place_report_build_data($input, $existingData);
+    if ($submissionKind === 'place') {
+        $data['_submission_target_kind'] = 'place';
+        llama_new_place_assert_single_target($data);
+    }
     if (array_key_exists('site_coordinates', $input)) {
         $siteCoordinates = llama_place_report_parse_first_site_coordinates(
             $input['site_coordinates']

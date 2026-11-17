@@ -1175,6 +1175,16 @@ function moderation_approve_new_place(
     }
 
 $data = $submission['data'];
+// New one-target Place reports never manufacture a child Site or Area.
+// Existing unmarked pending submissions retain their original approved bundle.
+$submissionTargetKind = (string) ($data['_submission_target_kind'] ?? '');
+if ($submissionTargetKind !== '' && $submissionTargetKind !== 'place') {
+    throw new InvalidArgumentException('Unsupported new Place report target kind.');
+}
+$placeOnlySubmission = $submissionTargetKind === 'place';
+if ($placeOnlySubmission) {
+    llama_new_place_assert_single_target($data);
+}
 llama_place_report_validate_new_place_minimum($data, count((array) ($data['photos'] ?? [])));
 
 $pointInput =
@@ -1293,13 +1303,15 @@ $name = trim(
             $data
         );
 
-    $firstSite =
-        llama_place_report_create_submission_site(
+    $firstSite = null;
+    if (!$placeOnlySubmission) {
+        $firstSite = llama_place_report_create_submission_site(
             $db,
             $placeId,
             $submissionAnswers['site_answers'],
             $data['_first_site_coordinates'] ?? null
         );
+    }
 
     $photos =
         is_array(
@@ -1331,38 +1343,50 @@ $name = trim(
             $copyJournalStart
         );
 
-    $sitePhotos = llama_place_report_first_site_photos($data, $submissionId);
-    $sitePhotoPaths = moderation_attach_first_site_photos_transactional(
-        $db,
-        $submissionId,
-        $placeId,
-        (int) $firstSite['id'],
-        (int) $submission['user_id'],
-        $sitePhotos,
-        $copiedPhotoPaths
-    );
+    if ($placeOnlySubmission) {
+        // Exactly one target in history and current answers. No first-Site
+        // record, gallery, or Site/Area answer is written in this branch.
+        llama_scout_report_record_approved_new_place_only(
+            $db, $submissionId, $submission, $placeId, $submissionAnswers,
+            $reviewedBy, $reviewNotes, $photos, $reportPhotoPaths
+        );
+        llama_place_report_publish_data(
+            $db, $placeId, $data, $submissionAnswers['place_keys']
+        );
+    } else {
+        $sitePhotos = llama_place_report_first_site_photos($data, $submissionId);
+        $sitePhotoPaths = moderation_attach_first_site_photos_transactional(
+            $db,
+            $submissionId,
+            $placeId,
+            (int) $firstSite['id'],
+            (int) $submission['user_id'],
+            $sitePhotos,
+            $copiedPhotoPaths
+        );
 
-    llama_scout_report_record_approved_new_place_bundle(
-        $db,
-        $submissionId,
-        $submission,
-        $placeId,
-        $firstSite,
-        $submissionAnswers,
-        $reviewedBy,
-        $reviewNotes,
-        $photos,
-        $reportPhotoPaths,
-        $sitePhotos,
-        $sitePhotoPaths
-    );
+        llama_scout_report_record_approved_new_place_bundle(
+            $db,
+            $submissionId,
+            $submission,
+            $placeId,
+            $firstSite,
+            $submissionAnswers,
+            $reviewedBy,
+            $reviewNotes,
+            $photos,
+            $reportPhotoPaths,
+            $sitePhotos,
+            $sitePhotoPaths
+        );
 
-    moderation_insert_submission_report_data(
-        $db,
-        $placeId,
-        $data,
-        (int) $firstSite['id']
-    );
+        moderation_insert_submission_report_data(
+            $db,
+            $placeId,
+            $data,
+            (int) $firstSite['id']
+        );
+    }
 
     // A brand-new Place can submit its first Area in the same review bundle
     // as its first Site. Create a canonical Area record with no marker and
@@ -1383,6 +1407,7 @@ $name = trim(
 
     // Verify the first Site and every approved Site answer were published
     // in this transaction before the Add Place approval can be committed.
+    if (!$placeOnlySubmission) {
     $firstSiteId = (int) $firstSite['id'];
     $publishedFirstSite = llama_place_campsite($db, $placeId, $firstSiteId);
     if (!$publishedFirstSite) {
@@ -1410,6 +1435,7 @@ $name = trim(
         }
     }
 
+    }
     // Check Place-wide answers against the canonical published projection.
     // The check runs inside the approval transaction, before committing.
     $publishedPlaceAnswers = llama_place_report_current_place_answers($db, $placeId);
