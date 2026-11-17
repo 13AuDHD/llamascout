@@ -45,7 +45,12 @@ function llama_new_place_submission_kind(array $input, ?array $existing = null):
 function llama_new_place_assert_single_target(array $data): void
 {
     $answers = llama_place_report_submission_answers($data);
-    if (!empty($answers['site_answers'])) {
+    // The legacy registry scopes "visited_at" to Site, but Add Place also
+    // requires it as submission provenance. It remains visit-date metadata
+    // on this one Place report, not a newly published Site answer.
+    $siteAnswers = (array) $answers['site_answers'];
+    unset($siteAnswers['visited_at']);
+    if ($siteAnswers !== []) {
         throw new InvalidArgumentException(
             'This Place submission includes Site answers. Add the Site separately under its parent Place.'
         );
