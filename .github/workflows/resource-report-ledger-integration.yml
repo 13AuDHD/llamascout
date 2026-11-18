@@ -9,6 +9,9 @@ on:
       - 'tools/tests/resource-report-ledger-mariadb.php'
       - 'app/resource-report-history-candidate.php'
       - 'app/resource-report-history-writer.php'
+      - 'app/resource-submissions.php'
+      - 'app/resource-submission-photos.php'
+      - 'app/admin-resources.php'
       - 'app/resource-report-projection.php'
       - 'app/resource-report-service-questions.php'
   workflow_dispatch:

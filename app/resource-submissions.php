@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/admin-resources.php';
 require_once __DIR__ . '/resource-report-field-reconciliation.php';
 require_once __DIR__ . '/resource-submission-photos.php';
+require_once __DIR__ . '/resource-report-history-writer.php';
 
 function llama_resource_submissions_ready(PDO $db): bool
 {
@@ -426,6 +427,26 @@ function llama_resource_review(
                 $selectedPhotos,
                 $copiedPhotoPaths
             );
+
+            // Staged Resource/linked-Facility history is OPT-IN only.
+            // Approval stays unchanged when the flag is unset. When enabled,
+            // the writer re-verifies the saved target and writes into this
+            // SAME moderation transaction. Missing schema, invalid target,
+            // unknown question or bad photo evidence must roll back the
+            // Resource/Services/photos along with the historical report.
+            // $copiedPhotoPaths comes only from the trusted photo publisher,
+            // in the same order as the moderator-selected submitted photos.
+            if (llama_resource_ledger_writer_enabled()) {
+                llama_resource_ledger_record_approved(
+                    $db,
+                    $resourceId,
+                    $submissionId,
+                    $actorId,
+                    $notes,
+                    $selectedPhotos,
+                    $copiedPhotoPaths
+                );
+            }
         }
         $status = $requestChanges ? 'needs-changes' : ($resourceId === null ? 'rejected' : 'approved');
         $notesSql = $notesReady ? ', review_notes = ?' : '';
