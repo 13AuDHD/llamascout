@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/resource-submissions.php';
+require_once dirname(__DIR__) . '/app/site-submissions.php';
 require_login();
 
 $user = current_user();
@@ -63,6 +64,23 @@ $contributorDescription = match ($currentContributionLevel) {
 };
 
 $items = community_submissions_for_user($userId);
+
+// Independent Sites live in their own moderation queue. Include them in the
+// contributor's history so "Needs Changes" always has a usable return route.
+if (llama_site_submissions_ready($db)) {
+    $siteStatement = $db->prepare(
+        'SELECT id, site_name AS name, status,
+                created_at AS submitted_at, reviewed_at, review_notes,
+                "new-site" AS kind, "New Site" AS label, NULL AS slug
+         FROM place_site_submissions
+         WHERE submitted_by = ?
+         ORDER BY created_at DESC'
+    );
+    $siteStatement->execute([$userId]);
+    $items = array_merge($items, $siteStatement->fetchAll(PDO::FETCH_ASSOC) ?: []);
+    usort($items, static fn (array $a, array $b): int =>
+        strcmp((string) $b['submitted_at'], (string) $a['submitted_at']));
+}
 
 /*
  * Approved new-Place submissions retain the published place_id,
@@ -514,6 +532,17 @@ require dirname(__DIR__) . '/partials/header.php';
                                 <?= $isFacility ? 'View Facility' : ($isResource ? 'View Resource' : 'View place') ?>
                             </a>
 
+                        <?php endif; ?>
+
+                        <?php if ($status === 'needs-changes'
+                            && (string) ($item['kind'] ?? '') === 'new-site'): ?>
+                            <a class="contribution-resubmit-link" href="<?= htmlspecialchars(
+                                $siteUrl . '/add-site.php?submission=' . (int) $item['id'],
+                                ENT_QUOTES, 'UTF-8'
+                            ) ?>">
+                                <i aria-hidden="true"><?= llama_icon('edit') ?></i>
+                                Edit &amp; resubmit
+                            </a>
                         <?php endif; ?>
 
                         <?php if ($status === 'needs-changes' && $isResource): ?>

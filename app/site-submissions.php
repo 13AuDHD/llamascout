@@ -210,6 +210,153 @@ function llama_site_submission_submit(
     }
 }
 
+/**
+ * Only the original contributor may recover a Site submission for revision.
+ * Review notes remain attached to the original submission ID.
+ */
+function llama_site_submission_for_user(
+    PDO $db,
+    int $userId,
+    int $submissionId
+): ?array {
+    if ($userId < 1 || $submissionId < 1 || !llama_site_submissions_ready($db)) {
+        return null;
+    }
+    $stmt = $db->prepare(
+        'SELECT * FROM place_site_submissions WHERE id = ? AND submitted_by = ? LIMIT 1'
+    );
+    $stmt->execute([$submissionId, $userId]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!is_array($row)) {
+        return null;
+    }
+    $data = json_decode((string) ($row['submission_data'] ?? ''), true, 512, JSON_THROW_ON_ERROR);
+    if (!is_array($data)) {
+        throw new RuntimeException('The saved Site report is invalid.');
+    }
+    $row['data'] = $data;
+    return $row;
+}
+
+/**
+ * Return a needs-changes Site to the same pending review queue.
+ * Lock target identity, retain other existing photos and never rewrite a Place.
+ */
+function llama_site_submission_resubmit(
+    PDO $db,
+    int $userId,
+    int $submissionId,
+    array $input,
+    string $photoStageToken = '',
+    array $submittedPhotos = [],
+    array $removePhotoPaths = []
+): int {
+    if ($userId < 1 || $submissionId < 1
+        || !llama_contributor_can($db, $userId, 'submit_place')) {
+        throw new RuntimeException('Your account cannot resubmit this Site.');
+    }
+    $addedPaths = [];
+    $removedPaths = [];
+    $db->beginTransaction();
+    try {
+        $stmt = $db->prepare(
+            'SELECT * FROM place_site_submissions
+             WHERE id = ? AND submitted_by = ? AND status = "needs-changes"
+             LIMIT 1 FOR UPDATE'
+        );
+        $stmt->execute([$submissionId, $userId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            throw new InvalidArgumentException('That Site is not awaiting your revisions.');
+        }
+        $parentId = (int) $row['place_id'];
+        if ((int) ($input['site_place_id'] ?? 0) !== $parentId) {
+            throw new InvalidArgumentException(
+                'The parent Place cannot change during a Site revision.'
+            );
+        }
+        $previous = json_decode(
+            (string) $row['submission_data'], true, 512, JSON_THROW_ON_ERROR
+        );
+        if (!is_array($previous)) {
+            throw new InvalidArgumentException('The saved Site report is invalid.');
+        }
+        $existingPhotos = llama_site_submission_photos($previous, $submissionId);
+        $existingPaths = array_column($existingPhotos, 'path');
+        if (!array_is_list($removePhotoPaths)) {
+            throw new InvalidArgumentException('Invalid photo removals.');
+        }
+        $removePhotoPaths = array_values(array_unique(array_map('strval', $removePhotoPaths)));
+        foreach ($removePhotoPaths as $path) {
+            if (!in_array($path, $existingPaths, true)) {
+                throw new InvalidArgumentException('You cannot remove another submission’s photo.');
+            }
+        }
+        $keptPhotos = array_values(array_filter(
+            $existingPhotos,
+            static fn (array $photo): bool =>
+                !in_array((string) $photo['path'], $removePhotoPaths, true)
+        ));
+        if (count($keptPhotos) + count($submittedPhotos)
+            > llama_location_gallery_photo_limit('site')) {
+            throw new InvalidArgumentException('A Site can have up to ten photos.');
+        }
+        if ($submittedPhotos && trim($photoStageToken) === '') {
+            throw new InvalidArgumentException('The new Site photo session is missing.');
+        }
+
+        $data = llama_site_submission_prepare($db, $input);
+        $observations = $data['answers'];
+        unset($observations['visited_at']);
+        if (!$observations && !$keptPhotos && !$submittedPhotos) {
+            throw new InvalidArgumentException('Report an observation or photo.');
+        }
+
+        $newPhotos = [];
+        if ($submittedPhotos) {
+            $newPhotos = llama_photo_commit_stage(
+                'add-site', $userId, trim($photoStageToken), $submittedPhotos,
+                '/uploads/site-submissions/' . $submissionId . '/photos'
+            );
+            $addedPaths = array_column($newPhotos, 'path');
+        }
+        $data['photos'] = array_merge($keptPhotos, $newPhotos);
+        llama_site_submission_photos($data, $submissionId);
+        $update = $db->prepare(
+            'UPDATE place_site_submissions
+             SET site_name = ?, submission_data = ?, status = "pending",
+                 reviewed_by = NULL, reviewed_at = NULL
+             WHERE id = ? AND submitted_by = ? AND status = "needs-changes"'
+        );
+        $update->execute([
+            $data['site_name'],
+            json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR),
+            $submissionId, $userId,
+        ]);
+        if ($update->rowCount() !== 1) {
+            throw new RuntimeException('The Site revision could not be saved.');
+        }
+        $db->commit();
+        $removedPaths = $removePhotoPaths;
+    } catch (Throwable $exception) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+        foreach ($addedPaths as $path) {
+            llama_photo_delete_owned_permanent_path(
+                (string) $path, ['uploads/site-submissions/' . $submissionId . '/photos']
+            );
+        }
+        throw $exception;
+    }
+    foreach ($removedPaths as $path) {
+        llama_photo_delete_owned_permanent_path(
+            (string) $path, ['uploads/site-submissions/' . $submissionId . '/photos']
+        );
+    }
+    return $submissionId;
+}
+
 /** Moderator queue is separate from Place submissions to prevent type mixing. */
 function llama_site_submission_queue(PDO $db, int $limit = 100): array
 {
@@ -222,7 +369,7 @@ function llama_site_submission_queue(PDO $db, int $limit = 100): array
          FROM place_site_submissions s
          INNER JOIN places p ON p.id = s.place_id
          LEFT JOIN users u ON u.id = s.submitted_by
-         WHERE s.status IN ("pending","needs-changes")
+         WHERE s.status = "pending"
          ORDER BY s.created_at ASC, s.id ASC
          LIMIT ' . max(1, min(200, $limit))
     );
@@ -245,18 +392,20 @@ function llama_site_submission_moderate(
         || !in_array($decision, ['approved', 'rejected', 'needs-changes'], true)) {
         throw new InvalidArgumentException('Invalid Site review action.');
     }
-    if ($decision === 'rejected' && trim($reviewNotes) === '') {
-        throw new InvalidArgumentException('Explain why the Site was not approved.');
+    if (in_array($decision, ['rejected', 'needs-changes'], true)
+        && trim($reviewNotes) === '') {
+        throw new InvalidArgumentException(
+            'Explain what needs to change before this Site can be reviewed again.'
+        );
     }
-    require_once __DIR__ . '/moderation.php';
-    require_once __DIR__ . '/place-campsite-media.php';
-
+    // Photo publication is the only operation that needs the moderation
+    // filesystem copying service. Answer-only approvals use canonical writers.
     $copiedPaths = [];
     $db->beginTransaction();
     try {
         $stmt = $db->prepare(
             'SELECT * FROM place_site_submissions
-             WHERE id = ? AND status IN ("pending","needs-changes") FOR UPDATE'
+             WHERE id = ? AND status = "pending" FOR UPDATE'
         );
         $stmt->execute([$submissionId]);
         $item = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -319,6 +468,10 @@ function llama_site_submission_moderate(
             }
 
             $permanentPaths = [];
+            if ($photos) {
+                require_once __DIR__ . '/moderation.php';
+                require_once __DIR__ . '/place-campsite-media.php';
+            }
             foreach ($photos as $photo) {
                 $copied = moderation_copy_photo_file(
                     (string) $photo['path'],
