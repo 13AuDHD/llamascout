@@ -943,6 +943,9 @@ return !!field && (showAllForReview
 // Use canonical question keys, not input names: radio controls include
 // hidden sentinels and compound controls can contain multiple components.
 form.querySelectorAll('[data-report-field]').forEach(wrapper => {
+// Admin's independent Site policy controls are scoped to the selected Site.
+// Never evaluate their dependencies against the parent Place's inputs.
+if (wrapper.closest('[data-admin-site-shared-questions]')) return;
 // Area-only question visibility belongs to the verified Area selector.
 // Do not reset it when a Place/Site dependency or unrelated select changes.
 if (wrapper.matches('[data-area-question]')) return;
@@ -1299,7 +1302,7 @@ filterOptions
 
 control.addEventListener('change', event => {
 const namedChoice = control.querySelector('input[name$="[]"]');
-if (namedChoice) {
+if (namedChoice && !control.closest('[data-admin-site-shared-questions]')) {
 const key = namedChoice.name.slice(0, -2);
 let touched = [...form.querySelectorAll('input[type="hidden"]')].find(el => el.name === `_report_touched[${key}]`);
 if (!touched) { touched = document.createElement('input'); touched.type = 'hidden'; touched.name = `_report_touched[${key}]`; form.append(touched); }

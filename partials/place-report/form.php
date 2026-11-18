@@ -585,7 +585,8 @@ $renderSelect =
 
 $renderField =
     static function (
-        array $field
+        array $field,
+        string $controlIdPrefix = ''
     ) use (
         $e,
         $valueFor,
@@ -635,7 +636,7 @@ $renderField =
                 : '';
 
         $helpId =
-            'place-report-help-'
+            $controlIdPrefix . 'place-report-help-'
             . preg_replace(
                 '/[^a-z0-9_-]+/i',
                 '-',

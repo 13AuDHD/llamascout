@@ -12,23 +12,33 @@ $assert = static function (bool $ok, string $why): void {
 
 $scopedSite = llama_report_questions_for_scope('site', true);
 $adminSite = array_fill_keys(admin_place_campsite_field_keys(), true);
+$siteShared = admin_place_site_shared_question_keys();
 $gap = admin_place_site_inventory_gap();
+
 $assert($scopedSite !== [], 'Canonical Site registry is missing.');
-$assert($adminSite !== [], 'Admin Site editor has no registered questions.');
-$assert($gap !== [], 'Admin legacy Site editor gap unexpectedly disappeared.');
+$assert(count($siteShared) === 29,
+    'Expected the 29 audited shared Site policy questions to have independent controls.');
+$assert($gap === [], 'All canonical Site questions eligible for this Admin editor must be available.');
+$assert(isset($adminSite['pets_allowed']) && isset($adminSite['overnight_camping_allowed'])
+    && isset($adminSite['generator_prohibited']),
+    'Inherited rules must now be editable on the individual Site without changing Place data.');
 
-foreach ($gap as $key => $detail) {
-    $assert(isset($scopedSite[$key]), 'Gap contains a noncanonical question.');
-    $assert(!isset($adminSite[$key]), 'Gap includes a question Admin already edits.');
-    $assert(!empty($detail['label']), 'Gap must carry the canonical label.');
+foreach ($siteShared as $key) {
+    $assert(isset($adminSite[$key]) && isset($scopedSite[$key]),
+        'Shared Site key is missing from the allowed canonical Site writer: ' . $key);
+    $assert(($scopedSite[$key]['layout_section'] ?? '') !== 'site',
+        'A Site-section question was incorrectly duplicated in the shared policy panel.');
 }
-$assert(count(array_intersect_key($gap, $adminSite)) === 0,
-    'Site gap must not contain editable Admin keys.');
+$assert(!isset($adminSite['site_number']) && !isset($adminSite['visited_at']),
+    'Site identity and visit provenance remain on their separate managed paths.');
 
-$allowedKey = array_key_first($adminSite);
-$validated = admin_place_validate_site_answer_keys([$allowedKey => '0']);
-$assert(($validated[$allowedKey] ?? null) === '0',
-    'An explicit No/0 must survive the same Admin Site payload validation.');
+$valid = admin_place_validate_site_answer_keys([
+    'pets_allowed' => '0', 'generator_prohibited' => llama_place_report_unknown_token()
+]);
+$assert(($valid['pets_allowed'] ?? null) === '0',
+    'Explicit No must be allowed as a Site-specific rule.');
+$assert(($valid['generator_prohibited'] ?? null) === llama_place_report_unknown_token(),
+    'Unknown must remain distinct from unanswered Site rules.');
 
 $rejects = static function (array $answers) use ($assert): void {
     $blocked = false;
@@ -37,17 +47,14 @@ $rejects = static function (array $answers) use ($assert): void {
     } catch (InvalidArgumentException) {
         $blocked = true;
     }
-    $assert($blocked, 'Admin Site must reject an unsupported question instead of dropping it.');
+    $assert($blocked, 'Admin Site must reject an unsupported question.');
 };
 $rejects(['not_registered_at_all' => '1']);
-$rejects([array_key_first($gap) => '1']);
-$rejects([$allowedKey => '1', array_key_first($gap) => '1']);
+$rejects(['site_number' => '12']);
+$rejects(['pets_allowed' => '1', 'visited_at' => '2026-11-18']);
 
 echo 'Admin Site canonical=' . count($scopedSite)
-    . ', currently editable=' . count($adminSite)
+    . ', editable=' . count($adminSite)
+    . ', dedicated shared policy controls=' . count($siteShared)
     . ', uncovered=' . count($gap) . PHP_EOL;
-foreach ($gap as $key => $metadata) {
-    echo '  ' . $key . ' [' . $metadata['layout_section'] . '] '
-        . $metadata['label'] . PHP_EOL;
-}
-echo "PASS: No unsupported Site answers can be silently discarded by the current Admin writer.\n";
+echo "PASS: Individual Admin Site reports accept all 29 shared policies, without Place identity fields.\n";

@@ -23,6 +23,28 @@ require_once __DIR__ . '/place-report/report-targets.php';
  * - Page rendering.
  * - Map geometry editing.
  */
+/**
+ * Site-eligible Place-layout questions require independent Site controls.
+ * The parent Place form must never be reused to save these overrides.
+ *
+ * @return list<string>
+ */
+function admin_place_site_shared_question_keys(): array
+{
+    $keys = [];
+    foreach (llama_report_questions_for_scope('site', true) as $key => $field) {
+        if ((string) ($field['layout_section'] ?? '') === 'site'
+            || !empty($field['derived'])
+            || !empty($field['pricing_managed'])
+            || !empty($field['location_field'])
+            || in_array($key, ['site_number', 'visited_at'], true)) {
+            continue;
+        }
+        $keys[] = $key;
+    }
+    return $keys;
+}
+
 function admin_place_campsite_field_keys(): array
 {
     $keys = [];
@@ -36,14 +58,15 @@ function admin_place_campsite_field_keys(): array
          *
          * This deliberately includes both Site-only fields and shared
          * "all" fields such as sensory, safety, experience, and summaries.
-         * Place-section fields remain Place-level even when their defined
-         * scope also permits Site exceptions.
+         * Place-layout fields eligible on Sites are edited using separate
+         * Site-only controls, not the parent Place controls.
          */
         if (
             (string) (
                 $field['layout_section']
                 ?? ''
             ) !== 'site'
+            && !in_array($key, admin_place_site_shared_question_keys(), true)
         ) {
             continue;
         }
@@ -65,6 +88,8 @@ function admin_place_campsite_field_keys(): array
             !empty($field['derived'])
             || !empty($field['pricing_managed'])
             || $key === 'site_number'
+            || $key === 'visited_at'
+            || !empty($field['location_field'])
         ) {
             continue;
         }
@@ -108,7 +133,8 @@ function admin_place_site_inventory_gap(): array
     $missing = [];
     foreach (llama_report_questions_for_scope('site', true) as $key => $field) {
         if (!empty($field['derived']) || !empty($field['pricing_managed'])
-            || !empty($field['location_field']) || $key === 'site_number') {
+            || !empty($field['location_field'])
+            || in_array($key, ['site_number', 'visited_at'], true)) {
             continue;
         }
         if (!isset($editable[$key])) {

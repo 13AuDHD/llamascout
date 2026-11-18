@@ -525,6 +525,30 @@
     const placeSiteFieldLookup =
         new Set(placeSiteFieldKeys);
 
+    // Place-layout policies that are also Site-eligible must use their
+    // dedicated Site-only controls. The parent Place input for each key is
+    // never edited, cleared or read as a Site override.
+    const siteSharedFieldKeys =
+        Array.isArray(campsiteConfig.site_shared_field_keys)
+            ? campsiteConfig.site_shared_field_keys : [];
+    const siteSharedFieldLookup = new Set(siteSharedFieldKeys);
+    const siteSharedPanel = form.querySelector('[data-admin-site-shared-questions]');
+    const placeSharedAnswers =
+        campsiteConfig.place_shared_answers
+        && typeof campsiteConfig.place_shared_answers === 'object'
+            ? campsiteConfig.place_shared_answers : {};
+
+    const showSiteSharedControls = (mode) => {
+        if (!siteSharedPanel) return;
+        const active = mode === 'site';
+        siteSharedPanel.hidden = !active;
+        siteSharedPanel.disabled = !active;
+    };
+    contributionTabs?.addEventListener('llama:contribution-mode', event =>
+        showSiteSharedControls(String(event.detail?.mode || ''))
+    );
+    showSiteSharedControls(activeReportMode());
+
     const campsiteUnknown =
         String(
             campsiteConfig.unknown_token
@@ -586,12 +610,18 @@
         if (overwritePanel) overwritePanel.hidden = !editingAllSites;
     };
 
-    const controlsFor = (name) =>
-        Array.from(
-            form.querySelectorAll(
-                `[name="${name}"], [name="${name}[]"], [name="_report_unknown[${name}]"]`
-            )
-        );
+    const controlNameFor = (key) => siteSharedFieldLookup.has(key)
+        ? `admin_site_${key}` : key;
+    const unknownNameFor = (key) => siteSharedFieldLookup.has(key)
+        ? `admin_site__report_unknown[${key}]` : `_report_unknown[${key}]`;
+    const controlsFor = (key) => {
+        const root = siteSharedFieldLookup.has(key) && siteSharedPanel
+            ? siteSharedPanel : form;
+        const name = controlNameFor(key);
+        return Array.from(root.querySelectorAll(
+            `[name="${name}"], [name="${name}[]"], [name="${unknownNameFor(key)}"]`
+        ));
+    };
 
     const campsiteSelect = form.querySelector('[data-admin-campsite-selector]');
 
@@ -715,13 +745,13 @@
             return;
         }
 
-        const choices = controls.filter(control => control.name === `${key}[]`);
+        const choices = controls.filter(control => control.name === `${controlNameFor(key)}[]`);
         if (choices.length) {
             const selected = Array.isArray(value) ? value : [];
             choices.forEach(control => {
                 control.checked = selected.includes(control.value);
             });
-            const unknown = controls.find(control => control.name === `_report_unknown[${key}]`);
+            const unknown = controls.find(control => control.name === unknownNameFor(key));
             if (unknown) unknown.checked = value === campsiteUnknown;
             return;
         }
@@ -800,9 +830,9 @@
                 return;
             }
 
-            const choices = controls.filter(control => control.name === `${key}[]`);
+            const choices = controls.filter(control => control.name === `${controlNameFor(key)}[]`);
             if (choices.length) {
-                const unknown = controls.find(control => control.name === `_report_unknown[${key}]`);
+                const unknown = controls.find(control => control.name === unknownNameFor(key));
                 values[key] = unknown?.checked
                     ? campsiteUnknown
                     : choices.filter(control => control.checked).map(control => control.value);
@@ -914,22 +944,15 @@
         (site) => {
             const values = {};
 
-            campsiteFieldKeys.forEach(
-                (key) => {
-                    if (
-                        placeSiteFieldLookup.has(
-                            key
-                        )
-                        && Object.prototype.hasOwnProperty.call(
-                            placeSiteSectionValues,
-                            key
-                        )
-                    ) {
-                        values[key] =
-                            placeSiteSectionValues[key];
-                    }
+            campsiteFieldKeys.forEach(key => {
+                if (placeSiteFieldLookup.has(key)
+                    && Object.prototype.hasOwnProperty.call(placeSiteSectionValues, key)) {
+                    values[key] = placeSiteSectionValues[key];
+                } else if (siteSharedFieldLookup.has(key)
+                    && Object.prototype.hasOwnProperty.call(placeSharedAnswers, key)) {
+                    values[key] = placeSharedAnswers[key];
                 }
-            );
+            });
 
             const areaValues =
                 siteAreaOverrides(
@@ -941,15 +964,10 @@
             ).forEach(
                 ([key, value]) => {
                     if (
-                        placeSiteFieldLookup.has(
-                            key
-                        )
-                        && campsiteFieldKeys.includes(
-                            key
-                        )
+                        (placeSiteFieldLookup.has(key) || siteSharedFieldLookup.has(key))
+                        && campsiteFieldKeys.includes(key)
                     ) {
-                        values[key] =
-                            value;
+                        values[key] = value;
                     }
                 }
             );
@@ -1098,7 +1116,7 @@
                     if (!controls.length) {
                         return;
                     }
-                    const unanswered = controls.some(control => control.name === `${key}[]`) ? [] : '';
+                    const unanswered = controls.some(control => control.name === `${controlNameFor(key)}[]`) ? [] : '';
 
                     const baseValue =
                         Object.prototype.hasOwnProperty.call(

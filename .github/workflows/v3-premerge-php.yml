@@ -100,6 +100,7 @@ jobs:
           node --check js/photo-uploader.js
           NODE_PATH="$RUNNER_TEMP/llama-pricing-ui/node_modules" node tools/tests/photo-tab-routing.cjs
           NODE_PATH="$RUNNER_TEMP/llama-pricing-ui/node_modules" node tools/tests/admin-all-sites-ui.cjs
+          NODE_PATH="$RUNNER_TEMP/llama-pricing-ui/node_modules" node tools/tests/admin-site-shared-policy-ui.cjs
       - name: Verify coordinate and Site visibility contract
         if: always()
         run: php tools/coordinate-visibility-smoke.php
