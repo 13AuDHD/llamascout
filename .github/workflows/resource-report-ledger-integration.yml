@@ -1,0 +1,51 @@
+name: Resource Scout Report Ledger MariaDB Integration
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/resource-report-ledger-integration.yml'
+      - 'tools/migrations/20261118_resource_scout_report_ledger.sql'
+      - 'tools/tests/resource-report-ledger-mariadb.php'
+      - 'app/resource-report-history-candidate.php'
+      - 'app/resource-report-projection.php'
+      - 'app/resource-report-service-questions.php'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  resource-ledger:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: resource-ledger-test
+          MARIADB_ROOT_HOST: "%"
+          MARIADB_DATABASE: llama_resource_ledger_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "healthcheck.sh --connect --innodb_initialized"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 15
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PDO MySQL when missing
+        run: |
+          if ! php -m | grep -qi '^pdo_mysql$'; then
+            sudo apt-get update -qq
+            sudo apt-get install -y php-mysql
+          fi
+      - name: Lint proposed Resource ledger test
+        run: php -l tools/tests/resource-report-ledger-mariadb.php
+      - name: Verify isolated Resource and linked Facility history schema
+        env:
+          LLAMA_RESOURCE_LEDGER_TEST_DSN: mysql:host=127.0.0.1;port=3306;dbname=llama_resource_ledger_test;charset=utf8mb4
+          LLAMA_RESOURCE_LEDGER_TEST_USER: root
+          LLAMA_RESOURCE_LEDGER_TEST_PASSWORD: resource-ledger-test
+        run: php tools/tests/resource-report-ledger-mariadb.php
