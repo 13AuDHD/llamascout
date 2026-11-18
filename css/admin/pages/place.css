@@ -1150,7 +1150,7 @@
     padding-top: 14px;
 }
 .admin-place-shared-page .admin-place-report-form > [data-report-main-section] > .contribution-section-body > .contribution-section {
-    --admin-report-accent: #70bd87;
+    --admin-report-accent: var(--place-accent);
     margin: 0;
     border-inline-start: 4px solid var(--admin-report-accent);
     background: var(--background);
