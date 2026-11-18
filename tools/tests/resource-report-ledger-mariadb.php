@@ -83,7 +83,7 @@ $adminReadiness = (string) file_get_contents($root . '/admin/resource-ledger-rea
 $resourcesAdmin = (string) file_get_contents($root . '/admin/resources.php');
 $check(str_contains($adminReadiness, 'moderation_require_admin()')
     && str_contains($adminReadiness, 'llama_resource_ledger_readiness(db())')
-    && str_contains($resourcesAdmin, '/resource-ledger-readiness.php')
+    && str_contains($resourcesAdmin, 'href="/admin/resource-ledger-readiness.php"')
     && !str_contains($adminReadiness, 'LLAMA_RESOURCE_HISTORY_WRITES_ENABLED=1'),
     'Only authenticated Admins can inspect the schema, and no UI path enables history.');
 
@@ -802,6 +802,106 @@ putenv('LLAMA_RESOURCE_HISTORY_WRITES_ENABLED');
 
 echo "PASS: Real Resource moderator respects default-off, stages opted-in Resource/Facility reports and photos atomically, and rolls back on history collision.\n";
 
+
+// --- Exercise the actual contributor Add and Update submission paths.
+// These tests run ONLY against the disposable llama_resource_ledger_test DB.
+// Neither submission should mutate a Resource or history before moderation.
+$contributorForm = $moderatedForm('Contributor Add End To End');
+$resourcesBeforeSubmit = (int) $db->query('SELECT COUNT(*) FROM resources')->fetchColumn();
+putenv('LLAMA_RESOURCE_HISTORY_WRITES_ENABLED');
+llama_resource_submit($db, 7, $contributorForm);
+$pendingAdd = $db->prepare(
+    "SELECT id, status, target_resource_id, form_data
+     FROM resource_submissions WHERE name = ? ORDER BY id DESC LIMIT 1"
+);
+$pendingAdd->execute([$contributorForm['name']]);
+$addRow = $pendingAdd->fetch(PDO::FETCH_ASSOC);
+$check(is_array($addRow)
+    && $addRow['status'] === 'pending'
+    && $addRow['target_resource_id'] === null
+    && (int) $db->query('SELECT COUNT(*) FROM resources')->fetchColumn()
+        === $resourcesBeforeSubmit,
+    'Real contributor Add must create only a pending submission, not an approved Resource.');
+$addSubmission = (int) $addRow['id'];
+$addSavedForm = json_decode((string) $addRow['form_data'], true, 512, JSON_THROW_ON_ERROR);
+$check(($addSavedForm['experience']['toilet']['men']['facility_soap'] ?? null) === 'no'
+    && ($addSavedForm['experience']['toilet']['women']['facility_cleanliness'] ?? null) === '5',
+    'Contributor Add must persist approved scoped Experience fields, including explicit No.');
+
+putenv('LLAMA_RESOURCE_HISTORY_WRITES_ENABLED=1');
+$contributorResourceId = llama_resource_review(
+    $db, 8, $addSubmission, $contributorForm, 'Approved contributor Add'
+);
+$addReport = $findSubmittedReport($addSubmission);
+$check($contributorResourceId > 0 && is_array($addReport)
+    && (int) $addReport['resource_id'] === $contributorResourceId
+    && $addReport['target_kind'] === 'resource'
+    && (int) $db->query('SELECT COUNT(*) FROM resource_scout_reports WHERE resource_id='
+        . $contributorResourceId)->fetchColumn() === 1,
+    'Moderating the real contributor Add must publish exactly one target and immutable report.');
+$priorMen = $currentGet(
+    $contributorResourceId, 'toilet', 'men', 'facility_cleanliness'
+);
+$priorSoap = $currentGet(
+    $contributorResourceId, 'toilet', 'men', 'facility_soap'
+);
+$check($priorMen !== null && $priorSoap !== null
+    && $priorMen['value_json'] === '"3"'
+    && $priorSoap['value_json'] === '"no"',
+    'Approved contributor Add must publish both initial values in typed current answers.');
+
+$originalResource = llama_resource_active_record($db, $contributorResourceId);
+$beforeUpdate = llama_resource_snapshot($originalResource);
+$updateForm = $moderatedForm('Contributor Add End To End');
+$updateForm['experience']['toilet']['men']['facility_cleanliness'] = '4';
+$originalSavedExperience = (string) $db->query(
+    'SELECT experience_json FROM resources WHERE id=' . $contributorResourceId
+)->fetchColumn();
+putenv('LLAMA_RESOURCE_HISTORY_WRITES_ENABLED');
+llama_resource_submit($db, 7, $updateForm, $contributorResourceId, $beforeUpdate);
+$pendingUpdate = $db->prepare(
+    "SELECT id, status, target_resource_id, base_snapshot FROM resource_submissions
+     WHERE target_resource_id = ? AND status = 'pending' ORDER BY id DESC LIMIT 1"
+);
+$pendingUpdate->execute([$contributorResourceId]);
+$updateRow = $pendingUpdate->fetch(PDO::FETCH_ASSOC);
+$check(is_array($updateRow)
+    && (int) $updateRow['target_resource_id'] === $contributorResourceId
+    && hash_equals($beforeUpdate, (string) $updateRow['base_snapshot'])
+    && (string) $db->query(
+        'SELECT experience_json FROM resources WHERE id=' . $contributorResourceId
+    )->fetchColumn() === $originalSavedExperience,
+    'Real contributor Update must remain pending and not change published answers.');
+$updateSubmission = (int) $updateRow['id'];
+putenv('LLAMA_RESOURCE_HISTORY_WRITES_ENABLED=1');
+$updatedId = llama_resource_review(
+    $db, 8, $updateSubmission, $updateForm, 'Approved contributor Update'
+);
+$updateReport = $findSubmittedReport($updateSubmission);
+$updatedMen = $currentGet($contributorResourceId, 'toilet', 'men', 'facility_cleanliness');
+$unchangedSoap = $currentGet($contributorResourceId, 'toilet', 'men', 'facility_soap');
+$unchangedWomen = $currentGet($contributorResourceId, 'toilet', 'women', 'facility_cleanliness');
+$check($updatedId === $contributorResourceId
+    && is_array($updateReport)
+    && (int) $updateReport['revision_number'] === 2
+    && (int) $updateReport['prior_report_id'] === (int) $addReport['id']
+    && (int) $db->query('SELECT COUNT(*) FROM resource_scout_reports WHERE resource_id='
+        . $contributorResourceId)->fetchColumn() === 2,
+    'Real contributor Update must retain its exact Resource identity and immutable revision chain.');
+$check($updatedMen !== null && $unchangedSoap !== null && $unchangedWomen !== null
+    && $updatedMen['value_json'] === '"4"'
+    && (int) $updatedMen['row_version'] === 2
+    && (int) $updatedMen['source_report_id'] === (int) $updateReport['id']
+    && $unchangedSoap['value_json'] === '"no"'
+    && (int) $unchangedSoap['row_version'] === 1
+    && (int) $unchangedSoap['source_report_id'] === (int) $addReport['id']
+    && $unchangedWomen['value_json'] === '"5"'
+    && (int) $unchangedWomen['row_version'] === 1,
+    'Changed-only contributor revisions must preserve unchanged No, provenance and answer versions.');
+$check((int) $db->query('SELECT COUNT(*) FROM scout_reports')->fetchColumn() === 1,
+    'Contributor Resource Add/Update must never modify Place/Site/Area history.');
+putenv('LLAMA_RESOURCE_HISTORY_WRITES_ENABLED');
+echo "PASS: Actual contributor Resource Add/Update submissions remain pending until moderation, then publish exactly one target, changed-only versions and immutable provenance.\n";
 
 // --- Resource/linked-Facility current read bridge remains separately gated.
 // Resource pages and Admin must fall back to legacy Experience on old,
