@@ -499,6 +499,103 @@ $check((int) $db->query(
 )->fetchColumn() === 9,
     'Approved Resource and Facility history must synchronize six target-local current answers.');
 
+// Clearing a whole Service or individual question must create Unanswered
+// tombstones, never Unknown or No. New explicit No/zero/Unknown values remain
+// real answers. This fourth (third Resource) report leaves history untouched.
+$db->exec(
+    "UPDATE resource_services SET is_active=0
+     WHERE resource_id=3 AND service_type='fuel'"
+);
+$db->exec(
+    "UPDATE resources SET experience_json =
+     '{\"toilet\":{\"men\":{\"facility_cleanliness\":\"unknown\",
+                           \"facility_soap\":\"no\"},
+                   \"all_gender\":{\"facility_cleanliness\":\"0\"}}}'
+     WHERE id=3"
+);
+$db->exec(
+    "INSERT INTO resource_submissions
+        (submitted_by,name,target_resource_id,form_data,status)
+     VALUES (7,'Clear fuel and update restroom',3,'{}','pending')"
+);
+$clearSubmissionId = (int) $db->lastInsertId();
+$db->beginTransaction();
+$clearedReport = llama_resource_ledger_record_approved(
+    $db, 3, $clearSubmissionId, 8, 'Cleared Fuel and updated restroom'
+);
+$db->commit();
+$clearedMen = $currentGet(3, 'toilet', 'men', 'facility_cleanliness');
+$clearedWomen = $currentGet(3, 'toilet', 'women', 'facility_cleanliness');
+$clearedFuel = $currentGet(3, 'fuel', 'general', 'service_fuel_grades');
+$clearedPumps = $currentGet(3, 'fuel', 'general', 'service_fuel_pumps');
+$explicitNo = $currentGet(3, 'toilet', 'men', 'facility_soap');
+$explicitZero = $currentGet(3, 'toilet', 'all_gender', 'facility_cleanliness');
+$check($clearedMen['answer_state'] === 'unknown'
+    && $clearedMen['value_json'] === 'null'
+    && (int) $clearedMen['row_version'] === 3
+    && (int) $clearedMen['source_report_id'] === $clearedReport,
+    'An explicit Unknown must become a distinct current state, not unanswered.');
+$check($explicitNo['answer_state'] === 'answered'
+    && $explicitNo['value_json'] === '"no"'
+    && $explicitZero['answer_state'] === 'answered'
+    && $explicitZero['value_json'] === '"0"',
+    'Explicit No and zero must remain answered, not cleared.');
+foreach ([$clearedWomen, $clearedFuel, $clearedPumps] as $cleared) {
+    $check($cleared['answer_state'] === 'unanswered'
+        && $cleared['value_json'] === 'null'
+        && (int) $cleared['row_version'] === 2
+        && (int) $cleared['source_report_id'] === $clearedReport,
+        'Removed Service/question answers must have source-linked Unanswered tombstones.');
+}
+$check((int) $db->query(
+    'SELECT COUNT(*) FROM resource_scout_current_answers WHERE resource_id=3'
+)->fetchColumn() === 6,
+    'Existing answer identities must survive clears and two new observations.');
+$check((int) $db->query(
+    'SELECT COUNT(*) FROM resource_scout_current_answers'
+)->fetchColumn() === 11,
+    'Current projection must retain cross-target evidence, tombstones, and new observations.');
+$check($currentGet(4, 'toilet', 'men', 'facility_cleanliness')['value_json'] === '"2"'
+    && (int) $currentGet(4, 'toilet', 'men', 'facility_cleanliness')['row_version'] === 1,
+    'Updating Resource 3 must not change Resource-backed Facility 4.');
+
+// Simulate a corrupt current-answer provenance row in the *same* transaction
+// as a new report. Projection must reject the wrong target and the caller
+// must be able to roll back both report and current-answer changes.
+$db->exec(
+    "INSERT INTO resource_submissions
+        (submitted_by,name,target_resource_id,form_data,status)
+     VALUES (7,'Corrupt evidence test',3,'{}','pending')"
+);
+$badSubmission = (int) $db->lastInsertId();
+$db->beginTransaction();
+$db->prepare(
+    'UPDATE resource_scout_current_answers SET source_report_id = ?
+     WHERE resource_id=3 AND service_type = ? AND group_key = ?
+       AND question_key = ?'
+)->execute([$reportTwo, 'toilet', 'men', 'facility_cleanliness']);
+$badEvidenceRejected = false;
+try {
+    llama_resource_ledger_record_approved($db, 3, $badSubmission, 8, 'Not acceptable');
+} catch (RuntimeException $error) {
+    $badEvidenceRejected = str_contains(
+        $error->getMessage(), 'history from another target'
+    );
+}
+$check($badEvidenceRejected,
+    'Current projection must reject provenance belonging to another Resource/Facility.');
+$db->rollBack();
+$check($currentGet(3, 'toilet', 'men', 'facility_cleanliness')['source_report_id']
+    == $clearedReport,
+    'A failed projection must roll back its own attempted current-answer changes.');
+$stmt = $db->prepare(
+    'SELECT COUNT(*) FROM resource_scout_reports WHERE submission_id = ?'
+);
+$stmt->execute([$badSubmission]);
+$check((int) $stmt->fetchColumn() === 0,
+    'A failed current-answer projection must roll back the new immutable report.');
+
+
 putenv('LLAMA_RESOURCE_HISTORY_WRITES_ENABLED');
 @unlink($absolute);
 @rmdir($photoDir);
