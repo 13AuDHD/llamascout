@@ -805,7 +805,8 @@ $facilityCurrentRead = llama_resource_report_read($db, $readFacility);
 $check($readCurrent['source'] === 'current_verified'
     && $readCurrent['reason'] === 'matching_approved_history'
     && $facilityCurrentRead['source'] === 'current_verified',
-    'Verified recent Resource and Facility must qualify for current reads.');
+    'Verified recent Resource and Facility must qualify for current reads: '
+    . $readCurrent['reason'] . ' / ' . $facilityCurrentRead['reason']);
 $check(($readCurrent['experience']['toilet']['men']['facility_soap'] ?? null) === 'no'
     && ($readCurrent['experience']['toilet']['women']['facility_cleanliness'] ?? null) === '5',
     'Read bridge must keep existing No and independent restroom answers.');
