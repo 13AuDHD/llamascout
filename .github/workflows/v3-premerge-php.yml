@@ -69,6 +69,11 @@ jobs:
         run: php tools/tests/resource-facility-experience.php
       - name: Verify read-only Resource and linked Facility answer projection
         run: php tools/tests/resource-report-projection.php
+      - name: Verify field-by-field Resource and Service question reconciliation
+        run: |
+          php tools/tests/resource-report-field-reconciliation.php
+          php tools/audits/resource-report-field-map.php > /tmp/resource-field-map.md
+          test -s /tmp/resource-field-map.md
       - name: Verify shared Place pricing
         run: php tools/tests/place-pricing.php
       - name: Verify dedicated Campsite Pricing and Admin asset loading
