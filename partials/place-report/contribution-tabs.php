@@ -36,7 +36,11 @@ $placeDraftSuffix = $isResourcePage && !empty($contributionReturnDraft)
         <?php endif; ?>
     <?php else: ?>
         <button type="button" data-contribution-mode="place" aria-pressed="true">Place</button>
-        <button type="button" data-contribution-mode="site" aria-pressed="false">Site</button>
+        <?php if ($isNewContribution && empty($legacyPlaceBundle)): ?>
+            <a href="/add-site.php">Site</a>
+        <?php else: ?>
+            <button type="button" data-contribution-mode="site" aria-pressed="false">Site</button>
+        <?php endif; ?>
         <?php if ($isAdminPlacePage): ?>
             <button type="button" data-contribution-mode="facility" aria-pressed="false">Facility</button>
         <?php elseif ($isNewContribution): ?>
