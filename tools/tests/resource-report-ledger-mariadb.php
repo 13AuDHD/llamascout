@@ -21,6 +21,7 @@ $db = new PDO(
     ]
 );
 require_once dirname(__DIR__, 2) . '/app/resource-report-history-candidate.php';
+require_once dirname(__DIR__, 2) . '/app/resource-report-history-writer.php';
 
 $check = static function (bool $condition, string $why): void {
     if (!$condition) {
@@ -49,6 +50,10 @@ $apply = static function (string $path) use ($db): void {
 $root = dirname(__DIR__, 2);
 $apply($root . '/tools/migrations/20261101_v3_003_resources.sql');
 $apply($root . '/tools/migrations/20261108_resource_submissions.sql');
+$apply($root . '/tools/migrations/20261115_facility_parent_place.sql');
+$apply($root . '/tools/migrations/20261115_resource_facility_experience.sql');
+$db->exec('CREATE TABLE places (id BIGINT UNSIGNED NOT NULL PRIMARY KEY) ENGINE=InnoDB');
+$db->exec('INSERT INTO places (id) VALUES (42)');
 // A sentinel in the old Place/Site/Area ledger verifies the new migration
 // and test never mutate the existing reporting subsystem.
 $db->exec('CREATE TABLE scout_reports (id BIGINT UNSIGNED NOT NULL PRIMARY KEY) ENGINE=InnoDB');
@@ -258,3 +263,193 @@ $check((int) $db->query('SELECT COUNT(*) FROM scout_reports')->fetchColumn() ===
     'Existing Place/Site/Area report ledger must never be touched by this test.');
 
 echo "PASS: MariaDB Resource/Facility schema, one-target identity, composite answers, immutability, idempotency and current states.\n";
+
+// ---- The guarded production-shaped history writer stays DISCONNECTED from
+// llama_resource_review() until the migration is manually installed and
+// deployed. Exercise it here against this disposable MariaDB only.
+$db->exec(
+    "INSERT INTO resources
+        (resource_type,name,latitude,longitude,status,parent_place_id,
+         created_by,experience_json)
+     VALUES ('restroom_facility','Reviewed Rest Stop',37.4,-107.5,'available',
+             NULL,7,
+             '{\"toilet\":{\"men\":{\"facility_cleanliness\":\"3\"},
+                          \"women\":{\"facility_cleanliness\":\"5\"}},
+               \"fuel\":{\"general\":{\"service_fuel_grades\":[\"diesel\"],
+                                    \"service_fuel_pumps\":\"0\"}}}'),
+            ('restroom_facility','Reviewed Camp Facility',37.5,-107.6,'available',
+             42,7,
+             '{\"toilet\":{\"men\":{\"facility_cleanliness\":\"2\"},
+                          \"women\":{\"facility_cleanliness\":\"4\"}}}')"
+);
+$db->exec(
+    "INSERT INTO resource_services (resource_id,service_type,status)
+     VALUES (3,'toilet','available'),(3,'fuel','available'),(4,'toilet','available')"
+);
+$db->exec(
+    "INSERT INTO resource_submissions
+        (submitted_by,name,target_resource_id,form_data,status)
+     VALUES (7,'Reviewed Rest Stop',NULL,'{}','pending'),
+            (7,'Reviewed Camp Facility',NULL,'{}','pending')"
+);
+
+$writerFile = $root . '/app/resource-report-history-writer.php';
+$writerSource = (string) file_get_contents($writerFile);
+$reviewSource = (string) file_get_contents($root . '/app/resource-submissions.php');
+$check(!str_contains($reviewSource, 'llama_resource_ledger_record_approved('),
+    'The new writer must not be connected to live Resource moderation in this PR.');
+
+$photoDir = $root . '/uploads/resources/3';
+if (!is_dir($photoDir) && !mkdir($photoDir, 0755, true) && !is_dir($photoDir)) {
+    throw new RuntimeException('Could not create disposable photo evidence directory.');
+}
+$path = '/uploads/resources/3/history-writer-test.png';
+$absolute = $root . $path;
+file_put_contents($absolute, base64_decode(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9boWfrAAAAAASUVORK5CYII='
+));
+$submittedPhoto = [
+    'path' => '/uploads/resource-submissions/3/historical-evidence.png',
+    'alt' => 'Reviewed restroom',
+];
+
+$disabled = false;
+try {
+    llama_resource_ledger_record_approved($db, 3, 3, 8, 'Verified');
+} catch (RuntimeException $error) {
+    $disabled = str_contains($error->getMessage(), 'disabled');
+}
+$check($disabled, 'Without the explicit release flag, production-shaped writes must fail closed.');
+
+putenv('LLAMA_RESOURCE_HISTORY_WRITES_ENABLED=1');
+$noTransaction = false;
+try {
+    llama_resource_ledger_record_approved($db, 3, 3, 8, 'Verified');
+} catch (RuntimeException $error) {
+    $noTransaction = str_contains($error->getMessage(), 'transaction');
+}
+$check($noTransaction, 'Writer must require caller-owned Resource moderation transaction.');
+
+$db->beginTransaction();
+$rolledBack = llama_resource_ledger_record_approved(
+    $db, 3, 3, 8, 'Verified', [$submittedPhoto], [$path]
+);
+$check($rolledBack > 0, 'Writer must stage history in the current transaction.');
+$db->rollBack();
+$check((int) $db->query(
+    'SELECT COUNT(*) FROM resource_scout_reports WHERE resource_id=3'
+)->fetchColumn() === 0, 'Rolling back moderation must also remove the immutable report.');
+
+$db->beginTransaction();
+$reportOne = llama_resource_ledger_record_approved(
+    $db, 3, 3, 8, 'Verified', [$submittedPhoto], [$path]
+);
+$retry = llama_resource_ledger_record_approved(
+    $db, 3, 3, 8, 'Verified', [$submittedPhoto], [$path]
+);
+$check($retry === $reportOne, 'Same submission and content must return the same report.');
+$reportTwo = llama_resource_ledger_record_approved(
+    $db, 4, 4, 8, 'Verified Facility'
+);
+$db->commit();
+$check($reportTwo > $reportOne, 'Facility report must have a distinct identity.');
+
+$rows = $db->query(
+    'SELECT id,resource_id,target_kind,parent_place_id,revision_number,
+            prior_report_id,visit_date,role_at_submission
+     FROM resource_scout_reports WHERE resource_id IN (3,4) ORDER BY id'
+)->fetchAll(PDO::FETCH_ASSOC);
+$check(count($rows) === 2
+    && $rows[0]['target_kind'] === 'resource'
+    && $rows[0]['parent_place_id'] === null
+    && $rows[1]['target_kind'] === 'facility'
+    && (int) $rows[1]['parent_place_id'] === 42
+    && $rows[0]['visit_date'] === null
+    && $rows[0]['role_at_submission'] === 'not_recorded',
+    'Standalone Resource and linked Facility identities/provenance must remain accurate.');
+$check((int) $db->query(
+    'SELECT COUNT(*) FROM resource_scout_report_answers
+     WHERE report_id IN (' . $reportOne . ',' . $reportTwo . ')'
+)->fetchColumn() === 6,
+    'Writer must preserve four Resource and two Facility compound question instances.');
+$check((int) $db->query(
+    'SELECT COUNT(*) FROM resource_scout_report_photos WHERE report_id = ' . $reportOne
+)->fetchColumn() === 1, 'Reviewed permanent photo must become immutable hash evidence.');
+$fileHash = (string) $db->query(
+    'SELECT JSON_UNQUOTE(JSON_EXTRACT(photo_snapshot_json,"$.file_sha256"))
+     FROM resource_scout_report_photos WHERE report_id = ' . $reportOne
+)->fetchColumn();
+$check($fileHash === hash_file('sha256', $absolute),
+    'Immutable photo evidence must hash the actual permanent file.');
+
+$db->exec(
+    "INSERT INTO resource_submissions
+        (submitted_by,name,target_resource_id,form_data,status)
+     VALUES (7,'Review Updated Rest Stop',3,'{}','pending'),
+            (7,'Wrong Target Test',4,'{}','pending'),
+            (7,'Retired Service Test',3,'{}','pending')"
+);
+$db->beginTransaction();
+$wrongTarget = false;
+try {
+    llama_resource_ledger_record_approved($db, 3, 6, 8, 'Wrong Resource');
+} catch (InvalidArgumentException) {
+    $wrongTarget = true;
+}
+$check($wrongTarget,
+    'An update to Facility 4 must not publish into Resource 3 even with the same contributor.');
+$db->commit();
+
+$db->exec(
+    "UPDATE resources SET experience_json =
+     '{\"toilet\":{\"men\":{\"facility_cleanliness\":\"4\"},
+                  \"women\":{\"facility_cleanliness\":\"5\"}},
+       \"fuel\":{\"general\":{\"service_fuel_grades\":[\"diesel\"],
+                            \"service_fuel_pumps\":\"0\"}}}'
+     WHERE id = 3"
+);
+$db->beginTransaction();
+$revisionTwo = llama_resource_ledger_record_approved($db, 3, 5, 8, 'Updated');
+$db->commit();
+$chain = $db->query(
+    'SELECT revision_number,prior_report_id FROM resource_scout_reports
+     WHERE id=' . $revisionTwo
+)->fetch(PDO::FETCH_ASSOC);
+$check((int) $chain['revision_number'] === 2
+    && (int) $chain['prior_report_id'] === $reportOne,
+    'New Resource approvals must append revision 2 with a link to revision 1.');
+$check((string) $db->query(
+    'SELECT value_json FROM resource_scout_report_answers
+     WHERE report_id=' . $reportOne . "
+       AND service_type='toilet' AND group_key='men' AND question_key='facility_cleanliness'"
+)->fetchColumn() === '"3"',
+    'A later update must not rewrite the original Resource evidence.');
+
+$db->exec(
+    "UPDATE resources SET experience_json =
+     '{\"toilet\":{\"men\":{\"facility_cleanliness\":\"4\"}},
+       \"ice\":{\"general\":{\"service_ice_types\":[\"cubed\"]}}}'
+     WHERE id = 3"
+);
+$db->beginTransaction();
+$unmappedRejected = false;
+try {
+    llama_resource_ledger_record_approved($db, 3, 7, 8, 'Retired ice');
+} catch (InvalidArgumentException) {
+    $unmappedRejected = true;
+}
+$check($unmappedRejected,
+    'Inactive or unexpected Service observations must not enter immutable history.');
+$db->RollBack();
+
+$check((int) $db->query(
+    'SELECT COUNT(*) FROM resource_scout_current_answers'
+)->fetchColumn() === 3,
+    'Staged writer must not activate or change the future current-answer projection.');
+
+putenv('LLAMA_RESOURCE_HISTORY_WRITES_ENABLED');
+@unlink($absolute);
+@rmdir($photoDir);
+
+echo "PASS: Guarded Resource and linked-Facility writer, transaction rollback, repeat submission, photos, revision chain and target isolation.\n";
+
