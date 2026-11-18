@@ -1,20 +1,23 @@
 <?php
 declare(strict_types=1);
 
-// New Place and Site are local tabs; Facility and Resource have independent forms.
+// All four new contributions have independent targets; legacy pending Place
+// bundles retain local Site controls until moderation is finished.
 function tabs_check(bool $condition, string $message): void
 {
     if (!$condition) throw new RuntimeException($message);
 }
 function tabs_render(string $context, int $draft = 0): string
 {
-    if (in_array($context, ['resource', 'facility'], true)) {
+    if (in_array($context, ['resource', 'facility', 'site'], true)) {
         $contributionPickerResourcePage = true;
         $contributionIsFacility = $context === 'facility';
+        $contributionIsSite = $context === 'site';
         $contributionReturnDraft = $draft;
-    } elseif (in_array($context, ['new-place', 'site'], true)) {
-        $areaInitialTab = $context === 'new-place' ? 'place' : $context;
+    } elseif (in_array($context, ['new-place', 'legacy-place'], true)) {
+        $areaInitialTab = 'place';
         $draftId = $draft;
+        $legacyPlaceBundle = $context === 'legacy-place';
     }
     ob_start();
     require dirname(__DIR__, 2) . '/partials/place-report/contribution-tabs.php';
@@ -34,8 +37,14 @@ foreach (['Place', 'Site', 'Facility', 'Resource'] as $label) {
     }
 }
 tabs_check(str_contains($place, 'data-contribution-mode="place"')
-    && str_contains($place, 'data-contribution-mode="site"'),
-    'Place and Site must remain local report tabs.');
+    && str_contains($place, 'href="/add-site.php"')
+    && !str_contains($place, 'data-contribution-mode="site"'),
+    'New Place must navigate to independent Add Site, not share its save form.');
+$legacy = tabs_render('legacy-place');
+tabs_check(str_contains($legacy, 'data-contribution-mode="site"'),
+    'Older bundled submissions must remain editable until approval.');
+tabs_check(str_contains($site, 'aria-current="page">Site</span>'),
+    'Independent Add Site must select the Site navigation tab.');
 tabs_check(!str_contains($place, 'data-contribution-mode="area"'),
     'Facility must no longer be an Area panel in Add Place.');
 tabs_check(str_contains($place, '/resource-contribution.php?kind=facility&return_draft=17'),
@@ -48,8 +57,8 @@ tabs_check(str_contains($resource, 'aria-current="page">Resource</span>'),
     'Resource tab should be selected in the independent Resource form.');
 tabs_check(str_contains($resource, '/resource-contribution.php?kind=facility&return_draft=17'),
     'Resource to Facility navigation must retain draft ID.');
-tabs_check(str_contains($facility, '/add-place.php?tab=site&draft=17'),
-    'Facility to Site navigation must retain draft ID.');
+tabs_check(str_contains($facility, '/add-site.php'),
+    'Facility to Site navigation must use the independent Site form.');
 tabs_check(!str_contains($facility, 'data-contribution-mode'),
     'Facility must not accidentally render an embedded Place form.');
 tabs_check(!str_contains($admin, 'Resource</'),
@@ -84,4 +93,4 @@ tabs_check(str_contains($form, 'data-facility-parent-picker')
     'Facility must require an explicit Parent Place.');
 tabs_check(str_contains($form, 'if (!$facilityForm)'),
     'Facility must omit Resource address inputs.');
-echo "PASS: independent Facility/Resource forms, Place/Site tabs, Parent Place search and draft-safe navigation\n";
+echo "PASS: four independent contribution routes and legacy Place revision compatibility\n";
