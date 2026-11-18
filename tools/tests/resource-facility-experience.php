@@ -43,7 +43,9 @@ $valid = [
     ],
     'ice' => ['general' => ['service_ice_types' => ['cubed', 'pellet']]],
 ];
-$clean = llama_resource_experience_clean($valid, ['shower', 'toilet', 'fuel']);
+$selectedServices = $valid;
+unset($selectedServices['ice']);
+$clean = llama_resource_experience_clean($selectedServices, ['shower', 'toilet', 'fuel']);
 if (isset($clean['ice']) || $clean['toilet']['men']['facility_cleanliness'] !== '3'
     || $clean['toilet']['women']['facility_cleanliness'] !== '5'
     || $clean['fuel']['general']['service_fuel_pumps'] !== '8') {
@@ -75,6 +77,73 @@ try {
     throw new RuntimeException('Fractional stall counts were accepted.');
 } catch (InvalidArgumentException) {
     // Correct.
+}
+
+// Neither Add nor Update nor Admin may silently discard a submitted
+// Experience field that does not belong to the selected Resource/Facility.
+$mustReject = static function (array $answers, array $services, string $why): void {
+    try {
+        llama_resource_experience_clean($answers, $services);
+    } catch (InvalidArgumentException) {
+        return;
+    }
+    throw new RuntimeException('Expected Experience rejection: ' . $why);
+};
+
+$mustReject($valid, ['shower', 'toilet', 'fuel'], 'unselected Ice service');
+$mustReject([
+    'invented_service' => ['general' => ['service_access_notes' => 'text']],
+], ['shower'], 'unregistered Service');
+$mustReject([
+    'shower' => ['men' => ['facility_hot_water' => 'yes']],
+], ['shower'], 'foreign group');
+$mustReject([
+    'shower' => ['general' => ['service_fuel_pumps' => '5']],
+], ['shower'], 'cross-Service question');
+$mustReject([
+    'toilet' => ['men' => ['invented_question' => 'yes']],
+], ['toilet'], 'unknown question key');
+$mustReject([
+    'shower' => ['general' => 'invalid'],
+], ['shower'], 'non-array group answers');
+
+// Both Resource and Resource-backed Facility forms use the exact same
+// service manifest. Canonical Area question definitions supply all reused
+// labels, types and option choices.
+foreach ($manifest as $service => $groups) {
+    foreach ($groups as $group) {
+        foreach ($group['questions'] as $key => $definition) {
+            $canonical = llama_report_question($key);
+            if (!$canonical) {
+                continue; // Service-specific questions stay in this manifest.
+            }
+            if ($definition['label'] !== $canonical['label']
+                || $definition['type'] !== $canonical['type']
+                || $definition['options'] !== ($canonical['options'] ?? [])) {
+                throw new RuntimeException('Canonical Area/Resource question drift: ' . $key);
+            }
+        }
+    }
+}
+
+// The shared form sends an explicit presence marker even when all services
+// are removed. Needs-changes revisions must clear, not preserve old answers.
+require_once dirname(__DIR__, 2) . '/app/resource-submissions.php';
+$cleared = llama_resource_submission_input(['experience_present' => '1']);
+if (!array_key_exists('experience', $cleared) || $cleared['experience'] !== []) {
+    throw new RuntimeException('Removing every Service must clear old pending Experience.');
+}
+$legacyNoMarker = llama_resource_submission_input(['name' => 'Legacy source']);
+if (array_key_exists('experience', $legacyNoMarker)) {
+    throw new RuntimeException('Legacy import without presence marker must retain existing Experience.');
+}
+$no = llama_resource_experience_clean([
+    'shower' => ['general' => ['facility_hot_water' => 'no']],
+    'fuel' => ['general' => ['service_fuel_pumps' => '0']],
+], ['shower', 'fuel']);
+if (($no['shower']['general']['facility_hot_water'] ?? null) !== 'no'
+    || ($no['fuel']['general']['service_fuel_pumps'] ?? null) !== '0') {
+    throw new RuntimeException('No and numeric zero must survive Resource/Facility Experience saves.');
 }
 
 echo "PASS: Shared Facility and Resource Experience catalog, service isolation and input validation.\n";
