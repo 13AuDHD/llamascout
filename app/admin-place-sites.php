@@ -76,6 +76,25 @@ function admin_place_campsite_field_keys(): array
     return $keys;
 }
 
+/**
+ * Fail closed on Site answers that this Admin Site editor cannot actually
+ * display and write. Silently dropping a submitted key looks like a
+ * successful save but loses the correction. Shared Place rules are not
+ * automatically Site answers until the Admin Site UI has a target-local
+ * control for them.
+ */
+function admin_place_assert_selected_site_answer_keys(array $answers): void
+{
+    $allowed = array_fill_keys(admin_place_campsite_field_keys(), true);
+    foreach ($answers as $key => $_value) {
+        if (!is_string($key) || !isset($allowed[$key])) {
+            throw new InvalidArgumentException(
+                'This Site report contains a question outside the selected Site editor. Reload and try again.'
+            );
+        }
+    }
+}
+
 function admin_place_site_section_place_field_keys(): array
 {
     $keys = [];
@@ -488,6 +507,7 @@ function admin_place_save_selected_campsite_answers(PDO $db, int $actorUserId, i
     if (!is_array($answers) || array_is_list($answers) && $answers !== []) {
         throw new InvalidArgumentException('Invalid Site answer format.');
     }
+    admin_place_assert_selected_site_answer_keys($answers);
     $fields = llama_place_report_fields();
     $imported = llama_place_report_campsite_imported_form_values($site);
     $existing = llama_scoped_report_load($db, $placeId, 'site', $siteId, $source);
