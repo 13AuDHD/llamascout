@@ -398,9 +398,8 @@ function llama_site_submission_moderate(
             'Explain what needs to change before this Site can be reviewed again.'
         );
     }
-    require_once __DIR__ . '/moderation.php';
-    require_once __DIR__ . '/place-campsite-media.php';
-
+    // Photo publication is the only operation that needs the moderation
+    // filesystem copying service. Answer-only approvals use canonical writers.
     $copiedPaths = [];
     $db->beginTransaction();
     try {
@@ -469,6 +468,10 @@ function llama_site_submission_moderate(
             }
 
             $permanentPaths = [];
+            if ($photos) {
+                require_once __DIR__ . '/moderation.php';
+                require_once __DIR__ . '/place-campsite-media.php';
+            }
             foreach ($photos as $photo) {
                 $copied = moderation_copy_photo_file(
                     (string) $photo['path'],
