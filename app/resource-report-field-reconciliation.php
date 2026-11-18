@@ -151,7 +151,7 @@ function llama_resource_report_experience_field_catalog(): array
                         ? 'service_only_question' : 'canonical_area_question',
                     'canonical_question_key' => $existing === null ? null : (string) $key,
                     'decision' => $existing === null
-                        ? 'register_or_keep_service_scoped'
+                        ? 'approved_existing_resource_facility_keep_compound_identity'
                         : 'preserve_compound_identity_before_any_migration',
                 ];
             }
@@ -180,7 +180,7 @@ function llama_resource_report_field_reconciliation(): array
         'unresolved' => [
             'Resource description notes: is this a report observation or reference metadata?',
             'Service fee, availability and access notes: establish review/provenance policy per Service, not per parent Place.',
-            'Service-only Experience questions: approve field definitions and persistence ownership before entering the canonical Scout Report ledger.',
+            'Existing Resource-only Experience question ownership is approved; validate separate Resource/Facility ledger publication and provenance before writing history.',
             'Repeated Area question keys across Services/restroom groups: preserve their compound identity, not just the bare question key.',
             'Historical Resource authorship and observation dates: do not infer missing provenance from administrative update timestamps.',
         ],

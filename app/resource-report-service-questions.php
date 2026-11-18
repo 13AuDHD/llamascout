@@ -6,9 +6,10 @@ declare(strict_types=1);
  * Original Resource-only Experience question definitions, moved unchanged
  * from the shared Resource Experience renderer.
  *
- * This is the source of truth for the EXISTING Resource and linked Facility
- * Experience form. It is NOT an approval to publish new keys through the
- * Place/Site/Area canonical registry or immutable Scout Report tables.
+ * This is the approved source of truth for the EXISTING Resource and linked
+ * Facility Experience form. The owner reaffirmed approval of all 26 original
+ * questions on 2026-11-18 (Issue #179). This approval does NOT introduce
+ * these keys into Place/Site/Area forms or activate an immutable writer.
  *
  * @return array<string,array{0:string,1:string,2?:array<string,string>}>
  */
@@ -77,8 +78,10 @@ function llama_resource_service_question_definitions(): array
 }
 
 /**
- * Candidate central-registry definitions, still awaiting explicit approval.
- * The keys/labels/choices are from the existing Resource Experience form.
+ * Approved existing Resource and Resource-backed Facility questions,
+ * represented for the future versioned history schema. The function name
+ * remains for backward compatibility with the read-only preview. All labels,
+ * choices and Service/group applicability remain exactly as before.
  *
  * @return array<string,array<string,mixed>>
  */
@@ -98,7 +101,7 @@ function llama_resource_service_question_candidates(): array
             'type' => (string) $definition[1],
             'options' => (array) ($definition[2] ?? []),
             'existing_definition_source' => 'llama_resource_experience_manifest',
-            'review_status' => 'candidate_not_approved',
+            'review_status' => 'approved_existing_resource_facility',
             'current_storage' => 'resources.experience_json',
             'intended_targets' => ['resource', 'resource_backed_facility'],
         ];
