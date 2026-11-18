@@ -203,6 +203,52 @@ function llama_resource_experience_manifest(): array
     return $manifest;
 }
 
+/**
+ * Verify every submitted Service, group, and question belongs to the
+ * canonical Experience manifest for THIS Resource/Facility.
+ *
+ * A stale or mismatched question is an error, never an invitation to silently
+ * discard an observation. Old published JSON is not modified by this check;
+ * it applies to newly submitted and moderator-edited answers only.
+ *
+ * @param array<string,mixed> $raw
+ * @param list<string> $enabledServices
+ * @param array<string,mixed> $manifest
+ */
+function llama_resource_experience_assert_target_keys(
+    array $raw,
+    array $enabledServices,
+    array $manifest
+): void {
+    $enabled = array_fill_keys($enabledServices, true);
+    foreach ($raw as $service => $groups) {
+        if (!is_string($service) || !isset($enabled[$service])
+            || !isset($manifest[$service]) || !is_array($groups)) {
+            throw new InvalidArgumentException(
+                'Experience answers belong to a Service that is not selected. '
+                . 'Review the selected Services and try again.'
+            );
+        }
+        foreach ($groups as $group => $answers) {
+            if (!is_string($group) || !isset($manifest[$service][$group])
+                || !is_array($answers)) {
+                throw new InvalidArgumentException(
+                    'This Experience group is not available for the selected Service.'
+                );
+            }
+            $questions = $manifest[$service][$group]['questions'];
+            foreach ($answers as $key => $_value) {
+                if (!is_string($key) || !isset($questions[$key])) {
+                    throw new InvalidArgumentException(
+                        'An Experience question does not belong to the selected Service. '
+                        . 'Reload the form before saving.'
+                    );
+                }
+            }
+        }
+    }
+}
+
 /** Validate and keep only answers for enabled Services and canonical keys. */
 function llama_resource_experience_clean(mixed $raw, array $enabledServices): array
 {
@@ -210,6 +256,7 @@ function llama_resource_experience_clean(mixed $raw, array $enabledServices): ar
         throw new InvalidArgumentException('Check the Experience answers.');
     }
     $manifest = llama_resource_experience_manifest();
+    llama_resource_experience_assert_target_keys($raw, $enabledServices, $manifest);
     $answers = [];
     foreach ($enabledServices as $service) {
         foreach ($manifest[$service] ?? [] as $group => $definition) {
