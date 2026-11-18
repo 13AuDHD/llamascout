@@ -61,6 +61,15 @@ $assert(str_contains($tabs, 'contribution-current-resource is-site')
     && str_contains($tabsCss, '--mode-color: var(--place-accent)')
     && str_contains($css, '--admin-report-accent: var(--place-accent)'),
     'Place styling must use the forest-green token, and standalone Site amber rather than Resource teal.');
+$approvedPages = llama_place_report_approved_pages();
+$assert(!in_array('rules_public', $approvedPages['place']['groups'], true)
+    && in_array('rules_public', $approvedPages['site']['groups'], true)
+    && (llama_place_report_approved_group_page_lookup()['rules_public']['page'] ?? '') === 'site',
+    'Public Rules and Restrictions must belong to Site, not Place.');
+$assert(str_contains($sharedForm, "\$placeReportOnlyScope !== 'site'")
+    && str_contains($sharedForm, "!== 'rules_public'")
+    && str_contains($adminSiteRules, 'data-admin-site-shared-questions hidden disabled'),
+    'Hide parent Place rules in the shared Place form while retaining Site Admin controls.');
 $assert(str_contains($siteLocation, 'name="admin_site_coordinates_changed"')
     && str_contains($admin, '/js/admin/place-site-location.js'),
     'Admin Site Location needs a touched marker and target-aware controller.');
