@@ -640,6 +640,9 @@ $apply($root . '/tools/migrations/20261101_v3_006_resource_hours.sql');
 $apply($root . '/tools/migrations/20261109_resource_county.sql');
 $apply($root . '/tools/migrations/20261109_resource_moderation.sql');
 $db->exec("ALTER TABLE places ADD COLUMN status VARCHAR(32) NOT NULL DEFAULT 'active'");
+// The production Place visibility rule reads type during Facility submissions.
+// Only this disposable database receives the extra public campground fixture column.
+$db->exec("ALTER TABLE places ADD COLUMN type VARCHAR(64) NOT NULL DEFAULT 'campground'");
 
 $moderatedForm = static function (string $name, int $parentId = 0): array {
     return [
@@ -803,6 +806,22 @@ putenv('LLAMA_RESOURCE_HISTORY_WRITES_ENABLED');
 echo "PASS: Real Resource moderator respects default-off, stages opted-in Resource/Facility reports and photos atomically, and rolls back on history collision.\n";
 
 
+// The isolated integration fixture has no membership/auth tables. Use the real
+// Place visibility SQL as a non-member, with no contributed Place exceptions.
+if (!function_exists('user_has_member_access')) {
+    function user_has_member_access(?int $userId = null): bool
+    {
+        return false;
+    }
+}
+if (!function_exists('user_original_contributed_place_ids')) {
+    function user_original_contributed_place_ids(int $userId): array
+    {
+        return [];
+    }
+}
+require_once $root . '/app/site-visibility.php';
+
 // --- Exercise the actual contributor Add and Update submission paths.
 // These tests run ONLY against the disposable llama_resource_ledger_test DB.
 // Neither submission should mutate a Resource or history before moderation.
@@ -902,6 +921,154 @@ $check((int) $db->query('SELECT COUNT(*) FROM scout_reports')->fetchColumn() ===
     'Contributor Resource Add/Update must never modify Place/Site/Area history.');
 putenv('LLAMA_RESOURCE_HISTORY_WRITES_ENABLED');
 echo "PASS: Actual contributor Resource Add/Update submissions remain pending until moderation, then publish exactly one target, changed-only versions and immutable provenance.\n";
+
+// --- Exercise real linked-Facility contributor Add/Update through moderation.
+// A Facility is a Resource with a verified parent Place; it must never be
+// confused with historical mapped Area/Facility targets.
+$linkedPlaceBefore = $db->query(
+    'SELECT id, status, type FROM places WHERE id=42'
+)->fetch(PDO::FETCH_ASSOC);
+$mappedReportsBefore = (int) $db->query('SELECT COUNT(*) FROM scout_reports')->fetchColumn();
+$siblingExperienceBefore = (string) $db->query(
+    'SELECT experience_json FROM resources WHERE id=' . $facilityId
+)->fetchColumn();
+$linkedAdd = $moderatedForm('Contributor Linked Facility End To End', 42);
+$beforeLinkedCount = (int) $db->query('SELECT COUNT(*) FROM resources')->fetchColumn();
+llama_resource_submit($db, 7, $linkedAdd);
+$linkedPendingQuery = $db->prepare(
+    "SELECT id,status,target_resource_id,form_data
+     FROM resource_submissions WHERE name=? ORDER BY id DESC LIMIT 1"
+);
+$linkedPendingQuery->execute([$linkedAdd['name']]);
+$linkedPending = $linkedPendingQuery->fetch(PDO::FETCH_ASSOC);
+$check(is_array($linkedPending)
+    && $linkedPending['status'] === 'pending'
+    && $linkedPending['target_resource_id'] === null
+    && (int) $db->query('SELECT COUNT(*) FROM resources')->fetchColumn()
+        === $beforeLinkedCount,
+    'Contributor Facility Add must create only a pending contribution, not modify Place/Resource.');
+$linkedAddId = (int) $linkedPending['id'];
+$linkedSubmitted = json_decode((string) $linkedPending['form_data'], true, 512, JSON_THROW_ON_ERROR);
+$check((string) ($linkedSubmitted['parent_place_id'] ?? '') === '42'
+    && ($linkedSubmitted['experience']['toilet']['men']['facility_soap'] ?? null) === 'no',
+    'Contributor Facility Add must retain parent ID and independent Experience answers.');
+
+putenv('LLAMA_RESOURCE_HISTORY_WRITES_ENABLED=1');
+$linkedResourceId = llama_resource_review(
+    $db, 8, $linkedAddId, $linkedAdd, 'Approved linked Facility Add'
+);
+$linkedReport1 = $findSubmittedReport($linkedAddId);
+$linkedRecord = llama_resource_active_record($db, $linkedResourceId);
+$check($linkedResourceId > 0
+    && is_array($linkedReport1)
+    && $linkedReport1['target_kind'] === 'facility'
+    && (int) $linkedReport1['resource_id'] === $linkedResourceId
+    && (int) $linkedReport1['parent_place_id'] === 42
+    && (int) ($linkedRecord['parent_place_id'] ?? 0) === 42
+    && $linkedResourceId !== $facilityId,
+    'Moderated linked Facility Add must publish exactly one distinct Resource-backed Facility.');
+$linkedMen1 = $currentGet($linkedResourceId, 'toilet', 'men', 'facility_cleanliness');
+$linkedSoap1 = $currentGet($linkedResourceId, 'toilet', 'men', 'facility_soap');
+$check($linkedMen1 !== null && $linkedSoap1 !== null
+    && $linkedMen1['value_json'] === '"3"'
+    && $linkedSoap1['value_json'] === '"no"'
+    && (int) $linkedSoap1['source_report_id'] === (int) $linkedReport1['id'],
+    'Linked Facility approval must preserve typed original Experience and No provenance.');
+
+$linkedBase = llama_resource_snapshot($linkedRecord);
+$linkedUpdate = $moderatedForm('Contributor Linked Facility End To End', 42);
+$linkedUpdate['experience']['toilet']['men']['facility_cleanliness'] = '4';
+$linkedExperienceBefore = (string) $db->query(
+    'SELECT experience_json FROM resources WHERE id=' . $linkedResourceId
+)->fetchColumn();
+putenv('LLAMA_RESOURCE_HISTORY_WRITES_ENABLED');
+llama_resource_submit($db, 7, $linkedUpdate, $linkedResourceId, $linkedBase);
+$linkedUpdateQuery = $db->prepare(
+    "SELECT id, status, target_resource_id, base_snapshot
+     FROM resource_submissions
+     WHERE target_resource_id = ? AND status = 'pending'
+     ORDER BY id DESC LIMIT 1"
+);
+$linkedUpdateQuery->execute([$linkedResourceId]);
+$linkedPendingUpdate = $linkedUpdateQuery->fetch(PDO::FETCH_ASSOC);
+$check(is_array($linkedPendingUpdate)
+    && (int) $linkedPendingUpdate['target_resource_id'] === $linkedResourceId
+    && hash_equals($linkedBase, (string) $linkedPendingUpdate['base_snapshot'])
+    && (string) $db->query(
+        'SELECT experience_json FROM resources WHERE id=' . $linkedResourceId
+    )->fetchColumn() === $linkedExperienceBefore,
+    'Facility Update must target the existing linked Facility and not publish before approval.');
+$linkedUpdateId = (int) $linkedPendingUpdate['id'];
+putenv('LLAMA_RESOURCE_HISTORY_WRITES_ENABLED=1');
+$linkedUpdatedId = llama_resource_review(
+    $db, 8, $linkedUpdateId, $linkedUpdate, 'Approved linked Facility Update'
+);
+$linkedReport2 = $findSubmittedReport($linkedUpdateId);
+$linkedChanged = $currentGet($linkedResourceId, 'toilet', 'men', 'facility_cleanliness');
+$linkedUnchanged = $currentGet($linkedResourceId, 'toilet', 'men', 'facility_soap');
+$linkedOtherGroup = $currentGet($linkedResourceId, 'toilet', 'women', 'facility_cleanliness');
+$check($linkedUpdatedId === $linkedResourceId
+    && is_array($linkedReport2)
+    && $linkedReport2['target_kind'] === 'facility'
+    && (int) $linkedReport2['parent_place_id'] === 42
+    && (int) $linkedReport2['revision_number'] === 2
+    && (int) $linkedReport2['prior_report_id'] === (int) $linkedReport1['id']
+    && (int) $db->query(
+        'SELECT COUNT(*) FROM resource_scout_reports WHERE resource_id=' . $linkedResourceId
+    )->fetchColumn() === 2,
+    'Approved Facility Update must preserve parent, target and immutable history chain.');
+$check($linkedChanged !== null && $linkedUnchanged !== null && $linkedOtherGroup !== null
+    && $linkedChanged['value_json'] === '"4"'
+    && (int) $linkedChanged['row_version'] === 2
+    && (int) $linkedChanged['source_report_id'] === (int) $linkedReport2['id']
+    && $linkedUnchanged['value_json'] === '"no"'
+    && (int) $linkedUnchanged['row_version'] === 1
+    && (int) $linkedUnchanged['source_report_id'] === (int) $linkedReport1['id']
+    && $linkedOtherGroup['value_json'] === '"5"'
+    && (int) $linkedOtherGroup['row_version'] === 1,
+    'Changed-only Facility Update must preserve No, separate groups and unchanged provenance.');
+
+$staleRejected = false;
+try {
+    llama_resource_submit($db, 7, $linkedUpdate, $linkedResourceId, $linkedBase);
+} catch (InvalidArgumentException $e) {
+    $staleRejected = str_contains($e->getMessage(), 'changed');
+}
+$check($staleRejected,
+    'An outdated contributor Facility snapshot must not overwrite an approved revision.');
+$badParent = $moderatedForm('Contributor Facility Invalid Parent', 99999);
+$invalidParentRejected = false;
+try {
+    llama_resource_submit($db, 7, $badParent);
+} catch (InvalidArgumentException $e) {
+    $invalidParentRejected = str_contains($e->getMessage(), 'Parent Place');
+}
+$check($invalidParentRejected,
+    'Contributor Facility Add must reject a nonexistent parent Place.');
+$check((int) $db->query('SELECT COUNT(*) FROM scout_reports')->fetchColumn()
+    === $mappedReportsBefore
+    && $db->query('SELECT id, status, type FROM places WHERE id=42')->fetch(PDO::FETCH_ASSOC)
+        === $linkedPlaceBefore
+    && (string) $db->query(
+        'SELECT experience_json FROM resources WHERE id=' . $facilityId
+    )->fetchColumn() === $siblingExperienceBefore,
+    'Facility Add/Update must not mutate parent Place, mapped legacy reports or sibling Facility.');
+$check((int) $db->query('SELECT COUNT(*) FROM resources')->fetchColumn()
+    === $beforeLinkedCount + 1,
+    'Linked Facility Add/Update must create exactly one additional Resource record.');
+
+require_once $root . '/app/resource-report-current-read.php';
+putenv('LLAMA_RESOURCE_CURRENT_READS_ENABLED=1');
+$linkedVerifiedRead = llama_resource_report_read(
+    $db, llama_resource($db, $linkedResourceId)
+);
+$check($linkedVerifiedRead['source'] === 'current_verified'
+    && ($linkedVerifiedRead['experience']['toilet']['men']['facility_cleanliness'] ?? null) === '4'
+    && ($linkedVerifiedRead['experience']['toilet']['men']['facility_soap'] ?? null) === 'no',
+    'Guarded Resource/Facility read bridge must show approved contributor Facility updates.');
+putenv('LLAMA_RESOURCE_CURRENT_READS_ENABLED');
+putenv('LLAMA_RESOURCE_HISTORY_WRITES_ENABLED');
+echo "PASS: Real linked-Facility contributor Add/Update, verified parent, immutable revisions, current read, conflict protection and sibling isolation.\n";
 
 // --- Resource/linked-Facility current read bridge remains separately gated.
 // Resource pages and Admin must fall back to legacy Experience on old,
