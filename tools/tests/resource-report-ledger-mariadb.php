@@ -62,6 +62,31 @@ $migration = $root . '/tools/migrations/20261118_resource_scout_report_ledger.sq
 $apply($migration);
 $apply($migration); // No duplicate tables/triggers on rerun.
 
+require_once $root . '/app/resource-ledger-readiness.php';
+$beforeReadyCounts = (int) $db->query('SELECT COUNT(*) FROM resource_scout_reports')->fetchColumn();
+$installation = llama_resource_ledger_readiness($db);
+$check($installation['schema_ready']
+    && $installation['status'] === 'schema_verified'
+    && count($installation['checks']) === 10
+    && $installation['activation_approved'] === false
+    && $installation['flags']['history_writes_enabled'] === false
+    && $installation['flags']['current_reads_enabled'] === false,
+    'Read-only readiness must verify all six tables, triggers, keys, indexes '
+    . 'and constraints without claiming activation or enabling flags.');
+$check($installation['counts']['resource_scout_reports'] === 0
+    && $installation['integrity']['current_answer_foreign_target'] === 0
+    && $installation['integrity']['current_answer_wrong_kind'] === 0
+    && (int) $db->query('SELECT COUNT(*) FROM resource_scout_reports')->fetchColumn()
+        === $beforeReadyCounts,
+    'Inspecting a new installed schema must be read-only and have zero history.');
+$adminReadiness = (string) file_get_contents($root . '/admin/resource-ledger-readiness.php');
+$resourcesAdmin = (string) file_get_contents($root . '/admin/resources.php');
+$check(str_contains($adminReadiness, 'moderation_require_admin()')
+    && str_contains($adminReadiness, 'llama_resource_ledger_readiness(db())')
+    && str_contains($resourcesAdmin, '/resource-ledger-readiness.php')
+    && !str_contains($adminReadiness, 'LLAMA_RESOURCE_HISTORY_WRITES_ENABLED=1'),
+    'Only authenticated Admins can inspect the schema, and no UI path enables history.');
+
 $tables = [
     'resource_scout_report_schemas', 'resource_scout_reports',
     'resource_scout_report_answers', 'resource_scout_report_events',
@@ -887,6 +912,11 @@ $check(str_contains($public, 'llama_resource_report_read(db(), $resource)')
 // Simulate PR #192 tables not installed. Only this disposable test database
 // is modified, and no production database is ever accessed by the suite.
 $db->exec('DROP TABLE resource_scout_current_answers');
+$brokenReadiness = llama_resource_ledger_readiness($db);
+$check(!$brokenReadiness['schema_ready']
+    && $brokenReadiness['status'] === 'schema_incomplete'
+    && $brokenReadiness['activation_approved'] === false,
+    'Missing current-answer sidecar table must never be marked installed or ready.');
 $withoutMigration = llama_resource_report_read($db, $readResource);
 $check($withoutMigration['source'] === 'legacy'
     && $withoutMigration['reason'] === 'schema_unavailable',
