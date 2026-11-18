@@ -63,6 +63,8 @@ jobs:
         run: php tools/tests/scoped-update-draft-parity.php
       - name: Audit canonical Update question coverage
         run: php tools/tests/update-question-inventory.php
+      - name: Audit Admin scoped questionnaire ownership
+        run: php tools/tests/admin-question-ownership-audit.php
       - name: Verify shared Place pricing
         run: php tools/tests/place-pricing.php
       - name: Verify dedicated Campsite Pricing and Admin asset loading
