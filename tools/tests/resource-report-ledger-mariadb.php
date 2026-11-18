@@ -357,6 +357,41 @@ $reportTwo = llama_resource_ledger_record_approved(
     $db, 4, 4, 8, 'Verified Facility'
 );
 $db->commit();
+
+// Every direct-writer approval stages current answers in the very same
+// transaction. A retry of the same submission must not advance row versions.
+$currentGet = static function (
+    int $resourceId, string $service, string $group, string $key
+) use ($db): ?array {
+    $stmt = $db->prepare(
+        'SELECT target_kind, answer_state, value_json, source_report_id,
+                row_version
+         FROM resource_scout_current_answers
+         WHERE resource_id = ? AND service_type = ?
+           AND group_key = ? AND question_key = ?'
+    );
+    $stmt->execute([$resourceId, $service, $group, $key]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    return is_array($row) ? $row : null;
+};
+$menCurrent = $currentGet(3, 'toilet', 'men', 'facility_cleanliness');
+$womenCurrent = $currentGet(3, 'toilet', 'women', 'facility_cleanliness');
+$facilityCurrent = $currentGet(4, 'toilet', 'men', 'facility_cleanliness');
+$fuelCurrent = $currentGet(3, 'fuel', 'general', 'service_fuel_pumps');
+$check($menCurrent !== null
+    && $menCurrent['answer_state'] === 'answered'
+    && $menCurrent['value_json'] === '"3"'
+    && (int) $menCurrent['source_report_id'] === $reportOne
+    && (int) $menCurrent['row_version'] === 1
+    && $womenCurrent['value_json'] === '"5"'
+    && $facilityCurrent['target_kind'] === 'facility'
+    && (int) $facilityCurrent['source_report_id'] === $reportTwo
+    && $fuelCurrent['value_json'] === '"0"',
+    'Initial current projection must preserve No/zero/restroom groups and separate Facility provenance.');
+$check((int) $db->query(
+    'SELECT COUNT(*) FROM resource_scout_current_answers WHERE resource_id=3'
+)->fetchColumn() === 4,
+    'Resource 3 must have exactly four current answers after first approval.');
 $check($reportTwo > $reportOne, 'Facility report must have a distinct identity.');
 
 $rows = $db->query(
@@ -429,6 +464,18 @@ $check((string) $db->query(
        AND service_type='toilet' AND group_key='men' AND question_key='facility_cleanliness'"
 )->fetchColumn() === '"3"',
     'A later update must not rewrite the original Resource evidence.');
+$changedCurrent = $currentGet(3, 'toilet', 'men', 'facility_cleanliness');
+$unchangedCurrent = $currentGet(3, 'toilet', 'women', 'facility_cleanliness');
+$unchangedFuel = $currentGet(3, 'fuel', 'general', 'service_fuel_pumps');
+$check($changedCurrent['value_json'] === '"4"'
+    && $changedCurrent['answer_state'] === 'answered'
+    && (int) $changedCurrent['row_version'] === 2
+    && (int) $changedCurrent['source_report_id'] === $revisionTwo,
+    'Changed answers advance only their own current-answer version and provenance.');
+$check((int) $unchangedCurrent['row_version'] === 1
+    && (int) $unchangedCurrent['source_report_id'] === $reportOne
+    && (int) $unchangedFuel['source_report_id'] === $reportOne,
+    'Unchanged answers retain their original approved evidence and version.');
 
 $db->exec(
     "UPDATE resources SET experience_json =
@@ -449,8 +496,8 @@ $db->RollBack();
 
 $check((int) $db->query(
     'SELECT COUNT(*) FROM resource_scout_current_answers'
-)->fetchColumn() === 3,
-    'Staged writer must not activate or change the future current-answer projection.');
+)->fetchColumn() === 9,
+    'Approved Resource and Facility history must synchronize six target-local current answers.');
 
 putenv('LLAMA_RESOURCE_HISTORY_WRITES_ENABLED');
 @unlink($absolute);
