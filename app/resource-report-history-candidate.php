@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/resource-report-projection.php';
+require_once __DIR__ . '/resource-report-service-questions.php';
 require_once __DIR__ . '/place-report/immutable-history.php';
 
 /**
