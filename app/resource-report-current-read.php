@@ -32,7 +32,7 @@ function llama_resource_current_read_schema_ready(PDO $db): bool
              FROM resource_scout_reports LIMIT 0'
         );
         $db->query(
-            'SELECT id, resource_id
+            'SELECT id
              FROM resources LIMIT 0'
         );
         // A current row is not verifiable evidence without its immutable
