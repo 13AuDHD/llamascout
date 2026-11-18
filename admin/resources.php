@@ -479,6 +479,10 @@ $e =
 </div>
 <?php endif; ?>
 
+<p>
+    <a href="/resource-ledger-readiness.php">Check Resource / Facility report-history readiness</a>
+</p>
+
 <?php if (!$tablesReady): ?>
 
 <section class="admin-panel">
