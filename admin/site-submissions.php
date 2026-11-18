@@ -129,12 +129,14 @@ require __DIR__ . '/_header.php';
                 <input type="hidden" name="csrf_token" value="<?= $e(moderation_csrf_token()) ?>">
                 <input type="hidden" name="submission_id" value="<?= (int) $item['id'] ?>">
                 <label>
-                    Review notes (required when rejecting)
+                    Review notes (required when rejecting or requesting changes)
                     <textarea name="review_notes" rows="3" maxlength="4000"></textarea>
                 </label>
                 <div class="admin-actions">
                     <button class="admin-button" type="submit"
                             name="site_decision" value="approved">Approve &amp; publish Site</button>
+                    <button class="admin-button is-muted" type="submit"
+                            name="site_decision" value="needs-changes">Request Changes</button>
                     <button class="admin-button is-muted" type="submit"
                             name="site_decision" value="rejected">Reject Site</button>
                 </div>
