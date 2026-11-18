@@ -110,9 +110,10 @@ function llama_resource_report_service_field_catalog(): array
  */
 function llama_resource_report_experience_field_catalog(): array
 {
+    $manifest = llama_resource_experience_manifest();
     $canonical = llama_report_questions();
     $result = [];
-    foreach (llama_resource_experience_manifest() as $service => $groups) {
+    foreach ($manifest as $service => $groups) {
         foreach ($groups as $group => $definition) {
             foreach ($definition['questions'] as $key => $field) {
                 $path = $service . '/' . $group . '/' . $key;
