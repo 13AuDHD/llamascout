@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/place-update.php';
+require_once dirname(__DIR__) . '/app/place-report/scoped-update-form-values.php';
 require_once dirname(__DIR__) . '/app/place-report/site-identity-update.php';
 require_once dirname(__DIR__) . '/app/contribution-presentation.php';
 
@@ -1171,57 +1172,33 @@ $e =
             require_once dirname(__DIR__) . '/app/place-report/report-targets.php';
             $availableReportTargets = llama_report_targets(db(), $placeId);
 
-            $initialScopedAnswers =
-                [];
-
-            if (
-                $_SERVER['REQUEST_METHOD'] === 'POST'
-                && $reportTargetIsScoped
-            ) {
-                $postedScopedAnswers =
-                    json_decode(
-                        (string) ($_POST['scoped_answers_json'] ?? '[]'),
-                        true
+            // Preserve canonical typed answers when a moderator requests
+            // changes or a POST fails validation. Multi-select sets (including
+            // []), explicit No/0 and Unknown must not disappear on re-render.
+            $initialScopedAnswers = [];
+            if (in_array($reportTargetScope, ['site', 'area'], true)) {
+                if ($_SERVER['REQUEST_METHOD'] === 'POST' && $reportTargetIsScoped) {
+                    $postedScopedAnswers = json_decode(
+                        (string) ($_POST['scoped_answers_json'] ?? '[]'), true
                     );
-
-                if (is_array($postedScopedAnswers)) {
-                    foreach ($postedScopedAnswers as $answer) {
-                        if (!is_array($answer)) {
-                            continue;
-                        }
-
-                        $answerKey =
-                            trim((string) ($answer['key'] ?? ''));
-
-                        $answerValue =
-                            $answer['value']
-                            ?? null;
-
-                        if (
-                            $answerKey !== ''
-                            && is_scalar($answerValue)
-                        ) {
-                            $initialScopedAnswers[$answerKey] =
-                                (string) $answerValue;
+                    $postedDraft = [];
+                    if (is_array($postedScopedAnswers) && array_is_list($postedScopedAnswers)) {
+                        foreach ($postedScopedAnswers as $answer) {
+                            if (!is_array($answer)
+                                || !is_string($answer['key'] ?? null)
+                                || !array_key_exists('value', $answer)) {
+                                continue;
+                            }
+                            $postedDraft[$answer['key']] = $answer['value'];
                         }
                     }
-                }
-            } elseif (
-                $isScopedNeedsChanges
-                && is_array($editScopedPayload)
-            ) {
-                foreach (
-                    (array) ($editScopedPayload['answers'] ?? [])
-                    as $answerKey => $answerValue
-                ) {
-                    if (
-                        is_string($answerKey)
-                        && $answerKey !== ''
-                        && is_scalar($answerValue)
-                    ) {
-                        $initialScopedAnswers[$answerKey] =
-                            (string) $answerValue;
-                    }
+                    $initialScopedAnswers = llama_scoped_update_form_values(
+                        $reportTargetScope, $postedDraft
+                    );
+                } elseif ($isScopedNeedsChanges && is_array($editScopedPayload)) {
+                    $initialScopedAnswers = llama_scoped_update_form_values(
+                        $reportTargetScope, (array) ($editScopedPayload['answers'] ?? [])
+                    );
                 }
             }
 
