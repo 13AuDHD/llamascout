@@ -133,7 +133,8 @@ function admin_place_site_inventory_gap(): array
     $missing = [];
     foreach (llama_report_questions_for_scope('site', true) as $key => $field) {
         if (!empty($field['derived']) || !empty($field['pricing_managed'])
-            || !empty($field['location_field']) || $key === 'site_number') {
+            || !empty($field['location_field'])
+            || in_array($key, ['site_number', 'visited_at'], true)) {
             continue;
         }
         if (!isset($editable[$key])) {
