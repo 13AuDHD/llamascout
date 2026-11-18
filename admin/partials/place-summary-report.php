@@ -178,7 +178,7 @@ $placeReportSelectedSite = isset($placeReportSiteOptions[$requestedSite]) ? $req
                    policies appear as inherited values until you change them.</p>
                 <?php foreach ($adminSiteSharedGroups as $group): ?>
                     <?php if (empty($group['fields'])) continue; ?>
-                    <section class="contribution-section" data-admin-site-policy-group>
+                    <section class="admin-site-policy-group" data-admin-site-policy-group>
                         <h3><?= $e($group['label']) ?></h3>
                         <div class="contribution-section-body">
                             <?php foreach ($group['fields'] as $siteField): ?>
