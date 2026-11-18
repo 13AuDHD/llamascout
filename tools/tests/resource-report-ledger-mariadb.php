@@ -1070,6 +1070,145 @@ putenv('LLAMA_RESOURCE_CURRENT_READS_ENABLED');
 putenv('LLAMA_RESOURCE_HISTORY_WRITES_ENABLED');
 echo "PASS: Real linked-Facility contributor Add/Update, verified parent, immutable revisions, current read, conflict protection and sibling isolation.\n";
 
+// --- Linked-Facility photo ownership and rollback on a history collision.
+// These exercise the real moderator with only disposable fixtures and files.
+putenv('LLAMA_RESOURCE_HISTORY_WRITES_ENABLED=1');
+$photoFixturePng = base64_decode(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9boWfrAAAAAASUVORK5CYII='
+);
+$makeFacilitySubmissionPhoto = static function (
+    int $submissionId, string $name, string $alt
+) use ($db, $root, $photoFixturePng): string {
+    $folder = $root . '/uploads/resource-submissions/' . $submissionId;
+    if (!is_dir($folder) && !mkdir($folder, 0755, true) && !is_dir($folder)) {
+        throw new RuntimeException('Could not create disposable linked-Facility photo directory.');
+    }
+    $path = '/uploads/resource-submissions/' . $submissionId . '/' . $name;
+    if (file_put_contents($root . $path, $photoFixturePng) === false) {
+        throw new RuntimeException('Could not create disposable linked-Facility photo evidence.');
+    }
+    $db->prepare('UPDATE resource_submissions SET form_data = ? WHERE id = ?')
+        ->execute([json_encode(['_photos' => [
+            ['path' => $path, 'alt' => $alt],
+        ]], JSON_THROW_ON_ERROR), $submissionId]);
+    return $path;
+};
+
+$linkedPhotoSubmissionId = $newSubmission('Linked Facility Approved Photo');
+$linkedPhotoSource = $makeFacilitySubmissionPhoto(
+    $linkedPhotoSubmissionId, 'facility-approved.png', 'Approved Facility evidence'
+);
+$linkedSiblingGalleryBefore = (int) $db->query(
+    'SELECT COUNT(*) FROM resource_images WHERE resource_id=' . $facilityId
+)->fetchColumn();
+$linkedPhotoResourceId = llama_resource_review(
+    $db, 8, $linkedPhotoSubmissionId,
+    $moderatedForm('Linked Facility Approved Photo', 42), 'Approved linked Facility photo'
+);
+$linkedPhotoReport = $findSubmittedReport($linkedPhotoSubmissionId);
+$check($linkedPhotoResourceId > 0 && is_array($linkedPhotoReport)
+    && $linkedPhotoReport['target_kind'] === 'facility'
+    && (int) $linkedPhotoReport['parent_place_id'] === 42
+    && (int) $linkedPhotoReport['resource_id'] === $linkedPhotoResourceId,
+    'Photo approval must publish the selected linked Facility, not its parent or sibling.');
+$linkedPhotoQuery = $db->prepare(
+    'SELECT photo_path, photo_snapshot_json FROM resource_scout_report_photos
+     WHERE report_id = ?'
+);
+$linkedPhotoQuery->execute([(int) $linkedPhotoReport['id']]);
+$linkedPublishedPhoto = $linkedPhotoQuery->fetch(PDO::FETCH_ASSOC);
+$linkedGalleryQuery = $db->prepare(
+    'SELECT src FROM resource_images WHERE resource_id = ?'
+);
+$linkedGalleryQuery->execute([$linkedPhotoResourceId]);
+$linkedGalleryPhotos = $linkedGalleryQuery->fetchAll(PDO::FETCH_COLUMN);
+$check(is_array($linkedPublishedPhoto)
+    && count($linkedGalleryPhotos) === 1
+    && $linkedGalleryPhotos[0] === $linkedPublishedPhoto['photo_path']
+    && str_starts_with(
+        (string) $linkedPublishedPhoto['photo_path'],
+        '/uploads/resources/' . $linkedPhotoResourceId . '/'
+    )
+    && is_file($root . $linkedPublishedPhoto['photo_path'])
+    && !is_file($root . $linkedPhotoSource),
+    'Moderated Facility photo must be published to exactly its own gallery and cleanup the submission.');
+$linkedPhotoSnapshot = json_decode(
+    (string) $linkedPublishedPhoto['photo_snapshot_json'], true, 512, JSON_THROW_ON_ERROR
+);
+$check(($linkedPhotoSnapshot['file_sha256'] ?? null)
+        === hash_file('sha256', $root . $linkedPublishedPhoto['photo_path'])
+    && (int) $db->query(
+        'SELECT COUNT(*) FROM resource_images WHERE resource_id=' . $facilityId
+    )->fetchColumn() === $linkedSiblingGalleryBefore,
+    'Facility photo ledger must hash real permanent evidence and not copy photos to siblings.');
+
+$collisionFacilitySubmission = $newSubmission('Linked Facility Photo Collision Rollback');
+$collisionFacilitySource = $makeFacilitySubmissionPhoto(
+    $collisionFacilitySubmission, 'collision.png', 'Rollback Facility evidence'
+);
+$db->prepare(
+    'INSERT INTO resource_scout_reports
+        (resource_id,target_kind,parent_place_id,submission_id,logical_report_key,
+         contributor_id,submitted_at,reviewed_by,reviewed_at,schema_version,
+         client_submission_key,content_sha256)
+     VALUES (1, "resource", NULL, ?, ?, 7, CURRENT_TIMESTAMP, 8,
+             CURRENT_TIMESTAMP, ?, ?, ?)'
+)->execute([
+    $collisionFacilitySubmission,
+    'collision:linked-facility-submission:' . $collisionFacilitySubmission,
+    $schema['schema_version'],
+    'collision:linked-facility-client:' . $collisionFacilitySubmission,
+    hash('sha256', 'unrelated linked-Facility history ' . $collisionFacilitySubmission),
+]);
+$beforeCollisionResourceCount = (int) $db->query(
+    'SELECT COUNT(*) FROM resources'
+)->fetchColumn();
+$beforeCollisionGalleryCount = (int) $db->query(
+    'SELECT COUNT(*) FROM resource_images'
+)->fetchColumn();
+$beforeCollisionCurrentCount = (int) $db->query(
+    'SELECT COUNT(*) FROM resource_scout_current_answers'
+)->fetchColumn();
+$collisionFilesBefore = glob($root . '/uploads/resources/*/*-collision.png') ?: [];
+sort($collisionFilesBefore);
+$linkedPhotoCollisionRejected = false;
+try {
+    llama_resource_review(
+        $db, 8, $collisionFacilitySubmission,
+        $moderatedForm('Linked Facility Photo Collision Rollback', 42)
+    );
+} catch (RuntimeException $e) {
+    $linkedPhotoCollisionRejected = str_contains($e->getMessage(), 'another Resource report');
+}
+$check($linkedPhotoCollisionRejected,
+    'Wrong-target immutable history must prevent linked-Facility approval after photo copying.');
+$collisionFilesAfter = glob($root . '/uploads/resources/*/*-collision.png') ?: [];
+sort($collisionFilesAfter);
+$check($collisionFilesAfter === $collisionFilesBefore
+    && is_file($root . $collisionFacilitySource)
+    && (string) $db->query(
+        'SELECT status FROM resource_submissions WHERE id=' . $collisionFacilitySubmission
+    )->fetchColumn() === 'pending',
+    'Failed Facility photo approval must delete only copied photos, preserve submitted evidence and leave pending.');
+$check((int) $db->query('SELECT COUNT(*) FROM resources')->fetchColumn()
+        === $beforeCollisionResourceCount
+    && (int) $db->query('SELECT COUNT(*) FROM resource_images')->fetchColumn()
+        === $beforeCollisionGalleryCount
+    && (int) $db->query('SELECT COUNT(*) FROM resource_scout_current_answers')->fetchColumn()
+        === $beforeCollisionCurrentCount
+    && (int) $db->query('SELECT COUNT(*) FROM scout_reports')->fetchColumn() === 1
+    && (int) $db->query(
+        'SELECT COUNT(*) FROM resource_scout_reports WHERE submission_id='
+        . $collisionFacilitySubmission . ' AND resource_id=1'
+    )->fetchColumn() === 1,
+    'Facility collision rollback must preserve other targets, original history and existing current rows.');
+@unlink($root . $collisionFacilitySource);
+@rmdir(dirname($root . $collisionFacilitySource));
+@unlink($root . $linkedPublishedPhoto['photo_path']);
+@rmdir(dirname($root . $linkedPublishedPhoto['photo_path']));
+putenv('LLAMA_RESOURCE_HISTORY_WRITES_ENABLED');
+echo "PASS: Linked-Facility photo ownership, immutable SHA-256, submission cleanup, photo rollback, pending state and cross-target isolation.\n";
+
 // --- Resource/linked-Facility current read bridge remains separately gated.
 // Resource pages and Admin must fall back to legacy Experience on old,
 // incomplete, stale, cross-target or uninstalled current-answer data.
