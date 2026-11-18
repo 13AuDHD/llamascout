@@ -1,0 +1,59 @@
+name: Standalone Site Submission MariaDB Integration
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/standalone-site-integration.yml'
+      - 'tools/tests/standalone-site-mariadb.php'
+      - 'tools/migrations/20261118_standalone_site_submissions.sql'
+      - 'app/site-submissions.php'
+      - 'app/place-report/scoped-answers.php'
+      - 'app/place-report/current-answer-store.php'
+      - 'app/place-report/immutable-history.php'
+      - 'add-site.php'
+      - 'admin/site-submissions.php'
+      - 'account/contributions.php'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  site-contributions:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: site-test-only
+          MARIADB_ROOT_HOST: "%"
+          MARIADB_DATABASE: llama_site_submission_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "healthcheck.sh --connect --innodb_initialized"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PDO MySQL if needed
+        run: |
+          if ! php -m | grep -qi '^pdo_mysql$'; then
+            sudo apt-get update -qq
+            sudo apt-get install -y php-mysql
+          fi
+      - name: Verify Site service and form syntax
+        run: |
+          php -l app/site-submissions.php
+          php -l add-site.php
+          php -l admin/site-submissions.php
+          php -l account/contributions.php
+          php -l tools/tests/standalone-site-mariadb.php
+      - name: Submit, revise, approve and reject independent Sites
+        env:
+          LLAMA_SITE_SUBMISSION_TEST_DSN: mysql:host=127.0.0.1;port=3306;dbname=llama_site_submission_test;charset=utf8mb4
+          LLAMA_SITE_SUBMISSION_TEST_USER: root
+          LLAMA_SITE_SUBMISSION_TEST_PASSWORD: site-test-only
+        run: php tools/tests/standalone-site-mariadb.php
