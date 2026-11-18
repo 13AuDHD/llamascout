@@ -610,11 +610,16 @@
         if (overwritePanel) overwritePanel.hidden = !editingAllSites;
     };
 
-    const controlsFor = (name) => {
-        const root = siteSharedFieldLookup.has(name) && siteSharedPanel
+    const controlNameFor = (key) => siteSharedFieldLookup.has(key)
+        ? `admin_site_${key}` : key;
+    const unknownNameFor = (key) => siteSharedFieldLookup.has(key)
+        ? `admin_site__report_unknown[${key}]` : `_report_unknown[${key}]`;
+    const controlsFor = (key) => {
+        const root = siteSharedFieldLookup.has(key) && siteSharedPanel
             ? siteSharedPanel : form;
+        const name = controlNameFor(key);
         return Array.from(root.querySelectorAll(
-            `[name="${name}"], [name="${name}[]"], [name="_report_unknown[${name}]"]`
+            `[name="${name}"], [name="${name}[]"], [name="${unknownNameFor(key)}"]`
         ));
     };
 
@@ -740,13 +745,13 @@
             return;
         }
 
-        const choices = controls.filter(control => control.name === `${key}[]`);
+        const choices = controls.filter(control => control.name === `${controlNameFor(key)}[]`);
         if (choices.length) {
             const selected = Array.isArray(value) ? value : [];
             choices.forEach(control => {
                 control.checked = selected.includes(control.value);
             });
-            const unknown = controls.find(control => control.name === `_report_unknown[${key}]`);
+            const unknown = controls.find(control => control.name === unknownNameFor(key));
             if (unknown) unknown.checked = value === campsiteUnknown;
             return;
         }
@@ -825,9 +830,9 @@
                 return;
             }
 
-            const choices = controls.filter(control => control.name === `${key}[]`);
+            const choices = controls.filter(control => control.name === `${controlNameFor(key)}[]`);
             if (choices.length) {
-                const unknown = controls.find(control => control.name === `_report_unknown[${key}]`);
+                const unknown = controls.find(control => control.name === unknownNameFor(key));
                 values[key] = unknown?.checked
                     ? campsiteUnknown
                     : choices.filter(control => control.checked).map(control => control.value);
@@ -1111,7 +1116,7 @@
                     if (!controls.length) {
                         return;
                     }
-                    const unanswered = controls.some(control => control.name === `${key}[]`) ? [] : '';
+                    const unanswered = controls.some(control => control.name === `${controlNameFor(key)}[]`) ? [] : '';
 
                     const baseValue =
                         Object.prototype.hasOwnProperty.call(
