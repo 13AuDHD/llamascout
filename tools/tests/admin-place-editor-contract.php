@@ -15,6 +15,10 @@ $sharedForm = $get('partials/place-report/form.php');
 $admin = $get('admin/place.php');
 $adminTabs = $get('partials/place-report/contribution-tabs.php');
 $adminSummary = $get('admin/partials/place-summary-report.php');
+$adminSiteRules = $get('admin/partials/place-report-site-shared-questions.php');
+$siteAdd = $get('add-site.php');
+$tabsCss = $get('css/site/features/contribution-tabs.css');
+$tabs = $get('partials/place-report/contribution-tabs.php');
 $saveService = $get('app/admin-place-sites.php');
 $saveController = $get('app/admin-place-actions.php');
 $css = $get('css/admin/pages/place.css');
@@ -38,6 +42,25 @@ $assert(str_contains($css, '@import url("../../site/features/contribution-tabs.c
 $assert(str_contains($sharedForm, "\$approvedKey === 'site_info'")
     && str_contains($sharedForm, "\$placeReportMode === 'moderator' && \$hasAdminSitePicker"),
     'Admin Site Location must follow Site Info only when the Site picker exists.');
+$siteRules = llama_report_questions_for_scope('site', true);
+$assert(isset($siteRules['pets_allowed'], $siteRules['generator_restrictions'])
+    && !isset($siteRules['latitude'], $siteRules['longitude'])
+    && str_contains($sharedForm, "\$placeReportOnlyScope === 'site' && \$reportMainKey !== 'site'")
+    && str_contains($sharedForm, "\$placeReportOnlyScope !== 'site'")
+    && str_contains($siteAdd, "\$placeReportOnlyScope = 'site';"),
+    'Standalone Add Site must display Site-owned rules, not parent Place Location.');
+$assert(str_contains($adminSummary, "place-report-site-shared-questions.php")
+    && !str_contains($adminSummary, 'data-admin-site-shared-questions hidden disabled')
+    && str_contains($sharedForm, 'require $placeReportSiteSharedPartial;')
+    && str_contains($adminSiteRules, 'data-admin-site-shared-questions hidden disabled')
+    && str_contains($adminSiteRules, 'admin_site_')
+    && str_contains($adminSiteRules, "llama_report_questions_for_scope('site', true)"),
+    'Admin Site shared policy controls must render inside Site section and remain separate from Place fields.');
+$assert(str_contains($tabs, 'contribution-current-resource is-site')
+    && str_contains($tabsCss, '.contribution-current-resource.is-site[aria-current="page"]')
+    && str_contains($tabsCss, '--mode-color: var(--place-accent)')
+    && str_contains($css, '--admin-report-accent: var(--place-accent)'),
+    'Place styling must use the forest-green token, and standalone Site amber rather than Resource teal.');
 $assert(str_contains($siteLocation, 'name="admin_site_coordinates_changed"')
     && str_contains($admin, '/js/admin/place-site-location.js'),
     'Admin Site Location needs a touched marker and target-aware controller.');
