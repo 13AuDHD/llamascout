@@ -369,7 +369,7 @@ function llama_site_submission_queue(PDO $db, int $limit = 100): array
          FROM place_site_submissions s
          INNER JOIN places p ON p.id = s.place_id
          LEFT JOIN users u ON u.id = s.submitted_by
-         WHERE s.status IN ("pending","needs-changes")
+         WHERE s.status = "pending"
          ORDER BY s.created_at ASC, s.id ASC
          LIMIT ' . max(1, min(200, $limit))
     );
@@ -392,8 +392,11 @@ function llama_site_submission_moderate(
         || !in_array($decision, ['approved', 'rejected', 'needs-changes'], true)) {
         throw new InvalidArgumentException('Invalid Site review action.');
     }
-    if ($decision === 'rejected' && trim($reviewNotes) === '') {
-        throw new InvalidArgumentException('Explain why the Site was not approved.');
+    if (in_array($decision, ['rejected', 'needs-changes'], true)
+        && trim($reviewNotes) === '') {
+        throw new InvalidArgumentException(
+            'Explain what needs to change before this Site can be reviewed again.'
+        );
     }
     require_once __DIR__ . '/moderation.php';
     require_once __DIR__ . '/place-campsite-media.php';
@@ -403,7 +406,7 @@ function llama_site_submission_moderate(
     try {
         $stmt = $db->prepare(
             'SELECT * FROM place_site_submissions
-             WHERE id = ? AND status IN ("pending","needs-changes") FOR UPDATE'
+             WHERE id = ? AND status = "pending" FOR UPDATE'
         );
         $stmt->execute([$submissionId]);
         $item = $stmt->fetch(PDO::FETCH_ASSOC);
