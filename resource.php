@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/app/bootstrap.php';
 require_once __DIR__ . '/app/resources.php';
-require_once __DIR__ . '/app/resource-report-projection.php';
+require_once __DIR__ . '/app/resource-report-current-read.php';
 
 $slug =
     trim(
@@ -671,7 +671,8 @@ require __DIR__ . '/partials/header.php';
 // This read-only projection preserves the Resource / linked-Facility target
 // identity while deriving question labels, options, and answer states from the
 // same shared manifest used by Add, Update, Admin, and moderation.
-$resourceReport = llama_resource_report_projection($resource);
+$resourceReportRead = llama_resource_report_read(db(), $resource);
+$resourceReport = $resourceReportRead['projection'];
 $experienceSections = [];
 foreach ($resourceReport['groups'] as $group) {
     $rows = [];
