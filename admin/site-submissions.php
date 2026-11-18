@@ -118,7 +118,7 @@ require __DIR__ . '/_header.php';
                             <figure>
                                 <img src="<?= $e(llama_photo_public_url((string) $photo['path'])) ?>"
                                      alt="<?= $e($photo['alt'] ?? 'Submitted Site photo') ?>"
-                                     loading="lazy" style="max-width:180px;max-height:180px">
+                                     loading="lazy" class="admin-site-review-photo">
                                 <figcaption><?= $e($photo['alt'] ?? '') ?></figcaption>
                             </figure>
                         <?php endforeach; ?>
