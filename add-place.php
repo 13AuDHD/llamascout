@@ -9,6 +9,17 @@ require_once __DIR__ . '/app/area-submissions.php';
 
 require_verified_email();
 
+// A Site is submitted independently under an existing Place. Never send its
+// answers through the new Place approval bundle.
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET'
+    && (string) ($_GET['tab'] ?? '') === 'site'
+    && !isset($_GET['submission'])) {
+    $parentId = max(0, (int) ($_GET['place_id'] ?? 0));
+    header('Location: /add-site.php'
+        . ($parentId > 0 ? '?site_place_id=' . $parentId : ''), true, 303);
+    exit;
+}
+
 // Facility creation is now a standalone, one-at-a-time Resource-style form.
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET'
     && (string) ($_GET['tab'] ?? '') === 'area') {
@@ -111,6 +122,11 @@ $editSubmission =
 $isNeedsChanges =
     $editSubmission
     && (string) ($editSubmission['status'] ?? '') === 'needs-changes';
+
+// Keep older bundled Place + first Site submissions editable. New Place
+// contributions use only Place-owned canonical fields and one report target.
+$legacyPlaceBundle = $isNeedsChanges
+    && empty($editSubmission['data']['_submission_target_kind']);
 
 if ($editSubmissionId > 0 && !$editSubmission) {
     http_response_code(404);
@@ -438,6 +454,7 @@ require __DIR__ . '/partials/header.php';
 
 $placeReportValues = $_POST;
 $placeReportMode = 'contributor';
+$placeReportOnlyScope = $legacyPlaceBundle ? '' : 'place';
 $placeReportExistingPhotos = $existingSubmissionPhotos;
 $placeReportShowLocate = true;
 $placeReportShowNameSuggestion = true;
@@ -581,6 +598,8 @@ $placeReportPhotoHelp =
         class="contribution-form add-place-form place-report-form"
         data-place-report-completion-form data-contribution-report
     >
+        <input type="hidden" name="submission_target_kind"
+               value="<?= $legacyPlaceBundle ? 'legacy-bundle' : 'place' ?>">
         <input
             type="hidden"
             name="csrf_token"
