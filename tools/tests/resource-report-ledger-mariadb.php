@@ -458,3 +458,177 @@ putenv('LLAMA_RESOURCE_HISTORY_WRITES_ENABLED');
 
 echo "PASS: Guarded Resource and linked-Facility writer, transaction rollback, repeat submission, photos, revision chain and target isolation.\n";
 
+
+
+// --- Exercise the ACTUAL moderator approval method with and without history.
+require_once $root . '/app/resource-submissions.php';
+
+// Older standalone Resource test migrations are upgraded only here, after
+// the intentionally minimal ledger-schema smoke tests above.
+$apply($root . '/tools/migrations/20261101_v3_004_resource_pages.sql');
+$apply($root . '/tools/migrations/20261101_v3_005_resource_marker_service.sql');
+$apply($root . '/tools/migrations/20261101_v3_006_resource_hours.sql');
+$apply($root . '/tools/migrations/20261109_resource_county.sql');
+$apply($root . '/tools/migrations/20261109_resource_moderation.sql');
+$db->exec("ALTER TABLE places ADD COLUMN status VARCHAR(32) NOT NULL DEFAULT 'active'");
+
+$moderatedForm = static function (string $name, int $parentId = 0): array {
+    return [
+        'name' => $name,
+        'resource_type' => 'restroom_facility',
+        'parent_place_id' => $parentId ? (string) $parentId : '',
+        'marker_service_type' => 'toilet',
+        'coordinates' => '37.6123456, -107.7123456',
+        'status' => 'available',
+        'hours_mode' => '24_hours',
+        'services' => [
+            'toilet' => ['enabled' => '1', 'status' => 'available', 'fee_status' => 'free'],
+        ],
+        'experience_present' => '1',
+        'experience' => ['toilet' => [
+            'men' => ['facility_cleanliness' => '3', 'facility_soap' => 'no'],
+            'women' => ['facility_cleanliness' => '5'],
+        ]],
+    ];
+};
+$newSubmission = static function (string $name) use ($db): int {
+    $stmt = $db->prepare(
+        "INSERT INTO resource_submissions
+            (submitted_by,name,form_data,status)
+         VALUES (7,?,'{}','pending')"
+    );
+    $stmt->execute([$name]);
+    return (int) $db->lastInsertId();
+};
+$findSubmittedReport = static function (int $id) use ($db): ?array {
+    $stmt = $db->prepare(
+        'SELECT * FROM resource_scout_reports WHERE submission_id = ?'
+    );
+    $stmt->execute([$id]);
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    return is_array($result) ? $result : null;
+};
+
+$offId = $newSubmission('Legacy Approval With Feature Off');
+$legacyId = llama_resource_review(
+    $db, 8, $offId, $moderatedForm('Legacy Approval With Feature Off')
+);
+$check($legacyId > 0 && $findSubmittedReport($offId) === null,
+    'Default-off must retain successful legacy moderation without writing history.');
+$check((string) $db->query(
+    'SELECT status FROM resource_submissions WHERE id=' . $offId
+)->fetchColumn() === 'approved',
+    'Default-off path must preserve existing approval status.');
+
+putenv('LLAMA_RESOURCE_HISTORY_WRITES_ENABLED=1');
+$onId = $newSubmission('Moderated Resource With History');
+$onResourceId = llama_resource_review(
+    $db, 8, $onId, $moderatedForm('Moderated Resource With History'), 'Approved Resource'
+);
+$onReport = $findSubmittedReport($onId);
+$check($onResourceId > 0
+    && is_array($onReport)
+    && (int) $onReport['resource_id'] === $onResourceId
+    && $onReport['target_kind'] === 'resource'
+    && $onReport['parent_place_id'] === null,
+    'Opt-in must write exactly one immutable history record for the approved Resource.');
+$check((int) $db->query(
+    'SELECT COUNT(*) FROM resource_scout_report_answers WHERE report_id = '
+    . (int) $onReport['id']
+)->fetchColumn() === 3,
+    'Actual Resource approval must preserve independent restroom answers and No.');
+
+$facilitySubmission = $newSubmission('Moderated Linked Facility With History');
+$facilityId = llama_resource_review(
+    $db, 8, $facilitySubmission,
+    $moderatedForm('Moderated Linked Facility With History', 42), 'Approved Facility'
+);
+$facilityRecord = $findSubmittedReport($facilitySubmission);
+$check($facilityId > 0 && is_array($facilityRecord)
+    && $facilityRecord['target_kind'] === 'facility'
+    && (int) $facilityRecord['parent_place_id'] === 42
+    && (int) $facilityRecord['resource_id'] === $facilityId
+    && (int) $facilityRecord['resource_id'] !== $onResourceId,
+    'Actual linked-Facility approval must use its own Resource ID and stored Place parent.');
+
+$photoSubmission = $newSubmission('Moderated Photo Evidence');
+$sourceDirectory = $root . '/uploads/resource-submissions/' . $photoSubmission;
+if (!is_dir($sourceDirectory)
+    && !mkdir($sourceDirectory, 0755, true)
+    && !is_dir($sourceDirectory)) {
+    throw new RuntimeException('Could not create disposable submission photo.');
+}
+$sourceRelative = '/uploads/resource-submissions/' . $photoSubmission . '/approved.png';
+$sourceAbsolute = $root . $sourceRelative;
+file_put_contents($sourceAbsolute, base64_decode(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9boWfrAAAAAASUVORK5CYII='
+));
+$db->prepare('UPDATE resource_submissions SET form_data = ? WHERE id = ?')
+    ->execute([json_encode(['_photos' => [
+        ['path' => $sourceRelative, 'alt' => 'Moderated photo'],
+    ]], JSON_THROW_ON_ERROR), $photoSubmission]);
+$photoResourceId = llama_resource_review(
+    $db, 8, $photoSubmission, $moderatedForm('Moderated Photo Evidence')
+);
+$photoReport = $findSubmittedReport($photoSubmission);
+$check($photoResourceId > 0 && is_array($photoReport),
+    'Actual moderator must successfully approve a Resource with photo evidence.');
+$photoQuery = $db->prepare(
+    'SELECT photo_path,photo_snapshot_json
+     FROM resource_scout_report_photos WHERE report_id = ?'
+);
+$photoQuery->execute([(int) $photoReport['id']]);
+$photoRecord = $photoQuery->fetch(PDO::FETCH_ASSOC);
+$check(is_array($photoRecord)
+    && str_starts_with($photoRecord['photo_path'], '/uploads/resources/' . $photoResourceId . '/')
+    && is_file($root . $photoRecord['photo_path']),
+    'Published photo evidence must use the moderator-verified permanent Resource path.');
+$photoSnapshot = json_decode((string) $photoRecord['photo_snapshot_json'], true, 512, JSON_THROW_ON_ERROR);
+$check(($photoSnapshot['file_sha256'] ?? '') === hash_file('sha256', $root . $photoRecord['photo_path'])
+    && !is_file($sourceAbsolute),
+    'History must hash approved gallery photo and preserve existing submission cleanup.');
+
+$collisionId = $newSubmission('Moderation Must Roll Back');
+$resourceNamesBefore = (int) $db->query(
+    "SELECT COUNT(*) FROM resources WHERE name = 'Moderation Must Roll Back'"
+)->fetchColumn();
+$photosBefore = glob($root . '/uploads/resources/*/collision.png') ?: [];
+$db->prepare(
+    'INSERT INTO resource_scout_reports
+        (resource_id,target_kind,parent_place_id,submission_id,logical_report_key,
+         contributor_id,submitted_at,reviewed_by,reviewed_at,schema_version,
+         client_submission_key,content_sha256)
+     VALUES (1, "resource", NULL, ?, ?, 7, CURRENT_TIMESTAMP, 8,
+             CURRENT_TIMESTAMP, ?, ?, ?)'
+)->execute([
+    $collisionId,
+    'collision:resource-submission:' . $collisionId,
+    $schema['schema_version'],
+    'collision-review:' . $collisionId,
+    hash('sha256', 'unrelated historical content ' . $collisionId),
+]);
+$failed = false;
+try {
+    llama_resource_review(
+        $db, 8, $collisionId, $moderatedForm('Moderation Must Roll Back')
+    );
+} catch (RuntimeException $error) {
+    $failed = str_contains($error->getMessage(), 'another Resource report');
+}
+$check($failed,
+    'An immutable submission collision must abort the entire Resource moderation approval.');
+$check((int) $db->query(
+    "SELECT COUNT(*) FROM resources WHERE name = 'Moderation Must Roll Back'"
+)->fetchColumn() === $resourceNamesBefore
+    && (string) $db->query(
+        'SELECT status FROM resource_submissions WHERE id = ' . $collisionId
+    )->fetchColumn() === 'pending',
+    'A ledger error must roll back the Resource record and leave the submission pending.');
+
+$check((int) $db->query('SELECT COUNT(*) FROM scout_reports')->fetchColumn() === 1,
+    'Resource moderation must never modify the legacy Place/Site/Area report ledger.');
+putenv('LLAMA_RESOURCE_HISTORY_WRITES_ENABLED');
+@unlink($root . $photoRecord['photo_path']);
+@rmdir(dirname($root . $photoRecord['photo_path']));
+
+echo "PASS: Real Resource moderator respects default-off, stages opted-in Resource/Facility reports and photos atomically, and rolls back on history collision.\n";
