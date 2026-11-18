@@ -20,39 +20,39 @@ require_once __DIR__ . '/resources.php';
  * When updating the Resource contributor form, update this catalog instead
  * of duplicating its POST allowlist in resource-submissions.php.
  *
- * @return array<string,array{storage:string,role:string,decision:string,form:bool,legacy_detail:bool}>
+ * @return array<string,array{storage:string,role:string,decision:string,form:bool,legacy_detail:bool,read_order?:int}>
  */
 function llama_resource_report_base_field_catalog(): array
 {
     // Keep submission field order stable. This is a registry, not a schema
     // conversion: storage paths are for reconciliation and audit only.
     return [
-        'name' => ['storage' => 'resources.name', 'role' => 'identity', 'decision' => 'metadata', 'form' => true, 'legacy_detail' => true],
+        'name' => ['storage' => 'resources.name', 'role' => 'identity', 'decision' => 'metadata', 'form' => true, 'legacy_detail' => true, 'read_order' => 1],
         'parent_place_id' => ['storage' => 'resources.parent_place_id', 'role' => 'parent_link', 'decision' => 'metadata', 'form' => true, 'legacy_detail' => false],
-        'resource_type' => ['storage' => 'resources.resource_type', 'role' => 'identity', 'decision' => 'metadata', 'form' => true, 'legacy_detail' => true],
-        'marker_service_type' => ['storage' => 'resources.marker_service_type', 'role' => 'identity', 'decision' => 'metadata', 'form' => true, 'legacy_detail' => true],
-        'status' => ['storage' => 'resources.status', 'role' => 'operational', 'decision' => 'metadata', 'form' => true, 'legacy_detail' => true],
+        'resource_type' => ['storage' => 'resources.resource_type', 'role' => 'identity', 'decision' => 'metadata', 'form' => true, 'legacy_detail' => true, 'read_order' => 2],
+        'marker_service_type' => ['storage' => 'resources.marker_service_type', 'role' => 'identity', 'decision' => 'metadata', 'form' => true, 'legacy_detail' => true, 'read_order' => 3],
+        'status' => ['storage' => 'resources.status', 'role' => 'operational', 'decision' => 'metadata', 'form' => true, 'legacy_detail' => true, 'read_order' => 4],
         'coordinates' => ['storage' => 'resources.latitude + resources.longitude', 'role' => 'location', 'decision' => 'metadata', 'form' => true, 'legacy_detail' => false],
-        'hours_mode' => ['storage' => 'resources.hours_mode', 'role' => 'hours', 'decision' => 'metadata', 'form' => true, 'legacy_detail' => true],
-        'fixed_open_hour' => ['storage' => 'resources.fixed_open_hour', 'role' => 'hours', 'decision' => 'metadata', 'form' => true, 'legacy_detail' => true],
-        'fixed_close_hour' => ['storage' => 'resources.fixed_close_hour', 'role' => 'hours', 'decision' => 'metadata', 'form' => true, 'legacy_detail' => true],
-        'weekly_hours' => ['storage' => 'resource_weekly_hours[]', 'role' => 'hours', 'decision' => 'metadata', 'form' => true, 'legacy_detail' => true],
-        'street_address' => ['storage' => 'resources.street_address', 'role' => 'location', 'decision' => 'metadata', 'form' => true, 'legacy_detail' => true],
-        'city' => ['storage' => 'resources.city', 'role' => 'location', 'decision' => 'metadata', 'form' => true, 'legacy_detail' => true],
-        'county' => ['storage' => 'resources.county', 'role' => 'location', 'decision' => 'metadata', 'form' => true, 'legacy_detail' => true],
-        'state_region' => ['storage' => 'resources.state_region', 'role' => 'location', 'decision' => 'metadata', 'form' => true, 'legacy_detail' => true],
-        'postal_code' => ['storage' => 'resources.postal_code', 'role' => 'location', 'decision' => 'metadata', 'form' => true, 'legacy_detail' => true],
-        'country_code' => ['storage' => 'resources.country_code', 'role' => 'location', 'decision' => 'metadata', 'form' => true, 'legacy_detail' => true],
-        'phone' => ['storage' => 'resources.phone', 'role' => 'contact', 'decision' => 'metadata', 'form' => true, 'legacy_detail' => true],
-        'website_url' => ['storage' => 'resources.website_url', 'role' => 'contact', 'decision' => 'metadata', 'form' => true, 'legacy_detail' => true],
+        'hours_mode' => ['storage' => 'resources.hours_mode', 'role' => 'hours', 'decision' => 'metadata', 'form' => true, 'legacy_detail' => true, 'read_order' => 16],
+        'fixed_open_hour' => ['storage' => 'resources.fixed_open_hour', 'role' => 'hours', 'decision' => 'metadata', 'form' => true, 'legacy_detail' => true, 'read_order' => 17],
+        'fixed_close_hour' => ['storage' => 'resources.fixed_close_hour', 'role' => 'hours', 'decision' => 'metadata', 'form' => true, 'legacy_detail' => true, 'read_order' => 18],
+        'weekly_hours' => ['storage' => 'resource_weekly_hours[]', 'role' => 'hours', 'decision' => 'metadata', 'form' => true, 'legacy_detail' => true, 'read_order' => 20],
+        'street_address' => ['storage' => 'resources.street_address', 'role' => 'location', 'decision' => 'metadata', 'form' => true, 'legacy_detail' => true, 'read_order' => 8],
+        'city' => ['storage' => 'resources.city', 'role' => 'location', 'decision' => 'metadata', 'form' => true, 'legacy_detail' => true, 'read_order' => 9],
+        'county' => ['storage' => 'resources.county', 'role' => 'location', 'decision' => 'metadata', 'form' => true, 'legacy_detail' => true, 'read_order' => 10],
+        'state_region' => ['storage' => 'resources.state_region', 'role' => 'location', 'decision' => 'metadata', 'form' => true, 'legacy_detail' => true, 'read_order' => 11],
+        'postal_code' => ['storage' => 'resources.postal_code', 'role' => 'location', 'decision' => 'metadata', 'form' => true, 'legacy_detail' => true, 'read_order' => 12],
+        'country_code' => ['storage' => 'resources.country_code', 'role' => 'location', 'decision' => 'metadata', 'form' => true, 'legacy_detail' => true, 'read_order' => 13],
+        'phone' => ['storage' => 'resources.phone', 'role' => 'contact', 'decision' => 'metadata', 'form' => true, 'legacy_detail' => true, 'read_order' => 14],
+        'website_url' => ['storage' => 'resources.website_url', 'role' => 'contact', 'decision' => 'metadata', 'form' => true, 'legacy_detail' => true, 'read_order' => 15],
         'services' => ['storage' => 'resource_services[]', 'role' => 'service_collection', 'decision' => 'metadata', 'form' => true, 'legacy_detail' => false],
-        'notes' => ['storage' => 'resources.notes', 'role' => 'description', 'decision' => 'review_as_question', 'form' => true, 'legacy_detail' => true],
+        'notes' => ['storage' => 'resources.notes', 'role' => 'description', 'decision' => 'review_as_question', 'form' => true, 'legacy_detail' => true, 'read_order' => 5],
         'experience' => ['storage' => 'resources.experience_json', 'role' => 'experience', 'decision' => 'compound_questions', 'form' => true, 'legacy_detail' => false],
         'experience_present' => ['storage' => '(not persisted)', 'role' => 'form_marker', 'decision' => 'not_a_question', 'form' => true, 'legacy_detail' => false],
         // Persisted/hydrated read fields, rather than independent form fields.
-        'latitude' => ['storage' => 'resources.latitude', 'role' => 'location', 'decision' => 'metadata', 'form' => false, 'legacy_detail' => true],
-        'longitude' => ['storage' => 'resources.longitude', 'role' => 'location', 'decision' => 'metadata', 'form' => false, 'legacy_detail' => true],
-        'hours_text' => ['storage' => 'resources.hours_text (presented summary)', 'role' => 'hours', 'decision' => 'metadata', 'form' => false, 'legacy_detail' => true],
+        'latitude' => ['storage' => 'resources.latitude', 'role' => 'location', 'decision' => 'metadata', 'form' => false, 'legacy_detail' => true, 'read_order' => 6],
+        'longitude' => ['storage' => 'resources.longitude', 'role' => 'location', 'decision' => 'metadata', 'form' => false, 'legacy_detail' => true, 'read_order' => 7],
+        'hours_text' => ['storage' => 'resources.hours_text (presented summary)', 'role' => 'hours', 'decision' => 'metadata', 'form' => false, 'legacy_detail' => true, 'read_order' => 19],
     ];
 }
 
@@ -68,10 +68,16 @@ function llama_resource_report_submittable_field_keys(): array
 /** @return list<string> */
 function llama_resource_report_legacy_detail_keys(): array
 {
-    return array_keys(array_filter(
+    $fields = array_filter(
         llama_resource_report_base_field_catalog(),
         static fn (array $field): bool => $field['legacy_detail']
-    ));
+    );
+    // Keep the exact historical insertion order used by the public/read
+    // projection, independently of the contributor form's input order.
+    uasort($fields, static fn (array $a, array $b): int =>
+        ($a['read_order'] ?? PHP_INT_MAX) <=> ($b['read_order'] ?? PHP_INT_MAX)
+    );
+    return array_keys($fields);
 }
 
 /**
