@@ -11,6 +11,9 @@ on:
       - 'app/resource-report-history-writer.php'
       - 'app/resource-report-current-answers.php'
       - 'app/resource-report-current-read.php'
+      - 'app/resource-ledger-readiness.php'
+      - 'admin/resource-ledger-readiness.php'
+      - 'admin/resources.php'
       - 'app/resource-report-projection.php'
       - 'resource.php'
       - 'app/admin-resources.php'
@@ -55,6 +58,9 @@ jobs:
           php -l app/resource-report-history-writer.php
           php -l app/resource-report-current-answers.php
           php -l app/resource-report-current-read.php
+          php -l app/resource-ledger-readiness.php
+          php -l admin/resource-ledger-readiness.php
+          php -l admin/resources.php
           php -l app/admin-resources.php
           php -l resource.php
           php -l tools/tests/resource-report-ledger-mariadb.php
