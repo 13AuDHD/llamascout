@@ -65,6 +65,8 @@ jobs:
         run: php tools/tests/update-question-inventory.php
       - name: Audit Admin scoped questionnaire ownership
         run: php tools/tests/admin-question-ownership-audit.php
+      - name: Verify Admin Site rejects foreign question keys
+        run: php tools/tests/admin-site-question-write-guard.php
       - name: Verify shared Place pricing
         run: php tools/tests/place-pricing.php
       - name: Verify dedicated Campsite Pricing and Admin asset loading
