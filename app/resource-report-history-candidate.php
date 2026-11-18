@@ -29,7 +29,7 @@ function llama_resource_history_candidate_schema(): array
 
     $definition = [
         'contract' => 'llama-resource-history-candidate-v1',
-        'approval_status' => 'not_approved_for_immutable_writes',
+        'approval_status' => 'existing_resource_questions_approved_writer_not_enabled',
         'target_kinds' => ['resource', 'facility'],
         'target_source' => 'resource_record',
         'answer_identity' => 'service/group/question',
@@ -120,7 +120,6 @@ function llama_resource_history_candidate(
         'Existing scout_reports requires place_id, but standalone Resources have no Place.',
         'Existing scout_reports target_scope CHECK permits only place, area and site.',
         'Immutable answer validation and current store do not support compound Service/group/question keys.',
-        'Resource-only candidate questions have not been explicitly approved for the canonical report registry.',
         'Resource moderation photo evidence and target-specific publication still need a reviewed append-only schema.',
     ];
     foreach ([
