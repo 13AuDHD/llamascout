@@ -105,6 +105,17 @@ function llama_resource_ledger_record_approved(
     if ($raw !== null && !is_array($raw)) {
         throw new InvalidArgumentException('The saved Resource Experience is invalid.');
     }
+    $parentId = (int) ($saved['parent_place_id'] ?? 0);
+    if ($parentId > 0) {
+        $parentStmt = $db->prepare('SELECT id FROM places WHERE id = ? LIMIT 1');
+        $parentStmt->execute([$parentId]);
+        if (!$parentStmt->fetchColumn()) {
+            throw new InvalidArgumentException(
+                'The linked Facility parent Place does not exist.'
+            );
+        }
+    }
+
     $resource = $saved;
     $resource['experience'] = is_array($raw) ? $raw : [];
     $resource['services'] = $serviceFacts;
@@ -159,6 +170,9 @@ function llama_resource_ledger_record_approved(
 
     // These paths must come from the existing verified moderation photo
     // publisher, not from a contributor-supplied target path.
+    if (count($approvedPhotos) > 10) {
+        throw new InvalidArgumentException('Too many Resource report photos.');
+    }
     if (count($approvedPhotos) !== count($permanentPaths)) {
         throw new RuntimeException('Resource report photo evidence is incomplete.');
     }
