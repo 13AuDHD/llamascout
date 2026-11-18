@@ -501,7 +501,7 @@ textarea::placeholder {
     padding-top: 14px;
 }
 .add-place-page .place-report-form > [data-report-main-section] > .contribution-section-body > .contribution-section {
-    --section-accent: #70bd87;
+    --section-accent: var(--place-accent);
     margin: 0;
     border-inline-start: 4px solid var(--section-accent);
     background: var(--background);
