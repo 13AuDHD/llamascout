@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/admin-resources.php';
+require_once __DIR__ . '/resource-report-field-reconciliation.php';
 require_once __DIR__ . '/resource-submission-photos.php';
 
 function llama_resource_submissions_ready(PDO $db): bool
@@ -58,12 +59,9 @@ function llama_resource_merge_queue(array $places, array $resources): array
 
 function llama_resource_submission_input(array $input): array
 {
-    $fields = array_flip([
-        'name', 'parent_place_id', 'resource_type', 'marker_service_type', 'status', 'coordinates',
-        'hours_mode', 'fixed_open_hour', 'fixed_close_hour', 'weekly_hours',
-        'street_address', 'city', 'county', 'state_region', 'postal_code', 'country_code',
-        'phone', 'website_url', 'services', 'notes', 'experience', 'experience_present',
-    ]);
+    // One Resource field catalog powers the contributor allow-list and the
+    // read-only reconciliation audit. No new write keys are introduced.
+    $fields = array_fill_keys(llama_resource_report_submittable_field_keys(), true);
     $data = array_intersect_key($input, $fields);
     // The shared Add/Update form always sends experience_present. When its
     // last selected Service is removed, the browser legitimately sends no
