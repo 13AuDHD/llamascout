@@ -7,9 +7,9 @@ This is a **design and test contract**, not an approved Scout Report migration o
 The original Resource Experience-only question definitions have been moved **unchanged** from `app/resource-experience.php` into:
 
 - `app/resource-report-service-questions.php`: `llama_resource_service_question_definitions()`, which is now consumed by the existing Add, Update, Admin, moderation and public Experience manifest.
-- `llama_resource_service_question_candidates()`: the same keys, labels, types and options, explicitly marked `candidate_not_approved` for possible registration in the central Scout Report question registry.
+- `llama_resource_service_question_candidates()`: the same keys, labels, types and options, marked `approved_existing_resource_facility` following the owner's 2026-11-18 confirmation. These existing questions are approved specifically for Resource and linked-Facility Experience, not Place, Site or legacy mapped Area reporting.
 
-This does not add any unapproved questions to `llama_place_report_fields()` or expand Place, Site or Area ownership. The separate Resource Experience catalog remains authoritative for those existing Resource forms until a field-by-field approval is made. Reused approved Area questions continue to be referenced by their existing keys, never redefined.
+This does not add any unapproved questions to `llama_place_report_fields()` or expand Place, Site or Area ownership. The separate Resource Experience catalog remains authoritative for these owner-approved, already-existing Resource forms. Reused approved Area questions continue to be referenced by their existing keys, never redefined.
 
 ## Versioned dry-run history payload
 
@@ -31,7 +31,7 @@ The reviewed `tools/migrations/20261030_m2_006_scout_report_history.sql` schema 
 | `scout_reports.place_id` | `NOT NULL` | A standalone Resource must work without a Place ID |
 | `scout_reports.target_scope` | CHECK allows only `place`, `area`, `site` | Explicit Resource and Resource-backed Facility scopes |
 | `llama_scout_report_record_approved()` | Rejects any target outside Place/Area/Site | New target verification for `resources.id`, distinct from mapped Facility Area |
-| `llama_scout_report_normalize_answers()` | Validates bare approved Place/Area/Site question IDs | Service/group/question composite answer IDs and Resource-only candidate definitions |
+| `llama_scout_report_normalize_answers()` | Validates bare approved Place/Area/Site question IDs | Service/group/question composite answer IDs and Resource/Facility-approved definitions |
 | `llama_scout_report_schema_version()` | Hashes `llama_place_report_fields()` | A versioned snapshot of the exact Resource Experience contract used for this report |
 | `place_report_current_answers` | Validates Place/Area/Site with a parent Place | An authorized Resource/Facility target-aware current answer reader/writer |
 | `scout_report_answers` | One `question_key` per report | Collision-free Service/group/question identity, with declared underlying canonical question ID where applicable |
@@ -40,7 +40,7 @@ Do **not** fabricate a parent Place for standalone Resources or convert linked F
 
 ## Write design to review before any migration
 
-1. **Approve question ownership:** Review candidate Service-only keys without changing their existing labels, types or options implicitly. Decide whether they should be centrally registered as Resource/Facility-scoped questions or maintained as a versioned subordinate manifest.
+1. **Question ownership approved:** The owner reaffirmed all 26 existing Resource-only questions on 2026-11-18 without changing labels, options, order or applicability. Keep them scoped to Resource and linked Facility using the versioned subordinate registry; they do not become Place/Site/Area questions. This approval does not activate the history writer.
 2. **Choose an append-only schema:** Decide whether to extend the current tables with nullable parent Place and supported Resource/Facility scopes, or create a separately namespaced immutable Resource report ledger with the same immutability guarantees. Review keys, indexes, foreign keys, and existing trigger compatibility.
 3. **Preserve answer identity:** Keep `service/group/question` composite instances distinct; the bare canonical question key alone is not enough for restrooms and repeated Service notes.
 4. **Verify target and authorization:** Resource target must resolve to a real `resources.id`. The target kind is determined by its **saved** `parent_place_id`; contributor input cannot pick another existing Facility or switch to a mapped Area.
