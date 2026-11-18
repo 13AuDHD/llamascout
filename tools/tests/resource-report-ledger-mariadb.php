@@ -800,31 +800,6 @@ $check($missingHistoryFlag['source'] === 'legacy',
     'Enabling only the read switch must not bypass the history-writer gate.');
 
 putenv('LLAMA_RESOURCE_HISTORY_WRITES_ENABLED=1');
-if (!llama_resource_current_read_schema_ready($db)) {
-    $schemaDebug = [];
-    foreach ([
-        'SELECT resource_id,target_kind,service_type,group_key,question_key,answer_state,value_json,source_report_id,row_version FROM resource_scout_current_answers LIMIT 0',
-        'SELECT id,resource_id,target_kind,parent_place_id,created_at FROM resource_scout_reports LIMIT 0',
-        'SELECT id,resource_id FROM resources LIMIT 0',
-        'SELECT schema_version FROM resource_scout_report_schemas LIMIT 0',
-        'SELECT report_id FROM resource_scout_report_answers LIMIT 0',
-    ] as $query) {
-        try {
-            $db->query($query);
-            $schemaDebug[] = 'ok';
-        } catch (PDOException $error) {
-            $schemaDebug[] = $error->getMessage();
-        }
-    }
-    $names = $db->query(
-        "SELECT trigger_name FROM information_schema.triggers
-         WHERE trigger_schema=DATABASE() ORDER BY trigger_name"
-    )->fetchAll(PDO::FETCH_COLUMN);
-    echo 'SCHEMA DEBUG: ' . json_encode([
-        'queries' => $schemaDebug,
-        'triggers' => $names,
-    ], JSON_THROW_ON_ERROR) . PHP_EOL;
-}
 $readCurrent = llama_resource_report_read($db, $readResource);
 $facilityCurrentRead = llama_resource_report_read($db, $readFacility);
 $check($readCurrent['source'] === 'current_verified'
