@@ -27,14 +27,19 @@ $assert(strlen($schema['schema_version']) === 64
     'Versioned candidate schema must have a deterministic hash and never imply approval.');
 $assert($schema === llama_resource_history_candidate_schema(),
     'Repeated catalog reads must return the same immutable schema candidate.');
+$assert($schema['definition']['approval_status'] === 'existing_resource_questions_approved_writer_not_enabled'
+    && $schema['write_approved'] === false,
+    'Approving existing Resource questions must NOT activate immutable writes.');
+$assert(count($candidates) === 26,
+    'Exactly the original 26 Resource-only questions must remain present and approved.');
 
 foreach ($candidates as $key => $candidate) {
     $assert($candidate['key'] === $key
         && $candidate['label'] === $definitions[$key][0]
         && $candidate['type'] === $definitions[$key][1]
         && $candidate['options'] === ($definitions[$key][2] ?? [])
-        && $candidate['review_status'] === 'candidate_not_approved',
-        'Candidate must preserve the current Service form question without silently approving it: ' . $key);
+        && $candidate['review_status'] === 'approved_existing_resource_facility',
+        'Approved existing question must match the current Service form unchanged: ' . $key);
     $assert(llama_report_question($key) === null,
         'Resource-only candidate must not enter the approved Place/Site/Area catalog: ' . $key);
 }
@@ -87,7 +92,7 @@ $missing = llama_resource_history_candidate($resource);
 $assert(serialize($resource) === $raw,
     'Creating an immutable preview must not modify Resource records.');
 $assert($missing['write_approved'] === false && $missing['status'] === 'preview_only',
-    'Resource preview must never claim a database write.');
+    'Resource question approval must not enable database writes.');
 $assert($missing['target']['kind'] === 'resource'
     && $missing['target']['parent_place_id'] === null,
     'Standalone Resource must not receive a fabricated Place ID.');
@@ -95,8 +100,10 @@ $assert($missing['provenance']['contributor_id'] === null
     && $missing['provenance']['submitted_at'] === null
     && $missing['provenance']['visit_date'] === null,
     'Legacy created_by and created_at must never become inferred Scout report provenance.');
-$assert(count($missing['blockers']) >= 9,
+$assert(count($missing['blockers']) >= 8,
     'Existing ledger constraints and missing provenance must explicitly block history writes.');
+$assert(!str_contains(implode(' ', $missing['blockers']), 'questions have not been explicitly approved'),
+    'Do not reintroduce the resolved Resource question approval blocker.');
 
 $evidence = [
     'submission_id' => 303,
