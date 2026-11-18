@@ -8,6 +8,7 @@ on:
       - 'tools/migrations/20261118_resource_scout_report_ledger.sql'
       - 'tools/tests/resource-report-ledger-mariadb.php'
       - 'app/resource-report-history-candidate.php'
+      - 'app/resource-report-history-writer.php'
       - 'app/resource-report-projection.php'
       - 'app/resource-report-service-questions.php'
   workflow_dispatch:
@@ -41,8 +42,10 @@ jobs:
             sudo apt-get update -qq
             sudo apt-get install -y php-mysql
           fi
-      - name: Lint proposed Resource ledger test
-        run: php -l tools/tests/resource-report-ledger-mariadb.php
+      - name: Lint staged Resource ledger writer and tests
+        run: |
+          php -l app/resource-report-history-writer.php
+          php -l tools/tests/resource-report-ledger-mariadb.php
       - name: Verify isolated Resource and linked Facility history schema
         env:
           LLAMA_RESOURCE_LEDGER_TEST_DSN: mysql:host=127.0.0.1;port=3306;dbname=llama_resource_ledger_test;charset=utf8mb4
