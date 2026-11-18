@@ -182,7 +182,21 @@ $placeReportSelectedSite = isset($placeReportSiteOptions[$requestedSite]) ? $req
                         <h3><?= $e($group['label']) ?></h3>
                         <div class="contribution-section-body">
                             <?php foreach ($group['fields'] as $siteField): ?>
-                                <?php $renderField($siteField, 'admin-site-'); ?>
+                                <?php
+                                // In the same HTML form, equal radio names
+                                // form one group even if one fieldset is hidden.
+                                // Namespace ONLY the Site control names. The
+                                // data-report-field ID stays canonical.
+                                ob_start();
+                                $renderField($siteField, 'admin-site-');
+                                $siteControlHtml = (string) ob_get_clean();
+                                echo preg_replace_callback(
+                                    '/\\bname="([^"]+)"/',
+                                    static fn (array $match): string =>
+                                        'name="admin_site_' . $match[1] . '"',
+                                    $siteControlHtml
+                                );
+                                ?>
                             <?php endforeach; ?>
                         </div>
                     </section>
