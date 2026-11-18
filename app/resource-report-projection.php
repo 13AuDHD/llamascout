@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/resources.php';
+require_once __DIR__ . '/resource-report-field-reconciliation.php';
 
 /**
  * Resource-backed Facilities and standalone Resources share one persisted
@@ -58,13 +59,7 @@ function llama_resource_report_projection(array $resource): array
     // Resource-specific metadata has no equivalent canonical Place question
     // yet. Keep each original key and value unchanged; do not invent a field
     // mapping or imply this data already lives in scout_report_answers.
-    $detailKeys = [
-        'name', 'resource_type', 'marker_service_type', 'status', 'notes',
-        'latitude', 'longitude', 'street_address', 'city', 'county',
-        'state_region', 'postal_code', 'country_code', 'phone', 'website_url',
-        'hours_mode', 'fixed_open_hour', 'fixed_close_hour', 'hours_text',
-        'weekly_hours',
-    ];
+    $detailKeys = llama_resource_report_legacy_detail_keys();
     $details = array_intersect_key($resource, array_fill_keys($detailKeys, true));
 
     $groups = [];
