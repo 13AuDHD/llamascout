@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/resources.php';
+require_once __DIR__ . '/resource-report-current-read.php';
 require_once __DIR__ . '/photo-upload.php';
 require_once __DIR__ . '/location-photo-policy.php';
 require_once __DIR__ . '/photo-staging.php';
@@ -91,7 +92,17 @@ function admin_resource_get(PDO $db, int $resourceId): array
         false
     );
 
-    return $rows[0] ?? [];
+    $resource = $rows[0] ?? [];
+    if ($resource) {
+        // Admin uses the same verified current-answer read bridge as the
+        // public page. Legacy stays authoritative unless the separate read
+        // switch is explicitly enabled and all values match saved Experience.
+        $read = llama_resource_report_read($db, $resource);
+        if ($read['source'] === 'current_verified') {
+            $resource['experience'] = $read['experience'];
+        }
+    }
+    return $resource;
 }
 
 function admin_resource_datetime_value(mixed $value): ?string
