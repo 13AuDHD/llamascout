@@ -600,6 +600,13 @@ $placeReportPhotoHelp =
     >
         <input type="hidden" name="submission_target_kind"
                value="<?= $legacyPlaceBundle ? 'legacy-bundle' : 'place' ?>">
+        <?php if (!$legacyPlaceBundle): ?>
+        <label class="contribution-field">
+            <span class="place-report-field-label">Date visited *</span>
+            <input type="date" name="visited_at" required
+                   value="<?= htmlspecialchars((string) ($_POST['visited_at'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+        </label>
+        <?php endif; ?>
         <input
             type="hidden"
             name="csrf_token"
