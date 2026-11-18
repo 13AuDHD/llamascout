@@ -261,6 +261,10 @@ function admin_shell_nav_class(string $key, string $active): string
             'pages' => [],
             'features' => ['moderation-queue.css'],
         ],
+        'site-submissions.php' => [
+            'pages' => ['site-submissions.css'],
+            'features' => ['moderation-review.css'],
+        ],
         'moderate-submission.php' => [
             'pages' => ['moderate-submission.css'],
             'features' => ['moderation-review.css'],

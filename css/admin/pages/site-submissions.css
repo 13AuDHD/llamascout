@@ -1,0 +1,28 @@
+/* Submitted Site evidence belongs to one pending Site, never to Place. */
+.admin-site-review-photos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 12px 0;
+}
+
+.admin-site-review-photos figure {
+    width: 180px;
+    max-width: 100%;
+    margin: 0;
+}
+
+.admin-site-review-photo {
+    display: block;
+    width: 180px;
+    max-width: 100%;
+    height: 180px;
+    object-fit: cover;
+    border-radius: 10px;
+}
+
+.admin-site-review-photos figcaption {
+    overflow-wrap: anywhere;
+    margin-top: 6px;
+    font-size: 0.875rem;
+}

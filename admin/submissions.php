@@ -38,6 +38,12 @@ $resourceReviewNotice = match ($_GET['resource_review'] ?? '') {
     default => '',
 };
 ?>
+<?php if (!$resourcesOnly): ?>
+<section class="admin-panel">
+    <a class="admin-button" href="/site-submissions.php">Review new Site submissions</a>
+</section>
+<?php endif; ?>
+
 <?php if ($resourceReviewNotice !== ''): ?>
     <div class="admin-user-notice is-success" role="status"><?= moderation_e($resourceReviewNotice) ?></div>
 <?php endif; ?>

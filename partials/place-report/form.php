@@ -181,6 +181,19 @@ $placeReportFields = array_filter(
     static fn (array $field): bool => empty($field['pricing_managed'])
 );
 
+// Standalone target forms render exactly the same canonical field definitions
+// as Add, Update and Admin, filtered by legal ownership rather than by UI tab.
+$placeReportOnlyScope = trim((string) ($placeReportOnlyScope ?? ''));
+if ($placeReportOnlyScope !== '') {
+    if (!in_array($placeReportOnlyScope, ['place', 'site', 'area'], true)) {
+        throw new InvalidArgumentException('Unsupported Scout Report form scope.');
+    }
+    $placeReportFields = array_intersect_key(
+        $placeReportFields,
+        llama_report_questions_for_scope($placeReportOnlyScope, true)
+    );
+}
+
 $placeReportSections =
     llama_place_report_sections();
 
@@ -1752,7 +1765,7 @@ if ($placeReportShowPhotos):
 
     </details>
 
-    <?php if ($placeReportPhotoContext === 'add-place'): ?>
+    <?php if ($placeReportPhotoContext === 'add-place' && $placeReportOnlyScope !== 'place'): ?>
     <details class="contribution-section" data-contribution-site-photo-panel hidden open>
         <summary><span><?= llama_icon('camera') ?> First Site Photos</span></summary>
         <div class="contribution-section-body">

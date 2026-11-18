@@ -57,6 +57,8 @@ jobs:
         run: php tools/tests/admin-report-single-target.php
       - name: Verify Place-only submission and legacy compatibility
         run: php tools/tests/new-place-single-target.php
+      - name: Verify independent Site submission contract
+        run: php tools/tests/standalone-site-submission.php
       - name: Verify shared Place pricing
         run: php tools/tests/place-pricing.php
       - name: Verify dedicated Campsite Pricing and Admin asset loading

@@ -20,7 +20,12 @@ $placeDraftSuffix = $isResourcePage && !empty($contributionReturnDraft)
     <?= $isResourcePage ? 'data-contribution-resource-page' : 'hidden' ?>>
     <?php if ($isResourcePage): ?>
         <a href="/add-place.php?tab=place<?= $placeDraftSuffix ?>">Place</a>
-        <a href="/add-place.php?tab=site<?= $placeDraftSuffix ?>">Site</a>
+        <?php if (!empty($contributionIsSite)): ?>
+            <span class="contribution-current-resource" aria-current="page">Site</span>
+            <a href="/resource-contribution.php?kind=facility">Facility</a>
+            <a href="/resource-contribution.php">Resource</a>
+        <?php else: ?>
+        <a href="/add-site.php">Site</a>
         <?php if (!empty($contributionIsFacility)): ?>
             <span class="contribution-current-resource is-facility" aria-current="page">Facility</span>
             <a href="/resource-contribution.php<?= !empty($contributionReturnDraft) ? '?return_draft=' . (int) $contributionReturnDraft : '' ?>">Resource</a>
@@ -28,9 +33,14 @@ $placeDraftSuffix = $isResourcePage && !empty($contributionReturnDraft)
             <a href="/resource-contribution.php?kind=facility<?= !empty($contributionReturnDraft) ? '&return_draft=' . (int) $contributionReturnDraft : '' ?>">Facility</a>
             <span class="contribution-current-resource" aria-current="page">Resource</span>
         <?php endif; ?>
+        <?php endif; ?>
     <?php else: ?>
         <button type="button" data-contribution-mode="place" aria-pressed="true">Place</button>
-        <button type="button" data-contribution-mode="site" aria-pressed="false">Site</button>
+        <?php if ($isNewContribution && empty($legacyPlaceBundle)): ?>
+            <a href="/add-site.php">Site</a>
+        <?php else: ?>
+            <button type="button" data-contribution-mode="site" aria-pressed="false">Site</button>
+        <?php endif; ?>
         <?php if ($isAdminPlacePage): ?>
             <button type="button" data-contribution-mode="facility" aria-pressed="false">Facility</button>
         <?php elseif ($isNewContribution): ?>
@@ -67,12 +77,14 @@ $placeDraftSuffix = $isResourcePage && !empty($contributionReturnDraft)
             ],
         ];
         $introMode = $isResourcePage
-            ? (!empty($contributionIsFacility) ? 'area' : 'resource')
+            ? (!empty($contributionIsSite) ? 'site'
+                : (!empty($contributionIsFacility) ? 'area' : 'resource'))
             : (string) ($areaInitialTab ?? 'place');
     ?>
     <?php foreach ($contributionIntros as $introKey => $intro): ?>
         <?php if ($isResourcePage
-            ? $introKey === (!empty($contributionIsFacility) ? 'area' : 'resource')
+            ? $introKey === (!empty($contributionIsSite) ? 'site'
+                : (!empty($contributionIsFacility) ? 'area' : 'resource'))
             : in_array($introKey, ['place', 'site'], true)): ?>
             <section class="contribution-type-intro" data-contribution-intro-mode="<?= $introKey ?>"
                 <?= $introKey !== $introMode ? 'hidden' : '' ?>>
