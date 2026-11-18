@@ -194,6 +194,20 @@ if ($placeReportOnlyScope !== '') {
     );
 }
 
+/*
+ * V3 shows Rules and Restrictions under Site, not in the Place report.
+ * Preserve historic Place rule answers for inheritance and provenance.
+ * A Site-only form still renders its approved rules. Scoped Site Update
+ * receives its own rule templates through the canonical template service.
+ */
+if ($placeReportOnlyScope !== 'site') {
+    $placeReportFields = array_filter(
+        $placeReportFields,
+        static fn (array $field): bool =>
+            (string) ($field['approved_question_group'] ?? '') !== 'rules_public'
+    );
+}
+
 $placeReportSections =
     llama_place_report_sections();
 
