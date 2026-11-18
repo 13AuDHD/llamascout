@@ -89,7 +89,7 @@ const html=`<!doctype html><html><body>
             mode:body.get('admin_report_mode'),
             site:body.get('selected_campsite_id'),
             answers:JSON.parse(body.get('admin_site_answers_json')||'{}'),
-            parentValue:body.get('pets_allowed')
+            parentValue:body.getAll('pets_allowed').at(-1)
         });
         return {ok:true,text:async()=>JSON.stringify({success:true,photos_added:0,photo_total:0})};
     };
