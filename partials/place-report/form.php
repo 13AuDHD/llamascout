@@ -1436,10 +1436,17 @@ foreach ($placeReportFields as $fieldKey => $field) {
 
 
 foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIcon]):
+    // A standalone Site contribution edits one Site only. Canonically
+    // Site-eligible Rules and Restrictions belong inside its Site panel;
+    // never render a second parent Place/Location panel on this form.
+    if ($placeReportOnlyScope === 'site' && $reportMainKey !== 'site') {
+        continue;
+    }
     $reportMainFields = array_filter(
         $placeReportVisibleFields,
         static fn (array $field): bool =>
-            (string) ($field['layout_section'] ?? '') === $reportMainKey
+            $placeReportOnlyScope === 'site'
+            || (string) ($field['layout_section'] ?? '') === $reportMainKey
     );
     $showSitePicker = $reportMainKey === 'site' && $hasAdminSitePicker;
     if (!$reportMainFields && !$showSitePicker) {
@@ -1492,6 +1499,7 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
         <?php foreach ($approvedSections as $approvedKey => $approvedSection): ?>
             <?php
             $hasLocate = $reportMainKey === 'place'
+                && $placeReportOnlyScope !== 'site'
                 && $approvedKey === 'location'
                 && $placeReportShowLocate;
             if (!$approvedSection['fields'] && !$hasLocate) {
@@ -1609,6 +1617,10 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
                 <?php require __DIR__ . '/site-location.php'; ?>
             <?php endif; ?>
         <?php endforeach; ?>
+        <?php if ($showSitePicker && isset($placeReportSiteSharedPartial)): ?>
+            <?php // Existing Admin Site-owned policies, never parent Place inputs. ?>
+            <?php require $placeReportSiteSharedPartial; ?>
+        <?php endif; ?>
     </div>
 </details>
 <?php endforeach; ?>
