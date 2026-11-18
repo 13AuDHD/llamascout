@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/app/bootstrap.php';
 require_once __DIR__ . '/app/resources.php';
+require_once __DIR__ . '/app/resource-report-projection.php';
 
 $slug =
     trim(
@@ -667,28 +668,30 @@ require __DIR__ . '/partials/header.php';
 </section>
 
 <?php
-// Only published, approved Experience answers are shown on the public page.
-$experienceAnswers = is_array($resource['experience'] ?? null) ? $resource['experience'] : [];
-$experienceManifest = llama_resource_experience_manifest();
+// This read-only projection preserves the Resource / linked-Facility target
+// identity while deriving question labels, options, and answer states from the
+// same shared manifest used by Add, Update, Admin, and moderation.
+$resourceReport = llama_resource_report_projection($resource);
 $experienceSections = [];
-foreach ($services as $service) {
-    $type = (string) ($service['service_type'] ?? '');
-    foreach ($experienceManifest[$type] ?? [] as $groupKey => $group) {
-        $rows = [];
-        foreach ($group['questions'] as $key => $question) {
-            $answer = $experienceAnswers[$type][$groupKey][$key] ?? null;
-            if ($answer === null || $answer === '' || $answer === []) {
-                continue;
-            }
-            $rows[] = [
-                'label' => (string) $question['label'],
-                'value' => llama_resource_experience_label($question, $answer),
-            ];
+foreach ($resourceReport['groups'] as $group) {
+    $rows = [];
+    foreach ($group['answers'] as $answer) {
+        // Only recorded, nonempty observations appear publicly. Unanswered
+        // values remain available to Update/verification through the model.
+        if (!$answer['recorded'] || $answer['value'] === []) {
+            continue;
         }
-        if ($rows) {
-            $experienceSections[] = ['service' => llama_resource_service_type_label($type),
-                'group' => (string) $group['label'], 'rows' => $rows];
-        }
+        $rows[] = [
+            'label' => $answer['label'],
+            'value' => $answer['display_value'],
+        ];
+    }
+    if ($rows) {
+        $experienceSections[] = [
+            'service' => $group['service_label'],
+            'group' => $group['group_label'],
+            'rows' => $rows,
+        ];
     }
 }
 ?>
