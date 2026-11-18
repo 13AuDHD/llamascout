@@ -26,7 +26,7 @@
 }
 
 .contribution-scope-picker [aria-pressed="true"] {
-    --mode-color: #70bd87;
+    --mode-color: var(--place-accent);
     border-color: color-mix(in srgb, var(--mode-color) 55%, var(--border));
     background: color-mix(in srgb, var(--mode-color) 24%, var(--surface));
 }
@@ -191,7 +191,7 @@
     min-width: 0;
 }
 .contribution-type-intro {
-    --intro-color: #70bd87;
+    --intro-color: var(--place-accent);
     padding: 16px 18px;
     min-width: 0;
     border-inline-start: 4px solid var(--intro-color);
@@ -333,4 +333,9 @@
 /* Facilities are the purple contribution type, not Resource teal. */
 .contribution-scope-picker .contribution-current-resource.is-facility[aria-current="page"] {
     --mode-color: #9765cb;
+}
+
+/* The standalone Site tab uses Site amber, never Resource teal. */
+.contribution-scope-picker .contribution-current-resource.is-site[aria-current="page"] {
+    --mode-color: #f2a44e;
 }
