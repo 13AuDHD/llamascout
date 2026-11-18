@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/resource-experience.php';
+require_once __DIR__ . '/resources.php';
 
 /**
  * Resource-backed Facilities and standalone Resources share one persisted
