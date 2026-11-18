@@ -16,7 +16,22 @@ if (!llama_contributor_can($db, $userId, 'submit_place')) {
 
 $ready = llama_site_submissions_ready($db);
 $error = '';
-$selectedPlaceId = max(0, (int) ($_POST['site_place_id'] ?? $_GET['site_place_id'] ?? $_GET['place_id'] ?? 0));
+$revisionId = max(0, (int) ($_POST['submission_id'] ?? $_GET['submission'] ?? 0));
+$revision = $revisionId > 0
+    ? llama_site_submission_for_user($db, $userId, $revisionId) : null;
+if ($revisionId > 0 && !$revision) {
+    http_response_code(404);
+    exit('That Site submission could not be found.');
+}
+if ($revision && (string) $revision['status'] !== 'needs-changes') {
+    header('Location: https://account.llamascout.com/contributions.php', true, 303);
+    exit;
+}
+$isNeedsChanges = $revision !== null;
+$selectedPlaceId = $isNeedsChanges
+    ? (int) $revision['place_id']
+    : max(0, (int) ($_POST['site_place_id'] ?? $_GET['site_place_id'] ?? $_GET['place_id'] ?? 0));
+
 $search = trim((string) ($_GET['site_q'] ?? ''));
 $placeChoices = llama_area_place_choices($db, $search, $selectedPlaceId);
 $siteFields = llama_site_submission_fields();
@@ -40,13 +55,20 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             'site_answers' => $answers,
             'visited_at' => $_POST['visited_at'] ?? '',
         ];
-        llama_site_submission_submit(
-            $db,
-            $userId,
-            $submissionInput,
-            (string) ($_POST['photo_stage_token'] ?? ''),
-            llama_photo_decode_form_photos($_POST['photos_json'] ?? '[]')
-        );
+        if ($isNeedsChanges) {
+            llama_site_submission_resubmit(
+                $db, $userId, $revisionId, $submissionInput,
+                (string) ($_POST['photo_stage_token'] ?? ''),
+                llama_photo_decode_form_photos($_POST['photos_json'] ?? '[]'),
+                (array) ($_POST['remove_existing_photos'] ?? [])
+            );
+        } else {
+            llama_site_submission_submit(
+                $db, $userId, $submissionInput,
+                (string) ($_POST['photo_stage_token'] ?? ''),
+                llama_photo_decode_form_photos($_POST['photos_json'] ?? '[]')
+            );
+        }
         header('Location: /add-site.php?submitted=1', true, 303);
         exit;
     } catch (InvalidArgumentException $exception) {
@@ -66,6 +88,24 @@ $pageStyles = [
     'photo-uploader.css',
 ];
 $placeReportValues = (array) ($_POST ?? []);
+$siteNameValue = (string) ($_POST['site_name'] ?? $revision['site_name'] ?? '');
+if ($isNeedsChanges && ($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+    foreach ((array) ($revision['data']['answers'] ?? []) as $key => $value) {
+        $field = llama_site_submission_fields()[$key] ?? null;
+        if (is_array($field)) {
+            $placeReportValues[$key] = llama_place_report_answer_form_value($field, $value);
+        }
+    }
+    $coords = $revision['data']['coordinates'] ?? null;
+    if (is_array($coords)
+        && isset($coords['latitude'], $coords['longitude'])) {
+        $placeReportValues['site_coordinates'] = sprintf(
+            '%.7f, %.7f', (float) $coords['latitude'], (float) $coords['longitude']
+        );
+    }
+}
+$placeReportExistingPhotos = $isNeedsChanges
+    ? llama_site_submission_photos((array) $revision['data'], $revisionId) : [];
 $placeReportMode = 'contributor';
 $placeReportOnlyScope = 'site';
 $placeReportShowLocate = true;
@@ -86,7 +126,7 @@ require __DIR__ . '/partials/header.php';
 <section class="contribution-page add-place-page">
     <header class="contribution-header">
         <p class="eyebrow">Scout contribution</p>
-        <h1>Add a Site</h1>
+        <h1><?= $isNeedsChanges ? 'Revise Site Submission' : 'Add a Site' ?></h1>
     </header>
 
     <?php $contributionPickerResourcePage = true; $contributionIsSite = true; ?>
@@ -95,6 +135,14 @@ require __DIR__ . '/partials/header.php';
     <?php if (isset($_GET['submitted'])): ?>
         <div class="contribution-message is-success" role="status">
             Site submitted for review. Its parent Place and other Sites have not been changed.
+        </div>
+    <?php endif; ?>
+    <?php if ($isNeedsChanges): ?>
+        <div class="contribution-message is-attention" role="status">
+            <strong>Changes requested for Site #<?= $revisionId ?></strong>
+            <?php if (!empty($revision['review_notes'])): ?>
+                <p><?= nl2br($e($revision['review_notes'])) ?></p>
+            <?php endif; ?>
         </div>
     <?php endif; ?>
     <?php if (!$ready): ?>
@@ -113,6 +161,7 @@ require __DIR__ . '/partials/header.php';
         <p>A Site belongs to one existing Place. It will have its own location,
            answers, photos and moderation history.</p>
     </section>
+    <?php if (!$isNeedsChanges): ?>
     <form method="get" action="/add-site.php" class="contribution-form">
         <label class="contribution-field" for="site-place-search">Find an existing Place</label>
         <div class="contribution-actions">
@@ -122,16 +171,27 @@ require __DIR__ . '/partials/header.php';
             <button type="submit" class="contribution-submit">Search</button>
         </div>
     </form>
+    <?php endif; ?>
 
     <form method="post" class="contribution-form add-place-form place-report-form"
           data-place-report-completion-form id="add-site-main-form">
         <input type="hidden" name="csrf_token" value="<?= $e(community_csrf_token()) ?>">
+        <?php if ($isNeedsChanges): ?>
+            <input type="hidden" name="submission_id" value="<?= $revisionId ?>">
+        <?php endif; ?>
         <input type="hidden" name="photo_stage_token"
                value="<?= $e($_POST['photo_stage_token'] ?? '') ?>">
         <input type="hidden" name="photos_json"
                value="<?= $e($_POST['photos_json'] ?? '[]') ?>">
 
         <div class="contribution-grid">
+            <?php if ($isNeedsChanges): ?>
+                <input type="hidden" name="site_place_id" value="<?= $selectedPlaceId ?>">
+                <div class="contribution-field">
+                    <span class="place-report-field-label">Parent Place</span>
+                    <strong><?= $e($revision['data']['place_name'] ?? ('Place #' . $selectedPlaceId)) ?></strong>
+                </div>
+            <?php else: ?>
             <label class="contribution-field">
                 <span class="place-report-field-label">Parent Place *</span>
                 <select name="site_place_id" required>
@@ -144,10 +204,11 @@ require __DIR__ . '/partials/header.php';
                     <?php endforeach; ?>
                 </select>
             </label>
+            <?php endif; ?>
             <label class="contribution-field">
                 <span class="place-report-field-label">Site name *</span>
                 <input type="text" name="site_name" maxlength="120" required
-                       value="<?= $e($_POST['site_name'] ?? '') ?>"
+                       value="<?= $e($siteNameValue) ?>"
                        placeholder="Site 12, North Parking Spot, etc.">
             </label>
         </div>
@@ -155,7 +216,7 @@ require __DIR__ . '/partials/header.php';
         <?php require __DIR__ . '/partials/place-report/form.php'; ?>
         <div class="contribution-actions add-place-submit-bar">
             <button class="contribution-submit" type="submit" <?= $ready ? '' : 'disabled' ?>>
-                <?= llama_icon('send') ?> Submit Site for Review
+                <?= llama_icon('send') ?> <?= $isNeedsChanges ? 'Resubmit Site for Review' : 'Submit Site for Review' ?>
             </button>
             <a href="/map.php">Cancel</a>
         </div>
