@@ -1446,7 +1446,7 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
         continue;
     }
 ?>
-<details class="contribution-section" <?= $reportMainKey === 'getting_there' || ($placeReportMode === 'moderator' && $reportMainKey === 'place') || ($showSitePicker && $placeReportSelectedSite !== '') ? 'open' : '' ?>
+<details class="contribution-section" <?= $reportMainKey === 'getting_there' || ($showSitePicker && $placeReportSelectedSite !== '') ? 'open' : '' ?>
     <?= $showSitePicker ? 'id="admin-site-report"' : '' ?>
     data-report-main-section="<?= $e($reportMainKey) ?>">
     <summary>
@@ -1489,13 +1489,6 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
             $reportMainFields
         );
         ?>
-        <?php if ($placeReportMode === 'moderator'
-            && $reportMainKey === 'place'
-            && !empty($approvedSections['rules_public']['fields'])): ?>
-            <p class="admin-place-muted">
-                <a href="#admin-place-rules">Jump to Rules &amp; Restrictions</a>
-            </p>
-        <?php endif; ?>
         <?php foreach ($approvedSections as $approvedKey => $approvedSection): ?>
             <?php
             $hasLocate = $reportMainKey === 'place'
@@ -1507,8 +1500,7 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
             ?>
             <details class="contribution-section"
                 data-report-subsection="<?= $e($approvedKey) ?>"
-                <?= $placeReportMode === 'moderator' && $reportMainKey === 'place' && $approvedKey === 'rules_public' ? 'id="admin-place-rules"' : '' ?>
-                <?= $approvedKey === 'basic' || ($placeReportMode === 'moderator' && $reportMainKey === 'place' && $approvedKey === 'rules_public') ? 'open' : '' ?>>
+                <?= $approvedKey === 'basic' ? 'open' : '' ?>>
                 <summary>
                     <span><?= $e($approvedSection['label']) ?></span>
                     <span class="place-report-section-progress" data-section-completion-percent
