@@ -128,8 +128,11 @@ try {
 $check($invalid, 'An unpersisted Resource cannot impersonate a real report target.');
 
 $page = (string) file_get_contents(dirname(__DIR__, 2) . '/resource.php');
-$check(str_contains($page, 'llama_resource_report_projection($resource)')
+$readBridge = (string) file_get_contents(dirname(__DIR__, 2)
+    . '/app/resource-report-current-read.php');
+$check(str_contains($page, 'llama_resource_report_read(db(), $resource)')
+    && str_contains($readBridge, 'llama_resource_report_projection($resource)')
     && !str_contains($page, 'llama_resource_experience_manifest()'),
-    'Public Resource/Facility display must use the shared read projection.');
+    'Public Resource/Facility display must use the guarded shared read projection.');
 
 echo "PASS: Target-scoped Resource/Facility projection keeps No, 0, Unknown, missing, options and historical data intact.\n";
