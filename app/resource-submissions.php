@@ -65,6 +65,14 @@ function llama_resource_submission_input(array $input): array
         'phone', 'website_url', 'services', 'notes', 'experience', 'experience_present',
     ]);
     $data = array_intersect_key($input, $fields);
+    // The shared Add/Update form always sends experience_present. When its
+    // last selected Service is removed, the browser legitimately sends no
+    // nested Experience inputs. On a needs-changes revision, replacing the
+    // old pending payload must clear those old answers, not carry them forward.
+    if (array_key_exists('experience_present', $data)
+        && !array_key_exists('experience', $data)) {
+        $data['experience'] = [];
+    }
     foreach ($data as $key => $value) {
         if ($key === 'experience') {
             if (!is_array($value)) {
