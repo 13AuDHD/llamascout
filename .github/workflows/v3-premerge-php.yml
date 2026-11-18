@@ -61,6 +61,8 @@ jobs:
         run: php tools/tests/standalone-site-submission.php
       - name: Verify scoped Update draft types
         run: php tools/tests/scoped-update-draft-parity.php
+      - name: Audit canonical Update question coverage
+        run: php tools/tests/update-question-inventory.php
       - name: Verify shared Place pricing
         run: php tools/tests/place-pricing.php
       - name: Verify dedicated Campsite Pricing and Admin asset loading
@@ -76,6 +78,7 @@ jobs:
           php tools/tests/contribution-four-tab-switcher.php
           NODE_PATH="$RUNNER_TEMP/llama-pricing-ui/node_modules" node tools/tests/contribution-four-tab-switcher.cjs
           NODE_PATH="$RUNNER_TEMP/llama-pricing-ui/node_modules" node tools/tests/update-scoped-draft-ui.cjs
+          NODE_PATH="$RUNNER_TEMP/llama-pricing-ui/node_modules" node tools/tests/update-area-template-eligibility-ui.cjs
           node --check js/place-report-warnings.js
           node --check js/place-explorer.js
           NODE_PATH="$RUNNER_TEMP/llama-pricing-ui/node_modules" node tools/tests/place-explorer-colors-ui.cjs

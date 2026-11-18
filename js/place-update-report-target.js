@@ -220,6 +220,16 @@
     function eligible(f) {
         if (f.derived || f.location || f.excluded
             || !f.scopes.includes(scope.value) || !supported.has(f.type)) return false;
+        // The same verified feature-type restriction is applied in PHP
+        // moderation. Never display camping/parking Area questions on a
+        // Facility marker, or vice versa.
+        if (Array.isArray(f.area_feature_types)) {
+            const t = labels.get(search.value);
+            if (t?.scope !== 'area'
+                || !f.area_feature_types.includes(String(t.feature_type || ''))) {
+                return false;
+            }
+        }
         // Type-specific facility observations are only available for their
         // server-provided Area kind, never for other Areas or Sites.
         if (Array.isArray(f.facility_kinds) && f.facility_kinds.length) {
