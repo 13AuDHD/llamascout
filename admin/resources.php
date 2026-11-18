@@ -480,7 +480,7 @@ $e =
 <?php endif; ?>
 
 <p>
-    <a href="/resource-ledger-readiness.php">Check Resource / Facility report-history readiness</a>
+    <a href="/admin/resource-ledger-readiness.php">Check Resource / Facility report-history readiness</a>
 </p>
 
 <?php if (!$tablesReady): ?>
