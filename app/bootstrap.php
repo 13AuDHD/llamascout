@@ -2,6 +2,13 @@
 
 declare(strict_types=1);
 
+// Issue #179: owner-authorized live Resource/Facility pilot.
+// Both switches are intentionally ON for the existing guarded
+// immutable history writer and parity-checked current-answer reader.
+// To roll back, remove these two assignments and redeploy main.
+putenv('LLAMA_RESOURCE_HISTORY_WRITES_ENABLED=1');
+putenv('LLAMA_RESOURCE_CURRENT_READS_ENABLED=1');
+
 if (!headers_sent()) {
     header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
     header('Cache-Control: post-check=0, pre-check=0', false);
