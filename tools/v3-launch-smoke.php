@@ -1975,8 +1975,10 @@ $check('Final Place Area Site ownership model matches owner review', static func
             'Place-first override-capable policy has wrong ownership: ' . $key);
     }
 
-    $assert(($pages['rules_public']['page'] ?? '') === 'place',
-        'Rules & Restrictions is not Place-first in the approved page map');
+    // Rules now appear on the Site report page, but older Place-scoped
+    // answers remain valid inherited defaults and must not be discarded.
+    $assert(($pages['rules_public']['page'] ?? '') === 'site',
+        'Rules & Restrictions must display under Site in the approved page map');
 
     foreach ((array) llama_place_report_approved_question_groups()['rules_public'][1] as $key) {
         $assert(in_array('place', (array) ($fields[$key]['report_scopes'] ?? []), true),
