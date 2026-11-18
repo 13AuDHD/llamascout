@@ -48,10 +48,12 @@ $siteButNotEditor = array_values(array_filter(
     static fn (string $key): bool => $key !== 'site_number'
         && $key !== 'visited_at'
 ));
-if (!$siteButNotEditor) {
-    throw new RuntimeException('Expected unresolved Admin Site inventory gap not found.');
+// When the missing Site controls are implemented in a future PR, this
+// test must continue to protect against foreign keys without failing merely
+// because Admin achieved full canonical question parity.
+if ($siteButNotEditor) {
+    $reject([$siteButNotEditor[0] => '1'], 'a Site-eligible but not-yet-rendered question');
 }
-$reject([$siteButNotEditor[0] => '1'], 'a Site-eligible but not-yet-rendered question');
 
 // Existing explicit server writer must call the guard, not just define it.
 $source = (string) file_get_contents(dirname(__DIR__, 2) . '/app/admin-place-sites.php');
