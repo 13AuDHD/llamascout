@@ -776,3 +776,121 @@ putenv('LLAMA_RESOURCE_HISTORY_WRITES_ENABLED');
 @rmdir(dirname($root . $photoRecord['photo_path']));
 
 echo "PASS: Real Resource moderator respects default-off, stages opted-in Resource/Facility reports and photos atomically, and rolls back on history collision.\n";
+
+
+// --- Resource/linked-Facility current read bridge remains separately gated.
+// Resource pages and Admin must fall back to legacy Experience on old,
+// incomplete, stale, cross-target or uninstalled current-answer data.
+require_once $root . '/app/resource-report-current-read.php';
+$readResource = llama_resource($db, $onResourceId);
+$readFacility = llama_resource($db, $facilityId);
+$readLegacyOnly = llama_resource($db, $legacyId);
+$check($readResource !== [] && $readFacility !== [] && $readLegacyOnly !== [],
+    'The read bridge tests must use real stored Resource and Facility records.');
+
+putenv('LLAMA_RESOURCE_CURRENT_READS_ENABLED');
+putenv('LLAMA_RESOURCE_HISTORY_WRITES_ENABLED');
+$disabledRead = llama_resource_report_read($db, $readResource);
+$check($disabledRead['source'] === 'legacy'
+    && $disabledRead['reason'] === 'read_switch_off',
+    'Public/Admin must continue legacy reading by default.');
+putenv('LLAMA_RESOURCE_CURRENT_READS_ENABLED=1');
+$missingHistoryFlag = llama_resource_report_read($db, $readResource);
+$check($missingHistoryFlag['source'] === 'legacy',
+    'Enabling only the read switch must not bypass the history-writer gate.');
+
+putenv('LLAMA_RESOURCE_HISTORY_WRITES_ENABLED=1');
+$readCurrent = llama_resource_report_read($db, $readResource);
+$facilityCurrentRead = llama_resource_report_read($db, $readFacility);
+$check($readCurrent['source'] === 'current_verified'
+    && $readCurrent['reason'] === 'matching_approved_history'
+    && $facilityCurrentRead['source'] === 'current_verified',
+    'Verified recent Resource and Facility must qualify for current reads.');
+$check(($readCurrent['experience']['toilet']['men']['facility_soap'] ?? null) === 'no'
+    && ($readCurrent['experience']['toilet']['women']['facility_cleanliness'] ?? null) === '5',
+    'Read bridge must keep existing No and independent restroom answers.');
+$readSource = static function (array $result, string $wanted): ?array {
+    foreach ($result['projection']['groups'] as $group) {
+        foreach ($group['answers'] as $answer) {
+            if ($answer['answer_key'] === $wanted) {
+                return $answer;
+            }
+        }
+    }
+    return null;
+};
+$men = $readSource($readCurrent, 'toilet/men/facility_cleanliness');
+$check($men['origin'] === 'resource_scout_current_answers'
+    && (int) $men['source_report_id'] === (int) $onReport['id']
+    && (int) $men['row_version'] === 1,
+    'Current reads must preserve actual immutable provenance metadata.');
+$check($readSource($facilityCurrentRead, 'toilet/men/facility_cleanliness')['value'] === '3'
+    && $facilityCurrentRead['projection']['target']['parent_place_id'] === 42,
+    'Linked Facility must keep its own parent and original observations.');
+
+$oldRecordRead = llama_resource_report_read($db, $readLegacyOnly);
+$check($oldRecordRead['source'] === 'legacy'
+    && $oldRecordRead['reason'] === 'no_approved_history',
+    'An older approved Resource without ledger history must use the legacy store.');
+
+$adminCurrent = admin_resource_get($db, $onResourceId);
+$check(($adminCurrent['experience']['toilet']['men']['facility_soap'] ?? null) === 'no',
+    'Admin Resource reader must continue to preselect saved Experience answers.');
+
+$db->beginTransaction();
+$db->prepare('UPDATE resources SET experience_json = ? WHERE id = ?')
+    ->execute([json_encode(['toilet' => [
+        'men' => ['facility_cleanliness' => '4'],
+        'women' => ['facility_cleanliness' => '5'],
+    ]], JSON_THROW_ON_ERROR), $onResourceId]);
+$drifted = llama_resource_report_read($db, llama_resource($db, $onResourceId));
+$check($drifted['source'] === 'legacy'
+    && in_array($drifted['reason'], [
+        'record_newer_than_approval', 'current_legacy_mismatch',
+    ], true),
+    'Newer or mismatched legacy Experience cannot be replaced with old current answers.');
+$db->rollBack();
+
+$db->beginTransaction();
+$db->prepare(
+    'UPDATE resource_scout_current_answers
+     SET source_report_id = ?
+     WHERE resource_id = ? AND service_type = ?
+       AND group_key = ? AND question_key = ?'
+)->execute([(int) $facilityRecord['id'], $onResourceId,
+            'toilet', 'men', 'facility_cleanliness']);
+$crossTarget = llama_resource_report_read($db, $readResource);
+$check($crossTarget['source'] === 'legacy'
+    && $crossTarget['reason'] === 'current_integrity_error',
+    'A current row citing another Facility report must never be displayed.');
+$db->rollBack();
+
+$db->beginTransaction();
+$db->prepare(
+    'DELETE FROM resource_scout_current_answers
+     WHERE resource_id = ? AND service_type = ?
+       AND group_key = ? AND question_key = ?'
+)->execute([$onResourceId, 'toilet', 'women', 'facility_cleanliness']);
+$incomplete = llama_resource_report_read($db, $readResource);
+$check($incomplete['source'] === 'legacy'
+    && $incomplete['reason'] === 'current_legacy_mismatch',
+    'An incomplete current-answer projection must fall back to saved Experience.');
+$db->rollBack();
+
+$public = (string) file_get_contents($root . '/resource.php');
+$admin = (string) file_get_contents($root . '/app/admin-resources.php');
+$check(str_contains($public, 'llama_resource_report_read(db(), $resource)')
+    && str_contains($admin, 'llama_resource_report_read($db, $resource)'),
+    'Public and Admin Resource readers must share the same guarded contract.');
+
+// Simulate PR #192 tables not installed. Only this disposable test database
+// is modified, and no production database is ever accessed by the suite.
+$db->exec('DROP TABLE resource_scout_current_answers');
+$withoutMigration = llama_resource_report_read($db, $readResource);
+$check($withoutMigration['source'] === 'legacy'
+    && $withoutMigration['reason'] === 'schema_unavailable',
+    'Absent sidecar tables must never break public or Admin legacy reading.');
+putenv('LLAMA_RESOURCE_CURRENT_READS_ENABLED');
+putenv('LLAMA_RESOURCE_HISTORY_WRITES_ENABLED');
+
+echo "PASS: Resource/Facility public+Admin read bridge chooses verified current data and safely falls back for disabled, legacy, drifted, corrupt, incomplete or missing schema.\n";
