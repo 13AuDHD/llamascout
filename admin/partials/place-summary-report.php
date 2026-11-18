@@ -190,12 +190,18 @@ $placeReportSelectedSite = isset($placeReportSiteOptions[$requestedSite]) ? $req
                                 ob_start();
                                 $renderField($siteField, 'admin-site-');
                                 $siteControlHtml = (string) ob_get_clean();
-                                echo preg_replace_callback(
-                                    '/\\bname="([^"]+)"/',
-                                    static fn (array $match): string =>
-                                        'name="admin_site_' . $match[1] . '"',
+                                // Clear/hidden markers also refer to input
+                                // names. Scope them to Site so Clear cannot
+                                // uncheck a parent Place radio.
+                                $siteControlHtml = preg_replace_callback(
+                                    '/\\b(?:name|data-place-report-clear|data-place-report-hidden)="([^"]+)"/',
+                                    static function (array $match): string {
+                                        $attribute = strtok($match[0], '=');
+                                        return $attribute . '="admin_site_' . $match[1] . '"';
+                                    },
                                     $siteControlHtml
                                 );
+                                echo $siteControlHtml;
                                 ?>
                             <?php endforeach; ?>
                         </div>
