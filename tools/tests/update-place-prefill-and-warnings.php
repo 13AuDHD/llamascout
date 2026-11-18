@@ -75,6 +75,14 @@ $changed = llama_place_update_build_changes(
 );
 $assert(array_key_exists($rulePath, $changed['proposed'] ?? []),
     'A changed pet policy must still reach moderation.');
+$assert(str_contains($page, "'approved_group' => (string) (\$field['approved_question_group'] ?? '')")
+    && str_contains($js, "f.approved_group === 'rules_public'")
+    && str_contains($js, "const sectionKey = siteRule ? 'site'"),
+    'Site Update must group rules under Site while preserving the canonical scoped writer.');
+$siteRules = llama_report_questions_for_scope('site', true);
+$assert(isset($siteRules['pets_allowed'], $siteRules['generator_prohibited'])
+    && in_array('site', (array) $siteRules['pets_allowed']['report_scopes'], true),
+    'Rules must remain available to Site Update after hiding Place-form controls.');
 $assert(str_contains($tabs, 'data-contribution-mode="area" aria-pressed="false">Facility</button>')
     && str_contains($page, "'area' => 'Facilities'"),
     'Public Update navigation must say Facility while retaining legacy target IDs.');
