@@ -1276,23 +1276,23 @@ $e =
             <?php require dirname(__DIR__) . '/partials/place-report/form.php'; ?>
             <?php
             /*
-             * Area-only questions use the same canonical field renderer.
-             * These hidden controls are templates for the existing scoped
-             * report editor, not a second form and not Place answers.
+             * The Place form uses Place persistence paths, but scoped Site and
+             * Area edits have their own verified writer. Supply any missing
+             * canonical PHP controls as inert templates, never as an extra
+             * Place form or additional POST answers. JS clones only the
+             * selected target's controls into the scoped report section.
              */
-            $facilityAreaTemplates = array_filter(
-                llama_report_questions_for_scope('area', true),
-                static fn (array $field): bool =>
-                    ($field['report_scope_group'] ?? '') === 'area'
-                    && !empty($field['facility_kinds'])
+            require_once dirname(__DIR__) . '/app/place-report/update-field-templates.php';
+            $scopedUpdateTemplates = llama_scoped_update_missing_field_templates(
+                $placeReportVisibleFields
             );
             ?>
-            <?php if ($facilityAreaTemplates): ?>
-                <div data-scoped-facility-templates hidden>
-                    <?php foreach ($facilityAreaTemplates as $facilityField): ?>
-                        <?php $renderField($facilityField); ?>
+            <?php if ($scopedUpdateTemplates): ?>
+                <fieldset data-scoped-field-templates hidden disabled aria-hidden="true">
+                    <?php foreach ($scopedUpdateTemplates as $scopedField): ?>
+                        <?php $renderField($scopedField); ?>
                     <?php endforeach; ?>
-                </div>
+                </fieldset>
             <?php endif; ?>
             </div>
             <details class="contribution-section" data-place-update-scoped-fields
@@ -1382,6 +1382,10 @@ $e =
                         'scopes' => array_values((array) ($field['report_scopes'] ?? ['place'])),
                         'options' => (array) ($field['options'] ?? []),
                         'facility_kinds' => array_values((array) ($field['facility_kinds'] ?? [])),
+                        // Match the server-side verified Area feature-type rules.
+                        // Null = unrestricted; [] = no eligible feature types.
+                        'area_feature_types' => array_key_exists('area_feature_types', $field)
+                            ? array_values((array) $field['area_feature_types']) : null,
                         'unknown' => !empty($field['allow_unknown']),
                         'derived' => !empty($field['derived']),
                         'location' => !empty($field['location_field']),
