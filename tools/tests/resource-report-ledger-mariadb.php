@@ -296,8 +296,13 @@ $db->exec(
 $writerFile = $root . '/app/resource-report-history-writer.php';
 $writerSource = (string) file_get_contents($writerFile);
 $reviewSource = (string) file_get_contents($root . '/app/resource-submissions.php');
-$check(!str_contains($reviewSource, 'llama_resource_ledger_record_approved('),
-    'The new writer must not be connected to live Resource moderation in this PR.');
+$check(str_contains($reviewSource, 'if (llama_resource_ledger_writer_enabled())')
+    && str_contains($reviewSource, 'llama_resource_ledger_record_approved(')
+    && str_contains($reviewSource, '$selectedPhotos,')
+    && str_contains($reviewSource, '$copiedPhotoPaths')
+    && strpos($reviewSource, 'llama_resource_ledger_record_approved(')
+        < strpos($reviewSource, '$db->commit();', strpos($reviewSource, 'function llama_resource_review(')),
+    'History must run only when enabled, after trusted photos and before moderation commit.');
 
 $photoDir = $root . '/uploads/resources/3';
 if (!is_dir($photoDir) && !mkdir($photoDir, 0755, true) && !is_dir($photoDir)) {
