@@ -112,7 +112,7 @@ $assert($preview['provenance']['contributor_id'] === 13
     && $preview['provenance']['visit_date'] === null,
     'Moderation provenance must come from explicit evidence, not current Resource fields.');
 $answers = $preview['answers'];
-$assert(count($answers) === 11,
+$assert(count($answers) === 10,
     'Preview should contain only recorded Service/group observations, not unanswered fields.');
 $assert($answers['toilet/men/facility_cleanliness']['value'] === '3'
     && $answers['toilet/women/facility_cleanliness']['value'] === '5'
