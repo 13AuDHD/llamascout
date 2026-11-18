@@ -76,6 +76,52 @@ function admin_place_campsite_field_keys(): array
     return $keys;
 }
 
+/**
+ * Admin's legacy Site editor exposes only the Site layout section.
+ * Reject extra submitted question keys instead of silently discarding them,
+ * especially shared Place/Site questions which need separate target controls.
+ *
+ * @return array<string,mixed>
+ */
+function admin_place_validate_site_answer_keys(array $answers): array
+{
+    $allowed = array_fill_keys(admin_place_campsite_field_keys(), true);
+    foreach ($answers as $key => $_value) {
+        if (!is_string($key) || !isset($allowed[$key])) {
+            throw new InvalidArgumentException(
+                'This Site question is not editable in the current Admin Site form. '
+                . 'Reload the selected Site and try again.'
+            );
+        }
+    }
+    return $answers;
+}
+
+/**
+ * Report the Site-eligible canonical fields that Admin's current Site
+ * layout cannot edit. Audit-only. Changing this list requires coordinated
+ * controls, identity-specific prefilling and scoped persistence.
+ */
+function admin_place_site_inventory_gap(): array
+{
+    $editable = array_fill_keys(admin_place_campsite_field_keys(), true);
+    $missing = [];
+    foreach (llama_report_questions_for_scope('site', true) as $key => $field) {
+        if (!empty($field['derived']) || !empty($field['pricing_managed'])
+            || !empty($field['location_field']) || $key === 'site_number') {
+            continue;
+        }
+        if (!isset($editable[$key])) {
+            $missing[$key] = [
+                'label' => (string) ($field['label'] ?? $key),
+                'layout_section' => (string) ($field['layout_section'] ?? ''),
+                'scope_group' => (string) ($field['report_scope_group'] ?? ''),
+            ];
+        }
+    }
+    return $missing;
+}
+
 function admin_place_site_section_place_field_keys(): array
 {
     $keys = [];
@@ -488,6 +534,9 @@ function admin_place_save_selected_campsite_answers(PDO $db, int $actorUserId, i
     if (!is_array($answers) || array_is_list($answers) && $answers !== []) {
         throw new InvalidArgumentException('Invalid Site answer format.');
     }
+    // An unknown or currently unrendered Site-eligible key is a form/catalog
+    // mismatch, not permission to drop the observation without warning.
+    $answers = admin_place_validate_site_answer_keys($answers);
     $fields = llama_place_report_fields();
     $imported = llama_place_report_campsite_imported_form_values($site);
     $existing = llama_scoped_report_load($db, $placeId, 'site', $siteId, $source);
