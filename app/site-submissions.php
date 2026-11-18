@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/place-report.php';
 require_once __DIR__ . '/place-report/scoped-answers.php';
 require_once __DIR__ . '/location-photo-policy.php';
+require_once __DIR__ . '/photo-staging.php';
 
 /**
  * Independent Site submissions. A Site is created only on approval.
@@ -158,7 +159,9 @@ function llama_site_submission_submit(
     if ($submittedPhotos && trim($photoStageToken) === '') {
         throw new InvalidArgumentException('The Site photo upload session is missing.');
     }
-    if (!$data['answers'] && !$submittedPhotos) {
+    $observations = $data['answers'];
+    unset($observations['visited_at']);
+    if (!$observations && !$submittedPhotos) {
         throw new InvalidArgumentException('Report at least one Site observation or photograph.');
     }
 
