@@ -38,6 +38,11 @@ $assert(str_contains($css, '@import url("../../site/features/contribution-tabs.c
 $assert(str_contains($sharedForm, "\$approvedKey === 'site_info'")
     && str_contains($sharedForm, "\$placeReportMode === 'moderator' && \$hasAdminSitePicker"),
     'Admin Site Location must follow Site Info only when the Site picker exists.');
+$assert(str_contains($sharedForm, "id=\"admin-place-rules\"")
+    && str_contains($sharedForm, "href=\"#admin-place-rules\"")
+    && str_contains($sharedForm, "\$approvedSections['rules_public']['fields']")
+    && str_contains($sharedForm, "data-report-subsection=\"<?= \$e(\$approvedKey) ?>\""),
+    'Admin Place rules must be reachable in the shared canonical question form.');
 $assert(str_contains($siteLocation, 'name="admin_site_coordinates_changed"')
     && str_contains($admin, '/js/admin/place-site-location.js'),
     'Admin Site Location needs a touched marker and target-aware controller.');
