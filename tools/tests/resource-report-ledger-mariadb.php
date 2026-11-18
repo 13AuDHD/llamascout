@@ -49,6 +49,10 @@ $apply = static function (string $path) use ($db): void {
 $root = dirname(__DIR__, 2);
 $apply($root . '/tools/migrations/20261101_v3_003_resources.sql');
 $apply($root . '/tools/migrations/20261108_resource_submissions.sql');
+// A sentinel in the old Place/Site/Area ledger verifies the new migration
+// and test never mutate the existing reporting subsystem.
+$db->exec('CREATE TABLE scout_reports (id BIGINT UNSIGNED NOT NULL PRIMARY KEY) ENGINE=InnoDB');
+$db->exec('INSERT INTO scout_reports (id) VALUES (1)');
 $migration = $root . '/tools/migrations/20261118_resource_scout_report_ledger.sql';
 $apply($migration);
 $apply($migration); // No duplicate tables/triggers on rerun.
@@ -250,7 +254,7 @@ $reject(static fn () => $upsert->execute([
     1,'resource','toilet','men','facility_cleanliness','answered','"4"',$resourceReport,
 ]), 'A current answer occurrence must be unique by Resource/Service/group/question.');
 
-$check((int) $db->query('SELECT COUNT(*) FROM scout_reports')->fetchColumn() === 0,
+$check((int) $db->query('SELECT COUNT(*) FROM scout_reports')->fetchColumn() === 1,
     'Existing Place/Site/Area report ledger must never be touched by this test.');
 
 echo "PASS: MariaDB Resource/Facility schema, one-target identity, composite answers, immutability, idempotency and current states.\n";
