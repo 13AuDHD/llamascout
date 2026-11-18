@@ -357,6 +357,41 @@ $reportTwo = llama_resource_ledger_record_approved(
     $db, 4, 4, 8, 'Verified Facility'
 );
 $db->commit();
+
+// Every direct-writer approval stages current answers in the very same
+// transaction. A retry of the same submission must not advance row versions.
+$currentGet = static function (
+    int $resourceId, string $service, string $group, string $key
+) use ($db): ?array {
+    $stmt = $db->prepare(
+        'SELECT target_kind, answer_state, value_json, source_report_id,
+                row_version
+         FROM resource_scout_current_answers
+         WHERE resource_id = ? AND service_type = ?
+           AND group_key = ? AND question_key = ?'
+    );
+    $stmt->execute([$resourceId, $service, $group, $key]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    return is_array($row) ? $row : null;
+};
+$menCurrent = $currentGet(3, 'toilet', 'men', 'facility_cleanliness');
+$womenCurrent = $currentGet(3, 'toilet', 'women', 'facility_cleanliness');
+$facilityCurrent = $currentGet(4, 'toilet', 'men', 'facility_cleanliness');
+$fuelCurrent = $currentGet(3, 'fuel', 'general', 'service_fuel_pumps');
+$check($menCurrent !== null
+    && $menCurrent['answer_state'] === 'answered'
+    && $menCurrent['value_json'] === '"3"'
+    && (int) $menCurrent['source_report_id'] === $reportOne
+    && (int) $menCurrent['row_version'] === 1
+    && $womenCurrent['value_json'] === '"5"'
+    && $facilityCurrent['target_kind'] === 'facility'
+    && (int) $facilityCurrent['source_report_id'] === $reportTwo
+    && $fuelCurrent['value_json'] === '"0"',
+    'Initial current projection must preserve No/zero/restroom groups and separate Facility provenance.');
+$check((int) $db->query(
+    'SELECT COUNT(*) FROM resource_scout_current_answers WHERE resource_id=3'
+)->fetchColumn() === 4,
+    'Resource 3 must have exactly four current answers after first approval.');
 $check($reportTwo > $reportOne, 'Facility report must have a distinct identity.');
 
 $rows = $db->query(
@@ -429,6 +464,18 @@ $check((string) $db->query(
        AND service_type='toilet' AND group_key='men' AND question_key='facility_cleanliness'"
 )->fetchColumn() === '"3"',
     'A later update must not rewrite the original Resource evidence.');
+$changedCurrent = $currentGet(3, 'toilet', 'men', 'facility_cleanliness');
+$unchangedCurrent = $currentGet(3, 'toilet', 'women', 'facility_cleanliness');
+$unchangedFuel = $currentGet(3, 'fuel', 'general', 'service_fuel_pumps');
+$check($changedCurrent['value_json'] === '"4"'
+    && $changedCurrent['answer_state'] === 'answered'
+    && (int) $changedCurrent['row_version'] === 2
+    && (int) $changedCurrent['source_report_id'] === $revisionTwo,
+    'Changed answers advance only their own current-answer version and provenance.');
+$check((int) $unchangedCurrent['row_version'] === 1
+    && (int) $unchangedCurrent['source_report_id'] === $reportOne
+    && (int) $unchangedFuel['source_report_id'] === $reportOne,
+    'Unchanged answers retain their original approved evidence and version.');
 
 $db->exec(
     "UPDATE resources SET experience_json =
@@ -449,8 +496,105 @@ $db->RollBack();
 
 $check((int) $db->query(
     'SELECT COUNT(*) FROM resource_scout_current_answers'
-)->fetchColumn() === 3,
-    'Staged writer must not activate or change the future current-answer projection.');
+)->fetchColumn() === 9,
+    'Approved Resource and Facility history must synchronize six target-local current answers.');
+
+// Clearing a whole Service or individual question must create Unanswered
+// tombstones, never Unknown or No. New explicit No/zero/Unknown values remain
+// real answers. This fourth (third Resource) report leaves history untouched.
+$db->exec(
+    "UPDATE resource_services SET is_active=0
+     WHERE resource_id=3 AND service_type='fuel'"
+);
+$db->exec(
+    "UPDATE resources SET experience_json =
+     '{\"toilet\":{\"men\":{\"facility_cleanliness\":\"unknown\",
+                           \"facility_soap\":\"no\"},
+                   \"all_gender\":{\"facility_cleanliness\":\"0\"}}}'
+     WHERE id=3"
+);
+$db->exec(
+    "INSERT INTO resource_submissions
+        (submitted_by,name,target_resource_id,form_data,status)
+     VALUES (7,'Clear fuel and update restroom',3,'{}','pending')"
+);
+$clearSubmissionId = (int) $db->lastInsertId();
+$db->beginTransaction();
+$clearedReport = llama_resource_ledger_record_approved(
+    $db, 3, $clearSubmissionId, 8, 'Cleared Fuel and updated restroom'
+);
+$db->commit();
+$clearedMen = $currentGet(3, 'toilet', 'men', 'facility_cleanliness');
+$clearedWomen = $currentGet(3, 'toilet', 'women', 'facility_cleanliness');
+$clearedFuel = $currentGet(3, 'fuel', 'general', 'service_fuel_grades');
+$clearedPumps = $currentGet(3, 'fuel', 'general', 'service_fuel_pumps');
+$explicitNo = $currentGet(3, 'toilet', 'men', 'facility_soap');
+$explicitZero = $currentGet(3, 'toilet', 'all_gender', 'facility_cleanliness');
+$check($clearedMen['answer_state'] === 'unknown'
+    && $clearedMen['value_json'] === 'null'
+    && (int) $clearedMen['row_version'] === 3
+    && (int) $clearedMen['source_report_id'] === $clearedReport,
+    'An explicit Unknown must become a distinct current state, not unanswered.');
+$check($explicitNo['answer_state'] === 'answered'
+    && $explicitNo['value_json'] === '"no"'
+    && $explicitZero['answer_state'] === 'answered'
+    && $explicitZero['value_json'] === '"0"',
+    'Explicit No and zero must remain answered, not cleared.');
+foreach ([$clearedWomen, $clearedFuel, $clearedPumps] as $cleared) {
+    $check($cleared['answer_state'] === 'unanswered'
+        && $cleared['value_json'] === 'null'
+        && (int) $cleared['row_version'] === 2
+        && (int) $cleared['source_report_id'] === $clearedReport,
+        'Removed Service/question answers must have source-linked Unanswered tombstones.');
+}
+$check((int) $db->query(
+    'SELECT COUNT(*) FROM resource_scout_current_answers WHERE resource_id=3'
+)->fetchColumn() === 6,
+    'Existing answer identities must survive clears and two new observations.');
+$check((int) $db->query(
+    'SELECT COUNT(*) FROM resource_scout_current_answers'
+)->fetchColumn() === 11,
+    'Current projection must retain cross-target evidence, tombstones, and new observations.');
+$check($currentGet(4, 'toilet', 'men', 'facility_cleanliness')['value_json'] === '"2"'
+    && (int) $currentGet(4, 'toilet', 'men', 'facility_cleanliness')['row_version'] === 1,
+    'Updating Resource 3 must not change Resource-backed Facility 4.');
+
+// Simulate a corrupt current-answer provenance row in the *same* transaction
+// as a new report. Projection must reject the wrong target and the caller
+// must be able to roll back both report and current-answer changes.
+$db->exec(
+    "INSERT INTO resource_submissions
+        (submitted_by,name,target_resource_id,form_data,status)
+     VALUES (7,'Corrupt evidence test',3,'{}','pending')"
+);
+$badSubmission = (int) $db->lastInsertId();
+$db->beginTransaction();
+$db->prepare(
+    'UPDATE resource_scout_current_answers SET source_report_id = ?
+     WHERE resource_id=3 AND service_type = ? AND group_key = ?
+       AND question_key = ?'
+)->execute([$reportTwo, 'toilet', 'men', 'facility_cleanliness']);
+$badEvidenceRejected = false;
+try {
+    llama_resource_ledger_record_approved($db, 3, $badSubmission, 8, 'Not acceptable');
+} catch (RuntimeException $error) {
+    $badEvidenceRejected = str_contains(
+        $error->getMessage(), 'history from another target'
+    );
+}
+$check($badEvidenceRejected,
+    'Current projection must reject provenance belonging to another Resource/Facility.');
+$db->rollBack();
+$check($currentGet(3, 'toilet', 'men', 'facility_cleanliness')['source_report_id']
+    == $clearedReport,
+    'A failed projection must roll back its own attempted current-answer changes.');
+$stmt = $db->prepare(
+    'SELECT COUNT(*) FROM resource_scout_reports WHERE submission_id = ?'
+);
+$stmt->execute([$badSubmission]);
+$check((int) $stmt->fetchColumn() === 0,
+    'A failed current-answer projection must roll back the new immutable report.');
+
 
 putenv('LLAMA_RESOURCE_HISTORY_WRITES_ENABLED');
 @unlink($absolute);

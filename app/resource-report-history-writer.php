@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/resource-report-history-candidate.php';
+require_once __DIR__ . '/resource-report-current-answers.php';
 
 /**
  * This writer is intentionally NOT called by Resource moderation yet.
@@ -21,8 +22,10 @@ function llama_resource_ledger_writer_enabled(): bool
  * must have saved the Resource, its selected Services and Experience answers.
  * All target ownership and answer values are re-read from those saved rows.
  *
- * This does not update resource_scout_current_answers or Resource pages.
- * It never changes the historical Place/Site/Area Scout Report ledger.
+ * The same moderation transaction also synchronizes the derived Resource
+ * current-answer table; it never changes the immutable historical report.
+ * Public Resource pages keep reading legacy Experience until a separate cutover.
+ * It never changes the Place/Site/Area Scout Report ledger.
  *
  * @param list<array<string,mixed>> $approvedPhotos Trusted, reviewed source photos
  * @param list<string> $permanentPaths Paths actually copied by the publisher
@@ -345,5 +348,10 @@ function llama_resource_ledger_record_approved(
             $photo['sort_order'], llama_scout_report_json($photo['snapshot']),
         ]);
     }
+
+    // Derive current answers ONLY from the immutable report just inserted.
+    // A failure rolls back this history record and the parent moderation save.
+    // Existing Resource/Facility pages still read resources.experience_json.
+    llama_resource_ledger_sync_current_answers($db, $resourceId, $reportId);
     return $reportId;
 }
