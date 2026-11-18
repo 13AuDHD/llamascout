@@ -113,7 +113,7 @@ require __DIR__ . '/_header.php';
             <?php if ($photos): ?>
                 <details>
                     <summary>Review <?= count($photos) ?> submitted Site photos</summary>
-                    <div class="add-place-existing-photo-grid">
+                    <div class="admin-site-review-photos">
                         <?php foreach ($photos as $photo): ?>
                             <figure>
                                 <img src="<?= $e(llama_photo_public_url((string) $photo['path'])) ?>"
