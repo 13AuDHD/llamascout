@@ -126,6 +126,11 @@ $placeReportSelectedSite = isset($placeReportSiteOptions[$requestedSite]) ? $req
             [
                 'sites' => $adminPlaceCampsites,
                 'site_field_keys' => admin_place_campsite_field_keys(),
+                'site_shared_field_keys' => admin_place_site_shared_question_keys(),
+                'place_shared_answers' => array_intersect_key(
+                    $placeReportValues,
+                    array_fill_keys(admin_place_site_shared_question_keys(), true)
+                ),
                 'place_field_keys' => admin_place_site_section_place_field_keys(),
                 'unknown_token' => llama_place_report_unknown_token(),
                 'unanswered_token' => llama_place_report_unanswered_token(),
@@ -157,7 +162,33 @@ $placeReportSelectedSite = isset($placeReportSiteOptions[$requestedSite]) ? $req
         $placeReportPhotoContext = 'admin-place';
 
         require dirname(__DIR__, 2) . '/partials/place-report/form.php';
+
+        // Place-layout questions also eligible for Site scope get their own
+        // Site-only controls. They cannot share the parent Place inputs.
+        $adminSiteSharedFields = array_intersect_key(
+            llama_report_questions_for_scope('site', true),
+            array_fill_keys(admin_place_site_shared_question_keys(), true)
+        );
+        $adminSiteSharedGroups = llama_report_group_selected_questions($adminSiteSharedFields);
         ?>
+        <?php if ($adminSiteSharedFields): ?>
+            <fieldset data-admin-site-shared-questions hidden disabled>
+                <legend>Site rules and policies</legend>
+                <p>These answers apply only to the selected Site. Existing Place
+                   policies appear as inherited values until you change them.</p>
+                <?php foreach ($adminSiteSharedGroups as $group): ?>
+                    <?php if (empty($group['fields'])) continue; ?>
+                    <section class="contribution-section" data-admin-site-policy-group>
+                        <h3><?= $e($group['label']) ?></h3>
+                        <div class="contribution-section-body">
+                            <?php foreach ($group['fields'] as $siteField): ?>
+                                <?php $renderField($siteField, 'admin-site-'); ?>
+                            <?php endforeach; ?>
+                        </div>
+                    </section>
+                <?php endforeach; ?>
+            </fieldset>
+        <?php endif; ?>
     </section>
 
     <div class="admin-place-report-savebar">
