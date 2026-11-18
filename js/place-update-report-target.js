@@ -328,8 +328,16 @@
         // Registry controls eligible fields, scopes and order. PHP-rendered
         // field markup supplies labels, options, help and input semantics.
         for (const f of fields.filter(eligible)) {
-            const sectionKey = f.layout_section || 'legacy_review';
-            const groupKey = f.layout_group || 'review';
+            // Mirror the approved Site presentation for Site Update
+            // without changing Place/Area storage or scope assignments.
+            const siteRule = scope.value === 'site'
+                && f.approved_group === 'rules_public';
+            const sectionKey = siteRule ? 'site' : (f.layout_section || 'legacy_review');
+            const groupKey = siteRule ? 'rules_public' : (f.layout_group || 'review');
+            const sectionLabel = siteRule ? 'Site'
+                : (f.layout_section_label || 'Legacy Review');
+            const groupLabel = siteRule ? 'Rules and Restrictions'
+                : (f.layout_group_label || 'Questions for Review');
             let sectionState = sections.get(sectionKey);
 
             if (!sectionState) {
@@ -337,7 +345,7 @@
                 section.append(make(
                     'h3',
                     'place-report-flow-heading',
-                    f.layout_section_label || 'Legacy Review'
+                    sectionLabel
                 ));
                 questions.append(section);
                 sectionState = {element: section, groups: new Map()};
@@ -350,7 +358,7 @@
                 group.append(make(
                     'h4',
                     'place-report-flow-heading',
-                    f.layout_group_label || 'Questions for Review'
+                    groupLabel
                 ));
                 grid = make('div', 'contribution-grid');
                 group.append(grid);

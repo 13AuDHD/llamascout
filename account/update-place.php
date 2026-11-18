@@ -1373,6 +1373,7 @@ $e =
                     return [
                         'key' => (string) $field['key'],
                         'label' => (string) $field['label'],
+                        'approved_group' => (string) ($field['approved_question_group'] ?? ''),
                         'layout_section' => $layoutSection,
                         'layout_group' => $layoutGroup,
                         'layout_section_label' => $scopedReportLayoutSections[$layoutSection],
