@@ -13,6 +13,7 @@
     let requestNumber = 0;
     let pending = null;
     let debounce = null;
+    let suppressFocusLookup = false;
 
     const close = () => {
         list.hidden = true;
@@ -37,11 +38,16 @@
     };
 
     const select = (place) => {
+        clearTimeout(debounce);
+        pending?.abort();
+        ++requestNumber;
         selectedId.value = String(place.id);
         input.value = String(place.name);
         input.setCustomValidity("");
         close();
+        suppressFocusLookup = true;
         input.focus();
+        suppressFocusLookup = false;
     };
 
     const render = (places) => {
@@ -94,7 +100,9 @@
         debounce = setTimeout(lookup, 170);
     };
 
-    input.addEventListener("focus", lookup);
+    input.addEventListener("focus", () => {
+        if (!suppressFocusLookup) lookup();
+    });
     input.addEventListener("input", () => {
         selectedId.value = "";
         input.setCustomValidity("");
@@ -115,7 +123,9 @@
             }
             event.preventDefault();
             const step = event.key === "ArrowDown" ? 1 : -1;
-            highlight((active + step + options.length) % options.length);
+            highlight(active < 0
+                ? (step > 0 ? 0 : options.length - 1)
+                : (active + step + options.length) % options.length);
         }
         if (event.key === "Enter" && !list.hidden && options.length) {
             event.preventDefault();
