@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/app/bootstrap.php';
 require_once __DIR__ . '/app/site-submissions.php';
-require_once __DIR__ . '/app/area-submissions.php';
 
 require_verified_email();
 $userId = (int) (current_user()['id'] ?? 0);
@@ -32,8 +31,29 @@ $selectedPlaceId = $isNeedsChanges
     ? (int) $revision['place_id']
     : max(0, (int) ($_POST['site_place_id'] ?? $_GET['site_place_id'] ?? $_GET['place_id'] ?? 0));
 
-$search = trim((string) ($_GET['site_q'] ?? ''));
-$placeChoices = llama_area_place_choices($db, $search, $selectedPlaceId);
+// The same authenticated Add Site URL supplies on-demand suggestions for
+// the Parent Place combobox. Never load the entire Places table in the DOM.
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET'
+    && isset($_GET['parent_place_suggestions'])) {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: private, no-store');
+    echo json_encode(
+        ['places' => llama_site_parent_place_choices(
+            $db, (string) ($_GET['q'] ?? '')
+        )],
+        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
+    );
+    exit;
+}
+$selectedParentPlace = null;
+if ($selectedPlaceId > 0) {
+    $parentQuery = $db->prepare(
+        'SELECT id, name, state FROM places
+         WHERE id = ? AND status IN ("active", "featured") LIMIT 1'
+    );
+    $parentQuery->execute([$selectedPlaceId]);
+    $selectedParentPlace = $parentQuery->fetch(PDO::FETCH_ASSOC) ?: null;
+}
 $siteFields = llama_site_submission_fields();
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
@@ -108,6 +128,7 @@ $placeReportExistingPhotos = $isNeedsChanges
     ? llama_site_submission_photos((array) $revision['data'], $revisionId) : [];
 $placeReportMode = 'contributor';
 $placeReportOnlyScope = 'site';
+$placeReportSiteIdentityPartial = __DIR__ . '/partials/place-report/site-identity-fields.php';
 $placeReportShowLocate = true;
 $placeReportShowNameSuggestion = false;
 $placeReportShowFieldHelp = true;
@@ -156,23 +177,6 @@ require __DIR__ . '/partials/header.php';
         <div class="contribution-message is-error" role="alert"><?= $e($error) ?></div>
     <?php endif; ?>
 
-    <section class="contribution-type-intro">
-        <h2>Select the parent Place</h2>
-        <p>A Site belongs to one existing Place. It will have its own location,
-           answers, photos and moderation history.</p>
-    </section>
-    <?php if (!$isNeedsChanges): ?>
-    <form method="get" action="/add-site.php" class="contribution-form">
-        <label class="contribution-field" for="site-place-search">Find an existing Place</label>
-        <div class="contribution-actions">
-            <input id="site-place-search" type="search" name="site_q"
-                   value="<?= $e($search) ?>"
-                   placeholder="Search by Place name or ID">
-            <button type="submit" class="contribution-submit">Search</button>
-        </div>
-    </form>
-    <?php endif; ?>
-
     <form method="post" class="contribution-form add-place-form place-report-form"
           data-place-report-completion-form id="add-site-main-form">
         <input type="hidden" name="csrf_token" value="<?= $e(community_csrf_token()) ?>">
@@ -184,35 +188,6 @@ require __DIR__ . '/partials/header.php';
         <input type="hidden" name="photos_json"
                value="<?= $e($_POST['photos_json'] ?? '[]') ?>">
 
-        <div class="contribution-grid">
-            <?php if ($isNeedsChanges): ?>
-                <input type="hidden" name="site_place_id" value="<?= $selectedPlaceId ?>">
-                <div class="contribution-field">
-                    <span class="place-report-field-label">Parent Place</span>
-                    <strong><?= $e($revision['data']['place_name'] ?? ('Place #' . $selectedPlaceId)) ?></strong>
-                </div>
-            <?php else: ?>
-            <label class="contribution-field">
-                <span class="place-report-field-label">Parent Place *</span>
-                <select name="site_place_id" required>
-                    <option value="">Select an existing Place</option>
-                    <?php foreach ($placeChoices as $place): ?>
-                        <option value="<?= (int) $place['id'] ?>"
-                            <?= $selectedPlaceId === (int) $place['id'] ? 'selected' : '' ?>>
-                            <?= $e($place['name']) ?> (<?= $e($place['state'] ?? '') ?>)
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </label>
-            <?php endif; ?>
-            <label class="contribution-field">
-                <span class="place-report-field-label">Site name *</span>
-                <input type="text" name="site_name" maxlength="120" required
-                       value="<?= $e($siteNameValue) ?>"
-                       placeholder="Site 12, North Parking Spot, etc.">
-            </label>
-        </div>
-
         <?php require __DIR__ . '/partials/place-report/form.php'; ?>
         <div class="contribution-actions add-place-submit-bar">
             <button class="contribution-submit" type="submit" <?= $ready ? '' : 'disabled' ?>>
@@ -222,6 +197,8 @@ require __DIR__ . '/partials/header.php';
         </div>
     </form>
 </section>
+<script src="<?= $e($siteUrl . '/js/add-site-parent-search.js?v='
+    . (int) filemtime(__DIR__ . '/js/add-site-parent-search.js')) ?>" defer></script>
 <script src="<?= $e($siteUrl . '/js/add-site-location.js?v='
     . (int) filemtime(__DIR__ . '/js/add-site-location.js')) ?>" defer></script>
 <script src="<?= $e($siteUrl . '/js/place-report-form.js?v='
