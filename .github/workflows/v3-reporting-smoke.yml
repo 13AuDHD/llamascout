@@ -279,6 +279,8 @@ jobs:
           php tools/tests/contribution-site-location-and-styling.php
           node --check js/add-site-location.js
           node tools/tests/contribution-site-location-ui.cjs
+          php tools/tests/standalone-site-submission.php
+          node --check js/add-site-parent-search.js
       - name: Verify four-option navigation across Place, Site, Facility and Resource
         env:
           NODE_PATH: ${{ runner.temp }}/llama-season-ui-tests/node_modules

@@ -76,4 +76,26 @@ siteContractAssert(str_contains($code, 'FOR UPDATE')
     && str_contains($code, 'UPDATE place_site_submissions')
     && str_contains($code, 'WHERE place_id = ? AND site_code = ?'),
     'Moderation must lock and verify the single Site target and duplicate code.');
-echo "PASS: Independent Site submission uses approved questions and protects the parent Place.\n";
+$addPage = (string) file_get_contents(dirname(__DIR__, 2) . '/add-site.php');
+$siteForm = (string) file_get_contents(dirname(__DIR__, 2) . '/partials/place-report/form.php');
+$identityFields = (string) file_get_contents(dirname(__DIR__, 2)
+    . '/partials/place-report/site-identity-fields.php');
+$parentJs = (string) file_get_contents(dirname(__DIR__, 2) . '/js/add-site-parent-search.js');
+$parentCss = (string) file_get_contents(dirname(__DIR__, 2) . '/css/site/pages/add-place.css');
+siteContractAssert(!str_contains($addPage, 'Select the parent Place</h2>')
+    && !str_contains($addPage, 'site-place-search')
+    && !str_contains($addPage, '<select name="site_place_id"')
+    && str_contains($addPage, 'parent_place_suggestions')
+    && str_contains($addPage, 'llama_site_parent_place_choices'),
+    'Add Site must use only the dynamic parent search, not the old introductory search form.');
+siteContractAssert(str_contains($siteForm, 'require $placeReportSiteIdentityPartial')
+    && str_contains($siteForm, "\$approvedKey === 'site_info'")
+    && str_contains($identityFields, 'name="site_place_id"')
+    && str_contains($identityFields, 'name="site_name"'),
+    'Parent Place and Site name must be the first Site Info fields.');
+siteContractAssert(str_contains($code, 'status IN ("active", "featured")')
+    && str_contains($code, 'ORDER BY name ASC, id ASC LIMIT 6')
+    && str_contains($parentJs, 'aria-activedescendant')
+    && str_contains($parentCss, '.site-parent-place-results[hidden]'),
+    'Search must provide alphabetically ordered eligible Places and keyboard-accessible choices.');
+echo "PASS: Independent Site submission, Site Info identity fields and live Parent Place selection.\n";
