@@ -520,3 +520,43 @@ textarea::placeholder {
     background: var(--surface);
     border-radius: 0 0 10px 10px;
 }
+
+
+/* Site Info parent picker: results float over the form without moving cards. */
+.add-place-page .site-parent-place-picker {
+    position: relative;
+    z-index: 5;
+}
+.add-place-page .site-parent-place-results {
+    position: absolute;
+    top: 100%;
+    inset-inline: 0;
+    margin-top: 4px;
+    max-height: 260px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    box-shadow: 0 14px 30px rgba(0, 0, 0, .32);
+}
+.add-place-page .site-parent-place-results[hidden] {
+    display: none;
+}
+.add-place-page .site-parent-place-choice {
+    display: block;
+    width: 100%;
+    padding: 11px 12px;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+}
+.add-place-page .site-parent-place-choice:hover,
+.add-place-page .site-parent-place-choice.is-active {
+    background: color-mix(in srgb, var(--text) 10%, var(--surface));
+}
+.add-place-page .site-parent-place-choice + .site-parent-place-choice {
+    border-top: 1px solid var(--border);
+}
