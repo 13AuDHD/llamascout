@@ -37,6 +37,30 @@ function llama_site_submission_fields(): array
  * @return array<string,mixed> Keyed by canonical question ID, not storage path.
  * Omitted/Unanswered means no new observation. No, 0, [] and Unknown are recorded.
  */
+/**
+ * Resolve the first alphabetically sorted, selectable parent Places.
+ * Each query searches the database, not the first page of a select list.
+ * Eligibility matches the real Site submission parent validator.
+ */
+function llama_site_parent_place_choices(PDO $db, string $needle = ''): array
+{
+    $needle = trim(mb_substr($needle, 0, 120));
+    $sql = 'SELECT id, name, state FROM places
+            WHERE status IN ("active", "featured")';
+    $params = [];
+    if ($needle !== '') {
+        $sql .= ' AND (name LIKE ? OR CAST(id AS CHAR) = ?)';
+        $params[] = '%' . str_replace(
+            ['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $needle
+        ) . '%';
+        $params[] = $needle;
+    }
+    $sql .= ' ORDER BY name ASC, id ASC LIMIT 6';
+    $statement = $db->prepare($sql);
+    $statement->execute($params);
+    return $statement->fetchAll(PDO::FETCH_ASSOC) ?: [];
+}
+
 function llama_site_submission_parse_answers(array $rawAnswers): array
 {
     if (count($rawAnswers) > 200 || array_is_list($rawAnswers) && $rawAnswers !== []) {
