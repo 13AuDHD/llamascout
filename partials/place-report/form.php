@@ -1530,6 +1530,12 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
                 </summary>
                 <div class="contribution-section-body">
                     <div class="contribution-grid">
+                        <?php if ($placeReportOnlyScope === 'site'
+                            && $reportMainKey === 'site'
+                            && $approvedKey === 'site_info'
+                            && isset($placeReportSiteIdentityPartial)): ?>
+                            <?php require $placeReportSiteIdentityPartial; ?>
+                        <?php endif; ?>
                         <?php if ($hasLocate): ?>
                             <div class="contribution-field add-place-locate-panel">
                                 <span>At the Place right now?</span>
