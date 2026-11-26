@@ -120,6 +120,8 @@ function setup(source) {
     const w = dom.window;
     const d = w.document;
     w.structuredClone = value => JSON.parse(JSON.stringify(value));
+    const runtimeErrors = [];
+    w.addEventListener('error', event => runtimeErrors.push(event.error || event.message));
     w.eval(areaJs);
     const q = selector => d.querySelector(selector);
     assert.equal(q('[name="selected_area_id"]').value,'map_feature:20');
@@ -138,6 +140,14 @@ function setup(source) {
     w.dispatchEvent(new w.CustomEvent('llama:admin-place-report-saved'));
     assert.equal(q('[name="facility_toilet_count"]').value,'4');
     assert.equal(q('[data-report-field="facility_toilet_count"]').hidden,false);
-    dom.window.close();
+    // Let the controller's queued deep-link initialization run while the
+    // DOM still exists. Fail on runtime errors rather than logging a false pass.
+    setImmediate(() => {
+        try {
+            assert.deepEqual(runtimeErrors, [], 'Mapped Facility initialization must not throw');
+            console.log('PASS: Unified Facility tabs, visible selector, map-backed GPS, direct links, kind changes and independent modern editor.');
+        } finally {
+            dom.window.close();
+        }
+    });
 }
-console.log('PASS: Unified Facility tabs, visible selector, map-backed GPS, direct links, kind changes and independent modern editor.');
