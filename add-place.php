@@ -716,10 +716,8 @@ $placeReportPhotoHelp =
         <div class="scout-card-controls" data-scout-card-controls hidden>
             <div class="scout-card-buttons">
                 <button type="button" data-scout-card-back>Back</button>
+                <span class="scout-card-gesture" data-scout-card-gesture-help aria-hidden="true">← Swipe →</span>
                 <button type="button" data-scout-card-next>Next</button>
-            </div>
-            <div data-scout-card-gesture class="scout-card-gesture" aria-hidden="true">
-                <span data-scout-card-gesture-help>Swipe left or right here to navigate.</span>
             </div>
         </div>
         <?php endif; ?>
