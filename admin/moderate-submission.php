@@ -202,7 +202,8 @@ if (
                     )
                         ? $currentData['photos']
                         : []
-                )
+                ),
+                ($currentData['_submission_target_kind'] ?? '') === 'place'
             );
 
         $points =
@@ -600,13 +601,15 @@ $newPlacePointEstimate =
     llama_points_estimate_new_place(
         $db,
         $pointInput,
-        count($photos)
+        count($photos),
+        ($data['_submission_target_kind'] ?? '') === 'place'
     );
 
 $completionSummary =
-    llama_place_report_question_completion_summary(
+    llama_new_place_completion_summary(
         $pointInput,
-        count($photos)
+        count($photos),
+        ($data['_submission_target_kind'] ?? '') === 'place'
     );
 
 $answered =
