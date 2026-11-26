@@ -905,6 +905,10 @@ if (!$isNeedsChanges) {
 
 $placeReportMode =
     'update-report';
+// Place type is normally read-only on Update, but the canonical dependency
+// engine still needs its published value. A revision's editable control wins.
+$placeReportContextKeys = ['type'];
+$placeReportUpdateContext = ['type' => (string) ($currentValues['type'] ?? '')];
 
 
 $placeReportShowLocate = $isNeedsChanges;
@@ -1119,6 +1123,7 @@ $e =
         <form
             method="post"
             class="contribution-form add-place-form place-report-form place-update-form" data-contribution-report
+            data-report-context="<?= $e(json_encode($placeReportUpdateContext, JSON_THROW_ON_ERROR)) ?>"
         >
 
 
