@@ -309,6 +309,7 @@ function llama_place_report_fields(): array
     // Site type applicability follows metadata so parent rules are not overwritten.
     llama_place_report_apply_camping_profiles($f);
     llama_place_report_apply_fee_rule_matrix($f);
+    llama_place_report_apply_accessibility_safety_matrix($f);
 
     /*
      * The shared form consumes registry order directly. Reorder only after
