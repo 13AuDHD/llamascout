@@ -481,8 +481,7 @@ async function testGuidedPlaceCards() {
         <details data-contribution-place-photo-panel open><summary>Photos</summary><input name="photos_json" value="[]"></details>
         <div data-scout-card-step="Review and submit"><button type="submit">Submit</button></div>
         <div data-scout-card-controls hidden>
-          <button type="button" data-scout-card-back></button><button type="button" data-scout-card-next></button>
-          <div data-scout-card-gesture><span data-scout-card-gesture-help></span></div>
+          <button type="button" data-scout-card-back></button><span data-scout-card-gesture-help></span><button type="button" data-scout-card-next></button>
         </div>
     </form>`, {runScripts:'outside-only'});
     const w = dom.window, d = w.document;
@@ -516,15 +515,41 @@ async function testGuidedPlaceCards() {
         yes.click();
         assert.equal(new w.FormData(form).get('parent'),'1','Visible choices write to original select');
         assert.equal(yes.getAttribute('aria-pressed'),'true');
-        const gesture = q('[data-scout-card-gesture]');
-        const touch = (name, points, key) => {
-            const event = new w.Event(name);
-            Object.defineProperty(event,key,{value:points});
-            gesture.dispatchEvent(event);
+        const pointer = (target, name, x, y) => {
+            const event = new w.MouseEvent(name,{bubbles:true,cancelable:true,clientX:x,clientY:y,button:0});
+            Object.defineProperties(event,{pointerId:{value:1},isPrimary:{value:true}});
+            target.dispatchEvent(event);
         };
-        touch('touchstart',[{clientX:100,clientY:100}],'touches');
-        touch('touchend',[{clientX:100,clientY:30}],'changedTouches');
-        assert.equal(select.value,'0','Vertical gesture selects next option');
+        const swipe = (target, x, y) => {
+            pointer(target,'pointerdown',100,100);
+            pointer(target,'pointermove',x,y);
+            pointer(target,'pointerup',x,y);
+        };
+        swipe(yes,100,30);
+        assert.equal(select.value,'1','Vertical swipe never changes the choice');
+        assert.equal(heading.textContent,'Parent','Vertical swipe never changes the card');
+        swipe(yes,80,100);
+        assert.equal(heading.textContent,'Parent','Short drags snap back without navigating');
+        const no = [...parent.querySelectorAll('.scout-card-choice')].find(button => button.textContent === 'No');
+        pointer(no,'pointerdown',100,100);
+        pointer(no,'pointermove',170,100);
+        assert.equal(form.style.getPropertyValue('--scout-card-drag-x'),'70px','The entire card visibly follows the pointer');
+        pointer(no,'pointerup',170,100);
+        no.dispatchEvent(new w.MouseEvent('click',{bubbles:true,cancelable:true,detail:1}));
+        assert.equal(select.value,'1','Dragging from an answer cannot select it');
+        assert.equal(heading.textContent,'Date visited','Right swipe returns to previous card');
+        assert.equal(form.style.getPropertyValue('--scout-card-drag-x'),'','Card returns to resting position');
+        next.click();
+        const freshNo = [...parent.querySelectorAll('.scout-card-choice')].find(button => button.textContent === 'No');
+        const freshYes = [...parent.querySelectorAll('.scout-card-choice')].find(button => button.textContent === 'Yes');
+        swipe(freshNo,120,100);
+        freshNo.dispatchEvent(new w.MouseEvent('click',{bubbles:true,cancelable:true,detail:1}));
+        assert.equal(select.value,'1','A short drag from a choice suppresses the trailing click');
+        pointer(freshNo,'pointerdown',100,100);
+        pointer(freshNo,'pointerup',100,100);
+        freshNo.dispatchEvent(new w.MouseEvent('click',{bubbles:true,cancelable:true,detail:1}));
+        assert.equal(select.value,'0','A normal answer tap still works');
+        freshYes.click();
         child.hidden = false;
         await Promise.resolve();
         assert.equal(progress.textContent,'20%');
@@ -535,14 +560,21 @@ async function testGuidedPlaceCards() {
         await Promise.resolve();
         assert.equal(heading.textContent,'Location');
         assert.ok([...d.querySelectorAll('[data-scout-card-group]')].every(node => !node.classList.contains('is-scout-card-offstage')));
-        touch('touchstart',[{clientX:100,clientY:100}],'touches');
-        touch('touchend',[{clientX:25,clientY:100}],'changedTouches');
-        assert.equal(heading.textContent,'Photos','Horizontal swipe advances');
+        const location = q('[data-scout-card-group]');
+        swipe(location,25,100);
+        assert.equal(heading.textContent,'Photos','Left swipe from card content advances');
+        swipe(q('[data-contribution-place-photo-panel]'),170,100);
+        assert.equal(heading.textContent,'Location','Right swipe from card content goes back');
+        pointer(location,'pointerdown',100,100);
+        pointer(location,'pointermove',25,100);
+        pointer(location,'pointercancel',25,100);
+        assert.equal(heading.textContent,'Location','Cancelled drag never navigates');
+        assert.equal(form.classList.contains('is-scout-card-dragging'),false);
         toggle.click();
         assert.equal(form.classList.contains('is-scout-card-view'),false);
         assert.equal(child.hidden,true,'Full view preserves canonical eligibility');
         assert.equal(select.classList.contains('is-scout-choice-source'),false,'Full view restores original dropdown');
-        assert.equal(new w.FormData(form).get('parent'),'0','Full view retains choice');
+        assert.equal(new w.FormData(form).get('parent'),'1','Full view retains choice');
         assert.equal(q('[name="child"]').value,'retained');
         assert.equal(q('[data-report-main-section]').open,false,'Restore expanded sections');
         toggle.click();
