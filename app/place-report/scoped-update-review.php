@@ -10,6 +10,31 @@ require_once dirname(__DIR__) . '/photo-staging.php';
 require_once dirname(__DIR__) . '/place-update.php';
 
 /**
+ * Validate a complete scoped proposal against current effective answers.
+ * Apply all proposed values before evaluating, independent of input order.
+ * Do not modify the effective answer store or existing history.
+ */
+function llama_scoped_update_assert_applicable(array $effective, array $proposed): void
+{
+    $input = [];
+    foreach (array_replace($effective, $proposed) as $key => $value) {
+        $field = llama_report_question((string) $key);
+        if ($field !== null) {
+            $input[$key] = llama_place_report_answer_form_value($field, $value);
+        }
+    }
+    foreach ($proposed as $key => $value) {
+        if (!llama_place_report_question_applicable($input, (string) $key)) {
+            $field = llama_report_question((string) $key);
+            throw new InvalidArgumentException(
+                'This answer no longer applies to the selected target: ' . ($field['label'] ?? $key)
+                . '. Review the current parent answers and submit applicable observations only.'
+            );
+        }
+    }
+}
+
+/**
  * Parse and validate one Area/Site correction payload against the current
  * published scoped answers.
  *
@@ -250,6 +275,8 @@ function llama_scoped_update_build_payload(
             'Answer at least one Facility or Site question before submitting.'
         );
     }
+
+    llama_scoped_update_assert_applicable($effectiveBefore, $answers);
 
     $visited = (string) (llama_place_report_metadata($input, 'visited_at') ?? '');
 
@@ -1207,6 +1234,8 @@ function llama_scoped_update_approve(
             );
         }
     }
+
+    llama_scoped_update_assert_applicable($effectiveCurrent, $answers);
 
     $pointEstimate =
         llama_scoped_update_point_estimate(
