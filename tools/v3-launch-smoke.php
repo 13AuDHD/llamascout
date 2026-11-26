@@ -3615,6 +3615,21 @@ $check('Add Place presentation uses Basic date and Site-only name suggestions', 
         'Guided progress and below-question navigation required');
 });
 
+$check('Guided Place inline answer help and outer-only accent', static function () use ($assert): void {
+    $root = dirname(__DIR__);
+    $form = file_get_contents($root . '/partials/place-report/form.php');
+    $css = file_get_contents($root . '/css/site/features/place-report-form.css');
+    $pageCss = file_get_contents($root . '/css/site/pages/add-place.css');
+    $assert(substr_count($form, 'class="scout-card-answer-help"') === 2
+        && str_contains($form, 'class="add-place-radio-help'),
+        'Guided inline descriptions and full-view help must both exist');
+    $assert(str_contains($css, '.place-report-form.is-scout-card-view .add-place-radio-help')
+        && str_contains($css, '.place-report-form.is-scout-card-view .add-place-radio-option .scout-card-answer-help'),
+        'Guided mode must move help into answer rows');
+    $assert(str_contains($pageCss, '.place-report-form:not(.is-scout-card-view) > [data-report-main-section] > .contribution-section-body > .contribution-section {'),
+        'Nested section accents must exclude guided cards');
+});
+
 $check('Canonical field contract', static function () use ($assert): void {
     $issues = llama_place_report_contract_issues();
     $assert(!$issues, 'Contract issues: ' . implode(' | ', array_slice($issues, 0, 12)) . ' (total ' . count($issues) . ')');
