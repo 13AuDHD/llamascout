@@ -48,6 +48,10 @@ const dom = new JSDOM(`<!doctype html><body>
            hidden>
         <div class="scout-report-value-content"><strong>Not provided</strong></div>
       </div>
+      <div class="scout-report-item" data-report-scopes="area"
+           data-report-owner="area" data-campsite-report-field="facility_shower_stalls" hidden>
+        <div class="scout-report-value-content"><strong>Not provided</strong></div>
+      </div>
     </div>
   </section>
   <section class="scout-report-section" data-report-page="site" data-report-scopes="site">
@@ -79,7 +83,7 @@ w.fetch = request => {
                 report_target_scope: 'area',
                 report_effective_values: { facility_toilet_count: '3' },
                 report_answer_sources: {},
-                report_inapplicable_keys: [],
+                report_inapplicable_keys: ['facility_shower_stalls'],
             }}),
         });
     }
@@ -115,11 +119,13 @@ assert.equal(w.getComputedStyle(area).display, 'none',
 area.hidden = true;
 
 event('area','55');
+assert.ok(!isShown(area), 'Do not show unverified Facility inventory while loading');
 await new Promise(resolve => setImmediate(resolve));
 assert.ok(!isShown(place));
 assert.ok(isShown(area), 'Selected Area question should be visible');
 assert.equal(q('[data-area-report-name]').textContent, 'West Vault Toilets');
 assert.equal(area.querySelector('strong').textContent, '3');
+assert.ok(!isShown(q('[data-campsite-report-field="facility_shower_stalls"]')), 'Wrong-kind question stays hidden after response');
 assert.equal(areaCtx.hidden, false);
 assert.ok(requests.some(v=>v.includes('area=55')));
 

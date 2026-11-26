@@ -433,6 +433,58 @@ function llama_scoped_report_display_values(
 }
 
 
+/**
+ * Public report projection, after membership and target ownership checks.
+ * Keep the full effective context for dependency evaluation, but return
+ * only questions eligible for the selected target. Historical answers and
+ * the current-answer model remain intact for editing and history.
+ */
+function llama_public_scoped_report_projection(
+    array $answers, array $target, string $placeType, array $sources = []
+): array {
+    $scope = (string) ($target['scope'] ?? '');
+    if (!in_array($scope, ['site', 'area'], true)) {
+        throw new InvalidArgumentException('Invalid public child report scope.');
+    }
+    $effective = llama_place_report_current_answer_values($answers, 'effective');
+    $input = ['type' => $placeType];
+    foreach ($effective as $key => $value) {
+        $field = llama_report_question((string) $key);
+        if ($field !== null) {
+            $input[$key] = llama_place_report_answer_form_value($field, $value);
+        }
+    }
+    // The verified parent type is authoritative, not a child observation.
+    $input['type'] = $placeType;
+    $eligible = [];
+    $inapplicable = [];
+    foreach (llama_report_questions() as $key => $field) {
+        if (!in_array($scope, (array) ($field['report_scopes'] ?? []), true)
+            || !empty($field['hide_public'])
+            || ($scope === 'area' && !llama_report_question_applies_to_area_target($field, $target))
+            || !llama_place_report_question_applicable($input, $key)) {
+            $inapplicable[] = $key;
+            continue;
+        }
+        $eligible[$key] = true;
+    }
+    $local = array_intersect_key(llama_place_report_current_answer_values($answers, 'local'), $eligible);
+    $inherited = array_intersect_key(llama_place_report_current_answer_values($answers, 'inherited'), $eligible);
+    $states = [];
+    foreach ($eligible as $key => $_) {
+        $states[$key] = (string) ($answers[$key]['state'] ?? 'unanswered');
+    }
+    return [
+        'report_effective_values' => llama_scoped_report_display_values(array_intersect_key($effective, $eligible)),
+        'report_override_values' => llama_scoped_report_display_values($local),
+        'report_inherited_values' => llama_scoped_report_display_values($inherited),
+        'report_override_keys' => array_keys($local),
+        'report_answer_states' => $states,
+        'report_answer_sources' => array_intersect_key($sources, $eligible),
+        'report_inapplicable_keys' => $inapplicable,
+    ];
+}
+
 /** Explicitly remove a scoped override so the field inherits again. */
 function llama_scoped_report_clear_override(
     PDO $db,

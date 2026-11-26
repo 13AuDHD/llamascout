@@ -272,89 +272,21 @@ try {
 
 
 
-    $inheritedValues =
-        llama_place_report_current_answer_values(
-            $currentAnswers,
-            'inherited'
-        );
-
-    /*
-     * Existing JavaScript expects report_override_values to contain every
-     * Site-local value, including campsite baseline values. Preserve that
-     * response contract while sourcing it from the canonical answer model.
-     */
-    $localValues =
-        llama_place_report_current_answer_values(
-            $currentAnswers,
-            'local'
-        );
-
     $effectiveValues =
         llama_place_report_current_answer_values(
             $currentAnswers,
             'effective'
         );
 
-    // Compute Site-dependent applicability from this Site's actual
-    // approved/inherited values. Do not use stale values from a previously
-    // selected Site, and never expose hidden dependency answers to guests.
-    $siteApplicabilityInput = [
-        'type' => (string) ($place['type'] ?? $publicPlace['type'] ?? ''),
-    ];
-    foreach ($effectiveValues as $key => $value) {
-        if (is_bool($value)) {
-            $siteApplicabilityInput[(string) $key] = $value ? '1' : '0';
-        } elseif (is_int($value) || is_float($value) || is_string($value) || is_array($value)) {
-            $siteApplicabilityInput[(string) $key] = $value;
-        }
-    }
-    $site['report_inapplicable_keys'] = [];
-    foreach (llama_report_questions() as $key => $question) {
-        if (!empty($question['applicable_if'])
-            && !llama_place_report_question_applicable(
-                $siteApplicabilityInput, (string) $key
-            )) {
-            $site['report_inapplicable_keys'][] = (string) $key;
-        }
-    }
-
-    // Same attribution service as the Place report. Only sources matched
-    // to the currently published observation are eligible for display.
-    $site['report_answer_sources'] = array_replace(
-        llama_report_answer_sources($db, $currentAnswers),
-        $seasonSpecificSources
-    );
-
-    // Final published projection is authoritative over legacy campsite
-    // columns. The browser uses the same winners as answer attribution.
-    $site['report_effective_values'] =
-        llama_scoped_report_display_values(
-            $effectiveValues
-        );
-
-    // Include the full eligible question inventory, including unanswered
-    // keys. Otherwise the browser can resurrect an obsolete value from a
-    // legacy campsite column when the canonical answer is unanswered.
-    $site['report_answer_states'] = [];
-    foreach ($currentAnswers as $key => $answer) {
-        $site['report_answer_states'][(string) $key] =
-            (string) ($answer['state'] ?? 'unanswered');
-    }
-
-    $site['report_inherited_values'] =
-        llama_scoped_report_display_values(
-            $inheritedValues
-        );
-
-    $site['report_override_values'] =
-        llama_scoped_report_display_values(
-            $localValues
-        );
-
-    $site['report_override_keys'] =
-        array_keys(
-            $localValues
-        );
+    // One canonical report projection for Site and mapped Facility. The
+    // report_inapplicable_keys list also prevents legacy client fallback.
+    // Keep raw effective answers privately for the separate warning engine.
+    $site = array_replace($site, llama_public_scoped_report_projection(
+        $currentAnswers,
+        ['scope' => 'site', 'source' => 'campsite_record', 'id' => $campsiteId],
+        (string) ($place['type'] ?? $publicPlace['type'] ?? ''),
+        array_replace(llama_report_answer_sources($db, $currentAnswers), $seasonSpecificSources)
+    ));
 
     $site['report_warnings'] =
         llama_scoped_report_quick_warnings(
