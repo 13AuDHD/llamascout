@@ -3264,6 +3264,121 @@ $check('Owner matrix Accessibility, Safety, Experience, Notes, History and Site 
         'No toilets must hide Accessible Toilet at fairgrounds');
 });
 
+$check('Owner matrix additional registry rows 275–294 preserve activation boundaries', static function () use ($assert): void {
+    $types = [
+        'dispersed-camping', 'developed-campground', 'camping-area', 'rv-park-resort',
+        'rest-area', 'scenic-overlook', 'vehicle-pulloff', 'trailhead', 'day-use',
+        'public-parking', 'travel-center', 'truck-stop', 'retail-parking',
+        'restaurant-parking', 'casino-parking', 'medical-office-parking', 'hospital-parking',
+        'church-parking', 'fairgrounds', 'street-parking', 'other-parking',
+        'membership-host', 'private-property', 'other',
+    ];
+    $assert($types === array_keys(llama_place_report_place_types()), 'Matrix column order changed');
+    $catalog = llama_report_questions();
+    $raw = llama_place_report_fields();
+    foreach ([
+        'contact_mailing_address' => '011111101111111111100111',
+        'site_reservation_method' => '011101111110000000000111',
+        'site_accommodation_type' => '111111111111111111111111',
+        'site_allowed_setups' => '111111111111111111111111',
+    ] as $key => $mask) {
+        $assert(isset($catalog[$key]), 'Approved additional field missing: ' . $key);
+        foreach ($types as $i => $type) {
+            $assert(llama_place_report_question_applicable(['type' => $type], $key) === ($mask[$i] === '1'),
+                $key . ' does not match workbook for ' . $type);
+        }
+    }
+    // Hike-in Distance is retired despite row 278's Yes mask. Do not revive
+    // duplicate legacy distance fields without explicit owner resolution.
+    foreach ([
+        'double_driveway', 'hike_in_distance_feet', 'trailer_suitable',
+        'warning_motorized_recreation_traffic', 'place_accessible',
+        'approach_access_restrictions',
+    ] as $key) {
+        $assert(!isset($raw[$key]) && !isset($catalog[$key]),
+            'Retired registry field reactivated: ' . $key);
+    }
+    foreach ([
+        'connectivity_starlink_tested', 'connectivity_amazon_leo_tested',
+        'place_reported_operating_status', 'place_closure_reason', 'place_closure_began',
+        'place_expected_reopening', 'place_closure_source_url', 'place_closure_review_date',
+        'place_closure_notes', 'example_key',
+    ] as $key) {
+        $assert(!isset($catalog[$key]), 'Non-question or workflow-only field became an active question: ' . $key);
+    }
+    // Closure reporting has a separate verification workflow; no retirement.
+    $assert(isset($raw['place_reported_operating_status'], $raw['place_closure_reason']),
+        'Closure evidence workflow definitions must remain available');
+});
+
+$check('Owner matrix Facility and Resource definitions rows 295–374 remain correctly scoped', static function () use ($assert): void {
+    require_once dirname(__DIR__) . '/app/resource-experience.php';
+    require_once dirname(__DIR__) . '/app/resource-report-service-questions.php';
+    $catalog = llama_report_questions();
+    $types = array_keys(llama_place_report_place_types());
+    $areaKeys = [
+        'facility_operational_status', 'facility_fee', 'facility_hours', 'facility_seasonal',
+        'facility_lighting', 'facility_maintenance_notes', 'facility_approach_obstacles',
+        'facility_toilet_count', 'facility_accessible_stall', 'facility_handwashing_sink',
+        'facility_sink_running_water', 'facility_soap', 'facility_hand_drying',
+        'facility_restroom_privacy', 'facility_restroom_ventilation',
+        'facility_shower_stalls', 'facility_shower_pressure', 'facility_shower_cost',
+        'facility_timed_shower', 'facility_changing_area', 'facility_accessible_shower',
+        'facility_shower_storage', 'facility_water_year_round',
+        'facility_vehicle_fill_access', 'facility_hose_length', 'facility_water_test_posted',
+        'facility_washer_count', 'facility_dryer_count', 'facility_wash_cost',
+        'facility_dry_cost', 'facility_payment_methods', 'facility_detergent',
+        'facility_dump_rinse_water', 'facility_dump_separate_potable',
+        'facility_dump_rv_access', 'facility_dump_fee', 'facility_pool_heated',
+        'facility_pool_lifeguard', 'facility_pool_depth', 'area_site_count', 'area_surface',
+        'area_night_lighting', 'area_maneuvering_difficulty', 'area_shade', 'area_notes',
+        'facility_accessible', 'facility_cleanliness', 'facility_condition',
+        'facility_dryers_operational', 'facility_hot_water', 'facility_shower_privacy',
+        'facility_washers_operational', 'facility_water_flow', 'facility_water_threaded',
+    ];
+    foreach ($areaKeys as $key) {
+        $assert(isset($catalog[$key]), 'Missing approved Facility/Area field: ' . $key);
+        $assert(($catalog[$key]['report_scopes'] ?? []) === ['area'], 'Facility/Area field leaked into another scope: ' . $key);
+        foreach ($types as $type) {
+            $assert(llama_place_report_question_applicable(['type' => $type], $key),
+                'Facility/Area field incorrectly excluded by parent Place type: ' . $key . ' / ' . $type);
+        }
+    }
+    $serviceKeys = [
+        'service_water_type', 'service_water_key_required', 'service_water_key_type',
+        'service_water_fill_points', 'service_shower_minutes', 'service_toilet_stalls',
+        'service_toilet_urinals', 'service_laundry_machine_types', 'service_fuel_grades',
+        'service_fuel_pumps', 'service_fuel_pay_at_pump', 'service_ice_types',
+        'service_ice_bag_sizes', 'service_ice_self_serve', 'service_dump_hose_provided',
+        'service_propane_method', 'service_propane_staff', 'service_ev_connectors',
+        'service_ev_stalls', 'service_air_cost', 'service_air_gauge',
+        'service_firewood_bundle', 'service_recycling_types', 'service_trash_dumpster',
+        'service_groceries_refrigerated', 'service_access_notes',
+    ];
+    $definitions = llama_resource_service_question_definitions();
+    $assert(array_keys($definitions) === $serviceKeys, 'Approved Resource-only question inventory differs from workbook');
+    $manifest = llama_resource_experience_manifest();
+    $seen = [];
+    foreach ($manifest as $service => $groups) {
+        foreach ($groups as $group => $definition) {
+            foreach ($definition['questions'] as $key => $question) {
+                if (isset($definitions[$key])) {
+                    $seen[$key] = true;
+                    $assert($question['type'] === $definitions[$key][1], 'Resource service type drift: ' . $key);
+                }
+            }
+        }
+    }
+    foreach ($serviceKeys as $key) {
+        $assert(isset($seen[$key]), 'Approved Resource-only question missing from Experience manifest: ' . $key);
+        $assert(!isset($catalog[$key]), 'Resource-only question leaked into Place/Site/Area catalog: ' . $key);
+    }
+    $assert(array_keys($manifest['toilet']) === ['men', 'women', 'all_gender'],
+        'Restroom groups must remain independent');
+    $assert(!isset($catalog['resource_base.name'], $catalog['resource_service.service_type']),
+        'Resource record metadata must not become Scout Report questions');
+});
+
 $check('Canonical field contract', static function () use ($assert): void {
     $issues = llama_place_report_contract_issues();
     $assert(!$issues, 'Contract issues: ' . implode(' | ', array_slice($issues, 0, 12)) . ' (total ' . count($issues) . ')');
