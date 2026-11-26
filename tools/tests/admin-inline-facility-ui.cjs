@@ -50,6 +50,8 @@ const dom = new JSDOM(markup, {
     runScripts: 'outside-only'
 });
 const {window} = dom;
+const runtimeErrors = [];
+window.addEventListener('error', event => runtimeErrors.push(event.error || event.message));
 window.eval(legacyAreas);
 window.eval(tabs);
 window.document.dispatchEvent(new window.Event('DOMContentLoaded'));
@@ -78,5 +80,6 @@ document.querySelector('[data-contribution-mode="facility"]').click();
 assert.equal(editor.hidden, false);
 assert.equal(document.querySelector('[name="selected_facility_id"]').value, 'new');
 
+assert.deepEqual(runtimeErrors, [], 'Resource-only Facility tabs must not invoke uninitialized mapped-Area state');
 dom.window.close();
 console.log('PASS: A Place without Areas opens direct Add Facility with coordinates and 3 working tabs.');
