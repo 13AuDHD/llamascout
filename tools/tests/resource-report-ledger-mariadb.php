@@ -663,13 +663,15 @@ $moderatedForm = static function (string $name, int $parentId = 0): array {
         ]],
     ];
 };
-$newSubmission = static function (string $name) use ($db): int {
+// Pending fixtures must identify their target kind before moderation,
+// just as the real contributor workflow does.
+$newSubmission = static function (string $name, int $parentId = 0) use ($db, $moderatedForm): int {
     $stmt = $db->prepare(
         "INSERT INTO resource_submissions
             (submitted_by,name,form_data,status)
-         VALUES (7,?,'{}','pending')"
+         VALUES (7,?,?,'pending')"
     );
-    $stmt->execute([$name]);
+    $stmt->execute([$name, json_encode($moderatedForm($name, $parentId), JSON_THROW_ON_ERROR)]);
     return (int) $db->lastInsertId();
 };
 $findSubmittedReport = static function (int $id) use ($db): ?array {
@@ -710,7 +712,35 @@ $check((int) $db->query(
 )->fetchColumn() === 3,
     'Actual Resource approval must preserve independent restroom answers and No.');
 
-$facilitySubmission = $newSubmission('Moderated Linked Facility With History');
+$facilitySubmission = $newSubmission('Moderated Linked Facility With History', 42);
+// The pending Facility's identity must survive attempted invalid approval.
+$beforeRejectedFacility = (int) $db->query('SELECT COUNT(*) FROM resources')->fetchColumn();
+$missingParentRejected = false;
+try {
+    llama_resource_review($db, 8, $facilitySubmission,
+        $moderatedForm('Moderated Linked Facility With History'));
+} catch (InvalidArgumentException $error) {
+    $missingParentRejected = str_contains($error->getMessage(), 'Parent Place');
+}
+$check($missingParentRejected
+    && (int) $db->query('SELECT COUNT(*) FROM resources')->fetchColumn() === $beforeRejectedFacility
+    && $findSubmittedReport($facilitySubmission) === null
+    && (string) $db->query('SELECT status FROM resource_submissions WHERE id=' . $facilitySubmission)->fetchColumn() === 'pending',
+    'Facility approval without a parent must preserve pending identity and make no writes.');
+$db->exec("UPDATE places SET status='archived' WHERE id=42");
+$inactiveParentRejected = false;
+try {
+    llama_resource_review($db, 8, $facilitySubmission,
+        $moderatedForm('Moderated Linked Facility With History', 42));
+} catch (InvalidArgumentException $error) {
+    $inactiveParentRejected = str_contains($error->getMessage(), 'Parent Place');
+} finally {
+    $db->exec("UPDATE places SET status='active' WHERE id=42");
+}
+$check($inactiveParentRejected
+    && (int) $db->query('SELECT COUNT(*) FROM resources')->fetchColumn() === $beforeRejectedFacility
+    && $findSubmittedReport($facilitySubmission) === null,
+    'Approval must reject an archived Facility parent before publication.');
 $facilityId = llama_resource_review(
     $db, 8, $facilitySubmission,
     $moderatedForm('Moderated Linked Facility With History', 42), 'Approved Facility'
@@ -736,9 +766,9 @@ file_put_contents($sourceAbsolute, base64_decode(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9boWfrAAAAAASUVORK5CYII='
 ));
 $db->prepare('UPDATE resource_submissions SET form_data = ? WHERE id = ?')
-    ->execute([json_encode(['_photos' => [
+    ->execute([json_encode(array_replace($moderatedForm('Moderated Photo Evidence'), ['_photos' => [
         ['path' => $sourceRelative, 'alt' => 'Moderated photo'],
-    ]], JSON_THROW_ON_ERROR), $photoSubmission]);
+    ]]), JSON_THROW_ON_ERROR), $photoSubmission]);
 $photoResourceId = llama_resource_review(
     $db, 8, $photoSubmission, $moderatedForm('Moderated Photo Evidence')
 );
@@ -1087,14 +1117,16 @@ $makeFacilitySubmissionPhoto = static function (
     if (file_put_contents($root . $path, $photoFixturePng) === false) {
         throw new RuntimeException('Could not create disposable linked-Facility photo evidence.');
     }
+    $pending = $db->prepare('SELECT form_data FROM resource_submissions WHERE id = ?');
+    $pending->execute([$submissionId]);
+    $payload = json_decode((string) $pending->fetchColumn(), true, 512, JSON_THROW_ON_ERROR);
+    $payload['_photos'] = [['path' => $path, 'alt' => $alt]];
     $db->prepare('UPDATE resource_submissions SET form_data = ? WHERE id = ?')
-        ->execute([json_encode(['_photos' => [
-            ['path' => $path, 'alt' => $alt],
-        ]], JSON_THROW_ON_ERROR), $submissionId]);
+        ->execute([json_encode($payload, JSON_THROW_ON_ERROR), $submissionId]);
     return $path;
 };
 
-$linkedPhotoSubmissionId = $newSubmission('Linked Facility Approved Photo');
+$linkedPhotoSubmissionId = $newSubmission('Linked Facility Approved Photo', 42);
 $linkedPhotoSource = $makeFacilitySubmissionPhoto(
     $linkedPhotoSubmissionId, 'facility-approved.png', 'Approved Facility evidence'
 );
@@ -1142,7 +1174,7 @@ $check(($linkedPhotoSnapshot['file_sha256'] ?? null)
     )->fetchColumn() === $linkedSiblingGalleryBefore,
     'Facility photo ledger must hash real permanent evidence and not copy photos to siblings.');
 
-$collisionFacilitySubmission = $newSubmission('Linked Facility Photo Collision Rollback');
+$collisionFacilitySubmission = $newSubmission('Linked Facility Photo Collision Rollback', 42);
 $collisionFacilitySource = $makeFacilitySubmissionPhoto(
     $collisionFacilitySubmission, 'collision.png', 'Rollback Facility evidence'
 );

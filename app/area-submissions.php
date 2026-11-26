@@ -80,7 +80,7 @@ function llama_area_coordinates_normalize(mixed $raw): string
  * One canonical Area payload validator for existing Places AND an Area
  * bundled into a pending new Place. No map coordinates are ever required.
  */
-function llama_area_submission_prepare_bundle(array $input): array
+function llama_area_submission_prepare_bundle(array $input, bool $strictApproval = false): array
 {
     $type = trim((string) ($input['area_feature_type'] ?? $input['feature_type'] ?? ''));
     $name = trim((string) ($input['area_name'] ?? ''));
@@ -111,6 +111,9 @@ function llama_area_submission_prepare_bundle(array $input): array
     $answers = [];
     foreach (array_unique(array_merge(array_keys($inputAnswers), array_keys($unknown))) as $key) {
         if (!is_string($key) || !isset($fields[$key])) {
+            if ($strictApproval) {
+                throw new InvalidArgumentException('A pending Area answer no longer applies to the selected Area or Facility kind. Review the submission before approval.');
+            }
             continue;
         }
         $raw = !empty($unknown[$key])
@@ -118,6 +121,8 @@ function llama_area_submission_prepare_bundle(array $input): array
         $parsed = llama_place_report_parse_answer($fields[$key], $raw);
         if ($parsed['state'] !== 'unanswered') {
             $answers[$key] = $raw;
+        } elseif ($strictApproval) {
+            throw new InvalidArgumentException('A pending Area answer is no longer valid. Review the submission before approval.');
         }
     }
     if (strlen(json_encode($answers, JSON_THROW_ON_ERROR)) > 50000) {
@@ -133,7 +138,7 @@ function llama_area_submission_prepare_bundle(array $input): array
 }
 
 /** Existing Place parent validation uses the exact same Area payload. */
-function llama_area_submission_prepare(PDO $db, array $input): array
+function llama_area_submission_prepare(PDO $db, array $input, bool $strictApproval = false): array
 {
     $placeId = (int) ($input['area_place_id'] ?? 0);
     if ($placeId < 1) {
@@ -148,7 +153,7 @@ function llama_area_submission_prepare(PDO $db, array $input): array
     }
     return [
         'place_id' => $placeId, 'place_name' => (string) $place['name'],
-    ] + llama_area_submission_prepare_bundle($input);
+    ] + llama_area_submission_prepare_bundle($input, $strictApproval);
 }
 
 /** Approved unmapped Area. Caller owns the existing database transaction. */
@@ -164,7 +169,7 @@ function llama_area_publish_unmapped(
         'area_facility_kind' => $bundle['facility_kind'] ?? '',
         'area_answers' => $bundle['answers'] ?? [],
         'area_coordinates' => $bundle['coordinates'] ?? '',
-    ]);
+    ], true);
     $stmt = $db->prepare('SELECT COALESCE(MAX(sort_order),0)+10
         FROM place_map_features WHERE place_id = ?');
     $stmt->execute([$placeId]);
@@ -276,7 +281,9 @@ function llama_area_submission_moderate(
                 'area_answers' => $hasEnvelope ? $saved['answers'] : $saved,
                 'area_coordinates' => $hasEnvelope ? ($saved['coordinates'] ?? '') : '',
             ];
-            $data = llama_area_submission_prepare($db, $payload);
+            // Strict validation must happen before the normal parser can
+            // filter a stale pending observation out of the saved payload.
+            $data = llama_area_submission_prepare($db, $payload, true);
             $featureId = llama_area_publish_unmapped(
                 $db, $data['place_id'], (int) $item['submitted_by'],
                 $reviewerId, $data

@@ -346,6 +346,33 @@ function llama_resource_submit(
     }
 }
 
+/**
+ * A moderation decision is for the pending contribution's target kind.
+ * A moderator can correct the parent of a Facility, but must not silently
+ * turn that Facility into an off-site Resource (or the reverse).
+ * Older update payloads lacking the parent key inherit the locked record.
+ */
+function llama_resource_review_parent_id(array $pending, array $approved, array $current = []): int
+{
+    $parse = static function (mixed $raw): int {
+        if ($raw === null || $raw === '') { return 0; }
+        if ((!is_int($raw) && !is_string($raw))
+            || filter_var($raw, FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]) === false) {
+            throw new InvalidArgumentException('Select a valid Parent Place.');
+        }
+        return (int) $raw;
+    };
+    $expected = $parse(array_key_exists('parent_place_id', $pending)
+        ? $pending['parent_place_id'] : ($current['parent_place_id'] ?? 0));
+    $selected = $parse($approved['parent_place_id'] ?? 0);
+    if (($expected > 0) !== ($selected > 0)) {
+        throw new InvalidArgumentException($expected > 0
+            ? 'This Facility requires a Parent Place. Select one before approval.'
+            : 'This Resource submission is not a Facility. Review its contribution type before approval.');
+    }
+    return $selected;
+}
+
 function llama_resource_review(
     PDO $db,
     int $actorId,
@@ -386,6 +413,7 @@ function llama_resource_review(
         $targetId = (int) $submission['target_resource_id'];
         $resourceId = null;
         if ($approvedInput !== null) {
+            $current = [];
             if ($targetId > 0) {
                 $lock = $db->prepare('SELECT id FROM resources WHERE id = ? FOR UPDATE');
                 $lock->execute([$targetId]);
@@ -394,6 +422,18 @@ function llama_resource_review(
                     throw new InvalidArgumentException('The Resource changed since submission. Review the current record before making any edits.');
                 }
             }
+            $parentId = llama_resource_review_parent_id($reviewData, $approvedInput, $current);
+            if ($parentId > 0) {
+                // Recheck at approval, even if the contributor's parent was
+                // available when submitted. Keep this lock through publication.
+                $parent = $db->prepare('SELECT id FROM places WHERE id = ?
+                    AND status IN ("active", "featured") LIMIT 1 FOR UPDATE');
+                $parent->execute([$parentId]);
+                if (!$parent->fetchColumn()) {
+                    throw new InvalidArgumentException('The selected Parent Place is no longer available. Review the Facility before approval.');
+                }
+            }
+            $approvedInput['parent_place_id'] = $parentId;
             $resourceId = admin_resource_save($db, $actorId, $targetId, $approvedInput);
             if ($targetId === 0) {
                 $author = $db->prepare('UPDATE resources SET created_by = ? WHERE id = ?');
