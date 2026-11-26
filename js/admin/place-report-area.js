@@ -98,13 +98,6 @@
                 || !group.querySelector('[data-area-question]:not([hidden])');
         }
     };
-    areaShell?.addEventListener('llama:contribution-mode', () => {
-        syncAreaMode();
-        syncFacilityQuestions(selector.value);
-    });
-    facilityKindControl?.addEventListener('change', () => {
-        syncFacilityQuestions(selector.value);
-    });
     const fieldKeys = new Set(Array.isArray(catalog.field_keys) ? catalog.field_keys : []);
     const controls = new Map();
     for (const control of form.elements) {
@@ -731,6 +724,16 @@
             block: 'start'
         });
     };
+
+    // Register the mapped-Area listeners only after all state is initialized.
+    // Resource-only pages return earlier and must not call the legacy reader.
+    areaShell?.addEventListener('llama:contribution-mode', () => {
+        syncAreaMode();
+        syncFacilityQuestions(selector.value);
+    });
+    facilityKindControl?.addEventListener('change', () => {
+        syncFacilityQuestions(selector.value);
+    });
 
     queueMicrotask(
         openRequestedReportTarget
