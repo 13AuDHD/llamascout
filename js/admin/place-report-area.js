@@ -19,6 +19,7 @@
     const areas = Array.isArray(catalog.areas) ? catalog.areas : [];
     const facilityPanel = form.querySelector('[data-admin-facility-questions]');
     const facilityFields = [...form.querySelectorAll('[data-area-question]')];
+    const facilityKindControl = form.querySelector('[data-admin-facility-kind]');
     const areasById = new Map(areas.map(area => [String(area.id), area]));
     const isModernFacility = value =>
         String(value) === 'new' || /^resource:[1-9][0-9]*$/.test(String(value));
@@ -55,7 +56,12 @@
         if (!areas.length || isModernFacility(selector.value)) return;
         if (!allowed.has(selector.value)) {
             selector.value = String(areas[0].id);
+        }
+        // A valid preselected option still needs its initial answer load.
+        if (selector.value !== selected) {
             selector.dispatchEvent(new Event('change', {bubbles: true}));
+        } else {
+            target.value = selected;
         }
     };
     // The same server-verified Area classification controls what can be
@@ -73,8 +79,12 @@
         if (allowedFeatures.length) {
             return allowedFeatures.includes(String(area.feature_type || ''));
         }
+        // The metadata editor owns the current draft kind. Use the same
+        // prospective kind that the server will verify after metadata save.
+        const kind = facilityKindControl && String(areaId) === String(selector.value)
+            ? facilityKindControl.value : (area.facility_kind || '');
         return area.feature_type === 'facility_area'
-            && allowedKinds.includes(String(area.facility_kind || ''));
+            && allowedKinds.includes(String(kind));
     };
     const syncFacilityQuestions = areaId => {
         const visible = currentMode() && areasById.has(String(areaId));
@@ -90,6 +100,9 @@
     };
     areaShell?.addEventListener('llama:contribution-mode', () => {
         syncAreaMode();
+        syncFacilityQuestions(selector.value);
+    });
+    facilityKindControl?.addEventListener('change', () => {
         syncFacilityQuestions(selector.value);
     });
     const fieldKeys = new Set(Array.isArray(catalog.field_keys) ? catalog.field_keys : []);
@@ -332,10 +345,7 @@
                         if (
                             value === ''
                             || value === null
-                            || (
-                                Array.isArray(value)
-                                && value.length === 0
-                            )
+                            || value === '__LLAMA_UNANSWERED__'
                         ) {
                             delete newBaseline[key];
                         } else {
@@ -351,6 +361,10 @@
 
                     dirty =
                         false;
+                    const area = areasById.get(selected);
+                    if (area && facilityKindControl && area.feature_type === 'facility_area') {
+                        area.facility_kind = facilityKindControl.value;
+                    }
                 }
 
                 write(
@@ -366,6 +380,7 @@
             pendingChanges = null;
             answersField.value = '';
             target.value = selected;
+            syncFacilityQuestions(selected);
         };
 
     selector.addEventListener(
