@@ -11,8 +11,6 @@ function llama_place_report_apply_parking_profiles(
     $travelCenterNotApplicable = [
         'vehicle_capacity',
         'tree_cover',
-        'road_surface',
-        'road_width',
         'environment_water_nearby',
         'environment_wildlife',
         'environment_bugs',
@@ -30,12 +28,7 @@ function llama_place_report_apply_parking_profiles(
         'warning_motorized_recreation_traffic',
         'warning_blind_turn_traffic_nearby',
         'road_exposure',
-        'best_months',
         'winter_access',
-        'hurricane_risk',
-        'snow_risk',
-        'mud_season_risk',
-        'monsoon_risk',
         'seasonal_access_note',
         'dispersed_camping_allowed',
         'collecting_firewood',
@@ -94,7 +87,7 @@ function llama_place_report_apply_parking_profiles(
     llama_place_report_append_applicable(
         $fields,
         [
-                'tree_cover',
+            'tree_cover',
             'environment_wildlife',
             'environment_bugs',
             'critter_activity',
@@ -120,14 +113,7 @@ function llama_place_report_apply_parking_profiles(
     llama_place_report_append_applicable(
         $fields,
         [
-            'best_months',
             'winter_access',
-            'mud_season_risk',
-            'snow_risk',
-            'monsoon_risk',
-            'tornado_risk',
-            'hurricane_risk',
-            'heat_season_risk',
             'seasonal_access_note',
         ],
         [[
