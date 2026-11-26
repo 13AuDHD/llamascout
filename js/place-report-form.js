@@ -609,7 +609,11 @@ const controls = [
 ];
 
 if (!controls.length) {
+try {
+return JSON.parse(form.dataset.reportContext || '{}')[fieldKey] ?? '';
+} catch (_) {
 return '';
+}
 }
 
 const radios =
@@ -978,7 +982,7 @@ sections.forEach(section => {
 const wrappers = [...section.querySelectorAll('[data-report-field], [data-report-compound-question]')];
 if (!wrappers.length) return;
 const standalone = section.querySelector(
-'.add-place-coordinate-field, .add-place-locate-panel, .add-place-photo-upload, [data-place-report-photos], [data-admin-site-picker]'
+'.add-place-coordinate-field, .add-place-locate-panel, .add-place-photo-upload, [data-place-report-photos], [data-admin-site-picker], [data-site-parent-picker], [name="site_name"]'
 );
 const allowed = !!standalone || wrappers.some(wrapper => !wrapper.hidden);
 section.hidden = !allowed;
