@@ -210,11 +210,6 @@
 .contribution-type-intro[data-contribution-intro-mode="resource"] {
     --intro-color: var(--resource-accent);
 }
-.contribution-type-intro h2 {
-    margin: 0 0 6px;
-    font-size: 1.1rem;
-    font-weight: 750;
-}
 .contribution-type-intro p {
     margin: 0;
     line-height: 1.5;
