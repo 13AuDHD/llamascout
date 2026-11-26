@@ -85,17 +85,28 @@ function llama_new_place_assert_single_target_input(array $input): void
     }
 }
 
+/**
+ * Canonical inventory for a new standalone Place contribution. Shared
+ * historical Rule answers can still inherit, but their editing UI belongs
+ * to Site. Do not penalize a Place contributor for those absent questions.
+ * Visit date is required external submission provenance, not a Site write.
+ */
+function llama_new_place_completion_fields(): array
+{
+    return array_filter(llama_report_questions(), static fn (array $field, string $key): bool =>
+        $key === 'visited_at' || (
+            in_array('place', (array) ($field['report_scopes'] ?? []), true)
+            && empty($field['pricing_managed'])
+            && ($field['approved_question_group'] ?? '') !== 'rules_public'
+        ), ARRAY_FILTER_USE_BOTH);
+}
+
 /** Place-only pending reports retain visit-date provenance and photo evidence. */
 function llama_new_place_completion_summary(array $input, int $photoCount, bool $placeOnly): array
 {
-    $excluded = [];
-    if ($placeOnly) {
-        foreach (llama_report_questions() as $key => $field) {
-            if ($key !== 'visited_at' && !in_array('place', (array) ($field['report_scopes'] ?? []), true)) {
-                $excluded[] = $key;
-            }
-        }
-    }
+    $excluded = $placeOnly
+        ? array_keys(array_diff_key(llama_report_questions(), llama_new_place_completion_fields()))
+        : [];
     return llama_place_report_question_completion_summary($input, $photoCount, $excluded);
 }
 
