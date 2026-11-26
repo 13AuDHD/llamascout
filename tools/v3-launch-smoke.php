@@ -3425,6 +3425,34 @@ $check('Scoped Update uses effective parent answers and proposed changes', stati
     $assert($effective['pets_allowed'] === '1', 'Validation must not mutate effective context');
 });
 
+$check('Admin Site saves respect actual prospective dependencies and bulk protections', static function () use ($assert): void {
+    require_once dirname(__DIR__) . '/app/admin-place-sites.php';
+    $yes = ['type' => 'developed-campground', 'amenity_wifi' => '1', 'pets_allowed' => '1'];
+    $no = array_replace($yes, ['amenity_wifi' => '0', 'pets_allowed' => '0']);
+    $proposed = ['site_wifi_rating' => '4'];
+    $assert(admin_place_plan_bulk_site_answers($yes, [], [], $proposed, false, 'Site A') === $proposed,
+        'Eligible bulk observation must be retained');
+    $assert(admin_place_plan_bulk_site_answers($no, [], $proposed, $proposed, false, 'Site B') === [],
+        'Protected imported answer is not an intended bulk write');
+    $assert(admin_place_plan_bulk_site_answers($no, $proposed, [], $proposed, false, 'Site B') === [],
+        'Protected override is not an intended bulk write');
+    $assert(admin_place_plan_bulk_site_answers($no, [], [], ['dogs_required_to_be_leashed' => '1', 'pets_allowed' => '1'], true, 'Site B')
+        === ['dogs_required_to_be_leashed' => '1', 'pets_allowed' => '1'], 'Parent proposal must be evaluated before child regardless of order');
+    foreach ([
+        [$no, [], [], $proposed],
+        [$yes, [], [], ['dogs_required_to_be_leashed' => '1', 'pets_allowed' => '0']],
+        [array_replace($yes, ['type' => 'public-parking']), [], [], $proposed],
+        [$no, [], $proposed, $proposed],
+    ] as [$effective, $existing, $imported, $answers]) {
+        $rejected = false;
+        try { admin_place_plan_bulk_site_answers($effective, $existing, $imported, $answers, true, 'Site B'); }
+        catch (InvalidArgumentException $exception) { $rejected = str_contains($exception->getMessage(), 'Site B'); }
+        $assert($rejected, 'Inapplicable intended bulk write must fail with target label');
+    }
+    admin_place_assert_answer_applicability($no, ['site_wifi_rating'], true, 'Site B');
+    $assert($no['amenity_wifi'] === '0', 'Applicability must not change recorded history');
+});
+
 $check('Canonical field contract', static function () use ($assert): void {
     $issues = llama_place_report_contract_issues();
     $assert(!$issues, 'Contract issues: ' . implode(' | ', array_slice($issues, 0, 12)) . ' (total ' . count($issues) . ')');

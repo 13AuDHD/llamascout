@@ -1559,7 +1559,7 @@
             }
             const mode = overwriteToggle?.checked ? 'OVERWRITE existing answers' : 'fill unanswered fields only';
             const preview = keys.map(key => `${key}: ${String(answers[key])}`).join('\n');
-            if (!window.confirm(`Apply ${keys.length} answer(s) to up to ${campsiteSites.length} Sites?\nMode: ${mode}\n\n${preview}\n\nThis action updates individual Site records.`)) {
+            if (!window.confirm(`Apply ${keys.length} answer(s) to up to ${campsiteSites.length} Sites?\nMode: ${mode}\n\n${preview}\n\nThis action updates individual Site records. If any intended write does not apply to its Site, the entire batch is rejected.`)) {
                 return;
             }
             bulkPayload = JSON.stringify({answers, overwrite: Boolean(overwriteToggle?.checked)});
@@ -1617,6 +1617,20 @@
             // a Place-only save through that stale Site target.
             const mode = activeReportMode();
             saveData.set('admin_report_mode', mode);
+            // Never trust a lingering hidden input to enable the override.
+            // Bulk saves always use normal applicability, even if toggled on.
+            saveData.delete('admin_applicability_override');
+            if (showInapplicable && !bulkPayload && (mode === 'place' || mode === 'site')) {
+                saveData.set('admin_applicability_override', '1');
+            }
+            if (mode === 'place' && !showInapplicable) {
+                form.querySelectorAll('[data-report-field].is-applicability-hidden, [data-report-compound-question].is-applicability-hidden')
+                    .forEach(wrapper => {
+                        for (const control of wrapper.querySelectorAll('[name]')) {
+                            if (control.name) saveData.delete(control.name);
+                        }
+                    });
+            }
             if (mode !== 'facility') {
                 // An old Area payload must not be saved while editing Place
                 // or Site, even if the selector keeps a previous value.

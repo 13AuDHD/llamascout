@@ -185,10 +185,17 @@ function admin_place_save_shared_report(PDO $db, int $actorUserId, int $placeId,
         $changedKeys = llama_place_report_changed_keys(
             $baseData, $reportData, array_keys($placeLevelInput)
         );
+        $override = (string) ($input['admin_applicability_override'] ?? '') === '1';
+        $effective = llama_place_report_form_input_from_data($reportData);
+        $newKeys = array_values(array_filter($changedKeys, static fn ($key): bool =>
+            llama_place_report_answer_state($reportData, $key) !== 'unanswered'
+        ));
+        admin_place_assert_answer_applicability($effective, $newKeys, $override, 'this Place');
         admin_place_save_report_metadata($db, $placeId, $place, $input);
         llama_place_report_publish_data($db, $placeId, $reportData, $changedKeys);
         admin_users_audit($db, $actorUserId, null, 'place.shared_report_updated',
-            'Updated the shared Place Report.', ['place_id' => $placeId, 'field_keys' => $changedKeys]);
+            'Updated the shared Place Report.', ['place_id' => $placeId, 'field_keys' => $changedKeys,
+                'applicability_override' => $override]);
         if ($ownsTransaction) { $db->commit(); }
         return $reportData;
     } catch (Throwable $exception) {
