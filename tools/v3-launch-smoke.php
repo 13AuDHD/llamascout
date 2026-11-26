@@ -3620,7 +3620,8 @@ $check('Guided Place inline answer help and outer-only accent', static function 
     $form = file_get_contents($root . '/partials/place-report/form.php');
     $css = file_get_contents($root . '/css/site/features/place-report-form.css');
     $pageCss = file_get_contents($root . '/css/site/pages/add-place.css');
-    $assert(substr_count($form, 'class="scout-card-answer-help"') === 2
+    $assert(substr_count($form, 'class="scout-card-answer-help"') === 1
+        && str_contains($form, 'class="scout-card-unknown-label">Unknown</span>')
         && str_contains($form, 'class="add-place-radio-help'),
         'Guided inline descriptions and full-view help must both exist');
     $assert(str_contains($css, '.place-report-form.is-scout-card-view .add-place-radio-help')
@@ -3628,6 +3629,12 @@ $check('Guided Place inline answer help and outer-only accent', static function 
         'Guided mode must move help into answer rows');
     $assert(str_contains($pageCss, '.place-report-form:not(.is-scout-card-view) > [data-report-main-section] > .contribution-section-body > .contribution-section {'),
         'Nested section accents must exclude guided cards');
+});
+
+$check('Contribution intro boxes contain descriptions only', static function () use ($assert): void {
+    $intro = file_get_contents(dirname(__DIR__) . '/partials/place-report/contribution-tabs.php');
+    $assert(!str_contains($intro, '<h2>') && substr_count($intro, "'description' =>") === 4,
+        'All four shared intro descriptions must remain without duplicate headings');
 });
 
 $check('Canonical field contract', static function () use ($assert): void {
