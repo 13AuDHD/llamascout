@@ -192,6 +192,35 @@ function llama_place_report_apply_common_applicability(
     $types =
         llama_place_report_applicability_types();
 
+    // Owner-completed Question Matrix, rows 8 and 25. These are type
+    // filters only, not assumptions about camping permission or site counts.
+    llama_place_report_set_applicable(
+        $fields,
+        ['campsite_count'],
+        [[
+            'field' => 'type',
+            'operator' => 'in',
+            'value' => [
+                'dispersed-camping', 'developed-campground', 'camping-area',
+                'rv-park-resort', 'day-use', 'fairgrounds',
+                'membership-host', 'private-property', 'other',
+            ],
+        ]]
+    );
+
+    llama_place_report_set_applicable(
+        $fields,
+        ['region'],
+        [[
+            'field' => 'type',
+            'operator' => 'in',
+            'value' => [
+                'dispersed-camping', 'developed-campground', 'camping-area',
+                'vehicle-pulloff', 'trailhead', 'day-use', 'other',
+            ],
+        ]]
+    );
+
     llama_place_report_set_applicable(
         $fields,
         [

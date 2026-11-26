@@ -9,7 +9,6 @@ function llama_place_report_apply_parking_profiles(
         llama_place_report_applicability_types();
 
     $travelCenterNotApplicable = [
-        'region',
         'vehicle_capacity',
         'tree_cover',
         'road_surface',
@@ -48,7 +47,6 @@ function llama_place_report_apply_parking_profiles(
         'existing_sites_encouraged',
         'pack_it_in_pack_it_out',
         'current_fire_restrictions_url',
-        'nearest_fuel',
         'experience_sunrise_view',
         'experience_sunset_view',
         'experience_overall_scenery',
@@ -96,8 +94,7 @@ function llama_place_report_apply_parking_profiles(
     llama_place_report_append_applicable(
         $fields,
         [
-            'region',
-            'tree_cover',
+                'tree_cover',
             'environment_wildlife',
             'environment_bugs',
             'critter_activity',

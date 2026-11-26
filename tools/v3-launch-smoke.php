@@ -388,7 +388,9 @@ $check('Reported Total Sites is a shared Place question', static function () use
     $assert(!in_array('site', (array) ($field['report_scopes'] ?? []), true), 'Reported Total Sites leaked into individual Sites');
     $assert(($field['approved_report_page'] ?? '') === 'place', 'Reported Total Sites is missing from the Place page');
     $assert(($field['layout_section'] ?? '') === 'place' && ($field['layout_group'] ?? '') === 'information_location', 'Reported Total Sites is not routed to Place information');
-    $assert((array) ($field['applicable_if'] ?? []) === [], 'Reported Total Sites depends on a Place Type');
+    // Owner matrix row 8 supersedes the earlier all-type requirement.
+    $assert(llama_place_report_question_applicable(['type' => 'day-use'], 'campsite_count'), 'Day-use must allow Reported Total Sites');
+    $assert(!llama_place_report_question_applicable(['type' => 'truck-stop'], 'campsite_count'), 'Truck stop must not ask Reported Total Sites');
     $assert(array_slice((array) (llama_place_report_approved_question_groups()['basic'][1] ?? []), 0, 3) === ['type', 'name', 'campsite_count'], 'Reported Total Sites must remain after Place name');
     $assert(llama_place_report_approved_registry_issues() === [], 'Approved question inventory integrity failed');
 });
@@ -2628,6 +2630,31 @@ $check('Parent-child visibility active across canonical forms and public Site re
     $assert(strpos($detail, "report_inapplicable_keys") !== false
         && strpos($sites, "inapplicable.has(key)") !== false,
         'Site switching does not reevaluate canonical child question visibility');
+});
+
+$check('Owner matrix basic and nearest-service Place type applicability', static function () use ($assert): void {
+    // Question Matrix rows 8, 20, 25 and 89–97; all 24 current types.
+    $allTypes = array_keys(llama_place_report_place_types());
+    $assert(count($allTypes) === 24, 'Review matrix when Place type taxonomy changes');
+    $counts = ['dispersed-camping', 'developed-campground', 'camping-area',
+        'rv-park-resort', 'day-use', 'fairgrounds', 'membership-host',
+        'private-property', 'other'];
+    $regions = ['dispersed-camping', 'developed-campground', 'camping-area',
+        'vehicle-pulloff', 'trailhead', 'day-use', 'other'];
+    $always = ['city', 'nearest_town', 'nearest_fuel', 'nearest_ev_charging',
+        'nearest_propane', 'nearest_alcohol_sales', 'nearest_grocery',
+        'nearest_water', 'nearest_toilet', 'nearest_hospital'];
+    foreach ($allTypes as $type) {
+        $input = ['type' => $type];
+        foreach (['campsite_count' => $counts, 'region' => $regions] as $key => $allowed) {
+            $assert(llama_place_report_question_applicable($input, $key) === in_array($type, $allowed, true),
+                $key . ' does not match matrix for ' . $type);
+        }
+        foreach ($always as $key) {
+            $assert(llama_place_report_question_applicable($input, $key),
+                $key . ' must be applicable for ' . $type);
+        }
+    }
 });
 
 $check('Canonical field contract', static function () use ($assert): void {
