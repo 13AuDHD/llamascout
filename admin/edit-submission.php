@@ -300,9 +300,9 @@ if (
 $placeReportMode =
     'moderator';
 $placeReportOnlyScope = ($data['_submission_target_kind'] ?? '') === 'place' ? 'place' : '';
-if ($placeReportOnlyScope === 'place') {
+$placeReportNewPlaceOnly = $placeReportOnlyScope === 'place';
+if ($placeReportNewPlaceOnly) {
     $placeReportExternalFieldKeys = ['visited_at'];
-    $placeReportContextKeys = ['visited_at'];
 }
 
 $placeReportExistingPhotos =
@@ -419,6 +419,14 @@ $placeReportPhotoHelp =
                 'UTF-8'
             ) ?>"
         >
+
+        <?php if ($placeReportNewPlaceOnly): ?>
+            <label class="contribution-field">
+                <span class="place-report-field-label">Date visited *</span>
+                <input type="date" name="visited_at" required
+                    value="<?= htmlspecialchars((string) ($placeReportValues['visited_at'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+            </label>
+        <?php endif; ?>
 
         <input
             type="hidden"
