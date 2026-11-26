@@ -300,6 +300,17 @@ if (
 $placeReportBrowserFields = [];
 
 $placeReportSchemaFields = $placeReportFields;
+// A standalone new Place has the same scored inventory in the form and
+// moderation, including visit date rendered by the calling page. This
+// affects schema/completion only, never the writable scope or layout.
+if (!empty($placeReportNewPlaceOnly)) {
+    $placeReportSchemaFields = llama_new_place_completion_fields();
+    // External visit date is not part of an accordion's local progress.
+    if (isset($placeReportSchemaFields['visited_at'])) {
+        $placeReportSchemaFields['visited_at']['layout_section'] = '';
+        $placeReportSchemaFields['visited_at']['layout_group'] = '';
+    }
+}
 // Read-only parent definitions enable dependency evaluation, not controls or scoring.
 foreach ((array) ($placeReportContextKeys ?? []) as $contextKey) {
     $contextField = llama_report_questions()[$contextKey] ?? null;
