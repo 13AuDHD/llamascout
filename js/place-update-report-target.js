@@ -215,7 +215,9 @@
     const unknown = '__LLAMA_UNKNOWN__';
     let activeTarget = '';
     let context = {direct: {}, inherited: {}};
+    let contextReady = false;
     let loadSequence = 0;
+    const definitions = new Map(fields.map(field => [field.key, field]));
 
     function eligible(f) {
         if (f.derived || f.location || f.excluded
@@ -607,6 +609,7 @@
 
     async function loadContext(target) {
         const sequence = ++loadSequence;
+        contextReady = false;
         context = {direct: {}, inherited: {}};
         showExisting();
 
@@ -632,6 +635,7 @@
                 direct: data.direct || {},
                 inherited: data.inherited || {}
             };
+            contextReady = true;
             identityCurrent = data.site_identity || {};
             showSiteIdentity(target);
 
@@ -640,6 +644,7 @@
         } catch (_) {
             if (sequence === loadSequence) {
                 status.textContent = 'Existing answers could not be loaded. Please retry before submitting.';
+                contextReady = false;
                 context = {direct: {}, inherited: {}};
                 identityCurrent = {};
                 showSiteIdentity(target);
@@ -648,18 +653,66 @@
         }
     }
 
+    // Evaluate canonical rules against effective target answers plus this
+    // target's draft. The full registry supplies read-only parent definitions.
+    function applicabilityValue(key) {
+        const field = definitions.get(key);
+        if (!field) return undefined;
+        if (values.has(key) && eligible(field)) {
+            return normalizedControlValue(field, values.get(key));
+        }
+        const reference = currentReference(field);
+        return reference ? normalizedControlValue(field, reference.value) : undefined;
+    }
+
+    function ruleMatches(rule, visited) {
+        const operator = rule.operator || 'equals';
+        if (operator === 'any' || operator === 'all') {
+            const nested = Array.isArray(rule.rules) ? rule.rules : [];
+            return nested.length > 0 && (operator === 'any'
+                ? nested.some(item => ruleMatches(item, visited))
+                : nested.every(item => ruleMatches(item, visited)));
+        }
+        const key = String(rule.field || '');
+        const parent = definitions.get(key);
+        if (!parent || (key !== 'type' && !applicable(parent, visited))) return false;
+        const value = applicabilityValue(key);
+        const actual = Array.isArray(value) ? value.map(String) : [String(value ?? '')];
+        const expected = Array.isArray(rule.value) ? rule.value.map(String) : [String(rule.value ?? '')];
+        const truthy = actual.some(v => !['', '0', 'false', '__llama_unknown__', '__llama_unanswered__'].includes(v.toLowerCase()));
+        switch (operator) {
+            case 'equals': return actual.includes(expected[0]);
+            case 'not_equals': return !actual.includes(expected[0]);
+            case 'in': return actual.some(v => expected.includes(v));
+            case 'not_in': return actual.every(v => !expected.includes(v));
+            case 'truthy': return truthy;
+            case 'falsy': return !truthy;
+            case 'answered':
+                if (value === undefined || value === '__LLAMA_UNANSWERED__') return false;
+                if (value === unknown) return true;
+                if (parent.type === 'checkbox') return actual.includes('1');
+                if (Array.isArray(value)) return true;
+                return String(value ?? '').trim().length >= Math.max(1, Number(parent.min_characters || 0));
+            default: return false;
+        }
+    }
+
+    function applicable(field, visited = new Set()) {
+        if (!field || field.derived || visited.has(field.key)) return false;
+        const next = new Set(visited);
+        next.add(field.key);
+        return (field.applicable_if || []).every(rule => ruleMatches(rule, next));
+    }
+
     function applyDependencies() {
-        // Issue #5 reconciliation mode: expose all eligible scoped questions.
-        // Keep eligibility, target ownership, and answer persistence unchanged.
         for (const f of fields.filter(eligible)) {
             const card = [...questions.querySelectorAll('[data-scoped-question]')]
                 .find(el => el.dataset.scopedQuestion === f.key);
-
             if (!card) continue;
-
-            card.hidden = false;
-
-            for (const input of scopedControls(card)) input.disabled = false;
+            const allowed = contextReady && applicable(f);
+            card.hidden = !allowed;
+            card.classList.toggle('is-applicability-hidden', !allowed);
+            for (const input of scopedControls(card)) input.disabled = !allowed;
         }
 
         sync();
@@ -764,11 +817,13 @@
             if (scoped) {
                 // Clear the previous target's reference context before
                 // rendering. The asynchronous response may not have arrived yet.
+                contextReady = false;
                 context = {direct: {}, inherited: {}};
                 render();
                 loadContext(t);
             } else {
                 ++loadSequence;
+                contextReady = false;
                 context = {direct: {}, inherited: {}};
                 questions.replaceChildren();
             }
@@ -802,6 +857,11 @@
         }
 
         if (t.scope !== 'place') {
+            if (!contextReady) {
+                event.preventDefault();
+                status.textContent = 'Wait for the selected target details to load or select the target again.';
+                return;
+            }
             if (absentTemplates.size) {
                 event.preventDefault();
                 status.textContent = 'The shared form has missing controls. Please reload or report the missing fields before submitting.';
