@@ -828,9 +828,12 @@ function llama_place_draft_progress(
     array $data,
     int $photoCount
 ): array {
+    // Drafts reopen in standalone Add Place. The legacy bundled workflow
+    // is reserved for already-submitted revisions, not saved drafts.
     return llama_points_estimate_new_place(
         $db,
         $data,
-        $photoCount
+        $photoCount,
+        true
     );
 }

@@ -3563,6 +3563,58 @@ $check('Place-only moderation retains provenance but excludes legacy bundled Sit
         'Legacy pending bundle must remain intact');
 });
 
+$check('Standalone Place form, draft and moderation share the eligible scoring inventory', static function () use ($assert): void {
+    $fields = llama_new_place_completion_fields();
+    $assert(isset($fields['visited_at']), 'External visit provenance must count in the browser inventory');
+    $assert(!isset($fields['site_wifi_rating']) && !isset($fields['facility_shower_stalls']), 'Child-only questions must not count');
+    $assert(!isset($fields['pets_allowed']) && !isset($fields['dogs_required_to_be_leashed']),
+        'Rules are presented only on Site and must not lower Place-only completion');
+    foreach ($fields as $key => $field) {
+        $assert($key === 'visited_at' || in_array('place', (array) $field['report_scopes'], true),
+            'Unowned question in standalone Place scoring: ' . $key);
+        $assert(empty($field['pricing_managed']), 'Non-editable pricing question in Place scoring');
+    }
+    foreach (llama_place_report_place_types() as $type => $label) {
+        $input = ['type'=>$type,'name'=>'Example','visited_at'=>'2026-11-26',
+            'pets_allowed'=>'1','dogs_required_to_be_leashed'=>'1','site_wifi_rating'=>'4'];
+        $summary = llama_new_place_completion_summary($input, 1, true);
+        $withoutExcluded = array_intersect_key($input, $fields);
+        $assert(llama_new_place_completion_summary($withoutExcluded, 1, true) === $summary,
+            'Out-of-form values must not affect Place completion for ' . $type);
+        $items = llama_place_report_completion_items($input,
+            array_keys(array_diff_key(llama_report_questions(), $fields)));
+        $assert($summary['total'] === count($items) + 1, 'Question inventory plus photo must match for ' . $type);
+        unset($input['visited_at']);
+        $missingDate = llama_new_place_completion_summary($input, 1, true);
+        $assert($missingDate['total'] === $summary['total']
+            && $missingDate['answered'] === $summary['answered'] - 1,
+            'Visit date must count exactly once for ' . $type);
+    }
+    $root = dirname(__DIR__);
+    $form = file_get_contents($root . '/partials/place-report/form.php');
+    $draft = file_get_contents($root . '/app/place-drafts.php');
+    $assert(str_contains($form, '$placeReportSchemaFields = llama_new_place_completion_fields();'),
+        'Shared browser schema must use the same canonical standalone inventory');
+    $assert(preg_match('/llama_points_estimate_new_place\(\s*\$db,\s*\$data,\s*\$photoCount,\s*true\s*\)/', $draft) === 1,
+        'Saved draft must estimate standalone Place readiness');
+});
+
+$check('Add Place presentation uses Basic date and Site-only name suggestions', static function () use ($assert): void {
+    $root = dirname(__DIR__);
+    $place = file_get_contents($root . '/add-place.php');
+    $site = file_get_contents($root . '/add-site.php');
+    $form = file_get_contents($root . '/partials/place-report/form.php');
+    $identity = file_get_contents($root . '/partials/place-report/site-identity-fields.php');
+    $assert(empty(llama_report_question('name')['name_suggestion']), 'Place identity must never generate a suggested name');
+    $assert(!str_contains($place, '/js/add-place-name.js') && str_contains($site, '/js/add-place-name.js'),
+        'Name suggestion controller must load only on Add Site');
+    $assert(str_contains($identity, 'data-refresh-site-name'), 'Site must provide a manual suggestion control');
+    $assert(!str_contains($place, 'name="visited_at"') && str_contains($form, "$" . "fieldKey === 'description'"),
+        'Standalone date belongs immediately before Description in shared Basic rendering');
+    $assert(str_contains($place, 'data-scout-card-meter') && strpos($place, 'data-scout-card-controls') > strpos($place, '/partials/place-report/form.php'),
+        'Guided progress and below-question navigation required');
+});
+
 $check('Canonical field contract', static function () use ($assert): void {
     $issues = llama_place_report_contract_issues();
     $assert(!$issues, 'Contract issues: ' . implode(' | ', array_slice($issues, 0, 12)) . ' (total ' . count($issues) . ')');

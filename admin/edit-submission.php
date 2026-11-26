@@ -300,9 +300,9 @@ if (
 $placeReportMode =
     'moderator';
 $placeReportOnlyScope = ($data['_submission_target_kind'] ?? '') === 'place' ? 'place' : '';
-if ($placeReportOnlyScope === 'place') {
+$placeReportNewPlaceOnly = $placeReportOnlyScope === 'place';
+if ($placeReportNewPlaceOnly) {
     $placeReportExternalFieldKeys = ['visited_at'];
-    $placeReportContextKeys = ['visited_at'];
 }
 
 $placeReportExistingPhotos =

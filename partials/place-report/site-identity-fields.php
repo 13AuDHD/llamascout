@@ -23,9 +23,15 @@
             data-site-parent-results role="listbox" hidden></div>
     </div>
 <?php endif; ?>
-<label class="contribution-field">
-    <span class="place-report-field-label">Site name *</span>
-    <input type="text" name="site_name" maxlength="120" required
-        value="<?= $e($siteNameValue) ?>"
-        placeholder="Site 12, North Parking Spot, etc.">
-</label>
+<div class="contribution-field">
+    <label class="place-report-field-label" for="contribution-site-name">Site name *</label>
+    <div class="add-place-name-control">
+        <input type="text" id="contribution-site-name" name="site_name" maxlength="120" required
+            data-site-name value="<?= $e($siteNameValue) ?>"
+            placeholder="Site 12, North Parking Spot, etc.">
+        <button type="button" class="add-place-name-refresh" data-refresh-site-name
+            aria-label="Suggest a Site name" title="Suggest a Site name"><?= llama_icon('refresh') ?></button>
+    </div>
+    <small>Use the assigned Site name or number when known. Request a suggestion for an unnamed Site.</small>
+    <small data-site-name-status role="status" aria-live="polite"></small>
+</div>

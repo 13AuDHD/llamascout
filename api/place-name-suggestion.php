@@ -10,7 +10,21 @@ header('Content-Type: application/json; charset=UTF-8');
 header('Cache-Control: no-store, max-age=0');
 
 $db = db();
-
+$userId = (int) (current_user()['id'] ?? 0);
+$placeId = filter_var($_GET['site_place_id'] ?? null, FILTER_VALIDATE_INT, ['options'=>['min_range'=>1]]);
+if (!$placeId || !llama_contributor_can($db, $userId, 'submit_place')) {
+    http_response_code(400);
+    echo json_encode(['success'=>false,'message'=>'Select a Parent Place for a Site name suggestion.']);
+    exit;
+}
+$parent = $db->prepare('SELECT id FROM places WHERE id = ? AND status IN ("active","featured") LIMIT 1');
+$parent->execute([$placeId]);
+if (!$parent->fetchColumn()) {
+    http_response_code(404);
+    echo json_encode(['success'=>false,'message'=>'Parent Place is unavailable.']);
+    exit;
+}
+// Keep the existing curated name pool, now used only for unnamed Sites.
 $approvedNames = [
     'Alpine Camp',
     'Alpine Haven',
@@ -328,43 +342,27 @@ $approvedNames = [
 ];
 
 $usedNames = [];
-
 try {
-    $stmt = $db->query(
-        'SELECT LOWER(TRIM(name))
-         FROM places
-         WHERE name IS NOT NULL
-           AND TRIM(name) <> ""'
-    );
-
-    foreach (
-        $stmt->fetchAll(PDO::FETCH_COLUMN) ?: []
-        as $name
-    ) {
+    $stmt = $db->prepare('SELECT LOWER(TRIM(site_name)) FROM place_campsites
+        WHERE place_id = ? AND site_name IS NOT NULL AND TRIM(site_name) <> ""');
+    $stmt->execute([$placeId]);
+    foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) ?: [] as $name) {
         $usedNames[(string) $name] = true;
     }
-} catch (Throwable) {
-    // A suggestion can still be returned if the canonical lookup fails.
-}
-
-try {
-    $stmt = $db->query(
-        'SELECT LOWER(TRIM(place_name))
-         FROM place_submissions
-         WHERE place_name IS NOT NULL
-           AND TRIM(place_name) <> ""
-           AND status NOT IN ("rejected")'
-    );
-
-    foreach (
-        $stmt->fetchAll(PDO::FETCH_COLUMN) ?: []
-        as $name
-    ) {
+    $stmt = $db->prepare('SELECT LOWER(TRIM(site_name)) FROM place_site_submissions
+        WHERE place_id = ? AND status IN ("pending","needs-changes")
+        AND site_name IS NOT NULL AND TRIM(site_name) <> ""');
+    $stmt->execute([$placeId]);
+    foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) ?: [] as $name) {
         $usedNames[(string) $name] = true;
     }
-} catch (Throwable) {
-    // Do not make the feature unusable if historical submissions are unavailable.
+} catch (Throwable $exception) {
+    http_response_code(503);
+    echo json_encode(['success'=>false,'message'=>'Site name suggestions are temporarily unavailable.']);
+    exit;
 }
+$exclude = strtolower(trim((string) ($_GET['exclude'] ?? '')));
+if ($exclude !== '') { $usedNames[$exclude] = true; }
 
 $available = array_values(
     array_filter(
@@ -384,7 +382,9 @@ $available = array_values(
 );
 
 if (!$available) {
-    $available = $approvedNames;
+    http_response_code(409);
+    echo json_encode(['success'=>false,'message'=>'No unused suggestions remain for this Place. Enter a Site name.']);
+    exit;
 }
 
 try {

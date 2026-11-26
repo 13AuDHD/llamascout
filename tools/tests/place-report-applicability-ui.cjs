@@ -467,21 +467,23 @@ async function testClosureDates() {
 async function testGuidedPlaceCards() {
     const dom = new JSDOM(`<form id="add-place-main-form">
         <div data-scout-card-navigation hidden>
-          <button type="button" data-scout-card-toggle></button><span data-scout-card-progress></span>
-          <div data-scout-card-controls hidden><h2 data-scout-card-heading tabindex="-1"></h2>
-          <button type="button" data-scout-card-back></button><button type="button" data-scout-card-next></button>
-          <div data-scout-card-gesture><span data-scout-card-gesture-help></span></div></div>
+          <button type="button" data-scout-card-toggle></button><div data-scout-card-progress-wrap><progress data-scout-card-meter max="100"></progress><span data-scout-card-progress></span></div>
+          <h2 data-scout-card-heading tabindex="-1"></h2>
         </div>
-        <label data-scout-card-step="Date visited"><input name="visited_at" value="2026-11-26"></label>
         <details data-report-main-section="place"><summary>Place</summary><details data-report-subsection="basic"><summary>Basic</summary>
           <div class="contribution-grid">
-            <div data-report-field="parent"><span class="place-report-field-label"><span>Parent</span></span><input type="radio" name="parent" value="1"><input type="radio" name="parent" value="0"></div>
+            <label data-report-field="visited_at"><span class="place-report-field-label">Date visited</span><input name="visited_at" value="2026-11-26"></label>
+            <div data-report-field="parent"><span class="place-report-field-label"><span>Parent</span></span><select name="parent"><option value="">Select...</option><option value="1">Yes</option><option value="0">No</option></select></div>
             <div data-report-field="child" hidden><input name="child" value="retained"></div>
             <div data-scout-card-group="Location"><input name="coordinates" value="37,-107"></div><div data-scout-card-group="Location">Helper</div>
           </div>
         </details></details>
         <details data-contribution-place-photo-panel open><summary>Photos</summary><input name="photos_json" value="[]"></details>
         <div data-scout-card-step="Review and submit"><button type="submit">Submit</button></div>
+        <div data-scout-card-controls hidden>
+          <button type="button" data-scout-card-back></button><button type="button" data-scout-card-next></button>
+          <div data-scout-card-gesture><span data-scout-card-gesture-help></span></div>
+        </div>
     </form>`, {runScripts:'outside-only'});
     const w = dom.window, d = w.document;
     try {
@@ -497,14 +499,23 @@ async function testGuidedPlaceCards() {
         const child = q('[data-report-field="child"]'), parent = q('[data-report-field="parent"]');
         const heading = q('[data-scout-card-heading]'), progress = q('[data-scout-card-progress]');
         assert.equal(q('[data-scout-card-navigation]').hidden,false);
-        toggle.click();
+        assert.equal(form.classList.contains('is-scout-card-view'),true,'Guided view opens by default');
+        assert.equal(toggle.textContent,'Full questionnaire');
         assert.equal(heading.textContent,'Date visited');
-        assert.equal(progress.textContent,'Card 1 of 5');
+        assert.equal(progress.textContent,'0%');
+        assert.ok(q('[data-scout-card-controls]').compareDocumentPosition(parent) & w.Node.DOCUMENT_POSITION_PRECEDING,'Navigation follows questions');
         const initial = Array.from(new w.FormData(form).entries());
         next.click();
         assert.equal(heading.textContent,'Parent');
         assert.equal(parent.classList.contains('is-scout-card-offstage'),false);
         assert.deepEqual(Array.from(new w.FormData(form).entries()),initial,'Card display must not change serialization');
+        const select = parent.querySelector('select');
+        assert.equal(select.classList.contains('is-scout-choice-source'),true);
+        assert.equal(parent.querySelectorAll('.scout-card-choice').length,3,'All choices visible without dropdown');
+        const yes = [...parent.querySelectorAll('.scout-card-choice')].find(button => button.textContent === 'Yes');
+        yes.click();
+        assert.equal(new w.FormData(form).get('parent'),'1','Visible choices write to original select');
+        assert.equal(yes.getAttribute('aria-pressed'),'true');
         const gesture = q('[data-scout-card-gesture]');
         const touch = (name, points, key) => {
             const event = new w.Event(name);
@@ -513,10 +524,11 @@ async function testGuidedPlaceCards() {
         };
         touch('touchstart',[{clientX:100,clientY:100}],'touches');
         touch('touchend',[{clientX:100,clientY:30}],'changedTouches');
-        assert.equal(parent.querySelector('[value="1"]').checked,true,'Vertical gesture selects an option');
+        assert.equal(select.value,'0','Vertical gesture selects next option');
         child.hidden = false;
         await Promise.resolve();
-        assert.equal(progress.textContent,'Card 2 of 6');
+        assert.equal(progress.textContent,'20%');
+        assert.equal(q('[data-scout-card-meter]').value,20);
         next.click();
         assert.equal(child.classList.contains('is-scout-card-offstage'),false);
         child.hidden = true;
@@ -529,6 +541,8 @@ async function testGuidedPlaceCards() {
         toggle.click();
         assert.equal(form.classList.contains('is-scout-card-view'),false);
         assert.equal(child.hidden,true,'Full view preserves canonical eligibility');
+        assert.equal(select.classList.contains('is-scout-choice-source'),false,'Full view restores original dropdown');
+        assert.equal(new w.FormData(form).get('parent'),'0','Full view retains choice');
         assert.equal(q('[name="child"]').value,'retained');
         assert.equal(q('[data-report-main-section]').open,false,'Restore expanded sections');
         toggle.click();

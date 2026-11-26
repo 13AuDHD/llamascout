@@ -300,6 +300,18 @@ if (
 $placeReportBrowserFields = [];
 
 $placeReportSchemaFields = $placeReportFields;
+// A standalone new Place has the same scored inventory in the form and
+// moderation, including visit date rendered by the calling page. This
+// affects schema/completion only, never the writable scope or layout.
+if (!empty($placeReportNewPlaceOnly)) {
+    $placeReportSchemaFields = llama_new_place_completion_fields();
+    // Visit provenance is presented in Basic, immediately before Description,
+    // without changing the canonical Site observation's storage ownership.
+    if (isset($placeReportSchemaFields['visited_at'], $placeReportSchemaFields['description'])) {
+        $placeReportSchemaFields['visited_at']['layout_section'] = $placeReportSchemaFields['description']['layout_section'];
+        $placeReportSchemaFields['visited_at']['layout_group'] = $placeReportSchemaFields['description']['layout_group'];
+    }
+}
 // Read-only parent definitions enable dependency evaluation, not controls or scoring.
 foreach ((array) ($placeReportContextKeys ?? []) as $contextKey) {
     $contextField = llama_report_questions()[$contextKey] ?? null;
@@ -1599,6 +1611,12 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
                             ?>
                             <?php foreach ($approvedSection['fields'] as $fieldKey => $field): ?>
                                 <?php
+                                if (!empty($placeReportNewPlaceOnly) && $fieldKey === 'description') {
+                                    $visitField = llama_report_question('visited_at');
+                                    $visitField['label'] = 'Date visited *';
+                                    $visitField['required'] = true;
+                                    $renderField($visitField);
+                                }
                                 $compoundKey =
                                     trim(
                                         (string) (
