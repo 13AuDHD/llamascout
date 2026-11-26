@@ -295,6 +295,29 @@ function llama_place_report_apply_common_applicability(
         'value' => 'public-parking',
     ]]);
 
+    // Owner matrix additional active definitions, rows 275–276.
+    llama_place_report_append_applicable($fields, ['contact_mailing_address'], [[
+        'field' => 'type',
+        'operator' => 'in',
+        'value' => [
+            'developed-campground', 'camping-area', 'rv-park-resort', 'rest-area',
+            'scenic-overlook', 'vehicle-pulloff', 'day-use', 'public-parking',
+            'travel-center', 'truck-stop', 'retail-parking', 'restaurant-parking',
+            'casino-parking', 'medical-office-parking', 'hospital-parking', 'church-parking',
+            'fairgrounds', 'membership-host', 'private-property', 'other',
+        ],
+    ]]);
+
+    llama_place_report_append_applicable($fields, ['site_reservation_method'], [[
+        'field' => 'type',
+        'operator' => 'in',
+        'value' => [
+            'developed-campground', 'camping-area', 'rv-park-resort', 'scenic-overlook',
+            'vehicle-pulloff', 'trailhead', 'day-use', 'public-parking', 'travel-center',
+            'membership-host', 'private-property', 'other',
+        ],
+    ]]);
+
     // Owner Question Matrix rows 45–88. Apply only the Place-type portion
     // here, retaining the original answer-dependent rules registered on fields.
     $typeRule = static fn (string $operator, array $values): array => [[
