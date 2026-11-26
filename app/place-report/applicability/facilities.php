@@ -25,7 +25,7 @@ function llama_place_report_apply_facility_profiles(
     ]]);
 
     llama_place_report_append_applicable($fields, [
-        'amenity_toilets', 'amenity_showers',
+        'amenity_showers',
     ], [[
         'field' => 'type',
         'operator' => 'in',
@@ -33,6 +33,19 @@ function llama_place_report_apply_facility_profiles(
             'developed-campground', 'camping-area', 'rv-park-resort', 'rest-area',
             'scenic-overlook', 'trailhead', 'day-use', 'travel-center', 'truck-stop',
             'membership-host', 'private-property', 'other',
+        ],
+    ]]);
+
+    // Owner approval: Shared Toilets also applies at fairgrounds.
+    llama_place_report_append_applicable($fields, [
+        'amenity_toilets',
+    ], [[
+        'field' => 'type',
+        'operator' => 'in',
+        'value' => [
+            'developed-campground', 'camping-area', 'rv-park-resort', 'rest-area',
+            'scenic-overlook', 'trailhead', 'day-use', 'travel-center', 'truck-stop',
+            'fairgrounds', 'membership-host', 'private-property', 'other',
         ],
     ]]);
 

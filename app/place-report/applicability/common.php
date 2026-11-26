@@ -354,12 +354,8 @@ function llama_place_report_apply_common_applicability(
     llama_place_report_set_applicable(
         $fields,
         [
-            'site_accessible',
             'double_driveway',
             'hike_in_distance_feet',
-            'site_rating',
-            'condition_rating',
-            'location_rating',
         ],
         [[
             'field' => 'type',
@@ -435,16 +431,6 @@ function llama_place_report_apply_common_applicability(
             'field' => 'generator_quiet_hours',
             'operator' => 'equals',
             'value' => '1',
-        ]]
-    );
-
-    llama_place_report_set_applicable(
-        $fields,
-        ['warning_possible_downed_trees'],
-        [[
-            'field' => 'type',
-            'operator' => 'in',
-            'value' => $types['camping'],
         ]]
     );
 
@@ -670,4 +656,137 @@ function llama_place_report_apply_fee_rule_matrix(array &$fields): void
 
     // Rows 228 and 244 leave the trigger blank. Keep the already-approved
     // leash and multi-parent permit-link dependencies until explicitly revised.
+}
+
+/**
+ * Owner Question Matrix rows 149–157, 174, 213–222 and 252–274.
+ * Type eligibility is independent of parent-answer requirements.
+ * Preserve approved toilet types and the existing cross-scope WiFi and
+ * toilet conditions. Do not expose children of inapplicable parents.
+ */
+function llama_place_report_apply_accessibility_safety_matrix(array &$fields): void
+{
+    llama_place_report_append_applicable($fields, [
+        'site_accessible',
+    ], [[
+        'field' => 'type',
+        'operator' => 'in',
+        'value' => [
+            'developed-campground', 'camping-area', 'rv-park-resort', 'rest-area',
+            'scenic-overlook', 'vehicle-pulloff', 'trailhead', 'day-use', 'public-parking',
+            'travel-center', 'truck-stop', 'retail-parking', 'restaurant-parking',
+            'casino-parking', 'medical-office-parking', 'hospital-parking', 'church-parking',
+            'fairgrounds', 'street-parking', 'other-parking', 'membership-host',
+            'private-property', 'other',
+        ],
+    ]]);
+
+    llama_place_report_append_applicable($fields, [
+        'accessible_picnic_table', 'accessible_toilet',
+    ], [[
+        'field' => 'type',
+        'operator' => 'in',
+        'value' => [
+            'developed-campground', 'camping-area', 'rv-park-resort', 'rest-area',
+            'scenic-overlook', 'day-use', 'fairgrounds', 'membership-host',
+            'private-property', 'other',
+        ],
+    ]]);
+
+    llama_place_report_append_applicable($fields, [
+        'warning_possible_downed_trees',
+    ], [[
+        'field' => 'type',
+        'operator' => 'in',
+        'value' => [
+            'dispersed-camping', 'developed-campground', 'camping-area', 'rv-park-resort',
+            'rest-area', 'scenic-overlook', 'vehicle-pulloff', 'trailhead', 'other-parking',
+            'private-property', 'other',
+        ],
+    ]]);
+
+    llama_place_report_append_applicable($fields, [
+        'fall_hazard',
+    ], [[
+        'field' => 'type',
+        'operator' => 'in',
+        'value' => [
+            'dispersed-camping', 'developed-campground', 'camping-area', 'rv-park-resort',
+            'rest-area', 'scenic-overlook', 'vehicle-pulloff', 'trailhead', 'day-use',
+            'fairgrounds', 'other-parking', 'membership-host', 'private-property', 'other',
+        ],
+    ]]);
+
+    llama_place_report_append_applicable($fields, [
+        'cliff_exposure', 'wildlife_risk', 'wildfire_risk', 'flash_flood_risk',
+        'rockfall_risk',
+    ], [[
+        'field' => 'type',
+        'operator' => 'in',
+        'value' => [
+            'dispersed-camping', 'developed-campground', 'camping-area', 'rv-park-resort',
+            'rest-area', 'scenic-overlook', 'vehicle-pulloff', 'trailhead', 'day-use',
+            'other-parking', 'membership-host', 'private-property', 'other',
+        ],
+    ]]);
+
+    llama_place_report_append_applicable($fields, [
+        'traffic_hazard',
+    ], [[
+        'field' => 'type',
+        'operator' => 'in',
+        'value' => [
+            'dispersed-camping', 'scenic-overlook', 'vehicle-pulloff', 'trailhead',
+            'day-use', 'public-parking', 'travel-center', 'street-parking', 'other-parking',
+            'private-property', 'other',
+        ],
+    ]]);
+
+    llama_place_report_append_applicable($fields, [
+        'warning_blind_turn_traffic_nearby',
+    ], [[
+        'field' => 'type',
+        'operator' => 'in',
+        'value' => [
+            'dispersed-camping', 'developed-campground', 'camping-area', 'rv-park-resort',
+            'scenic-overlook', 'vehicle-pulloff', 'trailhead', 'street-parking',
+            'other-parking', 'membership-host', 'private-property', 'other',
+        ],
+    ]]);
+
+    llama_place_report_append_applicable($fields, [
+        'emergency_access',
+    ], [[
+        'field' => 'type',
+        'operator' => 'in',
+        'value' => [
+            'dispersed-camping', 'developed-campground', 'camping-area', 'vehicle-pulloff',
+            'trailhead', 'other-parking', 'membership-host', 'private-property', 'other',
+        ],
+    ]]);
+
+    llama_place_report_append_applicable($fields, [
+        'site_rating', 'condition_rating', 'location_rating',
+    ], [[
+        'field' => 'type',
+        'operator' => 'in',
+        'value' => [
+            'developed-campground', 'camping-area', 'rv-park-resort', 'day-use',
+            'private-property', 'other',
+        ],
+    ]]);
+
+    llama_place_report_append_applicable($fields, [
+        'site_wifi_rating',
+    ], [[
+        'field' => 'type',
+        'operator' => 'in',
+        'value' => [
+            'developed-campground', 'camping-area', 'rv-park-resort', 'rest-area',
+            'scenic-overlook', 'membership-host', 'private-property', 'other',
+        ],
+    ]]);
+
+    // Owner approved wheelchair_friendly as independent of official
+    // accessibility designation for every Place type (including dispersed).
 }

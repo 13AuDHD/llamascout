@@ -175,13 +175,26 @@ function llama_place_report_apply_camping_profiles(array &$fields): void
     ]]);
 
     llama_place_report_append_applicable($fields, [
-        'amenity_grill', 'amenity_picnic_table',
+        'amenity_grill',
     ], [[
         'field' => 'type',
         'operator' => 'in',
         'value' => [
             'dispersed-camping', 'developed-campground', 'camping-area', 'rv-park-resort',
             'rest-area', 'day-use', 'membership-host', 'private-property', 'other',
+        ],
+    ]]);
+
+    // Owner approval: Picnic Table also applies at scenic overlooks and fairgrounds.
+    llama_place_report_append_applicable($fields, [
+        'amenity_picnic_table',
+    ], [[
+        'field' => 'type',
+        'operator' => 'in',
+        'value' => [
+            'dispersed-camping', 'developed-campground', 'camping-area', 'rv-park-resort',
+            'rest-area', 'scenic-overlook', 'day-use', 'fairgrounds',
+            'membership-host', 'private-property', 'other',
         ],
     ]]);
 
