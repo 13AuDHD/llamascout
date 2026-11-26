@@ -84,3 +84,60 @@ function llama_new_place_assert_single_target_input(array $input): void
         );
     }
 }
+
+/** Place-only pending reports retain visit-date provenance and photo evidence. */
+function llama_new_place_completion_summary(array $input, int $photoCount, bool $placeOnly): array
+{
+    $excluded = [];
+    if ($placeOnly) {
+        foreach (llama_report_questions() as $key => $field) {
+            if ($key !== 'visited_at' && !in_array('place', (array) ($field['report_scopes'] ?? []), true)) {
+                $excluded[] = $key;
+            }
+        }
+    }
+    return llama_place_report_question_completion_summary($input, $photoCount, $excluded);
+}
+
+/** Determine inapplicable recorded Place answers without changing stored data. */
+function llama_new_place_inapplicable_keys(array $data): array
+{
+    $input = llama_place_report_scoring_input_from_data($data);
+    $keys = [];
+    foreach (llama_report_questions_for_scope('place', true) as $key => $field) {
+        if (llama_place_report_answer_state($data, $key) !== 'unanswered'
+            && !llama_place_report_question_applicable($input, $key)) {
+            $keys[] = $key;
+        }
+    }
+    return $keys;
+}
+
+/**
+ * Normalize an unpublished Place-only draft after a contributor or moderator
+ * saves changes. Stale dependent answers are not new observations. Never use
+ * this on approved history or on legacy bundles.
+ */
+function llama_new_place_normalize_pending_applicability(array $data): array
+{
+    if (($data['_submission_target_kind'] ?? '') !== 'place') { return $data; }
+    $keys = llama_new_place_inapplicable_keys($data);
+    foreach ($keys as $key) {
+        $field = llama_report_question($key);
+        llama_place_report_set_path($data, (string) $field['storage'], null);
+    }
+    $data['_answer_state'] = array_values(array_diff(llama_place_report_unknown_fields($data), $keys));
+    return $data;
+}
+
+/** Approval must never silently publish or discard stale pending evidence. */
+function llama_new_place_assert_pending_applicability(array $data): void
+{
+    if (($data['_submission_target_kind'] ?? '') !== 'place') { return; }
+    $keys = llama_new_place_inapplicable_keys($data);
+    if ($keys) {
+        $labels = array_map(static fn ($key): string => (string) (llama_report_question($key)['label'] ?? $key), $keys);
+        throw new InvalidArgumentException('Some pending Place answers no longer apply: '
+            . implode(', ', $labels) . '. Edit and save the submission before approval.');
+    }
+}

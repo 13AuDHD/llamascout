@@ -115,6 +115,11 @@ function moderation_save_submission_edits(
             $input,
             $existingData
         );
+    if (($existingData['_submission_target_kind'] ?? '') === 'place') {
+        llama_new_place_assert_single_target_input($input);
+        llama_new_place_assert_single_target($data);
+        $data = llama_new_place_normalize_pending_applicability($data);
+    }
 
     $existingPhotos =
         is_array(

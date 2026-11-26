@@ -436,12 +436,14 @@ function llama_points_new_place_max_points(
 function llama_points_estimate_new_place(
     PDO $db,
     array $data,
-    int $photoCount
+    int $photoCount,
+    bool $placeOnly = false
 ): array {
     $completion =
-        llama_place_report_question_completion_summary(
+        llama_new_place_completion_summary(
             $data,
-            $photoCount
+            $photoCount,
+            $placeOnly
         );
 
     $completionPercent =
