@@ -261,6 +261,32 @@ try {
 } catch (InvalidArgumentException) { $repeat = true; }
 areaCheck($repeat, 'Double approval must be blocked.');
 
+// A legacy pending answer can become inapplicable after catalog changes.
+$staleId = llama_area_submission_submit($db, 7, [
+    'area_place_id'=>1, 'area_name'=>'Stale Facility',
+    'area_feature_type'=>'facility_area','area_facility_kind'=>'restroom',
+    'area_answers'=>['facility_toilet_count'=>'2'],
+]);
+$stale = $db->prepare('UPDATE place_area_submissions SET answers_json=? WHERE id=?');
+$stalePayload = json_encode(['answers'=>[
+    'facility_toilet_count'=>'2', 'facility_shower_stalls'=>'3'
+], 'coordinates'=>''], JSON_THROW_ON_ERROR);
+$stale->execute([$stalePayload, $staleId]);
+$beforeCount = (int) $db->query('SELECT COUNT(*) FROM place_map_features')->fetchColumn();
+$rejected = false;
+try { llama_area_submission_moderate($db, $staleId, 9, 'approved'); }
+catch (InvalidArgumentException) { $rejected = true; }
+areaCheck($rejected, 'Stale wrong-kind Facility observations must block approval.');
+areaCheck((int) $db->query('SELECT COUNT(*) FROM place_map_features')->fetchColumn() === $beforeCount,
+    'Rejected Area approval must not create a partial map feature.');
+$pending = $db->prepare('SELECT status,answers_json,published_feature_id FROM place_area_submissions WHERE id=?');
+$pending->execute([$staleId]);
+$pendingRow = $pending->fetch(PDO::FETCH_ASSOC);
+areaCheck($pendingRow['status'] === 'pending' && $pendingRow['published_feature_id'] === null
+    && json_decode($pendingRow['answers_json'], true) === json_decode($stalePayload, true),
+    'Rejected Area approval must preserve the pending evidence and status.');
+llama_area_submission_moderate($db, $staleId, 9, 'rejected', 'Wrong-kind evidence');
+
 // A first Area can be included when the parent Place has just been
 // approved, without waiting for a separate mapped record.
 $firstAreaPayload = llama_area_submission_prepare_bundle([
