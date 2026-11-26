@@ -11,8 +11,8 @@ function llama_place_report_add_basic_location_fields(
     $add('name', 'Place name *', 'basic', 'text', 'name', [
         'required' => true,
         'maxlength' => 200,
-        'placeholder' => 'A suggested name will appear here',
-        'name_suggestion' => true,
+        'placeholder' => 'Enter the actual Place name',
+        'help' => 'Use the official or locally established name when one exists. If unnamed, use a factual descriptive name rather than an invented campground name.',
     ]);
 
     $add('type', 'Place type', 'basic', 'select', 'type', [
