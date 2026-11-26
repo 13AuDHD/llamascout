@@ -637,8 +637,12 @@ $check('Normal reviewed applicability is active', static function () use ($asser
         'value' => '1',
     ], 'Tent Pad Width dependency is not active');
 
-    $assert((array) ($catalog['max_rv_length_feet']['applicable_if'] ?? []) === [],
-        'Maximum RV / trailer length should remain independent');
+    // Workbook row 145 allows every type except dispersed camping.
+    $assert(($catalog['max_rv_length_feet']['applicable_if'] ?? []) === [[
+        'field' => 'type',
+        'operator' => 'in',
+        'value' => array_values(array_diff(array_keys(llama_place_report_place_types()), ['dispersed-camping'])),
+    ]], 'Maximum RV / trailer length should have only the approved type restriction');
 
     $groups = llama_place_report_approved_question_groups();
     $seasonal = (array) $groups['seasonal_access'][1];
@@ -2816,6 +2820,102 @@ $check('Owner matrix Basic, Location and Amenities rows 6–44', static function
                 $assert(isset($catalog[$key]), 'Missing matrix question: ' . $key);
                 $assert(llama_place_report_question_applicable(['type' => $type], $key) === ($mask[$index] === '1'),
                     $key . ' does not match workbook for ' . $type);
+            }
+        }
+    }
+});
+
+$check('Owner matrix Site Info, Parking and Site Amenities', static function () use ($assert): void {
+    // Excel columns N:AK; row 174 is deferred pending cross-scope parent checks.
+    $types = [
+        'dispersed-camping', 'developed-campground', 'camping-area', 'rv-park-resort',
+        'rest-area', 'scenic-overlook', 'vehicle-pulloff', 'trailhead', 'day-use',
+        'public-parking', 'travel-center', 'truck-stop', 'retail-parking',
+        'restaurant-parking', 'casino-parking', 'medical-office-parking', 'hospital-parking',
+        'church-parking', 'fairgrounds', 'street-parking', 'other-parking',
+        'membership-host', 'private-property', 'other',
+    ];
+    $assert($types === array_keys(llama_place_report_place_types()), 'Matrix column order changed');
+    $groups = [
+        ['111110001000000000001111', [
+            'site_number',
+        ]],
+        ['011100001000000000000111', [
+            'site_loop', 'site_hookups_available', 'hookup_electric_service', 'hookup_water',
+            'hookup_sewer',
+        ]],
+        ['111111111010000000001111', [
+            'site_type_of_use',
+        ]],
+        ['111111111000000000100111', [
+            'tent_camping_suitable',
+        ]],
+        ['111111111111111111111111', [
+            'rv_suitable', 'ground_condition', 'levelness', 'parking_grade',
+            'parking_surface', 'turnaround_space', 'parking_clearance_feet',
+            'leveling_required', 'parking_notes',
+        ]],
+        ['111100101000000000101111', [
+            'capacity_size_rating',
+        ]],
+        ['011100001000000000101111', [
+            'max_people',
+        ]],
+        ['011100111000000000101111', [
+            'vehicle_capacity',
+        ]],
+        ['111100111000000000101111', [
+            'site_length_feet', 'site_width_feet',
+        ]],
+        ['111111111100000000111111', [
+            'overhead_clearance_feet',
+        ]],
+        ['111111111111111111101111', [
+            'back_in', 'pull_through',
+        ]],
+        ['111111111000000000001111', [
+            'parking_size', 'parking_length_feet',
+        ]],
+        ['011111111111111111111111', [
+            'max_vehicle_length_feet', 'max_rv_length_feet',
+        ]],
+        ['111100001000000000000111', [
+            'amenity_fire_ring', 'amenity_lantern_post', 'site_potable_water', 'tent_pad',
+            'tent_pad_width_feet', 'tent_pad_length_feet',
+        ]],
+        ['111110001000000000000111', [
+            'amenity_grill', 'amenity_picnic_table',
+        ]],
+        ['011101011000000000000111', [
+            'amenity_bear_box',
+        ]],
+        ['111111111000000000000111', [
+            'site_lake_access', 'site_river_access',
+        ]],
+        ['011111111000000000000111', [
+            'site_trail_access', 'site_amenities_notes',
+        ]],
+    ];
+    $catalog = llama_report_questions();
+    foreach ($types as $index => $type) {
+        $input = ['type' => $type, 'site_hookups_available' => '1', 'tent_pad' => '1'];
+        foreach ($groups as [$mask, $keys]) {
+            foreach ($keys as $key) {
+                $assert(isset($catalog[$key]), 'Missing matrix question: ' . $key);
+                $assert(llama_place_report_question_applicable($input, $key) === ($mask[$index] === '1'),
+                    $key . ' does not match workbook for ' . $type);
+            }
+        }
+    }
+    foreach ([
+        'tent_pad' => ['tent_pad_length_feet', 'tent_pad_width_feet'],
+        'site_hookups_available' => ['hookup_electric_service', 'hookup_water', 'hookup_sewer'],
+    ] as $parent => $children) {
+        foreach (['0', '', llama_place_report_unknown_token()] as $value) {
+            $input = ['type' => 'developed-campground', $parent => $value];
+            foreach ($children as $child) {
+                $assert(!llama_place_report_question_applicable($input, $child),
+                    $child . ' visible after changing or clearing ' . $parent);
             }
         }
     }
