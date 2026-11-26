@@ -146,6 +146,33 @@ function llama_place_update_value_equal(mixed $a, mixed $b, ?array $field = null
 }
 
 
+/**
+ * Validate only proposed Place changes, using the same path-to-question
+ * adapter as the form. Overlay the complete proposal before evaluating any
+ * dependencies. Historical hidden answers remain untouched.
+ */
+function llama_place_update_assert_applicable(
+    array $current,
+    array $currentUnknownFields,
+    array $proposed,
+    array $proposedUnknownFields
+): void {
+    $effective = llama_place_update_shared_form_values(
+        $current, $currentUnknownFields, $proposed, $proposedUnknownFields
+    );
+    $definitions = llama_place_update_definitions();
+    foreach ($proposed as $path => $value) {
+        $field = $definitions[$path]['shared'] ?? null;
+        if (!is_array($field) || !in_array('place', (array) ($field['report_scopes'] ?? []), true)
+            || !llama_place_report_question_applicable($effective, (string) $field['key'])) {
+            throw new InvalidArgumentException(
+                'This answer no longer applies to the selected Place: ' . ($field['label'] ?? $path)
+                . '. Review the current parent answers before submitting or approving.'
+            );
+        }
+    }
+}
+
 function llama_place_update_build_changes(
     array $input,
     array $current,
@@ -810,6 +837,10 @@ function llama_place_update_submit(
             'original_unknown_fields'
         ];
 
+    llama_place_update_assert_applicable(
+        $current, $currentUnknownFields, $proposed, $unknownFields
+    );
+
 
     $photoToken =
         trim(
@@ -1171,6 +1202,10 @@ function llama_place_update_resubmit(
         $changes[
             'original_unknown_fields'
         ];
+
+    llama_place_update_assert_applicable(
+        $current, $currentUnknownFields, $proposed, $unknownFields
+    );
 
 
     $existingPhotos =
@@ -1874,6 +1909,9 @@ function llama_place_update_approve(
         $proposed[$path] = $answer['value'];
     }
     $finalCoordinates = llama_place_report_current_values($db, $placeId, true);
+    llama_place_update_assert_applicable(
+        $finalCoordinates, $currentPublishedUnknown, $proposed, $explicitUnknownFields
+    );
     foreach (['latitude','longitude'] as $coordinate) {
         if (array_key_exists($coordinate, $proposed)) { $finalCoordinates[$coordinate] = $proposed[$coordinate]; }
     }
