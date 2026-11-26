@@ -157,6 +157,11 @@
     display: block;
 }
 
+/* Inline answer help is exclusive to guided Place cards. */
+.place-report-form .scout-card-answer-help {
+    display: none;
+}
+
 /* Keep the same compact sticky action treatment previously used on Add Place. */
 .place-report-form + .add-place-submit-bar,
 .place-report-form .add-place-submit-bar {
@@ -1194,4 +1199,21 @@ input[type="checkbox"] {
 .place-report-form.is-scout-card-view .add-place-radio-option[hidden],
 .place-report-form.is-scout-card-view .place-report-multiselect label[hidden] {
     display: none !important;
+}
+
+.place-report-form.is-scout-card-view .add-place-radio-help {
+    display: none;
+}
+.place-report-form.is-scout-card-view .add-place-radio-option .scout-card-answer-help {
+    display: block;
+    margin-inline-start: auto;
+    min-width: 0;
+    color: var(--text-muted);
+    font-size: .85em;
+    text-align: end;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+.place-report-form.is-scout-card-view .add-place-radio-option {
+    gap: 12px;
 }

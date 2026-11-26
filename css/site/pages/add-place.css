@@ -495,28 +495,28 @@ textarea::placeholder {
  * Only contributor Place/Site section styling changes. The canonical
  * questionnaire, its field positions and answer state remain untouched.
  */
-.add-place-page .place-report-form > [data-report-main-section] > .contribution-section-body {
+.add-place-page .place-report-form:not(.is-scout-card-view) > [data-report-main-section] > .contribution-section-body {
     display: grid;
     gap: 12px;
     padding-top: 14px;
 }
-.add-place-page .place-report-form > [data-report-main-section] > .contribution-section-body > .contribution-section {
+.add-place-page .place-report-form:not(.is-scout-card-view) > [data-report-main-section] > .contribution-section-body > .contribution-section {
     --section-accent: var(--place-accent);
     margin: 0;
     border-inline-start: 4px solid var(--section-accent);
     background: var(--background);
 }
-.add-place-page .place-report-form > [data-report-main-section="site"] > .contribution-section-body > .contribution-section {
+.add-place-page .place-report-form:not(.is-scout-card-view) > [data-report-main-section="site"] > .contribution-section-body > .contribution-section {
     --section-accent: #f2a44e;
 }
-.add-place-page .place-report-form > [data-report-main-section] > .contribution-section-body > .contribution-section > summary {
+.add-place-page .place-report-form:not(.is-scout-card-view) > [data-report-main-section] > .contribution-section-body > .contribution-section > summary {
     background: var(--background);
     border-radius: 10px 10px 0 0;
 }
-.add-place-page .place-report-form > [data-report-main-section] > .contribution-section-body > .contribution-section:not([open]) > summary {
+.add-place-page .place-report-form:not(.is-scout-card-view) > [data-report-main-section] > .contribution-section-body > .contribution-section:not([open]) > summary {
     border-radius: 10px;
 }
-.add-place-page .place-report-form > [data-report-main-section] > .contribution-section-body > .contribution-section > .contribution-section-body {
+.add-place-page .place-report-form:not(.is-scout-card-view) > [data-report-main-section] > .contribution-section-body > .contribution-section > .contribution-section-body {
     background: var(--surface);
     border-radius: 0 0 10px 10px;
 }

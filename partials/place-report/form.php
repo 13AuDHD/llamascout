@@ -852,6 +852,7 @@ $renderField =
                                 >
 
                                 <span>?</span>
+                                <span class="scout-card-answer-help"><?= $type === 'rating' ? 'Unknown' : 'Unknown / could not confidently determine' ?></span>
 
                             </label>
 
@@ -956,6 +957,9 @@ $renderField =
                                         <span>
                                             <?= $i ?>
                                         </span>
+                                        <?php if ($i === 1 || $i === 5): ?>
+                                            <span class="scout-card-answer-help"><?= $e($i === 1 ? ($field['low'] ?? 'Low') : ($field['high'] ?? 'High')) ?></span>
+                                        <?php endif; ?>
 
                                     </label>
 
