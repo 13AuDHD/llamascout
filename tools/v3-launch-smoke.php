@@ -3057,6 +3057,64 @@ $check('Owner matrix Fees and Reservations and Rules and Restrictions', static f
         'Restriction details must remain available when generators are prohibited');
 });
 
+$check('Owner matrix Setting, Connectivity and Sensory rows 126–137 and 176–212', static function () use ($assert, $assertNoAnswerDependencies): void {
+    // Transcribed from the owner-completed Question Matrix, columns N:AK.
+    $types = [
+        'dispersed-camping', 'developed-campground', 'camping-area', 'rv-park-resort',
+        'rest-area', 'scenic-overlook', 'vehicle-pulloff', 'trailhead', 'day-use',
+        'public-parking', 'travel-center', 'truck-stop', 'retail-parking',
+        'restaurant-parking', 'casino-parking', 'medical-office-parking', 'hospital-parking',
+        'church-parking', 'fairgrounds', 'street-parking', 'other-parking',
+        'membership-host', 'private-property', 'other',
+    ];
+    $assert($types === array_keys(llama_place_report_place_types()), 'Matrix column order changed');
+    $expectedGroups = [
+        'setting' => [
+            'landscape_primary', 'environment_water_nearby', 'landscape_details',
+            'landscape_views', 'environment_wildlife_activity', 'critter_activity',
+            'environment_bug_nuisance', 'environment_open_sky', 'environment_sun_exposure',
+            'environment_shade', 'tree_cover', 'environment_notes',
+        ],
+        'connectivity_public' => [
+            'connectivity_overall', 'connectivity_att', 'connectivity_t_mobile',
+            'connectivity_verizon', 'connectivity_other_cell', 'connectivity_satellite',
+            'connectivity_services_tested', 'connectivity_starlink_note',
+        ],
+        'daytime' => [
+            'daytime_social_interaction', 'daytime_noise', 'daytime_traffic',
+            'daytime_crowds', 'daytime_privacy', 'daytime_light_pollution',
+            'daytime_sensory_comfort', 'felt_safe_daytime_rating',
+        ],
+        'nighttime' => [
+            'nighttime_social_interaction', 'nighttime_noise', 'nighttime_traffic',
+            'nighttime_crowds', 'nighttime_privacy', 'nighttime_light_pollution',
+            'nighttime_sensory_comfort', 'felt_safe_nighttime_rating',
+        ],
+        'specific_sensory' => [
+            'sensory_dust_from_traffic', 'sensory_generator_noise', 'sensory_aircraft_noise',
+            'sensory_train_noise', 'sensory_dog_barking', 'sensory_wildlife_noise',
+            'sensory_wind_noise', 'sensory_strong_odors', 'sensory_smoke_risk',
+            'road_exposure', 'sensory_visual_exposure', 'sensory_predictability',
+            'sensory_summary',
+        ],
+    ];
+    $catalog = llama_report_questions();
+    $approved = llama_place_report_approved_question_groups();
+    foreach ($expectedGroups as $group => $keys) {
+        $assert(($approved[$group][1] ?? []) === $keys, 'Approved group differs from matrix: ' . $group);
+        foreach ($keys as $key) {
+            $assert(isset($catalog[$key]), 'Missing matrix question: ' . $key);
+            $assert(($catalog[$key]['report_scopes'] ?? []) === ['site'], 'Observation lost Site ownership: ' . $key);
+            $assertNoAnswerDependencies($catalog[$key], 'Observation gained an answer dependency: ' . $key);
+            foreach ($types as $type) {
+                $expected = !($key === 'connectivity_overall' && $type === 'public-parking');
+                $assert(llama_place_report_question_applicable(['type' => $type], $key) === $expected,
+                    $key . ' does not match workbook for ' . $type);
+            }
+        }
+    }
+});
+
 $check('Canonical field contract', static function () use ($assert): void {
     $issues = llama_place_report_contract_issues();
     $assert(!$issues, 'Contract issues: ' . implode(' | ', array_slice($issues, 0, 12)) . ' (total ' . count($issues) . ')');

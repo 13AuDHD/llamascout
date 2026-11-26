@@ -286,6 +286,15 @@ function llama_place_report_apply_common_applicability(
         ],
     ]]);
 
+    // Owner Question Matrix rows 126–137 and 176–212: observations
+    // apply to every Place type, except the overall cell service rating
+    // at Public / civic parking. Individual carrier ratings remain available.
+    llama_place_report_append_applicable($fields, ['connectivity_overall'], [[
+        'field' => 'type',
+        'operator' => 'not_equals',
+        'value' => 'public-parking',
+    ]]);
+
     // Owner Question Matrix rows 45–88. Apply only the Place-type portion
     // here, retaining the original answer-dependent rules registered on fields.
     $typeRule = static fn (string $operator, array $values): array => [[
