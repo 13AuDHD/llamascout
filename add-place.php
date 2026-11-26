@@ -455,6 +455,10 @@ require __DIR__ . '/partials/header.php';
 $placeReportValues = $_POST;
 $placeReportMode = 'contributor';
 $placeReportOnlyScope = $legacyPlaceBundle ? '' : 'place';
+$placeReportNewPlaceOnly = !$legacyPlaceBundle;
+if ($placeReportNewPlaceOnly) {
+    $placeReportExternalFieldKeys = ['visited_at'];
+}
 $placeReportExistingPhotos = $existingSubmissionPhotos;
 $placeReportShowLocate = true;
 $placeReportShowNameSuggestion = true;
