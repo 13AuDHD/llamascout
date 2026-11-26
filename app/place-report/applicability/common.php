@@ -395,75 +395,6 @@ function llama_place_report_apply_common_applicability(
 
     llama_place_report_set_applicable(
         $fields,
-        ['dispersed_camping_allowed'],
-        [[
-            'field' => 'type',
-            'operator' => 'in',
-            'value' => $types['dispersed_relevant'],
-        ]]
-    );
-
-    llama_place_report_set_applicable(
-        $fields,
-        [
-            'collecting_firewood',
-            'target_shooting_allowed',
-        ],
-        [[
-            'field' => 'type',
-            'operator' => 'in',
-            'value' => $types['natural'],
-        ]]
-    );
-
-    llama_place_report_set_applicable(
-        $fields,
-        [
-            'campfire_allowed',
-            'current_fire_restrictions_url',
-        ],
-        [[
-            'field' => 'type',
-            'operator' => 'in',
-            'value' => $types['campfire_relevant'],
-        ]]
-    );
-
-    llama_place_report_set_applicable(
-        $fields,
-        [
-            'pack_it_in_pack_it_out',
-        ],
-        [[
-            'field' => 'type',
-            'operator' => 'in',
-            'value' =>
-                array_values(
-                    array_unique(
-                        array_merge(
-                            $types['camping'],
-                            $types['natural']
-                        )
-                    )
-                ),
-        ]]
-    );
-
-    llama_place_report_set_applicable(
-        $fields,
-        [
-            'designated_sites_only',
-            'food_storage_required',
-        ],
-        [[
-            'field' => 'type',
-            'operator' => 'in',
-            'value' => $types['camping'],
-        ]]
-    );
-
-    llama_place_report_set_applicable(
-        $fields,
         ['existing_sites_encouraged'],
         [[
             'field' => 'type',
@@ -517,4 +448,217 @@ function llama_place_report_apply_common_applicability(
             'value' => '1',
         ]]
     );
+}
+
+/**
+ * Owner Question Matrix rows 112–125 and 223–251.
+ * Apply Place-type filters after the existing permission and metadata passes,
+ * preserving exact answer dependencies and established scope ownership.
+ */
+function llama_place_report_apply_fee_rule_matrix(array &$fields): void
+{
+    llama_place_report_append_applicable($fields, [
+        'extra_vehicle_fee',
+    ], [[
+        'field' => 'type',
+        'operator' => 'in',
+        'value' => [
+            'developed-campground', 'camping-area', 'rv-park-resort', 'rest-area',
+            'scenic-overlook', 'trailhead', 'day-use', 'public-parking', 'travel-center',
+            'fairgrounds', 'other-parking', 'membership-host', 'private-property', 'other',
+        ],
+    ]]);
+
+    llama_place_report_append_applicable($fields, [
+        'reservation_required', 'reservation_fee', 'reservation_url',
+    ], [[
+        'field' => 'type',
+        'operator' => 'in',
+        'value' => [
+            'dispersed-camping', 'developed-campground', 'camping-area', 'rv-park-resort',
+            'trailhead', 'day-use', 'public-parking', 'travel-center', 'fairgrounds',
+            'other-parking', 'membership-host', 'private-property', 'other',
+        ],
+    ]]);
+
+    llama_place_report_append_applicable($fields, [
+        'membership_required', 'membership_fee', 'membership_url',
+    ], [[
+        'field' => 'type',
+        'operator' => 'in',
+        'value' => [
+            'developed-campground', 'camping-area', 'rv-park-resort', 'trailhead', 'day-use',
+            'travel-center', 'fairgrounds', 'membership-host', 'other',
+        ],
+    ]]);
+
+    llama_place_report_append_applicable($fields, [
+        'parking_entrance_required', 'parking_entrance_fee',
+    ], [[
+        'field' => 'type',
+        'operator' => 'in',
+        'value' => [
+            'developed-campground', 'camping-area', 'rv-park-resort', 'rest-area',
+            'scenic-overlook', 'trailhead', 'day-use', 'public-parking', 'travel-center',
+            'fairgrounds', 'street-parking', 'other-parking', 'membership-host',
+            'private-property', 'other',
+        ],
+    ]]);
+
+    llama_place_report_append_applicable($fields, [
+        'check_in_required', 'check_in_begins', 'check_out_required', 'checkout_ends',
+    ], [[
+        'field' => 'type',
+        'operator' => 'in',
+        'value' => [
+            'developed-campground', 'camping-area', 'rv-park-resort', 'day-use',
+            'travel-center', 'fairgrounds', 'membership-host', 'private-property', 'other',
+        ],
+    ]]);
+
+    llama_place_report_append_applicable($fields, [
+        'discounts_available',
+    ], [[
+        'field' => 'type',
+        'operator' => 'in',
+        'value' => [
+            'developed-campground', 'camping-area', 'rv-park-resort', 'rest-area',
+            'scenic-overlook', 'trailhead', 'day-use', 'public-parking', 'travel-center',
+            'truck-stop', 'fairgrounds', 'membership-host', 'private-property', 'other',
+        ],
+    ]]);
+
+    llama_place_report_append_applicable($fields, [
+        'dispersed_camping_allowed',
+    ], [[
+        'field' => 'type',
+        'operator' => 'in',
+        'value' => [
+            'dispersed-camping', 'developed-campground', 'camping-area', 'rv-park-resort',
+            'rest-area', 'scenic-overlook', 'vehicle-pulloff', 'trailhead', 'day-use',
+            'fairgrounds', 'membership-host', 'private-property', 'other',
+        ],
+    ]]);
+
+    llama_place_report_append_applicable($fields, [
+        'designated_sites_only',
+    ], [[
+        'field' => 'type',
+        'operator' => 'in',
+        'value' => [
+            'dispersed-camping', 'developed-campground', 'camping-area', 'rv-park-resort',
+            'rest-area', 'scenic-overlook', 'trailhead', 'day-use', 'fairgrounds',
+            'membership-host', 'private-property', 'other',
+        ],
+    ]]);
+
+    llama_place_report_append_applicable($fields, [
+        'generator_restrictions', 'generator_prohibited', 'generator_quiet_hours',
+        'generator_quiet_hours_begin', 'generator_quiet_hours_end',
+        'generator_run_restrictions', 'generator_max_run_hours',
+        'generator_restriction_details',
+    ], [[
+        'field' => 'type',
+        'operator' => 'in',
+        'value' => [
+            'dispersed-camping', 'developed-campground', 'camping-area', 'rv-park-resort',
+            'rest-area', 'scenic-overlook', 'vehicle-pulloff', 'trailhead', 'day-use',
+            'public-parking', 'travel-center', 'truck-stop', 'other-parking',
+            'membership-host', 'private-property', 'other',
+        ],
+    ]]);
+
+    llama_place_report_append_applicable($fields, [
+        'place_quiet_hours', 'place_quiet_hours_begin', 'place_quiet_hours_end',
+    ], [[
+        'field' => 'type',
+        'operator' => 'in',
+        'value' => [
+            'developed-campground', 'camping-area', 'rv-park-resort', 'rest-area',
+            'scenic-overlook', 'vehicle-pulloff', 'trailhead', 'day-use', 'public-parking',
+            'travel-center', 'truck-stop', 'other-parking', 'membership-host',
+            'private-property', 'other',
+        ],
+    ]]);
+
+    llama_place_report_append_applicable($fields, [
+        'campfire_allowed', 'collecting_firewood',
+    ], [[
+        'field' => 'type',
+        'operator' => 'in',
+        'value' => [
+            'dispersed-camping', 'developed-campground', 'camping-area', 'rv-park-resort',
+            'day-use', 'membership-host', 'private-property', 'other',
+        ],
+    ]]);
+
+    llama_place_report_append_applicable($fields, [
+        'place_charcoal_grills_allowed', 'place_propane_fire_pits_allowed',
+    ], [[
+        'field' => 'type',
+        'operator' => 'in',
+        'value' => [
+            'dispersed-camping', 'developed-campground', 'camping-area', 'rv-park-resort',
+            'rest-area', 'scenic-overlook', 'vehicle-pulloff', 'trailhead', 'day-use',
+            'membership-host', 'private-property', 'other',
+        ],
+    ]]);
+
+    llama_place_report_append_applicable($fields, [
+        'fire_activity_permit_url',
+    ], [[
+        'field' => 'type',
+        'operator' => 'in',
+        'value' => [
+            'dispersed-camping', 'developed-campground', 'camping-area', 'rv-park-resort',
+            'vehicle-pulloff', 'trailhead', 'day-use', 'membership-host', 'private-property',
+            'other',
+        ],
+    ]]);
+
+    llama_place_report_append_applicable($fields, [
+        'food_storage_required',
+    ], [[
+        'field' => 'type',
+        'operator' => 'in',
+        'value' => [
+            'dispersed-camping', 'developed-campground', 'camping-area', 'rv-park-resort',
+            'rest-area', 'scenic-overlook', 'vehicle-pulloff', 'trailhead', 'day-use',
+            'other',
+        ],
+    ]]);
+
+    llama_place_report_append_applicable($fields, [
+        'place_alcohol_permitted',
+    ], [[
+        'field' => 'type',
+        'operator' => 'in',
+        'value' => [
+            'dispersed-camping', 'developed-campground', 'camping-area', 'rv-park-resort',
+            'scenic-overlook', 'vehicle-pulloff', 'trailhead', 'day-use', 'public-parking',
+            'travel-center', 'truck-stop', 'retail-parking', 'restaurant-parking',
+            'casino-parking', 'medical-office-parking', 'hospital-parking', 'church-parking',
+            'fairgrounds', 'street-parking', 'other-parking', 'membership-host',
+            'private-property', 'other',
+        ],
+    ]]);
+
+    llama_place_report_append_applicable($fields, [
+        'target_shooting_allowed',
+    ], [[
+        'field' => 'type',
+        'operator' => 'in',
+        'value' => [
+            'dispersed-camping', 'developed-campground', 'camping-area', 'rv-park-resort',
+            'vehicle-pulloff', 'day-use', 'membership-host', 'private-property', 'other',
+        ],
+    ]]);
+
+    // Row 241 explicitly requires Campfires Allowed = Yes.
+    llama_place_report_append_applicable($fields, ['collecting_firewood'], [[
+        'field' => 'campfire_allowed', 'operator' => 'equals', 'value' => '1',
+    ]]);
+
+    // Rows 228 and 244 leave the trigger blank. Keep the already-approved
+    // leash and multi-parent permit-link dependencies until explicitly revised.
 }

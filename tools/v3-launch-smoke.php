@@ -2921,6 +2921,142 @@ $check('Owner matrix Site Info, Parking and Site Amenities', static function () 
     }
 });
 
+$check('Owner matrix Fees and Reservations and Rules and Restrictions', static function () use ($assert): void {
+    // Workbook rows 112–125 and 223–251, columns N:AK.
+    $types = [
+        'dispersed-camping', 'developed-campground', 'camping-area', 'rv-park-resort',
+        'rest-area', 'scenic-overlook', 'vehicle-pulloff', 'trailhead', 'day-use',
+        'public-parking', 'travel-center', 'truck-stop', 'retail-parking',
+        'restaurant-parking', 'casino-parking', 'medical-office-parking', 'hospital-parking',
+        'church-parking', 'fairgrounds', 'street-parking', 'other-parking',
+        'membership-host', 'private-property', 'other',
+    ];
+    $assert($types === array_keys(llama_place_report_place_types()), 'Matrix column order changed');
+    $groups = [
+        ['011111011110000000101111', [
+            'extra_vehicle_fee',
+        ]],
+        ['111100011110000000101111', [
+            'reservation_required', 'reservation_fee', 'reservation_url',
+        ]],
+        ['011100011010000000100101', [
+            'membership_required', 'membership_fee', 'membership_url',
+        ]],
+        ['011111011110000000111111', [
+            'parking_entrance_required', 'parking_entrance_fee',
+        ]],
+        ['011100001010000000100111', [
+            'check_in_required', 'check_in_begins', 'check_out_required', 'checkout_ends',
+        ]],
+        ['011111011111000000100111', [
+            'discounts_available',
+        ]],
+        ['111111111111111111111111', [
+            'overnight_camping_allowed', 'stay_limit_days', 'pets_allowed',
+            'dogs_required_to_be_leashed', 'current_fire_restrictions_url',
+            'pack_it_in_pack_it_out', 'drone_use_legal', 'place_additional_rules',
+        ]],
+        ['111111111000000000100111', [
+            'dispersed_camping_allowed',
+        ]],
+        ['111111011000000000100111', [
+            'designated_sites_only',
+        ]],
+        ['111111111111000000001111', [
+            'generator_restrictions', 'generator_prohibited', 'generator_quiet_hours',
+            'generator_quiet_hours_begin', 'generator_quiet_hours_end',
+            'generator_run_restrictions', 'generator_max_run_hours',
+            'generator_restriction_details',
+        ]],
+        ['011111111111000000001111', [
+            'place_quiet_hours', 'place_quiet_hours_begin', 'place_quiet_hours_end',
+        ]],
+        ['111100001000000000000111', [
+            'campfire_allowed', 'collecting_firewood',
+        ]],
+        ['111111111000000000000111', [
+            'place_charcoal_grills_allowed', 'place_propane_fire_pits_allowed',
+        ]],
+        ['111100111000000000000111', [
+            'fire_activity_permit_url',
+        ]],
+        ['111111111000000000000001', [
+            'food_storage_required',
+        ]],
+        ['111101111111111111111111', [
+            'place_alcohol_permitted',
+        ]],
+        ['111100101000000000000111', [
+            'target_shooting_allowed',
+        ]],
+    ];
+    $catalog = llama_report_questions();
+    $parents = [
+        'reservation_required' => '1',
+        'membership_required' => '1',
+        'parking_entrance_required' => '1',
+        'check_in_required' => '1',
+        'check_out_required' => '1',
+        'pets_allowed' => '1',
+        'generator_restrictions' => '1',
+        'generator_prohibited' => '0',
+        'generator_quiet_hours' => '1',
+        'generator_run_restrictions' => '1',
+        'place_quiet_hours' => '1',
+        'campfire_allowed' => '1',
+        'drone_use_legal' => '2',
+    ];
+    foreach ($types as $index => $type) {
+        $input = ['type' => $type] + $parents;
+        foreach ($groups as [$mask, $keys]) {
+            foreach ($keys as $key) {
+                $assert(isset($catalog[$key]), 'Missing matrix question: ' . $key);
+                $assert(llama_place_report_question_applicable($input, $key) === ($mask[$index] === '1'),
+                    $key . ' does not match workbook for ' . $type);
+            }
+        }
+    }
+    $base = ['type' => 'developed-campground'] + $parents;
+    $cases = [
+        ['reservation_required', '0', ['reservation_fee', 'reservation_url']],
+        ['membership_required', '0', ['membership_fee', 'membership_url']],
+        ['parking_entrance_required', '0', ['parking_entrance_fee']],
+        ['check_in_required', '0', ['check_in_begins']],
+        ['check_out_required', '0', ['checkout_ends']],
+        ['pets_allowed', '0', ['dogs_required_to_be_leashed']],
+        ['generator_restrictions', '0', ['generator_prohibited', 'generator_quiet_hours',
+            'generator_quiet_hours_begin', 'generator_quiet_hours_end', 'generator_run_restrictions',
+            'generator_max_run_hours', 'generator_restriction_details']],
+        ['generator_prohibited', '1', ['generator_quiet_hours', 'generator_quiet_hours_begin',
+            'generator_quiet_hours_end', 'generator_run_restrictions', 'generator_max_run_hours']],
+        ['generator_quiet_hours', '0', ['generator_quiet_hours_begin', 'generator_quiet_hours_end']],
+        ['generator_run_restrictions', '0', ['generator_max_run_hours']],
+        ['place_quiet_hours', '0', ['place_quiet_hours_begin', 'place_quiet_hours_end']],
+        ['campfire_allowed', '0', ['collecting_firewood']],
+    ];
+    foreach ($cases as [$parent, $inactive, $children]) {
+        foreach ([$inactive, '', llama_place_report_unknown_token()] as $value) {
+            $input = $base;
+            $input[$parent] = $value;
+            foreach ($children as $child) {
+                $assert(!llama_place_report_question_applicable($input, $child),
+                    $child . ' visible after changing or clearing ' . $parent);
+            }
+        }
+    }
+    $input = $base;
+    $input['campfire_allowed'] = '2';
+    $assert(!llama_place_report_question_applicable($input, 'collecting_firewood'),
+        'Permit required is not the explicit Yes trigger for collecting firewood');
+    $input = $base;
+    $input['drone_use_legal'] = '0';
+    $assert(!llama_place_report_question_applicable($input, 'fire_activity_permit_url'),
+        'Permit URL should remain hidden without a matching permit answer');
+    $input['generator_prohibited'] = '1';
+    $assert(llama_place_report_question_applicable($input, 'generator_restriction_details'),
+        'Restriction details must remain available when generators are prohibited');
+});
+
 $check('Canonical field contract', static function () use ($assert): void {
     $issues = llama_place_report_contract_issues();
     $assert(!$issues, 'Contract issues: ' . implode(' | ', array_slice($issues, 0, 12)) . ' (total ' . count($issues) . ')');
