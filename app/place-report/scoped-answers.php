@@ -474,7 +474,14 @@ function llama_public_scoped_report_projection(
     foreach ($eligible as $key => $_) {
         $states[$key] = (string) ($answers[$key]['state'] ?? 'unanswered');
     }
+    // Grouped question completion for the selected child only. Photos are
+    // separate evidence and are not loaded by this report-only endpoint.
+    $completionItems = llama_place_report_completion_items($input, $inapplicable);
+    $total = count($completionItems);
+    $addressed = count(array_filter($completionItems, static fn (array $item): bool => !empty($item['answered'])));
     return [
+        'report_completion' => ['answered' => $addressed, 'total' => $total,
+            'percent' => $total > 0 ? (int) round(100 * $addressed / $total) : 0],
         'report_effective_values' => llama_scoped_report_display_values(array_intersect_key($effective, $eligible)),
         'report_override_values' => llama_scoped_report_display_values($local),
         'report_inherited_values' => llama_scoped_report_display_values($inherited),
