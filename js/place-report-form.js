@@ -561,6 +561,8 @@ const completionFieldValue = (
 form,
 fieldKey
 ) => {
+const siteContext = form.llamaAdminSiteContextValue?.(fieldKey);
+if (siteContext !== undefined) return siteContext;
 const unknownControl = form.querySelector(`[name="${CSS.escape('_report_unknown[' + fieldKey + ']')}"]`);
 if (unknownControl?.checked) return '__LLAMA_UNKNOWN__';
 const arrayControls = [
@@ -965,7 +967,9 @@ return !!field && (showAllForReview
 form.querySelectorAll('[data-report-field]').forEach(wrapper => {
 // Admin's independent Site policy controls are scoped to the selected Site.
 // Never evaluate their dependencies against the parent Place's inputs.
-if (wrapper.closest('[data-admin-site-shared-questions], [data-scoped-report-questions], [data-scoped-field-templates]')) return;
+if (wrapper.closest('[data-scoped-report-questions], [data-scoped-field-templates]')) return;
+const sitePolicy = wrapper.closest('[data-admin-site-shared-questions]');
+if (sitePolicy && !editingSites) return;
 // Area-only question visibility belongs to the verified Area selector.
 // Do not reset it when a Place/Site dependency or unrelated select changes.
 if (wrapper.matches('[data-area-question]')) return;
@@ -1557,6 +1561,7 @@ form.addEventListener('llama:place-update-target-changed', sync);
 
 if (adminSiteConfig) {
 form.addEventListener('llama:campsite-selected', sync);
+form.addEventListener('llama:admin-site-context-changed', sync);
 }
 
 sync();
