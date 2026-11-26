@@ -72,8 +72,9 @@ $intros = [
 ];
 foreach ($intros as $mode => [$html, $name, $text]) {
     tabs_check(str_contains($html, 'data-contribution-intro-mode="' . $mode . '"')
-        && str_contains($html, $name) && str_contains($html, $text),
-        'Wrong intro for ' . $name);
+        && !str_contains($html, $name) && str_contains($html, $text)
+        && !str_contains($html, '<h2'),
+        'Wrong description-only intro for ' . $name);
 }
 tabs_check(!str_contains($admin, 'contribution-type-intro'),
     'Admin reports must not show new-contribution intro cards.');

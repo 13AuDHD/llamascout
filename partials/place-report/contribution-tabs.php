@@ -60,19 +60,15 @@ $placeDraftSuffix = $isResourcePage && !empty($contributionReturnDraft)
         // under the switcher. Only the active report type is displayed.
         $contributionIntros = [
             'place' => [
-                'title' => 'Add a Place',
                 'description' => 'Describe a Place (Dispersed Camping Area, Campground, Parking Lot, RV Park, etc).',
             ],
             'site' => [
-                'title' => 'Add a Site',
                 'description' => 'Describe a Site (Campsite, Parking Spot, etc) that’s inside of a Place.',
             ],
             'area' => [
-                'title' => 'Add a Facility',
                 'description' => 'Describe an on-site Facility (Laundry, Shower, Dump Station, etc) that’s inside of a Place.',
             ],
             'resource' => [
-                'title' => 'Add a Resource',
                 'description' => 'Describe an off-site Resource (Water, Shower, Dump Station, etc) not inside of a Place.',
             ],
         ];
@@ -88,7 +84,6 @@ $placeDraftSuffix = $isResourcePage && !empty($contributionReturnDraft)
             : in_array($introKey, ['place', 'site'], true)): ?>
             <section class="contribution-type-intro" data-contribution-intro-mode="<?= $introKey ?>"
                 <?= $introKey !== $introMode ? 'hidden' : '' ?>>
-                <h2><?= htmlspecialchars($intro['title'], ENT_QUOTES, 'UTF-8') ?></h2>
                 <p><?= htmlspecialchars($intro['description'], ENT_QUOTES, 'UTF-8') ?></p>
             </section>
         <?php endif; ?>

@@ -158,7 +158,8 @@
 }
 
 /* Inline answer help is exclusive to guided Place cards. */
-.place-report-form .scout-card-answer-help {
+.place-report-form .scout-card-answer-help,
+.place-report-form .scout-card-unknown-label {
     display: none;
 }
 
@@ -1216,4 +1217,11 @@ input[type="checkbox"] {
 }
 .place-report-form.is-scout-card-view .add-place-radio-option {
     gap: 12px;
+}
+
+.place-report-form.is-scout-card-view .add-place-radio-option .scout-card-unknown-symbol {
+    display: none;
+}
+.place-report-form.is-scout-card-view .add-place-radio-option .scout-card-unknown-label {
+    display: block;
 }

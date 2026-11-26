@@ -851,8 +851,8 @@ $renderField =
                                         : '' ?>
                                 >
 
-                                <span>?</span>
-                                <span class="scout-card-answer-help"><?= $type === 'rating' ? 'Unknown' : 'Unknown / could not confidently determine' ?></span>
+                                <span class="scout-card-unknown-symbol">?</span>
+                                <span class="scout-card-unknown-label">Unknown</span>
 
                             </label>
 

@@ -36,8 +36,9 @@ assert.match(resourceDetail, /border-inline-start:\s*4px solid var\(--resource-a
 assert.match(mapJs, /resourceMarkerIcon\(/,
     'Existing service-specific marker icons must remain in use');
 
-assert.match(tabs, /'title' => 'Add a Facility'/,
+assert.match(tabs, /'area'\s*=>\s*\[\s*'description' => 'Describe an on-site Facility/,
     'Facility intro must come from the shared contribution switcher');
+assert.doesNotMatch(tabs, /<h2\b/, 'Shared intro boxes must not repeat the page heading');
 assert.match(facilityForm, /'facility_area' => 'Facility'/);
 assert.doesNotMatch(facilityForm, /'camping_area'\s*=>/);
 assert.doesNotMatch(facilityForm, /'parking_area'\s*=>/);
