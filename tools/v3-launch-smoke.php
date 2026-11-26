@@ -3403,6 +3403,28 @@ $check('Standalone Site uses read-only parent context for applicability', static
         && !isset(llama_site_submission_fields()['amenity_toilets']), 'Parent context must not be writable Site fields');
 });
 
+$check('Scoped Update uses effective parent answers and proposed changes', static function () use ($assert): void {
+    require_once dirname(__DIR__) . '/app/place-report/scoped-update-review.php';
+    $effective = ['type' => 'developed-campground', 'amenity_wifi' => '1',
+        'amenity_toilets' => 'flush', 'pets_allowed' => '1'];
+    llama_scoped_update_assert_applicable($effective, ['site_wifi_rating' => '4', 'accessible_toilet' => '1',
+        'dogs_required_to_be_leashed' => '1']);
+    llama_scoped_update_assert_applicable(array_replace($effective, ['pets_allowed' => '0']),
+        ['dogs_required_to_be_leashed' => '1', 'pets_allowed' => '1']);
+    foreach ([
+        [$effective, ['dogs_required_to_be_leashed' => '1', 'pets_allowed' => '0']],
+        [array_replace($effective, ['amenity_wifi' => '0']), ['site_wifi_rating' => '4']],
+        [array_replace($effective, ['amenity_toilets' => llama_place_report_unknown_token()]), ['accessible_toilet' => '1']],
+        [array_replace($effective, ['type' => 'public-parking']), ['site_wifi_rating' => '4']],
+    ] as [$context, $proposed]) {
+        $rejected = false;
+        try { llama_scoped_update_assert_applicable($context, $proposed); }
+        catch (InvalidArgumentException $exception) { $rejected = true; }
+        $assert($rejected, 'Inapplicable scoped proposal accepted');
+    }
+    $assert($effective['pets_allowed'] === '1', 'Validation must not mutate effective context');
+});
+
 $check('Canonical field contract', static function () use ($assert): void {
     $issues = llama_place_report_contract_issues();
     $assert(!$issues, 'Contract issues: ' . implode(' | ', array_slice($issues, 0, 12)) . ' (total ' . count($issues) . ')');
