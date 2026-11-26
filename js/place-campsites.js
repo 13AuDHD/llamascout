@@ -1154,7 +1154,7 @@
                     }
 
                     const conditional = card.dataset.campsiteReportConditional === '1';
-                    if (inapplicable.has(key)
+                    if (site.report_pending === true || inapplicable.has(key)
                         || (conditional && !hasSiteApplicability)) {
                         card.hidden = true;
                         card.classList.add('is-applicability-hidden');
@@ -1403,7 +1403,7 @@
 
         updateTargetContributionPrompts();
 
-        if (targetScope === 'area') {
+        if (targetScope === 'area' && site.report_pending !== true) {
             const areaStatus = document.querySelector('[data-area-report-status]');
             if (areaStatus) {
                 const applicable = Array.from(
@@ -1489,6 +1489,7 @@
         // newly selected Area while its report is loading.
         updateScoutReport({
             report_target_scope: 'area',
+            report_pending: true,
             report_effective_values: {},
             report_answer_states: {},
             report_answer_sources: {},
