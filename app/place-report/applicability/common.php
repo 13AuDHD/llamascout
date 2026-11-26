@@ -238,6 +238,55 @@ function llama_place_report_apply_common_applicability(
         ]]
     );
 
+    // Owner Question Matrix rows 9–14: contact and link questions.
+    llama_place_report_append_applicable($fields, [
+        'contact_phone', 'contact_email', 'contact_website_url',
+    ], [[
+        'field' => 'type',
+        'operator' => 'in',
+        'value' => [
+            'developed-campground', 'camping-area', 'rv-park-resort', 'rest-area',
+            'scenic-overlook', 'trailhead', 'day-use', 'public-parking', 'travel-center',
+            'truck-stop', 'retail-parking', 'restaurant-parking', 'casino-parking',
+            'medical-office-parking', 'hospital-parking', 'church-parking', 'fairgrounds',
+            'membership-host', 'private-property', 'other',
+        ],
+    ]]);
+
+    llama_place_report_append_applicable($fields, [
+        'facility_map_url',
+    ], [[
+        'field' => 'type',
+        'operator' => 'in',
+        'value' => [
+            'developed-campground', 'camping-area', 'rv-park-resort', 'rest-area',
+            'scenic-overlook', 'day-use', 'fairgrounds', 'membership-host',
+            'private-property', 'other',
+        ],
+    ]]);
+
+    llama_place_report_append_applicable($fields, [
+        'contact_reservations_url',
+    ], [[
+        'field' => 'type',
+        'operator' => 'in',
+        'value' => [
+            'developed-campground', 'camping-area', 'rv-park-resort', 'scenic-overlook',
+            'day-use', 'fairgrounds', 'membership-host', 'private-property', 'other',
+        ],
+    ]]);
+
+    llama_place_report_append_applicable($fields, [
+        'contact_related_links',
+    ], [[
+        'field' => 'type',
+        'operator' => 'in',
+        'value' => [
+            'developed-campground', 'camping-area', 'rv-park-resort', 'day-use',
+            'fairgrounds', 'membership-host', 'private-property', 'other',
+        ],
+    ]]);
+
     // Owner Question Matrix rows 45–88. Apply only the Place-type portion
     // here, retaining the original answer-dependent rules registered on fields.
     $typeRule = static fn (string $operator, array $values): array => [[
