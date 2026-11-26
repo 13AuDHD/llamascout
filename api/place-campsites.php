@@ -658,7 +658,7 @@ try {
                     (array) (
                         $resolved['values']
                         ?? []
-                    )
+                    ), (string) ($place['type'] ?? '')
                 )
                 : [];
     }
