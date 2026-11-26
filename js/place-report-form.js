@@ -2268,9 +2268,8 @@ window.LlamaPlaceReportForm
         const progressWrap = nav.querySelector('[data-scout-card-progress-wrap]');
         const back = controls?.querySelector('[data-scout-card-back]');
         const next = controls?.querySelector('[data-scout-card-next]');
-        const gesture = controls?.querySelector('[data-scout-card-gesture]');
         const gestureHelp = controls?.querySelector('[data-scout-card-gesture-help]');
-        if (![toggle, controls, heading, progress, meter, progressWrap, back, next, gesture, gestureHelp].every(Boolean)) return;
+        if (![toggle, controls, heading, progress, meter, progressWrap, back, next, gestureHelp].every(Boolean)) return;
         const sections = [...form.querySelectorAll('details[data-report-main-section], details[data-report-subsection], details[data-contribution-place-photo-panel]')];
         const candidates = [...form.querySelectorAll('[data-scout-card-step], [data-report-subsection] .contribution-grid > [data-report-field], [data-report-subsection] .contribution-grid > [data-report-compound-question], [data-scout-card-group], [data-contribution-place-photo-panel]')];
         const isApplicable = node => {
@@ -2299,7 +2298,7 @@ window.LlamaPlaceReportForm
         const priority = ['type', 'name', 'visited_at', 'description'];
         const first = priority.map(key => all.find(card => card.key === key)).filter(Boolean);
         all.splice(0, all.length, ...first, ...all.filter(card => !first.includes(card)));
-        let active = false, selected = null, openStates = new Map(), touch = null;
+        let active = false, selected = null, openStates = new Map(), drag = null, suppressClick = false;
         const choiceViews = new Map();
         const removeChoices = () => {
             for (const [select, view] of choiceViews) {
@@ -2365,15 +2364,6 @@ window.LlamaPlaceReportForm
             }
         };
         const visible = () => all.filter(card => card.nodes.some(isApplicable));
-        const choiceControls = () => {
-            if (!selected || selected.nodes.length !== 1) return [];
-            const node = selected.nodes[0];
-            if (node.hasAttribute('data-report-compound-question')) return [];
-            const radios = [...node.querySelectorAll('input[type="radio"]:not(:disabled)')].filter(isApplicable);
-            if (radios.length && new Set(radios.map(radio => radio.name)).size === 1) return radios;
-            const selects = [...node.querySelectorAll('select:not(:disabled):not([multiple])')].filter(isApplicable);
-            return selects.length === 1 ? selects : [];
-        };
         const clearPresentation = () => {
             for (const node of [...sections, ...candidates]) node.classList.remove('is-scout-card-offstage');
         };
@@ -2401,12 +2391,11 @@ window.LlamaPlaceReportForm
             syncChoices(onstage);
             back.disabled = index === 0;
             next.disabled = index === cards.length - 1;
-            gestureHelp.textContent = choiceControls().length
-                ? 'Swipe left or right here to navigate; up or down to change an option.'
-                : 'Swipe left or right here to navigate.';
+            gestureHelp.textContent = '← Swipe →';
             if (focus) heading.focus();
         };
         const setMode = enabled => {
+            resetDrag();
             active = enabled;
             toggle.setAttribute('aria-pressed', String(active));
             toggle.textContent = active ? 'Full questionnaire' : 'Card view';
@@ -2431,42 +2420,66 @@ window.LlamaPlaceReportForm
             const target = cards[index + direction];
             if (target) { selected = target; render(true); }
         };
-        const changeChoice = direction => {
-            const choices = choiceControls();
-            if (!choices.length) return;
-            if (choices[0].tagName === 'SELECT') {
-                const select = choices[0];
-                const options = [...select.options].filter(option => !option.disabled && !option.hidden);
-                const index = options.indexOf(select.selectedOptions[0]);
-                const target = options[index + direction];
-                if (target) {
-                    select.value = target.value;
-                    select.dispatchEvent(new Event('input', {bubbles:true}));
-                    select.dispatchEvent(new Event('change', {bubbles:true}));
-                }
-            } else {
-                const index = choices.findIndex(choice => choice.checked);
-                const target = choices[index < 0 ? (direction > 0 ? 0 : choices.length - 1) : index + direction];
-                if (target) target.click();
-            }
+        // Drag the whole card, not a separate gesture pad. Native vertical
+        // scrolling and text editing stay available; an answer tap never navigates.
+        const resetDrag = () => {
+            drag = null;
+            form.classList.remove('is-scout-card-dragging');
+            form.style.removeProperty('--scout-card-drag-x');
+            form.style.removeProperty('--scout-card-drag-angle');
         };
         toggle.addEventListener('click', () => setMode(!active));
         back.addEventListener('click', () => step(-1));
         next.addEventListener('click', () => step(1));
-        gesture.addEventListener('touchstart', event => {
-            if (event.touches.length !== 1) { touch = null; return; }
-            touch = {x:event.touches[0].clientX, y:event.touches[0].clientY};
-        }, {passive:true});
-        gesture.addEventListener('touchcancel', () => { touch = null; });
-        gesture.addEventListener('touchend', event => {
-            if (!active || !touch || !event.changedTouches.length) { touch = null; return; }
-            const dx = event.changedTouches[0].clientX - touch.x;
-            const dy = event.changedTouches[0].clientY - touch.y;
-            touch = null;
-            if (Math.max(Math.abs(dx), Math.abs(dy)) < 45) return;
-            if (Math.abs(dx) >= Math.abs(dy)) step(dx < 0 ? 1 : -1);
-            else changeChoice(dy < 0 ? 1 : -1);
-        }, {passive:true});
+        form.addEventListener('pointerdown', event => {
+            if (drag) return;
+            suppressClick = false;
+            if (!active || event.isPrimary === false || event.button !== 0) return;
+            // Let editable controls, links, and action buttons use native gestures.
+            if (event.target.closest('textarea, select, input:not([type="radio"]):not([type="checkbox"]), a, button:not(.scout-card-choice), [contenteditable="true"]')) return;
+            drag = {id:event.pointerId, x:event.clientX, y:event.clientY, axis:null};
+        });
+        form.addEventListener('pointermove', event => {
+            if (!drag || drag.id !== event.pointerId) return;
+            const dx = event.clientX - drag.x, dy = event.clientY - drag.y;
+            if (!drag.axis) {
+                if (Math.max(Math.abs(dx), Math.abs(dy)) < 10) return;
+                drag.axis = Math.abs(dx) > Math.abs(dy) * 1.2 ? 'x' : 'y';
+                if (drag.axis === 'x') {
+                    form.classList.add('is-scout-card-dragging');
+                    form.setPointerCapture?.(event.pointerId);
+                }
+            }
+            if (drag.axis !== 'x') return;
+            const limit = Math.max(80, form.clientWidth * .75);
+            const offset = Math.max(-limit, Math.min(limit, dx));
+            form.style.setProperty('--scout-card-drag-x', offset + 'px');
+            form.style.setProperty('--scout-card-drag-angle', Math.max(-7, Math.min(7, offset / 30)) + 'deg');
+        });
+        form.addEventListener('pointerup', event => {
+            if (!drag || drag.id !== event.pointerId) return;
+            const dx = event.clientX - drag.x, dy = event.clientY - drag.y;
+            const horizontal = drag.axis === 'x';
+            const vertical = drag.axis === 'y';
+            resetDrag();
+            if (horizontal || vertical) suppressClick = true;
+            if (horizontal && Math.abs(dx) >= 55 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+                step(dx < 0 ? 1 : -1);
+            }
+        });
+        form.addEventListener('pointercancel', event => {
+            if (drag?.id === event.pointerId) resetDrag();
+        });
+        form.addEventListener('lostpointercapture', event => {
+            if (drag?.id === event.pointerId) resetDrag();
+        });
+        form.addEventListener('click', event => {
+            // A drag originating on a choice label/button must not toggle it.
+            if (!suppressClick || event.detail === 0) return;
+            suppressClick = false;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+        }, true);
         // Shared listeners run first. React to asynchronous canonical hidden
         // changes as well, without observing our own presentation classes.
         form.addEventListener('input', () => render());
