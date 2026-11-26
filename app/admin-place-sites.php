@@ -9,6 +9,7 @@ require_once __DIR__ . '/place-campsites.php';
 require_once __DIR__ . '/place-map-features.php';
 require_once __DIR__ . '/place-report/scoped-answers.php';
 require_once __DIR__ . '/place-report/report-targets.php';
+require_once __DIR__ . '/place-report/target-model.php';
 
 /**
  * Admin Place Site-report support.
@@ -539,6 +540,65 @@ function admin_place_save_selected_site_coordinates(
     return true;
 }
 
+/**
+ * Applicability of a new Admin answer uses the complete prospective target,
+ * not just the fields in the POST. Clearing an override is allowed; it does
+ * not constitute a new observation. Explicit Admin override is individual
+ * only and cannot bypass target ownership or canonical answer parsing.
+ */
+function admin_place_assert_answer_applicability(
+    array $effective, array $keys, bool $override = false, string $targetLabel = 'this report'
+): void {
+    if ($override) { return; }
+    foreach ($keys as $key) {
+        if (!llama_place_report_question_applicable($effective, (string) $key)) {
+            $field = llama_report_question((string) $key);
+            throw new InvalidArgumentException(
+                ($field['label'] ?? $key) . ' does not apply to ' . $targetLabel
+                . '. Check the parent answers or edit the individual report using the explicit Admin override.'
+            );
+        }
+    }
+}
+
+function admin_place_site_applicability_input(array $values): array
+{
+    $input = [];
+    foreach ($values as $key => $value) {
+        $field = llama_report_question((string) $key);
+        if ($field !== null) {
+            $input[$key] = llama_place_report_answer_form_value($field, $value);
+        }
+    }
+    return $input;
+}
+
+/** Determine actual bulk writes before validating the whole prospective Site. */
+function admin_place_plan_bulk_site_answers(
+    array $effective, array $existing, array $imported, array $parsed,
+    bool $overwrite, string $targetLabel
+): array {
+    $writes = [];
+    foreach ($parsed as $key => $value) {
+        if (!$overwrite && (array_key_exists($key, $existing)
+            || (array_key_exists($key, $imported)
+                && $imported[$key] !== '' && $imported[$key] !== null
+                && $imported[$key] !== llama_place_report_unanswered_token()))) {
+            continue;
+        }
+        if (array_key_exists($key, $existing)
+            && llama_scoped_report_values_equal($existing[$key], $value)) {
+            continue;
+        }
+        $writes[$key] = $value;
+    }
+    admin_place_assert_answer_applicability(
+        admin_place_site_applicability_input(array_replace($effective, $writes)),
+        array_keys($writes), false, $targetLabel
+    );
+    return $writes;
+}
+
 function admin_place_save_selected_campsite_answers(PDO $db, int $actorUserId, int $placeId, array $input): ?int
 {
     $selected = trim((string) ($input['selected_campsite_id'] ?? ''));
@@ -551,7 +611,7 @@ function admin_place_save_selected_campsite_answers(PDO $db, int $actorUserId, i
     $parsed = admin_place_parse_site_target($selected);
     $source = (string) $parsed['source'];
     $siteId = (int) $parsed['id'];
-    llama_report_verified_target($db, $placeId, 'site', $source, $siteId);
+    $target = llama_report_verified_target($db, $placeId, 'site', $source, $siteId);
     $site = llama_place_campsite($db, $placeId, $siteId);
     if (!$site) { throw new InvalidArgumentException('The selected Site is not available for this Place.'); }
     $payload = (string) ($input['admin_site_answers_json'] ?? '');
@@ -566,6 +626,31 @@ function admin_place_save_selected_campsite_answers(PDO $db, int $actorUserId, i
     $fields = llama_place_report_fields();
     $imported = llama_place_report_campsite_imported_form_values($site);
     $existing = llama_scoped_report_load($db, $placeId, 'site', $siteId, $source);
+    $model = llama_place_report_target_model($db, $placeId, $target);
+    $effective = $model['values'];
+    $fallback = array_replace($model['inherited'] ?? [], $model['baseline'] ?? []);
+    $newKeys = [];
+    foreach ($answers as $key => $raw) {
+        if ($raw === null || $raw === '' || $raw === llama_place_report_unanswered_token()
+            || (array_key_exists($key, $imported)
+                && llama_place_report_values_equal($raw, $imported[$key], $fields[$key]))) {
+            unset($effective[$key]);
+            if (array_key_exists($key, $fallback)) { $effective[$key] = $fallback[$key]; }
+            continue;
+        }
+        if (array_key_exists($key, $existing)
+            && llama_place_report_values_equal($raw, $existing[$key], $fields[$key])) { continue; }
+        $answer = llama_place_report_submission_answer($fields[$key], $raw);
+        if (!$answer['recorded']) {
+            throw new InvalidArgumentException('Invalid Site answer. Clear the override explicitly instead.');
+        }
+        $effective[$key] = $answer['scoped_value'];
+        $newKeys[] = $key;
+    }
+    $override = (string) ($input['admin_applicability_override'] ?? '') === '1';
+    admin_place_assert_answer_applicability(
+        admin_place_site_applicability_input($effective), $newKeys, $override, 'the selected Site'
+    );
     $saved = 0;
     foreach (admin_place_campsite_field_keys() as $key) {
         if (!array_key_exists($key, $answers)) { continue; }
@@ -590,7 +675,8 @@ function admin_place_save_selected_campsite_answers(PDO $db, int $actorUserId, i
         $db, $actorUserId, $placeId, $siteId, $input
     );
     admin_users_audit($db, $actorUserId, null, 'place.site_report_updated',
-        'Updated an individual Site report.', ['place_id'=>$placeId,'site_id'=>$siteId,'answers_saved'=>$saved]);
+        'Updated an individual Site report.', ['place_id'=>$placeId,'site_id'=>$siteId,'answers_saved'=>$saved,
+            'applicability_override'=>$override]);
     return $siteId;
 }
 
@@ -659,38 +745,47 @@ function admin_place_bulk_save_site_answers(
     if (!$sites) {
         throw new InvalidArgumentException('There are no active Sites to update.');
     }
+    // Resolve the same parent context for all Sites in one canonical batch
+    // instead of querying every Place answer repeatedly for each Site.
+    $placeValues = llama_place_report_current_answer_values(
+        llama_place_report_current_place_answers($db, $placeId)
+    );
+    $targets = [];
+    foreach ($sites as $site) {
+        $id = (int) ($site['id'] ?? 0);
+        if ($id > 0) {
+            $targets[$id] = llama_report_verified_target($db, $placeId, 'site', 'campsite_record', $id);
+        }
+    }
+    $resolved = llama_scoped_report_effective_answers_for_targets($db, $placeId, $placeValues, array_values($targets));
     $siteCount = 0;
     $savedCount = 0;
+    $plans = [];
     foreach ($sites as $site) {
         $siteId = (int) ($site['id'] ?? 0);
         if ($siteId < 1) {
             continue;
         }
-        $target = llama_report_verified_target($db, $placeId, 'site', 'campsite_record', $siteId);
-        $source = (string) ($target['source'] ?? 'campsite_record');
-        $targetId = (int) ($target['id'] ?? $siteId);
-        $existing = llama_scoped_report_load($db, $placeId, 'site', $targetId, $source);
-        $imported = admin_place_campsite_imported_form_values($site);
-        $siteSaved = false;
-        foreach ($parsed as $key => $value) {
-            if (!$overwrite && (array_key_exists($key, $existing)
-                || (array_key_exists($key, $imported)
-                    && $imported[$key] !== ''
-                    && $imported[$key] !== null
-                    && $imported[$key] !== $unansweredToken))) {
-                continue;
-            }
-            if (array_key_exists($key, $existing)
-                && llama_scoped_report_values_equal($existing[$key], $value)) {
-                continue;
-            }
-            llama_scoped_report_save($db, $placeId, 'site', $targetId, $source, $key, $value);
-            $savedCount++;
-            $siteSaved = true;
+        $target = $targets[$siteId];
+        $source = (string) $target['source'];
+        $targetId = (int) $target['id'];
+        $model = llama_place_report_with_campsite_baseline(
+            $resolved['site:' . $source . ':' . $targetId], $site
+        );
+        $plans[$targetId] = admin_place_plan_bulk_site_answers(
+            $model['values'], $model['overrides'], admin_place_campsite_imported_form_values($site),
+            $parsed, $overwrite, (string) ($target['label'] ?? ('Site #' . $targetId))
+        );
+    }
+    // All intended writes have passed validation before any Site is changed.
+    // The surrounding transaction also protects against persistence failure.
+    foreach ($plans as $targetId => $writes) {
+        if (!$writes) { continue; }
+        foreach ($writes as $key => $value) {
+            llama_scoped_report_save($db, $placeId, 'site', $targetId, 'campsite_record', $key, $value);
+            ++$savedCount;
         }
-        if ($siteSaved) {
-            $siteCount++;
-        }
+        ++$siteCount;
     }
     admin_users_audit($db, $actorUserId, null,
         'place.site_report_bulk_updated',
