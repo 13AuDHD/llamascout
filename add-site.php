@@ -216,6 +216,8 @@ require __DIR__ . '/partials/header.php';
 </section>
 <script src="<?= $e($siteUrl . '/js/add-site-parent-search.js?v='
     . (int) filemtime(__DIR__ . '/js/add-site-parent-search.js')) ?>" defer></script>
+<script src="<?= $e($siteUrl . '/js/add-place-name.js?v='
+    . (int) filemtime(__DIR__ . '/js/add-place-name.js')) ?>" defer></script>
 <script src="<?= $e($siteUrl . '/js/add-site-location.js?v='
     . (int) filemtime(__DIR__ . '/js/add-site-location.js')) ?>" defer></script>
 <script src="<?= $e($siteUrl . '/js/place-report-form.js?v='
