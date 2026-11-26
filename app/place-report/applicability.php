@@ -22,10 +22,6 @@ function llama_place_report_apply_applicability(
         $fields
     );
 
-    llama_place_report_apply_camping_profiles(
-        $fields
-    );
-
     llama_place_report_apply_overnight_applicability(
         $fields
     );

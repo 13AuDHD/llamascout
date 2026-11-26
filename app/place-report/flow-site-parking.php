@@ -137,8 +137,4 @@ function llama_place_report_apply_site_parking_metadata(
         }
     }
 
-    if (isset($fields['max_rv_length_feet'])) {
-        $fields['max_rv_length_feet']['applicable_if'] =
-            [];
-    }
 }

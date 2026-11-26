@@ -224,7 +224,6 @@ function llama_place_report_apply_common_applicability(
     llama_place_report_set_applicable(
         $fields,
         [
-            'ground_condition',
             'water_crossings',
             'downed_tree_risk',
             'site_access_difficulty',
@@ -346,48 +345,18 @@ function llama_place_report_apply_common_applicability(
     llama_place_report_set_applicable(
         $fields,
         [
-            'site_number',
             'site_accessible',
-            'max_people',
-            'overhead_clearance_feet',
-            'parking_length_feet',
-            'parking_grade',
-            'site_length_feet',
-            'site_width_feet',
-            'tent_pad',
             'double_driveway',
             'hike_in_distance_feet',
-            'max_rv_length_feet',
             'site_rating',
             'condition_rating',
             'location_rating',
-            'capacity_size_rating',
         ],
         [[
             'field' => 'type',
             'operator' => 'in',
             'value' => $types['camping'],
         ]]
-    );
-
-    llama_place_report_set_applicable(
-        $fields,
-        [
-            'tent_pad_length_feet',
-            'tent_pad_width_feet',
-        ],
-        [
-            [
-                'field' => 'type',
-                'operator' => 'in',
-                'value' => $types['camping'],
-            ],
-            [
-                'field' => 'tent_pad',
-                'operator' => 'equals',
-                'value' => '1',
-            ],
-        ]
     );
 
     llama_place_report_set_applicable(
@@ -463,8 +432,6 @@ function llama_place_report_apply_common_applicability(
     llama_place_report_set_applicable(
         $fields,
         [
-            'amenity_fire_ring',
-            'amenity_bear_box',
             'pack_it_in_pack_it_out',
         ],
         [[

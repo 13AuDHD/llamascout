@@ -306,6 +306,9 @@ function llama_place_report_fields(): array
     require_once __DIR__ . '/flow-form-cleanup.php';
     llama_place_report_apply_form_cleanup_metadata($f);
 
+    // Site type applicability follows metadata so parent rules are not overwritten.
+    llama_place_report_apply_camping_profiles($f);
+
     /*
      * The shared form consumes registry order directly. Reorder only after
      * every presentation-metadata pass has finished so every field-driven

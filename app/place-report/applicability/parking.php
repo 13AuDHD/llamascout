@@ -9,7 +9,6 @@ function llama_place_report_apply_parking_profiles(
         llama_place_report_applicability_types();
 
     $travelCenterNotApplicable = [
-        'vehicle_capacity',
         'tree_cover',
         'environment_water_nearby',
         'environment_wildlife',
@@ -68,7 +67,6 @@ function llama_place_report_apply_parking_profiles(
     llama_place_report_append_applicable(
         $fields,
         [
-            'vehicle_capacity',
             'designated_sites_only',
             'existing_sites_encouraged',
             'dispersed_camping_allowed',
@@ -126,23 +124,6 @@ function llama_place_report_apply_parking_profiles(
     llama_place_report_append_applicable(
         $fields,
         [
-            'turnaround_space',
-            'pull_through',
-            'back_in',
-        ],
-        [[
-            'field' => 'type',
-            'operator' => 'not_equals',
-            'value' => 'street-parking',
-        ]]
-    );
-
-    llama_place_report_append_applicable(
-        $fields,
-        [
-            'vehicle_capacity',
-            'pull_through',
-            'back_in',
             'target_shooting_allowed',
         ],
         [[
