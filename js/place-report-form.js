@@ -2471,7 +2471,7 @@ window.LlamaPlaceReportForm
             if (drag?.id === event.pointerId) resetDrag();
         });
         form.addEventListener('lostpointercapture', event => {
-            if (drag?.id === event.pointerId) resetDrag();
+            if (event.target === form && drag?.id === event.pointerId) resetDrag();
         });
         form.addEventListener('click', event => {
             // A drag originating on a choice label/button must not toggle it.
