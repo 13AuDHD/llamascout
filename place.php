@@ -523,14 +523,8 @@ try {
          * changing the denominator after the calculation.
          */
         $reportCompleteness =
-            llama_place_report_question_completion_summary(
-                llama_place_report_scoring_input_from_data(
-                    $completionData
-                ),
-                $completionPhotos,
-                [
-                    'visited_at',
-                ]
+            llama_place_report_published_place_completion(
+                $completionData, $completionPhotos
             );
     }
 } catch (

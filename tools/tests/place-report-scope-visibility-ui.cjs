@@ -32,8 +32,9 @@ const dom = new JSDOM(`<!doctype html><body>
     <h3 data-area-report-name></h3>
     <p data-area-report-status></p>
   </section>
-  <section class="scout-report-section" data-report-page="place" data-report-scopes="place area">
+  <section class="scout-report-section" data-report-page="place" data-report-scopes="place area" data-report-target-section="1" data-report-section-label="Amenities" data-report-fixed-applicable="2" data-report-fixed-missing="1">
     <h3>Amenities</h3>
+    <div data-target-report-prompt hidden><strong></strong><p></p></div>
     <div class="scout-report-grid">
       <div class="scout-report-item" data-report-scopes="place"
            data-report-owner="place">
@@ -120,12 +121,14 @@ area.hidden = true;
 
 event('area','55');
 assert.ok(!isShown(area), 'Do not show unverified Facility inventory while loading');
+assert.equal(q('[data-target-report-prompt]').hidden,true,'Loading must not advertise missing answers');
 await new Promise(resolve => setImmediate(resolve));
 assert.ok(!isShown(place));
 assert.ok(isShown(area), 'Selected Area question should be visible');
 assert.equal(q('[data-area-report-name]').textContent, 'West Vault Toilets');
 assert.equal(area.querySelector('strong').textContent, '3');
 assert.ok(!isShown(q('[data-campsite-report-field="facility_shower_stalls"]')), 'Wrong-kind question stays hidden after response');
+assert.equal(q('[data-target-report-prompt]').hidden,true,'Hidden wrong-kind questions and fixed Place counts must not create Facility missing prompts');
 assert.equal(areaCtx.hidden, false);
 assert.ok(requests.some(v=>v.includes('area=55')));
 
@@ -138,6 +141,8 @@ assert.ok(isShown(shared));
 assert.ok(!isShown(area));
 assert.ok(!isShown(site));
 assert.equal(areaCtx.hidden,true);
+assert.equal(q('[data-target-report-prompt]').hidden,false,'Place fixed missing count returns with Place');
+assert.match(q('[data-target-report-prompt] p').textContent,/1 applicable detail/);
 
 // ORANGE Site still has its own inventory; a Site-only card that was
 // initially hidden on Place must not remain permanently hidden.

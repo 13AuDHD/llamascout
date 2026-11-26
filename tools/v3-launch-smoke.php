@@ -3496,6 +3496,33 @@ $check('Public child projections filter stored inapplicable answers without alte
     $assert($observations['facility_shower_stalls']['value'] === 2, 'Wrong-kind history remains stored');
 });
 
+$check('Published Place completeness excludes child-owned questions and respects parent context', static function () use ($assert): void {
+    $data = ['type'=>'developed-campground','name'=>'Test campground',
+        'amenities'=>['wifi'=>true]];
+    $summary = llama_place_report_published_place_completion($data, 1);
+    $excluded = ['visited_at'];
+    foreach (llama_report_questions() as $key => $field) {
+        if (!in_array('place', (array) ($field['report_scopes'] ?? []), true)) { $excluded[] = $key; }
+    }
+    $expected = llama_place_report_question_completion_summary(
+        llama_place_report_scoring_input_from_data($data), 1, $excluded);
+    $assert($summary === $expected, 'Published Place must use Place-only completion plus photo evidence');
+    foreach ($summary['missing'] as $item) {
+        foreach ($item['fields'] as $key) {
+            $assert(in_array('place', llama_report_question($key)['report_scopes'], true), 'Child question counted on Place');
+        }
+    }
+    $withChild = $data;
+    $withChild['details']['cliff_exposure'] = true;
+    $assert(llama_place_report_published_place_completion($withChild, 1) === $summary, 'Stored child observation cannot change Place completion');
+    $assert(isset(llama_scoped_report_quick_warnings(['cliff_exposure'=>'1','connectivity_overall'=>1], 'developed-campground')['cliff_exposure']),
+        'Verified parent type must restore warning even if flat context omits type');
+    $assert(llama_scoped_report_quick_warnings(['type'=>'developed-campground','cliff_exposure'=>'1','connectivity_overall'=>1], 'public-parking') === [],
+        'Verified parent type must suppress stale inapplicable hazards');
+    $assert(llama_scoped_report_quick_warnings(['cliff_exposure'=>llama_place_report_unknown_token()], 'developed-campground') === [],
+        'Unknown hazard must never create a warning');
+});
+
 $check('Canonical field contract', static function () use ($assert): void {
     $issues = llama_place_report_contract_issues();
     $assert(!$issues, 'Contract issues: ' . implode(' | ', array_slice($issues, 0, 12)) . ' (total ' . count($issues) . ')');

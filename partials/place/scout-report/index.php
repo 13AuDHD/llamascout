@@ -87,6 +87,13 @@ if (empty($isDemoScoutReport) && !empty($placeReportSource['id'])) {
     }
 }
 
+// Match the selected seasonal projection, not the normal Place snapshot.
+if (is_array($publicReportSeason)) {
+    $reportCompleteness = llama_place_report_published_place_completion(
+        $placeReportData, count((array) ($placeReportSource['images'] ?? []))
+    );
+}
+
 $placeReportReadMode =
     'scout-report';
 
@@ -120,7 +127,7 @@ $compareReportHistoryUrl =
             >
                 <i aria-hidden="true"><?= llama_icon('list-check') ?></i>
                 <span>
-                    Report completeness
+                    Place report completeness
                     <?= (int) ($reportCompleteness['percent'] ?? 0) ?>%
                     <?php if (
                         isset(

@@ -290,7 +290,7 @@ try {
 
     $site['report_warnings'] =
         llama_scoped_report_quick_warnings(
-            $effectiveValues
+            $effectiveValues, (string) ($place['type'] ?? $publicPlace['type'] ?? '')
         );
 
     [$rateDoc, $rateDate] = llama_pricing_public_night(

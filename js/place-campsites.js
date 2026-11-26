@@ -72,7 +72,10 @@
             report.dataset.activeReportScope = scope;
             const isArea = scope === 'area';
             if (areaContext) areaContext.hidden = !isArea;
-            if (placeCompleteness) placeCompleteness.hidden = isArea;
+            if (placeCompleteness) {
+                const currentSiteCompletion = scope === 'site' && placeCompleteness.dataset.completionScope === 'site';
+                placeCompleteness.hidden = scope !== 'place' && !currentSiteCompletion;
+            }
             if (compareLink) compareLink.hidden = isArea;
 
             restoreItemVisibility(scope);
@@ -260,7 +263,7 @@
             .trim();
 
     const updateTargetContributionPrompts =
-        () => {
+        (scope = 'place', pending = false) => {
             document
                 .querySelectorAll(
                     '[data-report-target-section]'
@@ -287,44 +290,23 @@
                                 }
                             );
 
-                        const fixedMissing =
-                            Number(
-                                reportSection.dataset
-                                    .reportFixedMissing
-                                || 0
-                            );
-
-                        const applicableCount =
-                            Number(
-                                reportSection.dataset
-                                    .reportApplicableCount
-                                || 0
-                            );
-
-                        const switchableCards =
-                            Array.from(
-                                reportSection
-                                    .querySelectorAll(
-                                        '[data-campsite-report-field]'
-                                    )
-                            );
-
-                        const switchableMissing =
-                            switchableCards
-                                .filter(
-                                    (card) =>
-                                        card.classList.contains(
-                                            'is-unanswered'
-                                        )
-                                )
-                                .length;
-
-                        const missingCount =
-                            Math.max(
-                                0,
-                                fixedMissing
-                                + switchableMissing
-                            );
+                        // Only visible, authorized cards for this target
+                        // contribute to a missing-detail prompt. Fixed Place
+                        // counts must never follow a Site or Facility.
+                        if (pending || (scope !== 'place' && !hasCompleteAccess)) {
+                            prompt.hidden = true;
+                            return;
+                        }
+                        const cards = [...reportSection.querySelectorAll('[data-campsite-report-field]')]
+                            .filter(card => !card.hidden
+                                && !card.classList.contains('is-applicability-hidden')
+                                && !card.classList.contains('is-access-locked')
+                                && (card.dataset.reportScopes || '').split(/\s+/).includes(scope)
+                                && (scope !== 'area' || card.dataset.reportOwner === 'area'));
+                        const fixedMissing = scope === 'place' ? Number(reportSection.dataset.reportFixedMissing || 0) : 0;
+                        const fixedApplicable = scope === 'place' ? Number(reportSection.dataset.reportFixedApplicable || 0) : 0;
+                        const applicableCount = fixedApplicable + cards.length;
+                        const missingCount = fixedMissing + cards.filter(card => card.classList.contains('is-unanswered')).length;
 
                         if (missingCount < 1) {
                             prompt.hidden =
@@ -1401,7 +1383,7 @@
                 }
             );
 
-        updateTargetContributionPrompts();
+        updateTargetContributionPrompts(targetScope, site.report_pending === true);
 
         if (targetScope === 'area' && site.report_pending !== true) {
             const areaStatus = document.querySelector('[data-area-report-status]');
@@ -1411,6 +1393,17 @@
                 ).filter((card) => !card.hidden);
                 const addressed = applicable.filter((card) => !card.classList.contains('is-unanswered'));
                 areaStatus.textContent = `${addressed.length} of ${applicable.length} Facility questions addressed.`;
+            }
+        }
+
+        const completion = document.querySelector('.scout-report-completeness');
+        const completionText = completion?.querySelector('span');
+        if (completion && targetScope === 'site' && completionText) {
+            const summary = site.report_completion;
+            completion.hidden = !(hasCompleteAccess && summary && site.report_pending !== true);
+            completion.dataset.completionScope = completion.hidden ? '' : 'site';
+            if (!completion.hidden) {
+                completionText.textContent = `Site question completeness ${summary.percent}% · ${summary.answered} / ${summary.total}`;
             }
         }
 
@@ -1464,7 +1457,13 @@
             }];
         })
     );
+    const initialCompletionText = document.querySelector('.scout-report-completeness span')?.textContent;
     const restorePlaceAnswers = () => {
+        const completion = document.querySelector('.scout-report-completeness span');
+        if (completion && initialCompletionText !== undefined) {
+            completion.textContent = initialCompletionText;
+            delete completion.parentElement.dataset.completionScope;
+        }
         for (const [card, saved] of originalPlaceCards) {
             card.className = saved.className;
             card.hidden = saved.hidden;
@@ -1730,6 +1729,7 @@
                 // Clear the previous Site while its replacement loads.
                 updateScoutReport({
                     display_name: site.display_name,
+                    report_pending: true,
                     report_warnings: {},
                 });
                 const activeId = selectedId;

@@ -932,6 +932,20 @@ function llama_place_report_completion_items(
     return array_values($items);
 }
 
+/** Live Place completion excludes child-owned questions, not their context. */
+function llama_place_report_published_place_completion(array $data, int $photoCount): array
+{
+    $excluded = ['visited_at'];
+    foreach (llama_report_questions() as $key => $field) {
+        if (!in_array('place', (array) ($field['report_scopes'] ?? []), true)) {
+            $excluded[] = $key;
+        }
+    }
+    return llama_place_report_question_completion_summary(
+        llama_place_report_scoring_input_from_data($data), $photoCount, $excluded
+    );
+}
+
 function llama_place_report_question_completion_summary(
     array $input,
     int $photoCount = 0,
