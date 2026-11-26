@@ -420,14 +420,6 @@ $placeReportPhotoHelp =
             ) ?>"
         >
 
-        <?php if ($placeReportNewPlaceOnly): ?>
-            <label class="contribution-field">
-                <span class="place-report-field-label">Date visited *</span>
-                <input type="date" name="visited_at" required
-                    value="<?= htmlspecialchars((string) ($placeReportValues['visited_at'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
-            </label>
-        <?php endif; ?>
-
         <input
             type="hidden"
             name="photo_stage_token"
