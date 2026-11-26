@@ -394,7 +394,7 @@ $check('Reported Total Sites is a shared Place question', static function () use
     $assert(array_slice((array) (llama_place_report_approved_question_groups()['basic'][1] ?? []), 0, 3) === ['type', 'name', 'campsite_count'], 'Reported Total Sites must remain after Place name');
     $assert(llama_place_report_approved_registry_issues() === [], 'Approved question inventory integrity failed');
 });
-$check('Place Contact and Links use the canonical Place report', static function () use ($assert): void {
+$check('Place Contact and Links use the canonical Place report', static function () use ($assert, $assertNoAnswerDependencies): void {
     $catalog = llama_report_questions();
     $keys = [
         'contact_phone',
@@ -419,8 +419,11 @@ $check('Place Contact and Links use the canonical Place report', static function
         $assert(($field['layout_section'] ?? '') === 'place'
             && ($field['layout_group'] ?? '') === 'information_location',
             'Contact question uses a parallel layout: ' . $key);
-        $assert(($field['applicable_if'] ?? []) === [],
-            'Place Type incorrectly hides contact question: ' . $key);
+        // The owner matrix now explicitly limits contact fields by Place type.
+        // Exact type masks are tested in the Basic/Location/Amenities matrix
+        // check below; contact fields must not acquire answer dependencies.
+        $assertNoAnswerDependencies($field,
+            'Contact question incorrectly depends on another answer: ' . $key);
         $assert(array_search($key, $basic, true) < array_search('description', $basic, true),
             'Contact question must precede Description: ' . $key);
         $assert(empty($field['counts_toward_completion']),
