@@ -225,21 +225,11 @@ function llama_place_report_apply_common_applicability(
         $fields,
         [
             'ground_condition',
-            'sedan_accessible',
-            'high_clearance_recommended',
-            'four_wheel_drive_recommended',
             'water_crossings',
             'downed_tree_risk',
-            'seasonal_closure',
             'site_access_difficulty',
             'road_overall_difficulty',
             'road_stress',
-            'rocks',
-            'washboards',
-            'potholes',
-            'mud_risk',
-            'steep_grades',
-            'drop_off_exposure',
         ],
         [[
             'field' => 'type',
@@ -247,6 +237,58 @@ function llama_place_report_apply_common_applicability(
             'value' => $types['rough_access'],
         ]]
     );
+
+    // Owner Question Matrix rows 45–88. Apply only the Place-type portion
+    // here, retaining the original answer-dependent rules registered on fields.
+    $typeRule = static fn (string $operator, array $values): array => [[
+        'field' => 'type',
+        'operator' => $operator,
+        'value' => $values,
+    ]];
+
+    llama_place_report_append_applicable($fields, [
+        'place_open_24_hours', 'place_opening_time', 'place_closing_time',
+    ], $typeRule('not_in', ['dispersed-camping', 'street-parking']));
+
+    llama_place_report_append_applicable($fields, [
+        'place_entrance_gate', 'place_gate_access_type',
+        'place_gate_opening_time', 'place_gate_closing_time',
+    ], $typeRule('not_in', ['vehicle-pulloff', 'street-parking']));
+
+    $approachTypes = [
+        'dispersed-camping', 'developed-campground', 'camping-area',
+        'rv-park-resort', 'rest-area', 'scenic-overlook',
+        'vehicle-pulloff', 'trailhead', 'fairgrounds', 'street-parking',
+        'other-parking', 'membership-host', 'private-property', 'other',
+    ];
+
+    llama_place_report_append_applicable($fields, [
+        'approach_permit_required',
+    ], $typeRule('in', array_values(array_diff($approachTypes, ['membership-host']))));
+
+    llama_place_report_append_applicable($fields, [
+        'approach_fee_required', 'approach_road_fee',
+    ], $typeRule('in', $approachTypes));
+
+    llama_place_report_append_applicable($fields, [
+        'approach_road_hazards', 'approach_deep_ruts', 'rocks',
+        'washboards', 'potholes', 'mud_risk', 'steep_grades', 'drop_off_exposure',
+    ], $typeRule('in', array_values(array_diff($approachTypes, ['rv-park-resort']))));
+
+    llama_place_report_append_applicable($fields, [
+        'approach_gate_present', 'approach_gate_access_type',
+        'approach_gate_opens', 'approach_gate_closes',
+    ], $typeRule('in', [
+        'dispersed-camping', 'developed-campground', 'camping-area',
+        'rv-park-resort', 'rest-area', 'scenic-overlook', 'vehicle-pulloff',
+        'trailhead', 'day-use', 'membership-host', 'private-property', 'other',
+    ]));
+
+    llama_place_report_append_applicable($fields, [
+        'high_clearance_recommended', 'four_wheel_drive_recommended',
+    ], [[
+        'field' => 'sedan_accessible', 'operator' => 'equals', 'value' => '0',
+    ]]);
 
     /*
      * Active Site facts. Historical suitability fields are deliberately not
