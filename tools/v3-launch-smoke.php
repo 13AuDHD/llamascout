@@ -2738,6 +2738,86 @@ $check('Owner matrix Operating Hours and Getting There rows 45–88', static fun
     }
 });
 
+$check('Owner matrix Basic, Location and Amenities rows 6–44', static function () use ($assert): void {
+    // Column N through AK, in workbook order. These expected masks were
+    // transcribed from the actual owner-completed spreadsheet.
+    $types = [
+        'dispersed-camping', 'developed-campground', 'camping-area', 'rv-park-resort',
+        'rest-area', 'scenic-overlook', 'vehicle-pulloff', 'trailhead', 'day-use',
+        'public-parking', 'travel-center', 'truck-stop', 'retail-parking',
+        'restaurant-parking', 'casino-parking', 'medical-office-parking', 'hospital-parking',
+        'church-parking', 'fairgrounds', 'street-parking', 'other-parking',
+        'membership-host', 'private-property', 'other',
+    ];
+    $assert($types === array_keys(llama_place_report_place_types()), 'Matrix column order changed');
+    $groups = [
+        ['111111111111111111111111', [
+            'type', 'name', 'description', 'latitude', 'longitude', 'elevation_feet', 'road',
+            'city', 'county', 'state', 'land_type', 'land_manager',
+        ]],
+        ['111100001000000000100111', [
+            'campsite_count',
+        ]],
+        ['111000111000000000000001', [
+            'region',
+        ]],
+        ['011111011111111111100111', [
+            'contact_phone', 'contact_email', 'contact_website_url',
+        ]],
+        ['011111001000000000100111', [
+            'facility_map_url',
+        ]],
+        ['011101001000000000100111', [
+            'contact_reservations_url',
+        ]],
+        ['011100001000000000100111', [
+            'contact_related_links',
+        ]],
+        ['111111111000000000100111', [
+            'activities',
+        ]],
+        ['011111011011000000000111', [
+            'amenity_toilets', 'amenity_showers',
+        ]],
+        ['011111011111000000000111', [
+            'amenity_potable_water', 'amenity_trash', 'amenity_dump_station',
+            'amenity_picnic_shelter',
+        ]],
+        ['011111001111111111111111', [
+            'amenity_wifi',
+        ]],
+        ['011111001011000000000111', [
+            'amenity_laundry', 'amenity_dishwashing_station',
+        ]],
+        ['011111001111000000000111', [
+            'amenity_playground', 'amenity_dog_park',
+        ]],
+        ['011111001000000000000111', [
+            'amenity_amphitheater',
+        ]],
+        ['111100001000000000000111', [
+            'amenity_campground_host',
+        ]],
+        ['111100000000000000000101', [
+            'amenity_camp_store',
+        ]],
+        ['111111111111111111111111', [
+            'amenity_trailhead', 'amenity_river_access', 'amenity_lake_access',
+            'amenity_fishing_pier',
+        ]],
+    ];
+    $catalog = llama_report_questions();
+    foreach ($types as $index => $type) {
+        foreach ($groups as [$mask, $keys]) {
+            foreach ($keys as $key) {
+                $assert(isset($catalog[$key]), 'Missing matrix question: ' . $key);
+                $assert(llama_place_report_question_applicable(['type' => $type], $key) === ($mask[$index] === '1'),
+                    $key . ' does not match workbook for ' . $type);
+            }
+        }
+    }
+});
+
 $check('Canonical field contract', static function () use ($assert): void {
     $issues = llama_place_report_contract_issues();
     $assert(!$issues, 'Contract issues: ' . implode(' | ', array_slice($issues, 0, 12)) . ' (total ' . count($issues) . ')');
