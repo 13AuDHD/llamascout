@@ -3453,6 +3453,49 @@ $check('Admin Site saves respect actual prospective dependencies and bulk protec
     $assert($no['amenity_wifi'] === '0', 'Applicability must not change recorded history');
 });
 
+$check('Public child projections filter stored inapplicable answers without altering history', static function () use ($assert): void {
+    require_once dirname(__DIR__) . '/app/place-report/scoped-answers.php';
+    $answer = static fn ($value, $inherited = false): array => [
+        'recorded' => true, 'state' => $value === llama_place_report_unknown_token() ? 'unknown' : 'answered',
+        'value' => $value === llama_place_report_unknown_token() ? null : $value,
+        'inherited' => $inherited, 'origin' => ['origin_type' => 'scoped_override'],
+    ];
+    $target = ['scope'=>'site','source'=>'campsite_record','id'=>12];
+    $answers = [
+        'type' => $answer('developed-campground', true),
+        'amenity_wifi' => $answer(false, true),
+        'amenity_toilets' => $answer('flush', true),
+        'site_wifi_rating' => $answer(4),
+        'accessible_toilet' => $answer(true),
+        'wheelchair_friendly' => $answer(llama_place_report_unknown_token()),
+    ];
+    $sources = ['site_wifi_rating'=>['label'=>'Old observation'], 'accessible_toilet'=>['label'=>'Scout']];
+    $projection = llama_public_scoped_report_projection($answers, $target, 'developed-campground', $sources);
+    $assert(in_array('site_wifi_rating', $projection['report_inapplicable_keys'], true), 'Inherited No must hide WiFi rating');
+    foreach (['report_effective_values','report_override_values','report_inherited_values','report_answer_states','report_answer_sources'] as $key) {
+        $assert(!array_key_exists('site_wifi_rating', $projection[$key]), 'Hidden answer leaked into ' . $key);
+    }
+    $assert(isset($projection['report_effective_values']['accessible_toilet'], $projection['report_answer_sources']['accessible_toilet']),
+        'Eligible inherited-service child and source must remain');
+    $assert(($projection['report_answer_states']['wheelchair_friendly'] ?? '') === 'unknown',
+        'Explicit Unknown remains distinct from unanswered');
+    $assert(($projection['report_answer_states']['site_length_feet'] ?? '') === 'unanswered',
+        'Eligible unanswered inventory must remain authoritative over legacy fallback');
+    $answers['amenity_wifi'] = $answer(true, true);
+    $projection = llama_public_scoped_report_projection($answers, $target, 'developed-campground', $sources);
+    $assert(isset($projection['report_effective_values']['site_wifi_rating']), 'Inherited Yes restores recorded answer');
+    $projection = llama_public_scoped_report_projection($answers, $target, 'public-parking', $sources);
+    $assert(in_array('site_wifi_rating', $projection['report_inapplicable_keys'], true), 'Verified parent type wins over stale answer context');
+    $assert($answers['site_wifi_rating']['value'] === 4, 'Projection must not mutate existing answers');
+    $area = ['scope'=>'area','source'=>'map_feature','id'=>7,'feature_type'=>'facility_area','facility_kind'=>'restroom'];
+    $observations = ['facility_toilet_count'=>$answer(3), 'facility_shower_stalls'=>$answer(2)];
+    $projection = llama_public_scoped_report_projection($observations, $area, 'developed-campground');
+    $assert(isset($projection['report_effective_values']['facility_toilet_count']), 'Restroom answer should display');
+    $assert(!isset($projection['report_effective_values']['facility_shower_stalls'])
+        && in_array('facility_shower_stalls', $projection['report_inapplicable_keys'], true), 'Wrong-kind historical answer must not display');
+    $assert($observations['facility_shower_stalls']['value'] === 2, 'Wrong-kind history remains stored');
+});
+
 $check('Canonical field contract', static function () use ($assert): void {
     $issues = llama_place_report_contract_issues();
     $assert(!$issues, 'Contract issues: ' . implode(' | ', array_slice($issues, 0, 12)) . ' (total ' . count($issues) . ')');
