@@ -53,7 +53,11 @@
     ];
 
     if (!controls.length) {
-      return '';
+      try {
+        return JSON.parse(form.dataset.reportContext || '{}')[key] ?? '';
+      } catch (_) {
+        return '';
+      }
     }
 
     const radios =
@@ -989,9 +993,7 @@
         );
 
       const requiresNamedSite =
-        INDIVIDUAL_SITE_TYPES.has(
-          type
-        );
+        !form.matches('#add-site-main-form') && INDIVIDUAL_SITE_TYPES.has(type);
 
       sections.forEach(
         (section) => {

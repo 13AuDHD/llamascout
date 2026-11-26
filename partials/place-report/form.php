@@ -299,7 +299,18 @@ if (
 
 $placeReportBrowserFields = [];
 
-foreach ($placeReportFields as $fieldKey => $field) {
+$placeReportSchemaFields = $placeReportFields;
+// Read-only parent definitions enable dependency evaluation, not controls or scoring.
+foreach ((array) ($placeReportContextKeys ?? []) as $contextKey) {
+    $contextField = llama_report_questions()[$contextKey] ?? null;
+    if ($contextField !== null && !isset($placeReportSchemaFields[$contextKey])) {
+        $contextField['counts_toward_completion'] = false;
+        $contextField['layout_section'] = '';
+        $contextField['layout_group'] = '';
+        $placeReportSchemaFields[$contextKey] = $contextField;
+    }
+}
+foreach ($placeReportSchemaFields as $fieldKey => $field) {
     $placeReportBrowserFields[] = [
         'key' => (string) $fieldKey,
         'layout_section' => (string) ($field['layout_section'] ?? ''),

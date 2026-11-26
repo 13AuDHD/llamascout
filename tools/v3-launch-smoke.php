@@ -3379,6 +3379,30 @@ $check('Owner matrix Facility and Resource definitions rows 295–374 remain cor
         'Resource record metadata must not become Scout Report questions');
 });
 
+$check('Standalone Site uses read-only parent context for applicability', static function () use ($assert): void {
+    require_once dirname(__DIR__) . '/app/site-submissions.php';
+    $answers = ['site_wifi_rating' => '4', 'accessible_toilet' => '1',
+        'amenity_picnic_table' => '1', 'accessible_picnic_table' => '1',
+        'wheelchair_friendly' => '1'];
+    $context = ['type' => 'developed-campground', 'amenity_wifi' => '1', 'amenity_toilets' => 'flush'];
+    $filtered = llama_site_submission_applicable_answers($answers, $context);
+    $assert($filtered === $answers, 'Eligible Site observations must remain');
+    foreach (['0', '', llama_place_report_unknown_token()] as $value) {
+        $changed = array_replace($context, ['amenity_wifi' => $value, 'amenity_toilets' => $value]);
+        $filtered = llama_site_submission_applicable_answers($answers, $changed);
+        $assert(!isset($filtered['site_wifi_rating']) && !isset($filtered['accessible_toilet']),
+            'Absent shared services cannot activate Site children');
+        $assert(isset($filtered['wheelchair_friendly']), 'Independent accessibility must remain');
+    }
+    $filtered = llama_site_submission_applicable_answers($answers, ['type' => 'public-parking',
+        'amenity_wifi' => '1', 'amenity_toilets' => 'flush']);
+    $assert(!isset($filtered['site_wifi_rating']) && !isset($filtered['accessible_toilet']),
+        'Inapplicable type must hide children despite stale parent answers');
+    $assert(isset($filtered['wheelchair_friendly']), 'Independent observation must survive type change');
+    $assert(!isset(llama_site_submission_fields()['type']) && !isset(llama_site_submission_fields()['amenity_wifi'])
+        && !isset(llama_site_submission_fields()['amenity_toilets']), 'Parent context must not be writable Site fields');
+});
+
 $check('Canonical field contract', static function () use ($assert): void {
     $issues = llama_place_report_contract_issues();
     $assert(!$issues, 'Contract issues: ' . implode(' | ', array_slice($issues, 0, 12)) . ' (total ' . count($issues) . ')');

@@ -14,6 +14,33 @@
     let pending = null;
     let debounce = null;
     let suppressFocusLookup = false;
+    let contextRequest = 0;
+    let contextPending = false;
+    const setContext = context => {
+        form.dataset.reportContext = JSON.stringify(context || {});
+        form.dispatchEvent(new Event('change', {bubbles: true}));
+    };
+    const loadContext = async id => {
+        const seq = ++contextRequest;
+        contextPending = true;
+        setContext({});
+        try {
+            const url = new URL('/add-site.php', window.location.origin);
+            url.searchParams.set('parent_report_context', id);
+            const response = await fetch(url, {credentials: 'same-origin', cache: 'no-store'});
+            if (!response.ok) throw new Error('Parent Place context unavailable');
+            const data = await response.json();
+            if (seq !== contextRequest || selectedId.value !== String(id)) return;
+            if (!data.context?.type) throw new Error('Parent Place context unavailable');
+            setContext(data.context);
+        } catch (_) {
+            if (seq !== contextRequest) return;
+            selectedId.value = '';
+            input.setCustomValidity('Select the parent Place again. Its details could not be loaded.');
+        } finally {
+            if (seq === contextRequest) contextPending = false;
+        }
+    };
 
     const close = () => {
         list.hidden = true;
@@ -42,6 +69,7 @@
         pending?.abort();
         ++requestNumber;
         selectedId.value = String(place.id);
+        loadContext(place.id);
         input.value = String(place.name);
         input.setCustomValidity("");
         close();
@@ -105,6 +133,9 @@
     });
     input.addEventListener("input", () => {
         selectedId.value = "";
+        ++contextRequest;
+        contextPending = false;
+        setContext({});
         input.setCustomValidity("");
         close();
         schedule();
@@ -141,6 +172,10 @@
     });
 
     form?.addEventListener("submit", event => {
+        if (contextPending) {
+            event.preventDefault();
+            return;
+        }
         if (!selectedId.value || !input.value.trim()) {
             event.preventDefault();
             input.setCustomValidity("Select an existing parent Place.");

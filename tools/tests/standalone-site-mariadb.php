@@ -47,8 +47,38 @@ $sql = (string) file_get_contents(dirname(__DIR__, 2)
     . '/tools/migrations/20261118_standalone_site_submissions.sql');
 $db->exec($sql);
 $db->exec('CREATE TABLE places (
-    id BIGINT UNSIGNED PRIMARY KEY, name VARCHAR(150), status VARCHAR(30)
+    id BIGINT UNSIGNED PRIMARY KEY, name VARCHAR(150), status VARCHAR(30),
+    type VARCHAR(60), place_report_answer_state LONGTEXT NULL
 ) ENGINE=InnoDB');
+// Parent context now reads canonical published Place answers. Build the
+// legacy read fixture from the actual storage adapter (nullable columns),
+// not a second manually maintained list of legacy answer fields.
+$legacyTables = [];
+foreach (llama_place_report_published_definitions() as $definition) {
+    $table = $definition['table'];
+    $column = $definition['column'];
+    if (!llama_place_report_valid_storage_identifier($table)
+        || !llama_place_report_valid_storage_identifier($column)) {
+        throw new RuntimeException('Invalid legacy fixture identifier');
+    }
+    $legacyTables[$table][$column] = true;
+}
+foreach ($legacyTables as $table => $columns) {
+    if ($table === 'places') {
+        foreach (array_diff_key($columns, array_fill_keys(['id', 'name', 'type', 'status', 'place_report_answer_state'], true)) as $column => $_) {
+            $db->exec("ALTER TABLE places ADD COLUMN `$column` TEXT NULL");
+        }
+        continue;
+    }
+    $definitions = ['place_id BIGINT UNSIGNED NOT NULL'];
+    if ($table === 'place_sensory') {
+        $definitions[] = 'period VARCHAR(30)';
+    }
+    foreach (array_diff_key($columns, array_fill_keys(['place_id', 'period'], true)) as $column => $_) {
+        $definitions[] = "`$column` TEXT NULL";
+    }
+    $db->exec("CREATE TABLE `$table` (" . implode(', ', $definitions) . ') ENGINE=InnoDB');
+}
 $db->exec('CREATE TABLE users (
     id BIGINT UNSIGNED PRIMARY KEY, display_name VARCHAR(150), username VARCHAR(100)
 ) ENGINE=InnoDB');
@@ -120,8 +150,9 @@ $db->exec('CREATE TABLE scout_report_moderation_events (
     actor_user_id BIGINT UNSIGNED, reason TEXT,
     metadata_json LONGTEXT, created_at DATETIME
 ) ENGINE=InnoDB');
-$db->exec("INSERT INTO places VALUES (1, 'Parent Place', 'active'),
-    (2, 'Unrelated Place', 'active')");
+$db->exec("INSERT INTO places (id,name,status,type) VALUES (1, 'Parent Place', 'active', 'developed-campground'),
+    (2, 'Unrelated Place', 'active', 'public-parking')");
+$db->exec("INSERT INTO place_amenities (place_id,wifi,toilet_type) VALUES (1,1,'flush')");
 $db->exec("INSERT INTO users VALUES (7, 'Scout', 'scout'), (8, 'Another Member', 'guest')");
 $db->exec("INSERT INTO place_campsites (id,place_id,site_code,site_name,raw_site_type)
     VALUES (55,1,'5','Existing Site','Llama Scout Site')");
@@ -130,6 +161,20 @@ $db->exec("INSERT INTO place_report_current_answers
     VALUES (1,'place','place',1,'description','answered','\"Original Place answer\"'),
            (1,'site','campsite_record',55,'site_number','answered','\"5\"')");
 
+$context = llama_site_parent_report_context($db, 1);
+$check(($context['type'] ?? '') === 'developed-campground'
+    && ($context['amenity_wifi'] ?? '') === '1'
+    && ($context['amenity_toilets'] ?? '') === 'flush',
+    'Site context must include real parent type and published amenity values.');
+$db->exec("INSERT INTO place_report_current_answers
+    (place_id,target_scope,target_source,target_id,question_key,answer_state,value_json)
+    VALUES (1,'place','place',1,'amenity_wifi','unknown',NULL)");
+$context = llama_site_parent_report_context($db, 1);
+$check(($context['amenity_wifi'] ?? '') === llama_place_report_unknown_token(),
+    'Explicit current Unknown must override legacy shared WiFi Yes.');
+$db->exec("DELETE FROM place_report_current_answers WHERE place_id=1 AND target_scope='place'
+    AND question_key='amenity_wifi'");
+
 $payload = [
     'site_place_id' => 1,
     'site_name' => 'North Campsite',
@@ -137,6 +182,8 @@ $payload = [
     'visited_at' => '2026-11-17',
     'site_answers' => [
         'site_number' => '12',
+        'site_wifi_rating' => '4',
+        'accessible_toilet' => '1',
         'visited_at' => '2026-11-17',
     ],
 ];
@@ -191,6 +238,13 @@ $check(round((float) $site['latitude'], 7) === 37.25222
 $scoped = llama_scoped_report_load($db, 1, 'site', $siteId, 'campsite_record');
 $check(($scoped['site_number'] ?? '') === '12',
     'The approved Site number was not published in current answers.');
+$check((string) ($scoped['site_wifi_rating'] ?? '') === '4'
+    && (string) ($scoped['accessible_toilet'] ?? '') === '1',
+    'Applicable inherited-service child observations must survive approval.');
+$other = llama_site_submission_prepare($db, array_replace($payload, ['site_place_id' => 2]));
+$check(!isset($other['answers']['site_wifi_rating']) && !isset($other['answers']['accessible_toilet'])
+    && !isset($other['answers']['site_number']),
+    'Changing parent type must exclude inapplicable Site observations.');
 $check((int) $db->query(
     'SELECT COUNT(*) FROM scout_reports WHERE target_scope = "site"'
 )->fetchColumn() === 1, 'One Site approval must record one immutable Site report.');
