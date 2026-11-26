@@ -2657,6 +2657,87 @@ $check('Owner matrix basic and nearest-service Place type applicability', static
     }
 });
 
+$check('Owner matrix Operating Hours and Getting There rows 45–88', static function () use ($assert): void {
+    // Workbook columns N:AK, in their original order. Enable all parents
+    // first so this tests type applicability independently of answer state.
+    $types = [
+        'dispersed-camping', 'developed-campground', 'camping-area', 'rv-park-resort',
+        'rest-area', 'scenic-overlook', 'vehicle-pulloff', 'trailhead', 'day-use',
+        'public-parking', 'travel-center', 'truck-stop', 'retail-parking',
+        'restaurant-parking', 'casino-parking', 'medical-office-parking',
+        'hospital-parking', 'church-parking', 'fairgrounds', 'street-parking',
+        'other-parking', 'membership-host', 'private-property', 'other',
+    ];
+    $assert($types === array_keys(llama_place_report_place_types()), 'Matrix column order changed');
+    $groups = [
+        ['111111111111111111111111', [
+            'place_open_year_round', 'approach_road_type', 'road_surface', 'road_width', 'approach_road_condition', 'approach_overhead_obstacles', 'sedan_accessible', 'high_clearance_recommended', 'four_wheel_drive_recommended', 'approach_turnaround_available', 'best_months', 'seasonal_closure', 'season_begins', 'season_ends', 'heat_season_risk', 'hurricane_risk', 'monsoon_risk', 'tornado_risk', 'mud_season_risk', 'snow_risk', 'approach_winter_maintenance', 'approach_snow_chains',
+        ]],
+        ['011111111111111111101111', [
+            'place_open_24_hours', 'place_opening_time', 'place_closing_time',
+        ]],
+        ['111111011111111111101111', [
+            'place_entrance_gate', 'place_gate_access_type', 'place_gate_opening_time', 'place_gate_closing_time',
+        ]],
+        ['111111110000000000111011', [
+            'approach_permit_required',
+        ]],
+        ['111111110000000000111111', [
+            'approach_fee_required', 'approach_road_fee',
+        ]],
+        ['111011110000000000111111', [
+            'approach_road_hazards', 'approach_deep_ruts', 'rocks', 'washboards', 'potholes', 'mud_risk', 'steep_grades', 'drop_off_exposure',
+        ]],
+        ['111111111000000000000111', [
+            'approach_gate_present', 'approach_gate_access_type', 'approach_gate_opens', 'approach_gate_closes',
+        ]],
+    ];
+    $parents = [
+        'place_open_24_hours' => '0',
+        'place_entrance_gate' => '1',
+        'place_gate_access_type' => 'scheduled',
+        'approach_fee_required' => '1',
+        'approach_road_hazards' => ['approach_deep_ruts', 'rocks', 'washboards',
+            'potholes', 'mud_risk', 'steep_grades', 'drop_off_exposure'],
+        'sedan_accessible' => '0',
+        'seasonal_closure' => '1',
+        'approach_gate_present' => '1',
+        'approach_gate_access_type' => 'scheduled',
+    ];
+    foreach ($types as $index => $type) {
+        $input = ['type' => $type] + $parents;
+        foreach ($groups as [$mask, $keys]) {
+            foreach ($keys as $key) {
+                $assert(isset(llama_report_questions()[$key]), 'Missing matrix question: ' . $key);
+                $assert(llama_place_report_question_applicable($input, $key) === ($mask[$index] === '1'),
+                    $key . ' does not match workbook for ' . $type);
+            }
+        }
+    }
+    $base = ['type' => 'developed-campground'] + $parents;
+    $cases = [
+        ['place_open_24_hours', '1', ['place_opening_time', 'place_closing_time']],
+        ['place_entrance_gate', '0', ['place_gate_access_type', 'place_gate_opening_time', 'place_gate_closing_time']],
+        ['place_gate_access_type', 'always_open', ['place_gate_opening_time', 'place_gate_closing_time']],
+        ['approach_fee_required', '0', ['approach_road_fee']],
+        ['approach_road_hazards', ['none'], ['approach_deep_ruts', 'rocks', 'washboards', 'potholes', 'mud_risk', 'steep_grades', 'drop_off_exposure']],
+        ['sedan_accessible', '1', ['high_clearance_recommended', 'four_wheel_drive_recommended']],
+        ['seasonal_closure', '0', ['season_begins', 'season_ends']],
+        ['approach_gate_present', '0', ['approach_gate_access_type', 'approach_gate_opens', 'approach_gate_closes']],
+        ['approach_gate_access_type', 'always_open', ['approach_gate_opens', 'approach_gate_closes']],
+    ];
+    foreach ($cases as [$parent, $inactive, $children]) {
+        foreach ([$inactive, '', llama_place_report_unknown_token()] as $value) {
+            $input = $base;
+            $input[$parent] = $value;
+            foreach ($children as $child) {
+                $assert(!llama_place_report_question_applicable($input, $child),
+                    $child . ' visible after changing or clearing ' . $parent);
+            }
+        }
+    }
+});
+
 $check('Canonical field contract', static function () use ($assert): void {
     $issues = llama_place_report_contract_issues();
     $assert(!$issues, 'Contract issues: ' . implode(' | ', array_slice($issues, 0, 12)) . ' (total ' . count($issues) . ')');
