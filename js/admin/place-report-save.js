@@ -75,6 +75,8 @@
 
     const syncModeratorApplicability =
         () => {
+            form.querySelectorAll('[data-admin-applicability-override="1"]:not(.is-applicability-hidden)')
+                .forEach(wrapper => delete wrapper.dataset.adminApplicabilityOverride);
             const hiddenFields =
                 Array.from(
                     form.querySelectorAll(
@@ -99,8 +101,8 @@
                     )
                     .forEach(
                         (wrapper) => {
-                            wrapper.hidden =
-                                true;
+                            wrapper.hidden = wrapper.classList.contains('is-applicability-hidden')
+                                || wrapper.classList.contains('is-force-hidden');
 
                             delete wrapper.dataset
                                 .adminApplicabilityOverride;
@@ -1015,6 +1017,33 @@
             ),
         });
 
+    // A selected Site's effective dependencies are not the parent Place's
+    // editable controls. The nearest recorded Area answers and Site controls
+    // take precedence; a recorded No/Unknown must never fall back to Yes.
+    // The bulk editor intentionally retains its separate consensus behavior.
+    form.llamaAdminSiteContextValue = key => {
+        if (activeCampsiteId === '' || editingAllSites || activeReportMode() !== 'site') return undefined;
+        const site = selectedCampsite();
+        if (!site) return undefined;
+        if (campsiteFieldKeys.includes(key) && controlsFor(key).length) {
+            const values = currentCampsiteFormValues();
+            return Object.prototype.hasOwnProperty.call(values, key) ? values[key] : '';
+        }
+        const areaValues = siteAreaOverrides(site);
+        if (Object.prototype.hasOwnProperty.call(areaValues, key)) return areaValues[key];
+        const parent = campsiteConfig.place_context;
+        if (parent && Object.prototype.hasOwnProperty.call(parent, key)) return parent[key];
+        // Older cached pages/test fixtures may lack context; ordinary
+        // non-Site controls retain their previous evaluation behavior.
+        return undefined;
+    };
+
+    const siteFieldNormallyHidden = key => {
+        const wrapper = controlsFor(key)[0]?.closest('[data-report-field], [data-report-compound-question]');
+        return Boolean(wrapper?.classList.contains('is-applicability-hidden')
+            && wrapper.dataset.adminApplicabilityOverride !== '1');
+    };
+
     // A bulk editing value is not an answer of its own. It is a projection
     // of the current effective answer on EVERY Site, including imported,
     // inherited and locally overridden answers. An unanswered Site differs
@@ -1113,7 +1142,7 @@
             campsiteFieldKeys.forEach(
                 (key) => {
                     const controls = controlsFor(key);
-                    if (!controls.length) {
+                    if (!controls.length || siteFieldNormallyHidden(key)) {
                         return;
                     }
                     const unanswered = controls.some(control => control.name === `${controlNameFor(key)}[]`) ? [] : '';
@@ -1501,6 +1530,14 @@
                 );
         }
     );
+
+    form.addEventListener('llama:campsite-selected', () => {
+        if (showInapplicable) queueMicrotask(syncModeratorApplicability);
+    });
+    contributionTabs?.addEventListener('llama:contribution-mode', () => {
+        form.dispatchEvent(new CustomEvent('llama:admin-site-context-changed'));
+        if (showInapplicable) queueMicrotask(syncModeratorApplicability);
+    });
 
     const save = async () => {
         let bulkPayload = '';
