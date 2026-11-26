@@ -981,7 +981,7 @@ input[type="checkbox"] {
     border-radius: 12px;
     background: var(--surface);
     min-width: 0;
-    touch-action: pan-y;
+    touch-action: pan-y pinch-zoom;
     transform: translateX(var(--scout-card-drag-x, 0px)) rotate(var(--scout-card-drag-angle, 0deg));
     transition: transform .18s ease-out;
 }
@@ -1189,4 +1189,9 @@ input[type="checkbox"] {
     justify-self: end;
     padding: 6px 12px;
     font-size: .8rem;
+}
+
+.place-report-form.is-scout-card-view .add-place-radio-option[hidden],
+.place-report-form.is-scout-card-view .place-report-multiselect label[hidden] {
+    display: none !important;
 }
