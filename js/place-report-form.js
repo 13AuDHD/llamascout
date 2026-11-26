@@ -2347,7 +2347,7 @@ window.LlamaPlaceReportForm
                         button.textContent = option.value === '' ? 'Unanswered' : option.textContent.trim();
                         button.addEventListener('click', event => {
                             event.preventDefault();
-                            if (select.disabled || option.disabled) return;
+                            if (!active || !button.isConnected || !selected?.nodes.some(node => node.contains(button)) || select.disabled || option.disabled) return;
                             if (select.multiple) option.selected = !option.selected;
                             else select.value = option.value;
                             select.dispatchEvent(new Event('input', {bubbles:true}));
