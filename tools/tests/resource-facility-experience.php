@@ -146,4 +146,32 @@ if (($no['shower']['general']['facility_hot_water'] ?? null) !== 'no'
     throw new RuntimeException('No and numeric zero must survive Resource/Facility Experience saves.');
 }
 
-echo "PASS: Shared Facility and Resource Experience catalog, service isolation and input validation.\n";
+// Moderators may explicitly correct a Facility's parent, but the pending
+// contribution cannot silently change between Facility and off-site Resource.
+foreach ([
+    [['parent_place_id'=>'13'], ['parent_place_id'=>'27'], [], 27],
+    [['parent_place_id'=>'0'], ['parent_place_id'=>'0'], [], 0],
+    [[], ['parent_place_id'=>'13'], ['parent_place_id'=>13], 13],
+    [[], [], ['parent_place_id'=>null], 0],
+] as [$pending, $approved, $current, $expected]) {
+    if (llama_resource_review_parent_id($pending, $approved, $current) !== $expected) {
+        throw new RuntimeException('Resource/Facility review lost its verified contribution kind.');
+    }
+}
+foreach ([
+    [['parent_place_id'=>'13'], [], []],
+    [['parent_place_id'=>'13'], ['parent_place_id'=>'0'], []],
+    [['parent_place_id'=>'0'], ['parent_place_id'=>'13'], []],
+    [[], [], ['parent_place_id'=>13]],
+    [['parent_place_id'=>'13'], ['parent_place_id'=>'13invalid'], []],
+    [['parent_place_id'=>'13'], ['parent_place_id'=>['13']], []],
+] as [$pending, $approved, $current]) {
+    $rejected = false;
+    try { llama_resource_review_parent_id($pending, $approved, $current); }
+    catch (InvalidArgumentException) { $rejected = true; }
+    if (!$rejected) {
+        throw new RuntimeException('Invalid or cross-kind Resource/Facility approval was accepted.');
+    }
+}
+
+echo "PASS: Shared Facility and Resource Experience catalog, service isolation, input validation and moderation target kind.\n";
