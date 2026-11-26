@@ -949,7 +949,7 @@ return !!field && (showAllForReview
 form.querySelectorAll('[data-report-field]').forEach(wrapper => {
 // Admin's independent Site policy controls are scoped to the selected Site.
 // Never evaluate their dependencies against the parent Place's inputs.
-if (wrapper.closest('[data-admin-site-shared-questions]')) return;
+if (wrapper.closest('[data-admin-site-shared-questions], [data-scoped-report-questions]')) return;
 // Area-only question visibility belongs to the verified Area selector.
 // Do not reset it when a Place/Site dependency or unrelated select changes.
 if (wrapper.matches('[data-area-question]')) return;
@@ -966,6 +966,7 @@ else wrapper.dataset.placeReportApplicabilityHidden = '1';
 // A compound question remains visible if ANY of its actual components
 // is applicable. Never hide it just because its first control is not.
 form.querySelectorAll('[data-report-compound-question]').forEach(wrapper => {
+if (wrapper.closest('[data-scoped-report-questions]')) return;
 const controls = [...wrapper.querySelectorAll('input[name], select[name], textarea[name]')];
 const keys = new Set(controls.map(control => String(control.name).replace(/\\[\\]$/, '')));
 const scopedKeys = [...keys].filter(scopeAllows);
@@ -979,6 +980,7 @@ wrapper.classList.toggle('is-applicability-hidden', !allowed);
 // non-question workflow controls regardless of the selected target.
 const sections = [...form.querySelectorAll('.contribution-section')].reverse();
 sections.forEach(section => {
+if (section.closest('[data-place-update-scoped-fields]')) return;
 const wrappers = [...section.querySelectorAll('[data-report-field], [data-report-compound-question]')];
 if (!wrappers.length) return;
 const standalone = section.querySelector(
