@@ -2261,14 +2261,16 @@ window.LlamaPlaceReportForm
         const nav = form.querySelector('[data-scout-card-navigation]');
         if (!nav) return;
         const toggle = nav.querySelector('[data-scout-card-toggle]');
-        const controls = nav.querySelector('[data-scout-card-controls]');
+        const controls = form.querySelector('[data-scout-card-controls]');
         const heading = nav.querySelector('[data-scout-card-heading]');
         const progress = nav.querySelector('[data-scout-card-progress]');
-        const back = nav.querySelector('[data-scout-card-back]');
-        const next = nav.querySelector('[data-scout-card-next]');
-        const gesture = nav.querySelector('[data-scout-card-gesture]');
-        const gestureHelp = nav.querySelector('[data-scout-card-gesture-help]');
-        if (![toggle, controls, heading, progress, back, next, gesture, gestureHelp].every(Boolean)) return;
+        const meter = nav.querySelector('[data-scout-card-meter]');
+        const progressWrap = nav.querySelector('[data-scout-card-progress-wrap]');
+        const back = controls?.querySelector('[data-scout-card-back]');
+        const next = controls?.querySelector('[data-scout-card-next]');
+        const gesture = controls?.querySelector('[data-scout-card-gesture]');
+        const gestureHelp = controls?.querySelector('[data-scout-card-gesture-help]');
+        if (![toggle, controls, heading, progress, meter, progressWrap, back, next, gesture, gestureHelp].every(Boolean)) return;
         const sections = [...form.querySelectorAll('details[data-report-main-section], details[data-report-subsection], details[data-contribution-place-photo-panel]')];
         const candidates = [...form.querySelectorAll('[data-scout-card-step], [data-report-subsection] .contribution-grid > [data-report-field], [data-report-subsection] .contribution-grid > [data-report-compound-question], [data-scout-card-group], [data-contribution-place-photo-panel]')];
         const isApplicable = node => {
@@ -2287,12 +2289,81 @@ window.LlamaPlaceReportForm
                 || (node.hasAttribute('data-contribution-place-photo-panel') ? 'Photos' : '')
                 || node.querySelector('.place-report-field-label > span:first-child, .place-report-field-label')?.textContent.trim()
                 || 'Scout Report question';
-            const card = {nodes:[node], label};
+            const card = {nodes:[node], label, key:node.dataset.reportField || ''};
             all.push(card);
             if (group) groups.set(group, card);
         }
         if (!all.length) return;
+        // Establish the type before showing dependent questions. The date
+        // follows identity and precedes Description in the guided sequence.
+        const priority = ['type', 'name', 'visited_at', 'description'];
+        const first = priority.map(key => all.find(card => card.key === key)).filter(Boolean);
+        all.splice(0, all.length, ...first, ...all.filter(card => !first.includes(card)));
         let active = false, selected = null, openStates = new Map(), touch = null;
+        const choiceViews = new Map();
+        const removeChoices = () => {
+            for (const [select, view] of choiceViews) {
+                select.classList.remove('is-scout-choice-source');
+                view.group.remove();
+            }
+            choiceViews.clear();
+        };
+        const syncChoices = nodes => {
+            const selects = nodes.flatMap(node => [...node.querySelectorAll('select')]).filter(isApplicable);
+            for (const [select, view] of choiceViews) {
+                if (!selects.includes(select)) {
+                    select.classList.remove('is-scout-choice-source');
+                    view.group.remove();
+                    choiceViews.delete(select);
+                }
+            }
+            for (const select of selects) {
+                let view = choiceViews.get(select);
+                const label = select.getAttribute('aria-label') || selected.label;
+                if (!view) {
+                    const group = document.createElement('div');
+                    group.className = 'scout-card-options';
+                    group.setAttribute('role', 'group');
+                    group.setAttribute('aria-label', label);
+                    select.after(group);
+                    select.classList.add('is-scout-choice-source');
+                    view = {group, signature:'', buttons:[]};
+                    choiceViews.set(select, view);
+                }
+                const options = [...select.options].filter(option => !option.hidden);
+                const signature = JSON.stringify(options.map(option => [option.value, option.textContent, option.disabled]));
+                if (signature !== view.signature) {
+                    view.signature = signature;
+                    view.group.replaceChildren();
+                    if (select.hasAttribute('aria-label') && label !== selected.label) {
+                        const title = document.createElement('span');
+                        title.className = 'scout-card-options-title';
+                        title.textContent = label;
+                        view.group.append(title);
+                    }
+                    view.buttons = options.map(option => {
+                        const button = document.createElement('button');
+                        button.type = 'button';
+                        button.className = 'scout-card-choice';
+                        button.textContent = option.value === '' ? 'Unanswered' : option.textContent.trim();
+                        button.addEventListener('click', event => {
+                            event.preventDefault();
+                            if (select.disabled || option.disabled) return;
+                            if (select.multiple) option.selected = !option.selected;
+                            else select.value = option.value;
+                            select.dispatchEvent(new Event('input', {bubbles:true}));
+                            select.dispatchEvent(new Event('change', {bubbles:true}));
+                        });
+                        view.group.append(button);
+                        return {button, option};
+                    });
+                }
+                for (const {button, option} of view.buttons) {
+                    button.disabled = select.disabled || option.disabled;
+                    button.setAttribute('aria-pressed', String(option.selected));
+                }
+            }
+        };
         const visible = () => all.filter(card => card.nodes.some(isApplicable));
         const choiceControls = () => {
             if (!selected || selected.nodes.length !== 1) return [];
@@ -2323,7 +2394,11 @@ window.LlamaPlaceReportForm
                 if (keep) section.open = true;
             }
             heading.textContent = selected.label;
-            progress.textContent = 'Card ' + (index + 1) + ' of ' + cards.length;
+            heading.classList.toggle('is-scout-heading-hidden', Boolean(selected.key));
+            const percent = cards.length > 1 ? Math.round(100 * index / (cards.length - 1)) : 100;
+            meter.value = percent;
+            progress.textContent = percent + '%';
+            syncChoices(onstage);
             back.disabled = index === 0;
             next.disabled = index === cards.length - 1;
             gestureHelp.textContent = choiceControls().length
@@ -2336,12 +2411,15 @@ window.LlamaPlaceReportForm
             toggle.setAttribute('aria-pressed', String(active));
             toggle.textContent = active ? 'Full questionnaire' : 'Card view';
             controls.hidden = !active;
+            progressWrap.hidden = !active;
+            heading.hidden = !active;
             form.classList.toggle('is-scout-card-view', active);
             if (active) {
                 openStates = new Map(sections.map(section => [section, section.open]));
                 render(true);
             } else {
                 clearPresentation();
+                removeChoices();
                 for (const [section, open] of openStates) section.open = open;
                 progress.textContent = '';
                 toggle.focus();
@@ -2395,6 +2473,13 @@ window.LlamaPlaceReportForm
         form.addEventListener('change', () => render());
         const observer = new MutationObserver(() => { if (active) render(); });
         observer.observe(form, {subtree:true, attributes:true, attributeFilter:['hidden']});
+        // Taxonomy and recurring season controls can replace options without
+        // changing the original field identity.
+        const optionObserver = new MutationObserver(() => { if (active) render(); });
+        for (const select of form.querySelectorAll('select')) {
+            optionObserver.observe(select, {subtree:true, childList:true, attributes:true,
+                attributeFilter:['disabled','selected','value','label']});
+        }
         // Keep browser validation focusable even when another card is showing.
         form.addEventListener('invalid', event => {
             if (!active) return;
@@ -2404,6 +2489,7 @@ window.LlamaPlaceReportForm
             }
         }, true);
         nav.hidden = false;
+        setMode(true);
     };
     const init = () => {
         const form = document.getElementById('add-place-main-form');
