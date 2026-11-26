@@ -1378,6 +1378,7 @@ function llama_place_report_submit_new_place(
         llama_new_place_assert_single_target_input($input);
         $data['_submission_target_kind'] = 'place';
         llama_new_place_assert_single_target($data);
+        $data = llama_new_place_normalize_pending_applicability($data);
     }
 
     // First Site GPS is optional Site metadata, never a parent Place answer.
@@ -1597,6 +1598,7 @@ function llama_place_report_resubmit_new_place(
     if ($submissionKind === 'place') {
         $data['_submission_target_kind'] = 'place';
         llama_new_place_assert_single_target($data);
+        $data = llama_new_place_normalize_pending_applicability($data);
     }
     if (array_key_exists('site_coordinates', $input)) {
         $siteCoordinates = llama_place_report_parse_first_site_coordinates(
