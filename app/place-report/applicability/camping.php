@@ -71,21 +71,6 @@ function llama_place_report_apply_camping_profiles(
     );
 
     /*
-     * Hosted/private/fairground Places are not public-land management units.
-     * Keep Region out of their normal profile unless a later dedicated field
-     * gives that concept a different meaning.
-     */
-    llama_place_report_append_applicable(
-        $fields,
-        ['region'],
-        [[
-            'field' => 'type',
-            'operator' => 'not_in',
-            'value' => $types['hosted_private_fairground'],
-        ]]
-    );
-
-    /*
      * Fairgrounds describe a venue containing possible overnight spaces.
      * Whole-venue vehicle capacity is misleading; campsite/space count is the
      * appropriate Place/Area fact.
