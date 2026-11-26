@@ -797,7 +797,9 @@
 
         for (const card of placeFields.querySelectorAll('[data-report-field]')) {
             const field = fields.find(f => f.key === card.dataset.reportField);
-            card.hidden = !scoped && field && !field.scopes.includes('place');
+            // Scope is independent of canonical applicability; do not unhide
+            // a conditional question when returning to Entire Place.
+            if (scoped || (field && !field.scopes.includes('place'))) card.hidden = true;
         }
         for (const input of placeFields.querySelectorAll('input, select, textarea, button')) {
             const card = input.closest('[data-report-field]');
@@ -839,6 +841,7 @@
         if (scoped && absentTemplates.size) {
             status.textContent = `${absentTemplates.size} shared question control(s) could not be loaded. Submit is disabled until they are corrected.`;
         }
+        form?.dispatchEvent(new Event('llama:place-update-target-changed'));
     }
 
     search.addEventListener('change', () => {
