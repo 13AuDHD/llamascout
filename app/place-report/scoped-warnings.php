@@ -83,8 +83,11 @@ function llama_scoped_report_data_from_values(array $values): array
 /**
  * Run the shared Quick-warning rules against effective Place/Area/Site values.
  */
-function llama_scoped_report_quick_warnings(array $values): array
+function llama_scoped_report_quick_warnings(array $values, ?string $verifiedPlaceType = null): array
 {
+    // Production callers have a verified parent type even if a legacy or
+    // seasonal answer projection omits it or carries a stale type value.
+    if ($verifiedPlaceType !== null) { $values['type'] = $verifiedPlaceType; }
     return llama_place_report_quick_warnings(
         llama_scoped_report_data_from_values(
             $values
