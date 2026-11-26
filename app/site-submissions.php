@@ -61,6 +61,50 @@ function llama_site_parent_place_choices(PDO $db, string $needle = ''): array
     return $statement->fetchAll(PDO::FETCH_ASSOC) ?: [];
 }
 
+/**
+ * Resolve only the read-only parent facts needed by Site applicability.
+ * Never trust submitted Place type or amenity values.
+ */
+function llama_site_parent_report_context(PDO $db, int $placeId): array
+{
+    $stmt = $db->prepare(
+        'SELECT type FROM places WHERE id = ? AND status IN ("active","featured") LIMIT 1'
+    );
+    $stmt->execute([$placeId]);
+    $type = $stmt->fetchColumn();
+    if (!is_string($type) || $type === '') {
+        throw new InvalidArgumentException('The selected parent Place is not available.');
+    }
+    $values = llama_place_report_current_answer_values(
+        llama_place_report_current_place_answers($db, $placeId)
+    );
+    $context = ['type' => $type];
+    foreach (['amenity_wifi', 'amenity_toilets'] as $key) {
+        if (array_key_exists($key, $values)) {
+            $context[$key] = llama_place_report_answer_form_value(
+                llama_report_questions()[$key], $values[$key]
+            );
+        }
+    }
+    return $context;
+}
+
+/** Ignore inapplicable new observations, not historical stored answers. */
+function llama_site_submission_applicable_answers(array $answers, array $parentContext): array
+{
+    $input = $parentContext;
+    $fields = llama_site_submission_fields();
+    foreach ($answers as $key => $value) {
+        if (isset($fields[$key])) {
+            $input[$key] = llama_place_report_answer_form_value($fields[$key], $value);
+        }
+    }
+    return array_filter($answers, static fn ($value, $key): bool =>
+        isset($fields[$key]) && llama_place_report_question_applicable($input, $key),
+        ARRAY_FILTER_USE_BOTH
+    );
+}
+
 function llama_site_submission_parse_answers(array $rawAnswers): array
 {
     if (count($rawAnswers) > 200 || array_is_list($rawAnswers) && $rawAnswers !== []) {
@@ -134,7 +178,10 @@ function llama_site_submission_prepare(PDO $db, array $input): array
     if (!is_array($rawAnswers)) {
         throw new InvalidArgumentException('Site answers are missing.');
     }
-    $answers = llama_site_submission_parse_answers($rawAnswers);
+    $answers = llama_site_submission_applicable_answers(
+        llama_site_submission_parse_answers($rawAnswers),
+        llama_site_parent_report_context($db, $placeId)
+    );
 
     $visitDate = trim((string) ($input['visited_at'] ?? $answers['visited_at'] ?? ''));
     if ($visitDate !== '') {
@@ -450,6 +497,9 @@ function llama_site_submission_moderate(
                 'site_answers' => (array) ($saved['answers'] ?? []),
                 'visited_at' => (string) ($saved['visit_date'] ?? ''),
             ]);
+            if (array_diff_key((array) ($saved['answers'] ?? []), $data['answers'])) {
+                throw new InvalidArgumentException('Some Site answers are no longer applicable. Request changes before approval.');
+            }
             $photos = llama_site_submission_photos($saved, $submissionId);
             $placeId = (int) $item['place_id'];
             $siteCode = trim((string) ($data['answers']['site_number'] ?? ''));
