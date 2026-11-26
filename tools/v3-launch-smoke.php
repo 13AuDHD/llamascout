@@ -3115,6 +3115,114 @@ $check('Owner matrix Setting, Connectivity and Sensory rows 126–137 and 176–
     }
 });
 
+$check('Owner matrix Accessibility, Safety, Experience, Notes, History and Site WiFi', static function () use ($assert): void {
+    // Workbook rows 149–157, 174, 213–222 and 252–274.
+    $types = [
+        'dispersed-camping', 'developed-campground', 'camping-area', 'rv-park-resort',
+        'rest-area', 'scenic-overlook', 'vehicle-pulloff', 'trailhead', 'day-use',
+        'public-parking', 'travel-center', 'truck-stop', 'retail-parking',
+        'restaurant-parking', 'casino-parking', 'medical-office-parking', 'hospital-parking',
+        'church-parking', 'fairgrounds', 'street-parking', 'other-parking',
+        'membership-host', 'private-property', 'other',
+    ];
+    $assert($types === array_keys(llama_place_report_place_types()), 'Matrix column order changed');
+    $groups = [
+        ['011111111111111111111111', [
+            'site_accessible',
+        ]],
+        ['011111001000000000100111', [
+            'accessible_picnic_table', 'accessible_toilet',
+        ]],
+        ['111111111111111111111111', [
+            'wheelchair_friendly', 'mobility_device_friendly', 'step_free_access',
+            'flat_walking_surface', 'walking_distance_from_vehicle', 'accessibility_notes',
+            'experience_sunrise_view', 'experience_sunset_view',
+            'experience_overall_scenery', 'experience_stargazing',
+            'experience_sensory_retreat', 'experience_quiet_evening',
+            'recommended_remote_work', 'recommended_overnight_stop',
+            'recommended_extended_stay', 'recommended_solo_travel', 'recommended_families',
+            'recommended_large_groups', 'not_recommended_for', 'experience_summary',
+            'scout_note_1', 'scout_note_2', 'scout_note_3', 'visited_at',
+            'visit_length_of_stay', 'visit_setup_types',
+        ]],
+        ['111111110000000000001011', [
+            'warning_possible_downed_trees',
+        ]],
+        ['111111111000000000101111', [
+            'fall_hazard',
+        ]],
+        ['111111111000000000001111', [
+            'cliff_exposure', 'wildlife_risk', 'wildfire_risk', 'flash_flood_risk',
+            'rockfall_risk',
+        ]],
+        ['100001111110000000011011', [
+            'traffic_hazard',
+        ]],
+        ['111101110000000000011111', [
+            'warning_blind_turn_traffic_nearby',
+        ]],
+        ['111000110000000000001111', [
+            'emergency_access',
+        ]],
+        ['011100001000000000000011', [
+            'site_rating', 'condition_rating', 'location_rating',
+        ]],
+        ['011111000000000000000111', [
+            'site_wifi_rating',
+        ]],
+    ];
+    $catalog = llama_report_questions();
+    $parents = ['amenity_picnic_table' => '1', 'amenity_toilets' => 'flush', 'amenity_wifi' => '1'];
+    // Independent workbook masks for the three parents. A child marked Yes
+    // is still hidden if its parent is marked No for that Place type.
+    $parentMasks = [
+        'accessible_picnic_table' => '111110001000000000000111',
+        'accessible_toilet' => '011111011011000000000111',
+        'site_wifi_rating' => '011111001111111111111111',
+    ];
+    foreach ($types as $index => $type) {
+        $input = ['type' => $type] + $parents;
+        foreach ($groups as [$mask, $keys]) {
+            foreach ($keys as $key) {
+                $assert(isset($catalog[$key]), 'Missing matrix question: ' . $key);
+                $typeEligible = true;
+                foreach ((array) ($catalog[$key]['applicable_if'] ?? []) as $rule) {
+                    if (($rule['field'] ?? '') === 'type') {
+                        $typeEligible = $typeEligible && llama_place_report_applicability_rule_matches($input, $rule);
+                    }
+                }
+                $assert($typeEligible === ($mask[$index] === '1'), $key . ' type mask differs for ' . $type);
+                $expected = $typeEligible && (!isset($parentMasks[$key]) || $parentMasks[$key][$index] === '1');
+                $assert(llama_place_report_question_applicable($input, $key) === $expected,
+                    $key . ' effective applicability differs for ' . $type);
+            }
+        }
+    }
+    $base = ['type' => 'developed-campground'] + $parents;
+    foreach ([
+        'accessible_picnic_table' => ['amenity_picnic_table', '0'],
+        'accessible_toilet' => ['amenity_toilets', 'no'],
+        'site_wifi_rating' => ['amenity_wifi', '0'],
+    ] as $child => [$parent, $negative]) {
+        foreach ([$negative, '', llama_place_report_unknown_token()] as $value) {
+            $input = $base;
+            $input[$parent] = $value;
+            $assert(!llama_place_report_question_applicable($input, $child), $child . ' visible after clearing or negating parent');
+        }
+    }
+    foreach (['pit', 'flush', 'portable', 'present_unknown_type'] as $toilet) {
+        $input = $base;
+        $input['amenity_toilets'] = $toilet;
+        $assert(llama_place_report_question_applicable($input, 'accessible_toilet'), 'Recorded toilet presence must reveal accessibility');
+    }
+    // Pending owner decision: preserve the earlier independent wheelchair
+    // question, including dispersed camping where the parent is unavailable.
+    foreach (['0', '1', '', llama_place_report_unknown_token()] as $value) {
+        $assert(llama_place_report_question_applicable(['type' => 'developed-campground', 'site_accessible' => $value], 'wheelchair_friendly'),
+            'Wheelchair question changed before the conflicting matrix rule was resolved');
+    }
+});
+
 $check('Canonical field contract', static function () use ($assert): void {
     $issues = llama_place_report_contract_issues();
     $assert(!$issues, 'Contract issues: ' . implode(' | ', array_slice($issues, 0, 12)) . ' (total ' . count($issues) . ')');
