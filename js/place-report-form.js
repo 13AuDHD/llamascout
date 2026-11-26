@@ -935,8 +935,24 @@ const reviewNode = form.querySelector('[data-place-report-schema-config]');
 const showAllForReview = reviewNode?.dataset.inventoryReview === '1';
 const sitePicker = form.querySelector('[data-admin-campsite-selector]');
 const editingSites = Boolean(sitePicker?.value);
-const scopeAllows = key => editingSites || !siteOnlyKeys.has(key);
 const fields = new Map(config.fields.map(field => [String(field.key), field]));
+const placeUpdate = config.mode === 'update-report' && !!form.querySelector('[data-place-update-place-fields]');
+const placeActive = !placeUpdate || (form.querySelector('[name="report_target_scope"]')?.value || 'place') === 'place';
+const scopeAllows = key => placeUpdate
+? placeActive && (fields.get(String(key))?.report_scopes || []).includes('place')
+: editingSites || !siteOnlyKeys.has(key);
+const syncUpdateControls = (wrapper, allowed) => {
+if (!placeUpdate || !wrapper.closest('[data-place-update-place-fields]')) return;
+for (const control of wrapper.querySelectorAll('input, select, textarea, button')) {
+if (!allowed) {
+if (!control.disabled) control.dataset.updateApplicabilityDisabled = '1';
+control.disabled = true;
+} else if (control.dataset.updateApplicabilityDisabled === '1') {
+control.disabled = false;
+delete control.dataset.updateApplicabilityDisabled;
+}
+}
+};
 const applicable = key => {
 const field = fields.get(String(key));
 return !!field && (showAllForReview
@@ -949,7 +965,7 @@ return !!field && (showAllForReview
 form.querySelectorAll('[data-report-field]').forEach(wrapper => {
 // Admin's independent Site policy controls are scoped to the selected Site.
 // Never evaluate their dependencies against the parent Place's inputs.
-if (wrapper.closest('[data-admin-site-shared-questions], [data-scoped-report-questions]')) return;
+if (wrapper.closest('[data-admin-site-shared-questions], [data-scoped-report-questions], [data-scoped-field-templates]')) return;
 // Area-only question visibility belongs to the verified Area selector.
 // Do not reset it when a Place/Site dependency or unrelated select changes.
 if (wrapper.matches('[data-area-question]')) return;
@@ -961,12 +977,13 @@ wrapper.classList.toggle('is-force-hidden', !inScope);
 wrapper.classList.toggle('is-applicability-hidden', !allowed);
 if (allowed) delete wrapper.dataset.placeReportApplicabilityHidden;
 else wrapper.dataset.placeReportApplicabilityHidden = '1';
+syncUpdateControls(wrapper, inScope && allowed);
 });
 
 // A compound question remains visible if ANY of its actual components
 // is applicable. Never hide it just because its first control is not.
 form.querySelectorAll('[data-report-compound-question]').forEach(wrapper => {
-if (wrapper.closest('[data-scoped-report-questions]')) return;
+if (wrapper.closest('[data-scoped-report-questions], [data-scoped-field-templates]')) return;
 const controls = [...wrapper.querySelectorAll('input[name], select[name], textarea[name]')];
 const keys = new Set(controls.map(control => String(control.name).replace(/\\[\\]$/, '')));
 const scopedKeys = [...keys].filter(scopeAllows);
@@ -974,6 +991,7 @@ const allowed = scopedKeys.some(applicable);
 wrapper.hidden = !allowed;
 wrapper.classList.toggle('is-force-hidden', !scopedKeys.length);
 wrapper.classList.toggle('is-applicability-hidden', !allowed);
+syncUpdateControls(wrapper, allowed);
 });
 
 // Hide empty question groups, but preserve coordinates, photos, and other
@@ -1535,6 +1553,7 @@ form.addEventListener(
 'change',
 sync
 );
+form.addEventListener('llama:place-update-target-changed', sync);
 
 if (adminSiteConfig) {
 form.addEventListener('llama:campsite-selected', sync);

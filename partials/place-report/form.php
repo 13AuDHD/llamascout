@@ -327,6 +327,7 @@ foreach ($placeReportSchemaFields as $fieldKey => $field) {
             $field
         ) || (bool) $field['counts_toward_completion'],
         'applicable_if' => array_values((array) ($field['applicable_if'] ?? [])),
+        'report_scopes' => array_values((array) ($field['report_scopes'] ?? [])),
         'derived' => !empty($field['derived']),
     ];
 }

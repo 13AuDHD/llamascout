@@ -32,6 +32,29 @@ $revision = llama_place_update_shared_form_values(
 $assert(($revision['description'] ?? null) === 'Suggested edit',
     'Moderator-requested revisions must take priority over current Place state.');
 
+// Use canonical storage paths and option values, not invented field aliases.
+$fields = llama_report_questions();
+$parent = $fields['place_open_24_hours']['storage'];
+$child = $fields['place_opening_time']['storage'];
+$opening = array_key_first($fields['place_opening_time']['options']);
+$current = ['type' => 'developed-campground', $parent => '0', $child => $opening];
+llama_place_update_assert_applicable($current, [], [$child => $opening], []);
+llama_place_update_assert_applicable(array_replace($current, [$parent => '1']), [],
+    [$child => $opening, $parent => '0'], []);
+foreach ([
+    [$current, [], [$parent => '1', $child => $opening], []],
+    [$current, ['place_open_24_hours'], [$child => $opening], []],
+    [array_replace($current, ['type' => 'dispersed-camping']), [], [$child => $opening], []],
+] as [$before, $unknown, $proposed, $proposedUnknown]) {
+    $rejected = false;
+    try { llama_place_update_assert_applicable($before, $unknown, $proposed, $proposedUnknown); }
+    catch (InvalidArgumentException $exception) { $rejected = true; }
+    $assert($rejected, 'Inapplicable Entire Place proposal must be rejected.');
+}
+llama_place_update_assert_applicable($current, [], [$parent => '1'], []);
+$assert($current[$child] === $opening, 'Parent change must not delete historical child answer.');
+$assert($current[$parent] === '0', 'Applicability evaluation must not mutate existing state.');
+
 $page = $read('account/update-place.php');
 $form = $read('partials/place-report/form.php');
 $tabs = $read('partials/place-report/contribution-tabs.php');

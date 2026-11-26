@@ -188,6 +188,49 @@ assert.equal(new cw.FormData(cf).has('type'), false, 'Parent type is not submitt
 cw.close();
 window.close();
 
+// Entire Place Update has a read-only type and must retain scope and
+// applicability on target switches without sending hidden observations.
+const placeUpdateDom = new JSDOM('<form class="place-report-form place-update-form" data-report-context=\'{"type":"developed-campground"}\'>'
+    + '<input name="report_target_scope" value="place">'
+    + '<div data-place-update-place-fields>'
+    + '<script type="application/json" data-place-report-schema-config>'
+    + JSON.stringify({...config, mode:'update-report', fields:[
+        {key:'type', type:'select', report_scopes:['place'], applicable_if:[]},
+        {key:'place_parent', type:'tri', report_scopes:['place'], applicable_if:[{field:'type',operator:'in',value:['developed-campground']}]},
+        {key:'place_child', type:'tri', report_scopes:['place'], applicable_if:[{field:'place_parent',operator:'equals',value:'1'}]},
+        {key:'site_only', type:'tri', report_scopes:['site'], applicable_if:[]},
+    ]}) + '</script>'
+    + fieldHtml('place_parent') + fieldHtml('place_child') + fieldHtml('site_only') + '</div></form>', {runScripts:'outside-only'});
+const pw = placeUpdateDom.window;
+pw.CSS = {escape:value=>String(value)};
+pw.LlamaPlaceReportForm = {setupRecovery() {}};
+pw.eval(source);
+const pf = pw.document.querySelector('form');
+const pc = key => pf.querySelector('[data-report-field="' + key + '"]');
+const ps = key => pf.querySelector('[name="' + key + '"]');
+const changePlace = (key,value) => {
+    ps(key).value = value;
+    ps(key).dispatchEvent(new pw.Event('change',{bubbles:true}));
+};
+assert.equal(pc('place_parent').hidden,false,'Published Place type drives visibility');
+assert.equal(pc('place_child').hidden,true,'Unanswered parent hides child');
+assert.equal(pc('site_only').hidden,true,'Site-only questions stay out of Entire Place');
+changePlace('place_parent','1');
+changePlace('place_child','1');
+assert.equal(pc('place_child').hidden,false);
+changePlace('place_parent','0');
+assert.equal(pc('place_child').hidden,true);
+assert.equal(new pw.FormData(pf).has('place_child'),false,'Hidden child must not post');
+ps('report_target_scope').value = 'site';
+pf.dispatchEvent(new pw.Event('llama:place-update-target-changed'));
+ps('report_target_scope').value = 'place';
+pf.dispatchEvent(new pw.Event('llama:place-update-target-changed'));
+assert.equal(pc('place_child').hidden,true,'Returning to Place preserves dependencies');
+changePlace('place_parent','1');
+assert.equal(ps('place_child').value,'1','Visible child retains draft');
+assert.equal(new pw.FormData(pf).get('place_child'),'1');
+pw.close();
+
 const siteLists = {
     landscape_details: ['rocky', 'wooded'],
     landscape_views: ['forest-woodland', 'mountain'],
