@@ -463,7 +463,81 @@ async function testClosureDates() {
     }
 }
 
-testAdminSiteEditing().then(testAdminSiteEditing).then(testClosureDates).then(() => {
+
+async function testGuidedPlaceCards() {
+    const dom = new JSDOM(`<form id="add-place-main-form">
+        <div data-scout-card-navigation hidden>
+          <button type="button" data-scout-card-toggle></button><span data-scout-card-progress></span>
+          <div data-scout-card-controls hidden><h2 data-scout-card-heading tabindex="-1"></h2>
+          <button type="button" data-scout-card-back></button><button type="button" data-scout-card-next></button>
+          <div data-scout-card-gesture><span data-scout-card-gesture-help></span></div></div>
+        </div>
+        <label data-scout-card-step="Date visited"><input name="visited_at" value="2026-11-26"></label>
+        <details data-report-main-section="place"><summary>Place</summary><details data-report-subsection="basic"><summary>Basic</summary>
+          <div class="contribution-grid">
+            <div data-report-field="parent"><span class="place-report-field-label"><span>Parent</span></span><input type="radio" name="parent" value="1"><input type="radio" name="parent" value="0"></div>
+            <div data-report-field="child" hidden><input name="child" value="retained"></div>
+            <div data-scout-card-group="Location"><input name="coordinates" value="37,-107"></div><div data-scout-card-group="Location">Helper</div>
+          </div>
+        </details></details>
+        <details data-contribution-place-photo-panel open><summary>Photos</summary><input name="photos_json" value="[]"></details>
+        <div data-scout-card-step="Review and submit"><button type="submit">Submit</button></div>
+    </form>`, {runScripts:'outside-only'});
+    const w = dom.window, d = w.document;
+    try {
+        // Exercise the production presentation adapter independently of the
+        // shared questionnaire engine (covered by the tests above).
+        const marker = '// Guided Add Place presentation is deliberately separate';
+        const start = source.indexOf(marker);
+        assert.ok(start >= 0);
+        w.eval(source.slice(start));
+        await new Promise(resolve => d.addEventListener('DOMContentLoaded',resolve,{once:true}));
+        const q = s => d.querySelector(s), form = q('form');
+        const toggle = q('[data-scout-card-toggle]'), next = q('[data-scout-card-next]');
+        const child = q('[data-report-field="child"]'), parent = q('[data-report-field="parent"]');
+        const heading = q('[data-scout-card-heading]'), progress = q('[data-scout-card-progress]');
+        assert.equal(q('[data-scout-card-navigation]').hidden,false);
+        toggle.click();
+        assert.equal(heading.textContent,'Date visited');
+        assert.equal(progress.textContent,'Card 1 of 5');
+        const initial = Array.from(new w.FormData(form).entries());
+        next.click();
+        assert.equal(heading.textContent,'Parent');
+        assert.equal(parent.classList.contains('is-scout-card-offstage'),false);
+        assert.deepEqual(Array.from(new w.FormData(form).entries()),initial,'Card display must not change serialization');
+        const gesture = q('[data-scout-card-gesture]');
+        const touch = (name, points, key) => {
+            const event = new w.Event(name);
+            Object.defineProperty(event,key,{value:points});
+            gesture.dispatchEvent(event);
+        };
+        touch('touchstart',[{clientX:100,clientY:100}],'touches');
+        touch('touchend',[{clientX:100,clientY:30}],'changedTouches');
+        assert.equal(parent.querySelector('[value="1"]').checked,true,'Vertical gesture selects an option');
+        child.hidden = false;
+        await Promise.resolve();
+        assert.equal(progress.textContent,'Card 2 of 6');
+        next.click();
+        assert.equal(child.classList.contains('is-scout-card-offstage'),false);
+        child.hidden = true;
+        await Promise.resolve();
+        assert.equal(heading.textContent,'Location');
+        assert.ok([...d.querySelectorAll('[data-scout-card-group]')].every(node => !node.classList.contains('is-scout-card-offstage')));
+        touch('touchstart',[{clientX:100,clientY:100}],'touches');
+        touch('touchend',[{clientX:25,clientY:100}],'changedTouches');
+        assert.equal(heading.textContent,'Photos','Horizontal swipe advances');
+        toggle.click();
+        assert.equal(form.classList.contains('is-scout-card-view'),false);
+        assert.equal(child.hidden,true,'Full view preserves canonical eligibility');
+        assert.equal(q('[name="child"]').value,'retained');
+        assert.equal(q('[data-report-main-section]').open,false,'Restore expanded sections');
+        toggle.click();
+        q('[name="visited_at"]').dispatchEvent(new w.Event('invalid'));
+        assert.equal(form.classList.contains('is-scout-card-view'),false,'Native validation returns to full view');
+    } finally { w.close(); }
+}
+
+testAdminSiteEditing().then(testAdminSiteEditing).then(testClosureDates).then(testGuidedPlaceCards).then(() => {
     console.log('PASS: closure dates and Site selections survive reload, parent-child visibility and scoped saves');
 }).catch(error => {
     console.error(error);

@@ -1549,7 +1549,7 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
                             <?php require $placeReportSiteIdentityPartial; ?>
                         <?php endif; ?>
                         <?php if ($hasLocate): ?>
-                            <div class="contribution-field add-place-locate-panel">
+                            <div class="contribution-field add-place-locate-panel" data-scout-card-group="Location">
                                 <span>At the Place right now?</span>
                                 <button class="add-place-locate-button" type="button" data-locate-place>
                                     <?= llama_icon('current-location') ?>
@@ -1557,7 +1557,7 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
                                 </button>
                             </div>
 
-                            <div class="contribution-field add-place-coordinate-field">
+                            <div class="contribution-field add-place-coordinate-field" data-scout-card-group="Location">
                                 <label class="place-report-field-label" for="add-place-coordinates">Coordinates</label>
                                 <div class="add-place-coordinate-row">
                                     <input
@@ -1590,7 +1590,7 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
                                 <input type="hidden" name="longitude" value="<?= $e($combinedLongitude) ?>" data-location-field="longitude">
                             </div>
 
-                            <div class="add-place-location-status is-visible is-info" data-location-status role="status">
+                            <div class="add-place-location-status is-visible is-info" data-location-status role="status" data-scout-card-group="Location">
                                 At the Place? Tap Locate me. Otherwise, enter coordinates and tap Search. The llamas will fill in what they can.
                             </div>
                         <?php endif; ?>

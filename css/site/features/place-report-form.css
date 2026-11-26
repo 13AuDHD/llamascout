@@ -969,3 +969,60 @@ input[type="checkbox"] {
     .scout-report-item:not([data-report-scopes~="site"]) {
     display: none !important;
 }
+
+
+/* Optional guided view: use the same fields, never clone or disable them.
+   Separate classes cannot be mistaken for canonical applicability state. */
+.scout-card-navigation {
+    display: grid;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+}
+.scout-card-navigation[hidden],
+.scout-card-navigation [hidden],
+.place-report-form.is-scout-card-view .is-scout-card-offstage {
+    display: none !important;
+}
+.scout-card-toolbar, .scout-card-buttons {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.scout-card-navigation button {
+    color: var(--text);
+    background: var(--background);
+    font: inherit;
+    padding: 10px 16px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    min-height: 44px;
+    cursor: pointer;
+}
+.scout-card-navigation button:disabled { opacity: .45; cursor: default; }
+.scout-card-navigation button:focus-visible,
+.scout-card-navigation h2:focus-visible { outline: 2px solid var(--place-accent, #0a3d25); outline-offset: 3px; }
+.scout-card-navigation [data-scout-card-progress] { font-variant-numeric: tabular-nums; }
+.scout-card-navigation h2 { font-size: 1.15rem; margin: 8px 0; }
+.scout-card-gesture {
+    touch-action: none;
+    user-select: none;
+    text-align: center;
+    padding: 12px;
+    margin-top: 10px;
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    font-size: .85rem;
+}
+.is-scout-card-view [data-report-main-section] > summary,
+.is-scout-card-view [data-report-subsection] > summary { display: none; }
+.is-scout-card-view [data-report-subsection] .contribution-grid {
+    grid-template-columns: minmax(0, 1fr);
+}
+.is-scout-card-view [data-report-subsection] .contribution-grid > * {
+    grid-column: 1 / -1;
+}

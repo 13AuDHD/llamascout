@@ -601,7 +601,23 @@ $placeReportPhotoHelp =
         <input type="hidden" name="submission_target_kind"
                value="<?= $legacyPlaceBundle ? 'legacy-bundle' : 'place' ?>">
         <?php if (!$legacyPlaceBundle): ?>
-        <label class="contribution-field">
+        <div class="scout-card-navigation" data-scout-card-navigation hidden>
+            <div class="scout-card-toolbar">
+                <button type="button" data-scout-card-toggle aria-pressed="false">Card view</button>
+                <span data-scout-card-progress role="status" aria-live="polite"></span>
+            </div>
+            <div data-scout-card-controls hidden>
+                <h2 data-scout-card-heading tabindex="-1"></h2>
+                <div class="scout-card-buttons">
+                    <button type="button" data-scout-card-back>Back</button>
+                    <button type="button" data-scout-card-next>Next</button>
+                </div>
+                <div data-scout-card-gesture class="scout-card-gesture" aria-hidden="true">
+                    <span data-scout-card-gesture-help>Swipe left or right here to navigate.</span>
+                </div>
+            </div>
+        </div>
+        <label class="contribution-field" data-scout-card-step="Date visited">
             <span class="place-report-field-label">Date visited *</span>
             <input type="date" name="visited_at" required
                    value="<?= htmlspecialchars((string) ($_POST['visited_at'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
@@ -673,7 +689,7 @@ $placeReportPhotoHelp =
             . '/partials/place-report/form.php';
         ?>
 
-        <div class="contribution-actions add-place-submit-bar">
+        <div class="contribution-actions add-place-submit-bar" data-scout-card-step="Review and submit">
             <button
                 class="contribution-submit"
                 type="submit"
