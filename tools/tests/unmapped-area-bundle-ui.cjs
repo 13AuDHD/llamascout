@@ -27,8 +27,23 @@ assert.match(formPartial, /data-facility-parent-query/);
 assert.match(formPartial, /name="parent_place_id"/);
 assert.match(formPartial, /if \(!\$facilityForm\)/,
     'Facility must not ask for a duplicate postal address');
-assert.match(service, /'parent_place_id'/,
-    'Each submission must save its Parent Place selection');
+// The submission input allowlist is now derived from the canonical
+// Resource/Facility registry. Exercise the actual PHP parser instead of
+// requiring a duplicate hardcoded field name in the submission handler.
+const {execFileSync} = require('node:child_process');
+const parsedParent = JSON.parse(execFileSync('php', ['-r',
+    'require $argv[1]; echo json_encode(llama_resource_submission_input(["name"=>"Camp Laundry","parent_place_id"=>"13","unapproved_field"=>"ignored"]));',
+    path.join(root, 'app/resource-submissions.php')
+], {encoding: 'utf8'}));
+assert.equal(parsedParent.parent_place_id, '13',
+    'Each submission must retain its Parent Place selection through the canonical allowlist');
+assert.equal(parsedParent.name, 'Camp Laundry');
+assert.equal(Object.hasOwn(parsedParent, 'unapproved_field'), false,
+    'Canonical allowlist must still reject unrelated fields');
+assert.match(service, /\$data = llama_resource_submission_input\(\$input\)/,
+    'Contribution submission must use the verified parser');
+assert.match(service, /\$payload = json_encode\(\$data,/,
+    'Submission must persist the parsed data');
 assert.match(saver, /SELECT id FROM places WHERE id = \?/,
     'Parent Place must be validated by the database, not browser text');
 assert.match(linked, /llama_place_facilities\(/,
