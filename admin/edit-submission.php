@@ -299,6 +299,11 @@ if (
 
 $placeReportMode =
     'moderator';
+$placeReportOnlyScope = ($data['_submission_target_kind'] ?? '') === 'place' ? 'place' : '';
+if ($placeReportOnlyScope === 'place') {
+    $placeReportExternalFieldKeys = ['visited_at'];
+    $placeReportContextKeys = ['visited_at'];
+}
 
 $placeReportExistingPhotos =
     $photos;
@@ -355,6 +360,10 @@ $placeReportPhotoHelp =
             This is the same Place Report used by contributors.
             Saving changes here does not approve, reject, or
             return the submission.
+            <?php if ($placeReportOnlyScope === 'place'): ?>
+                Saving a Place-only submission removes pending answers that no longer apply to its type or parent answers.
+                Approved historical reports are not changed.
+            <?php endif; ?>
         </p>
 
         <div class="add-place-form-note">
