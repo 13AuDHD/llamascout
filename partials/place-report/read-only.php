@@ -1109,87 +1109,38 @@ foreach (
         continue;
     }
 
-    $applicableFields =
-        $fields;
-
-    /*
-     * Issue #5 reconciliation mode:
-     *
-     * Do not remove unanswered questions from the Scout Report. The public
-     * read-only view now exposes the same question inventory and sequence as
-     * the editable flows so answer-state mismatches can be found directly.
-     */
-    $answeredFields =
-        $applicableFields;
-
-    $reportedFields =
-        $answeredFields;
-
+    // Keep child cards in the renderer for switching, but count only
+    // applicable Place questions on the initial Place view.
+    $reportedFields = $fields;
+    $applicableFields = $fields;
     if ($placeReportReadMode === 'scout-report') {
-        foreach (
-            $applicableFields
-            as $fieldKey => $field
-        ) {
-            if (
-                in_array(
-                    (string) $fieldKey,
-                    $campsiteSwitchableFields,
-                    true
-                )
-            ) {
-                $reportedFields[$fieldKey] =
-                    $field;
-            }
-        }
-    }
-
-    $missingApplicableCount =
-        max(
-            0,
-            count($applicableFields)
-            - count($answeredFields)
+        $applicableFields = array_filter($fields, static fn (array $field, string $key): bool =>
+            in_array('place', (array) ($field['report_scopes'] ?? []), true)
+            && llama_place_report_question_applicable($placeReportApplicabilityInput, $key)
+            && ($placeReportCanViewCommunity
+                || ($field['approved_visibility'] ?? $field['report_visibility'] ?? 'community') === 'public'),
+            ARRAY_FILTER_USE_BOTH
         );
-
+    }
+    $missingApplicableCount = 0;
+    $fixedMissingCount = 0;
+    $fixedApplicableCount = 0;
     $switchableApplicableCount = 0;
-    $switchableAnsweredCount = 0;
-
-    if ($placeReportReadMode === 'scout-report') {
-        foreach (
-            $applicableFields
-            as $fieldKey => $field
-        ) {
-            if (
-                !in_array(
-                    (string) $fieldKey,
-                    $campsiteSwitchableFields,
-                    true
-                )
-            ) {
-                continue;
-            }
-
-            $switchableApplicableCount++;
-
-            if (
-                llama_place_report_answer_state(
-                    $placeReportData,
-                    (string) $fieldKey
-                ) !== 'unanswered'
-            ) {
-                $switchableAnsweredCount++;
-            }
+    foreach ($fields as $fieldKey => $field) {
+        if ($placeReportReadMode === 'scout-report'
+            && in_array((string) $fieldKey, $campsiteSwitchableFields, true)) {
+            // A child-only section needs a prompt template too.
+            ++$switchableApplicableCount;
         }
     }
-
-    $fixedMissingCount =
-        max(
-            0,
-            $missingApplicableCount
-            - (
-                $switchableApplicableCount
-                - $switchableAnsweredCount
-            )
-        );
+    foreach ($applicableFields as $fieldKey => $field) {
+        $missing = llama_place_report_answer_state($placeReportData, (string) $fieldKey) === 'unanswered';
+        if ($missing) { ++$missingApplicableCount; }
+        if (!in_array((string) $fieldKey, $campsiteSwitchableFields, true)) {
+            ++$fixedApplicableCount;
+            if ($missing) { ++$fixedMissingCount; }
+        }
+    }
 
     $sectionHasReportedData =
         count($reportedFields) > 0;
@@ -1340,6 +1291,7 @@ foreach (
                 $applicableFields
             ) ?>"
             data-report-fixed-missing="<?= $fixedMissingCount ?>"
+            data-report-fixed-applicable="<?= $fixedApplicableCount ?>"
         <?php endif; ?>
     >
         <h3>
@@ -1658,7 +1610,6 @@ foreach (
         <?php if (
             $placeReportReadMode === 'scout-report'
             && $switchableApplicableCount > 0
-            && $missingApplicableCount > 0
         ): ?>
             <?php
             $targetPromptEmpty =
@@ -1695,6 +1646,7 @@ foreach (
             <div
                 class="scout-report-contribution-prompt<?= $targetPromptEmpty ? ' is-empty' : ' is-partial' ?>"
                 data-target-report-prompt
+                <?= $missingApplicableCount < 1 ? 'hidden' : '' ?>
             >
                 <div class="scout-report-contribution-copy">
                     <strong>
