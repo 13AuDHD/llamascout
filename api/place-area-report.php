@@ -87,44 +87,18 @@ try {
         $seasonSources = (array) ($seasonModel['sources'] ?? []);
     }
 
-    $effective = llama_place_report_current_answer_values($answers, 'effective');
-    $local = llama_place_report_current_answer_values($answers, 'local');
-    $inherited = llama_place_report_current_answer_values($answers, 'inherited');
-
-    $inapplicable = [];
-    $applicability = ['type' => (string) ($place['type'] ?? '')];
-    foreach ($effective as $key => $value) {
-        $applicability[(string) $key] = $value;
-    }
-    foreach (llama_report_questions_for_scope('area', true) as $key => $field) {
-        if (!llama_report_question_applies_to_area_target($field, $target)
-            || (!empty($field['applicable_if'])
-                && !llama_place_report_question_applicable($applicability, (string) $key))) {
-            $inapplicable[] = (string) $key;
-        }
-    }
-
-    $states = [];
-    foreach ($answers as $key => $answer) {
-        $states[(string) $key] = (string) ($answer['state'] ?? 'unanswered');
-    }
+    $projection = llama_public_scoped_report_projection(
+        $answers, $target, (string) ($place['type'] ?? ''),
+        array_replace(llama_report_answer_sources($db, $answers), $seasonSources)
+    );
 
     llama_public_area_report_json([
         'ok' => true,
-        'area' => [
+        'area' => array_replace([
             'id' => $areaId,
             'report_target_scope' => 'area',
             'display_name' => (string) ($target['label'] ?? $target['name'] ?? ''),
-            'report_effective_values' => llama_scoped_report_display_values($effective),
-            'report_override_values' => llama_scoped_report_display_values($local),
-            'report_inherited_values' => llama_scoped_report_display_values($inherited),
-            'report_answer_states' => $states,
-            'report_answer_sources' => array_replace(
-                llama_report_answer_sources($db, $answers),
-                $seasonSources
-            ),
-            'report_inapplicable_keys' => $inapplicable,
-        ],
+        ], $projection),
     ]);
 } catch (InvalidArgumentException $exception) {
     llama_public_area_report_json(['ok' => false, 'error' => 'Area not found.'], 404);
