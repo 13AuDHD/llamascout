@@ -63,4 +63,21 @@ $assert(str_contains($source('app/admin-place-actions.php'), 'admin_resource_app
     'Modern Facility gallery must save with Facility edits.');
 $assert(str_contains($source('app/admin-place-actions.php'), 'admin_place_save_area_answers('),
     'All existing Area-scope canonical answers must keep their storage path.');
+// A new Facility kind must be validated before writing observations.
+$target = ['scope'=>'area','source'=>'map_feature','id'=>20,
+    'feature_type'=>'facility_area','facility_kind'=>'restroom'];
+$model = ['values'=>['type'=>'developed-campground','facility_shower_stalls'=>2],
+    'direct'=>['facility_shower_stalls'=>2],'inherited'=>['type'=>'developed-campground']];
+$writes = admin_place_plan_area_answers($target, $model, ['facility_toilet_count'=>'4']);
+$assert((string) ($writes['facility_toilet_count'] ?? '') === '4', 'New-kind observation must be accepted.');
+$assert(!array_key_exists('facility_shower_stalls', $writes) && $model['direct']['facility_shower_stalls'] === 2,
+    'Historical old-kind answers must remain untouched.');
+$rejected = false;
+try { admin_place_plan_area_answers($target, $model, ['facility_shower_stalls'=>'3']); }
+catch (InvalidArgumentException $exception) { $rejected = true; }
+$assert($rejected, 'Old-kind observations must be rejected.');
+$target = array_replace($target, ['facility_kind'=>'shower']);
+$writes = admin_place_plan_area_answers($target, $model, ['facility_shower_stalls'=>'']);
+$assert(($writes['facility_shower_stalls'] ?? '') === llama_place_report_unanswered_token(),
+    'Explicit eligible override removal must remain possible.');
 echo "PASS: Unified Facility selector, existing Area IDs and canonical answers, direct Admin saves.\n";
