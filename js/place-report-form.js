@@ -2251,3 +2251,164 @@ window.LlamaPlaceReportForm
 .setupRecovery(form);
 });
 })();
+
+
+// Guided Add Place presentation is deliberately separate from answer logic.
+// The original form remains the source of truth (including draft recovery,
+// native validation, applicability, compound questions and photo staging).
+(() => {
+    const setup = form => {
+        const nav = form.querySelector('[data-scout-card-navigation]');
+        if (!nav) return;
+        const toggle = nav.querySelector('[data-scout-card-toggle]');
+        const controls = nav.querySelector('[data-scout-card-controls]');
+        const heading = nav.querySelector('[data-scout-card-heading]');
+        const progress = nav.querySelector('[data-scout-card-progress]');
+        const back = nav.querySelector('[data-scout-card-back]');
+        const next = nav.querySelector('[data-scout-card-next]');
+        const gesture = nav.querySelector('[data-scout-card-gesture]');
+        const gestureHelp = nav.querySelector('[data-scout-card-gesture-help]');
+        if (![toggle, controls, heading, progress, back, next, gesture, gestureHelp].every(Boolean)) return;
+        const sections = [...form.querySelectorAll('details[data-report-main-section], details[data-report-subsection], details[data-contribution-place-photo-panel]')];
+        const candidates = [...form.querySelectorAll('[data-scout-card-step], [data-report-subsection] .contribution-grid > [data-report-field], [data-report-subsection] .contribution-grid > [data-report-compound-question], [data-scout-card-group], [data-contribution-place-photo-panel]')];
+        const isApplicable = node => {
+            for (let current = node; current && current !== form; current = current.parentElement) {
+                if (current.hidden || current.classList.contains('is-applicability-hidden') || current.classList.contains('is-force-hidden')) return false;
+            }
+            return true;
+        };
+        // Location helper, coordinates and feedback form one related card.
+        const all = [];
+        const groups = new Map();
+        for (const node of candidates) {
+            const group = node.dataset.scoutCardGroup;
+            if (group && groups.has(group)) { groups.get(group).nodes.push(node); continue; }
+            const label = node.dataset.scoutCardStep || group
+                || (node.hasAttribute('data-contribution-place-photo-panel') ? 'Photos' : '')
+                || node.querySelector('.place-report-field-label > span:first-child, .place-report-field-label')?.textContent.trim()
+                || 'Scout Report question';
+            const card = {nodes:[node], label};
+            all.push(card);
+            if (group) groups.set(group, card);
+        }
+        if (!all.length) return;
+        let active = false, selected = null, openStates = new Map(), touch = null;
+        const visible = () => all.filter(card => card.nodes.some(isApplicable));
+        const choiceControls = () => {
+            if (!selected || selected.nodes.length !== 1) return [];
+            const node = selected.nodes[0];
+            if (node.hasAttribute('data-report-compound-question')) return [];
+            const radios = [...node.querySelectorAll('input[type="radio"]:not(:disabled)')].filter(isApplicable);
+            if (radios.length && new Set(radios.map(radio => radio.name)).size === 1) return radios;
+            const selects = [...node.querySelectorAll('select:not(:disabled):not([multiple])')].filter(isApplicable);
+            return selects.length === 1 ? selects : [];
+        };
+        const clearPresentation = () => {
+            for (const node of [...sections, ...candidates]) node.classList.remove('is-scout-card-offstage');
+        };
+        const render = (focus = false) => {
+            if (!active) return;
+            const cards = visible();
+            if (!cards.length) { setMode(false); return; }
+            if (!cards.includes(selected)) {
+                const old = all.indexOf(selected);
+                selected = cards.find(card => all.indexOf(card) >= old) || cards.at(-1);
+            }
+            const index = cards.indexOf(selected);
+            const onstage = selected.nodes.filter(isApplicable);
+            for (const node of candidates) node.classList.toggle('is-scout-card-offstage', !onstage.includes(node));
+            for (const section of sections) {
+                const keep = onstage.some(node => section === node || section.contains(node));
+                section.classList.toggle('is-scout-card-offstage', !keep);
+                if (keep) section.open = true;
+            }
+            heading.textContent = selected.label;
+            progress.textContent = 'Card ' + (index + 1) + ' of ' + cards.length;
+            back.disabled = index === 0;
+            next.disabled = index === cards.length - 1;
+            gestureHelp.textContent = choiceControls().length
+                ? 'Swipe left or right here to navigate; up or down to change an option.'
+                : 'Swipe left or right here to navigate.';
+            if (focus) heading.focus();
+        };
+        const setMode = enabled => {
+            active = enabled;
+            toggle.setAttribute('aria-pressed', String(active));
+            toggle.textContent = active ? 'Full questionnaire' : 'Card view';
+            controls.hidden = !active;
+            form.classList.toggle('is-scout-card-view', active);
+            if (active) {
+                openStates = new Map(sections.map(section => [section, section.open]));
+                render(true);
+            } else {
+                clearPresentation();
+                for (const [section, open] of openStates) section.open = open;
+                progress.textContent = '';
+                toggle.focus();
+            }
+        };
+        const step = direction => {
+            const cards = visible();
+            const index = cards.indexOf(selected);
+            const target = cards[index + direction];
+            if (target) { selected = target; render(true); }
+        };
+        const changeChoice = direction => {
+            const choices = choiceControls();
+            if (!choices.length) return;
+            if (choices[0].tagName === 'SELECT') {
+                const select = choices[0];
+                const options = [...select.options].filter(option => !option.disabled && !option.hidden);
+                const index = options.indexOf(select.selectedOptions[0]);
+                const target = options[index + direction];
+                if (target) {
+                    select.value = target.value;
+                    select.dispatchEvent(new Event('input', {bubbles:true}));
+                    select.dispatchEvent(new Event('change', {bubbles:true}));
+                }
+            } else {
+                const index = choices.findIndex(choice => choice.checked);
+                const target = choices[index < 0 ? (direction > 0 ? 0 : choices.length - 1) : index + direction];
+                if (target) target.click();
+            }
+        };
+        toggle.addEventListener('click', () => setMode(!active));
+        back.addEventListener('click', () => step(-1));
+        next.addEventListener('click', () => step(1));
+        gesture.addEventListener('touchstart', event => {
+            if (event.touches.length !== 1) { touch = null; return; }
+            touch = {x:event.touches[0].clientX, y:event.touches[0].clientY};
+        }, {passive:true});
+        gesture.addEventListener('touchcancel', () => { touch = null; });
+        gesture.addEventListener('touchend', event => {
+            if (!active || !touch || !event.changedTouches.length) { touch = null; return; }
+            const dx = event.changedTouches[0].clientX - touch.x;
+            const dy = event.changedTouches[0].clientY - touch.y;
+            touch = null;
+            if (Math.max(Math.abs(dx), Math.abs(dy)) < 45) return;
+            if (Math.abs(dx) >= Math.abs(dy)) step(dx < 0 ? 1 : -1);
+            else changeChoice(dy < 0 ? 1 : -1);
+        }, {passive:true});
+        // Shared listeners run first. React to asynchronous canonical hidden
+        // changes as well, without observing our own presentation classes.
+        form.addEventListener('input', () => render());
+        form.addEventListener('change', () => render());
+        const observer = new MutationObserver(() => { if (active) render(); });
+        observer.observe(form, {subtree:true, attributes:true, attributeFilter:['hidden']});
+        // Keep browser validation focusable even when another card is showing.
+        form.addEventListener('invalid', event => {
+            if (!active) return;
+            setMode(false);
+            for (let node = event.target.parentElement; node && node !== form; node = node.parentElement) {
+                if (node.tagName === 'DETAILS') node.open = true;
+            }
+        }, true);
+        nav.hidden = false;
+    };
+    const init = () => {
+        const form = document.getElementById('add-place-main-form');
+        if (form) setup(form);
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, {once:true});
+    else init();
+})();
