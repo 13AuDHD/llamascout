@@ -1569,6 +1569,7 @@ $check('Cliff Exposure and No Cell Service are derived into Site Quick Warnings'
         'Overall cell service should explain its No Cell Service warning trigger');
 
     $data = [
+        'type' => 'developed-campground',
         'details' => ['cliff_exposure' => '1'],
         'connectivity' => ['overall' => 1, 'satellite' => 5],
     ];
@@ -1602,11 +1603,28 @@ $check('Cliff Exposure and No Cell Service are derived into Site Quick Warnings'
 
     require_once dirname(__DIR__) . '/app/place-report/scoped-warnings.php';
     $scoped = llama_scoped_report_quick_warnings([
+        'type' => 'developed-campground',
         'cliff_exposure' => '1',
         'connectivity_overall' => '1',
     ]);
     $assert(isset($scoped['cliff_exposure']) && isset($scoped['warning_no_cell_service']),
         'Scoped Site report warning generation must include both restored hazards');
+
+    $excluded = [
+        'type' => 'public-parking',
+        'details' => ['cliff_exposure' => '1'],
+        'connectivity' => ['overall' => 1],
+    ];
+    $warnings = llama_place_report_quick_warnings($excluded);
+    $assert(!isset($warnings['cliff_exposure']) && !isset($warnings['warning_no_cell_service']),
+        'Inapplicable historical values must not generate public-parking warnings');
+    $scoped = llama_scoped_report_quick_warnings([
+        'type' => 'public-parking',
+        'cliff_exposure' => '1',
+        'connectivity_overall' => '1',
+    ]);
+    $assert(!isset($scoped['cliff_exposure']) && !isset($scoped['warning_no_cell_service']),
+        'Scoped warnings must respect Place-type applicability');
 });
 
 $check('Experience and Recommendations keeps only approved independent questions', static function () use ($assert, $assertNoAnswerDependencies): void {
@@ -2784,7 +2802,11 @@ $check('Owner matrix Basic, Location and Amenities rows 6–44', static function
             'activities',
         ]],
         ['011111011011000000000111', [
-            'amenity_toilets', 'amenity_showers',
+            'amenity_showers',
+        ]],
+        // Owner-approved correction.
+        ['011111011011000000100111', [
+            'amenity_toilets',
         ]],
         ['011111011111000000000111', [
             'amenity_potable_water', 'amenity_trash', 'amenity_dump_station',
@@ -2884,7 +2906,11 @@ $check('Owner matrix Site Info, Parking and Site Amenities', static function () 
             'tent_pad_width_feet', 'tent_pad_length_feet',
         ]],
         ['111110001000000000000111', [
-            'amenity_grill', 'amenity_picnic_table',
+            'amenity_grill',
+        ]],
+        // Owner-approved correction.
+        ['111111001000000000100111', [
+            'amenity_picnic_table',
         ]],
         ['011101011000000000000111', [
             'amenity_bear_box',
@@ -3176,8 +3202,8 @@ $check('Owner matrix Accessibility, Safety, Experience, Notes, History and Site 
     // Independent workbook masks for the three parents. A child marked Yes
     // is still hidden if its parent is marked No for that Place type.
     $parentMasks = [
-        'accessible_picnic_table' => '111110001000000000000111',
-        'accessible_toilet' => '011111011011000000000111',
+        'accessible_picnic_table' => '111111001000000000100111',
+        'accessible_toilet' => '011111011011000000100111',
         'site_wifi_rating' => '011111001111111111111111',
     ];
     foreach ($types as $index => $type) {
@@ -3215,12 +3241,27 @@ $check('Owner matrix Accessibility, Safety, Experience, Notes, History and Site 
         $input['amenity_toilets'] = $toilet;
         $assert(llama_place_report_question_applicable($input, 'accessible_toilet'), 'Recorded toilet presence must reveal accessibility');
     }
-    // Pending owner decision: preserve the earlier independent wheelchair
-    // question, including dispersed camping where the parent is unavailable.
-    foreach (['0', '1', '', llama_place_report_unknown_token()] as $value) {
-        $assert(llama_place_report_question_applicable(['type' => 'developed-campground', 'site_accessible' => $value], 'wheelchair_friendly'),
-            'Wheelchair question changed before the conflicting matrix rule was resolved');
+    // Owner approved independence from official designation on all types.
+    foreach ($types as $type) {
+        foreach (['0', '1', '', llama_place_report_unknown_token()] as $value) {
+            $assert(llama_place_report_question_applicable(['type' => $type, 'site_accessible' => $value], 'wheelchair_friendly'),
+                'Wheelchair question incorrectly depends on official designation for ' . $type);
+        }
     }
+    foreach (['scenic-overlook', 'fairgrounds'] as $type) {
+        $assert(llama_place_report_question_applicable(['type' => $type], 'amenity_picnic_table'),
+            'Approved Picnic Table parent must be applicable at ' . $type);
+        $assert(llama_place_report_question_applicable(['type' => $type, 'amenity_picnic_table' => '1'], 'accessible_picnic_table'),
+            'Picnic Table Yes must reveal Accessible Picnic Table at ' . $type);
+        $assert(!llama_place_report_question_applicable(['type' => $type, 'amenity_picnic_table' => '0'], 'accessible_picnic_table'),
+            'Picnic Table No must hide accessibility child at ' . $type);
+    }
+    $assert(llama_place_report_question_applicable(['type' => 'fairgrounds'], 'amenity_toilets'),
+        'Approved Shared Toilets parent must be applicable at fairgrounds');
+    $assert(llama_place_report_question_applicable(['type' => 'fairgrounds', 'amenity_toilets' => 'flush'], 'accessible_toilet'),
+        'Recorded toilet must reveal Accessible Toilet at fairgrounds');
+    $assert(!llama_place_report_question_applicable(['type' => 'fairgrounds', 'amenity_toilets' => 'no'], 'accessible_toilet'),
+        'No toilets must hide Accessible Toilet at fairgrounds');
 });
 
 $check('Canonical field contract', static function () use ($assert): void {
