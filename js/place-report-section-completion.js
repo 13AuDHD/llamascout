@@ -22,6 +22,8 @@
   );
 
   const getValue = (form, key) => {
+    const siteContext = form.llamaAdminSiteContextValue?.(key);
+    if (siteContext !== undefined) return siteContext;
     const escaped = escapeSelector(key);
     const unknown = form.querySelector(`[name="_report_unknown[${escaped}]"]`);
     if (unknown?.checked) return '__LLAMA_UNKNOWN__';
@@ -1097,6 +1099,7 @@
       'llama:campsite-saved',
       render
     );
+    form.addEventListener('llama:admin-site-context-changed', render);
 
     render();
   };
