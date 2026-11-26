@@ -1184,6 +1184,7 @@ if ($submissionTargetKind !== '' && $submissionTargetKind !== 'place') {
 $placeOnlySubmission = $submissionTargetKind === 'place';
 if ($placeOnlySubmission) {
     llama_new_place_assert_single_target($data);
+    llama_new_place_assert_pending_applicability($data);
 }
 llama_place_report_validate_new_place_minimum($data, count((array) ($data['photos'] ?? [])));
 
@@ -1203,7 +1204,8 @@ $newPlacePointEstimate =
             )
                 ? $data['photos']
                 : []
-        )
+        ),
+        $placeOnlySubmission
     );
 
 $points =
