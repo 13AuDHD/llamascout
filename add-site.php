@@ -45,6 +45,19 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET'
     );
     exit;
 }
+// Fetch the selected Place's limited, read-only applicability context.
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET' && isset($_GET['parent_report_context'])) {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: private, no-store');
+    try {
+        echo json_encode(['context' => llama_site_parent_report_context($db, (int) $_GET['parent_report_context'])],
+            JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_THROW_ON_ERROR);
+    } catch (InvalidArgumentException $exception) {
+        http_response_code(404);
+        echo json_encode(['error' => 'Parent Place not available']);
+    }
+    exit;
+}
 $selectedParentPlace = null;
 if ($selectedPlaceId > 0) {
     $parentQuery = $db->prepare(
@@ -128,6 +141,9 @@ $placeReportExistingPhotos = $isNeedsChanges
     ? llama_site_submission_photos((array) $revision['data'], $revisionId) : [];
 $placeReportMode = 'contributor';
 $placeReportOnlyScope = 'site';
+$placeReportContextKeys = ['type', 'amenity_wifi', 'amenity_toilets'];
+$placeReportParentContext = $selectedParentPlace
+    ? llama_site_parent_report_context($db, $selectedPlaceId) : [];
 $placeReportSiteIdentityPartial = __DIR__ . '/partials/place-report/site-identity-fields.php';
 $placeReportShowLocate = true;
 $placeReportShowNameSuggestion = false;
@@ -178,7 +194,8 @@ require __DIR__ . '/partials/header.php';
     <?php endif; ?>
 
     <form method="post" class="contribution-form add-place-form place-report-form"
-          data-place-report-completion-form id="add-site-main-form">
+          data-place-report-completion-form id="add-site-main-form"
+          data-report-context="<?= $e(json_encode((object) $placeReportParentContext, JSON_THROW_ON_ERROR)) ?>">
         <input type="hidden" name="csrf_token" value="<?= $e(community_csrf_token()) ?>">
         <?php if ($isNeedsChanges): ?>
             <input type="hidden" name="submission_id" value="<?= $revisionId ?>">
