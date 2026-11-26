@@ -29,16 +29,7 @@ function llama_place_report_apply_parking_profiles(
         'road_exposure',
         'winter_access',
         'seasonal_access_note',
-        'dispersed_camping_allowed',
-        'collecting_firewood',
-        'campfire_allowed',
-        'drone_use_legal',
-        'target_shooting_allowed',
-        'designated_sites_only',
-        'food_storage_required',
         'existing_sites_encouraged',
-        'pack_it_in_pack_it_out',
-        'current_fire_restrictions_url',
         'experience_sunrise_view',
         'experience_sunset_view',
         'experience_overall_scenery',
@@ -67,12 +58,7 @@ function llama_place_report_apply_parking_profiles(
     llama_place_report_append_applicable(
         $fields,
         [
-            'designated_sites_only',
             'existing_sites_encouraged',
-            'dispersed_camping_allowed',
-            'collecting_firewood',
-            'target_shooting_allowed',
-            'food_storage_required',
             'warning_possible_downed_trees',
         ],
         [[
@@ -95,9 +81,6 @@ function llama_place_report_apply_parking_profiles(
             'wildlife_risk',
             'warning_motorized_recreation_traffic',
             'warning_passing_vehicle_dust',
-            'current_fire_restrictions_url',
-            'campfire_allowed',
-            'drone_use_legal',
             'experience_sensory_retreat',
             'experience_extended_stay_comfort',
         ],
@@ -118,28 +101,6 @@ function llama_place_report_apply_parking_profiles(
             'field' => 'type',
             'operator' => 'not_in',
             'value' => $types['commercial_parking'],
-        ]]
-    );
-
-    llama_place_report_append_applicable(
-        $fields,
-        [
-            'target_shooting_allowed',
-        ],
-        [[
-            'field' => 'type',
-            'operator' => 'not_in',
-            'value' => $types['natural_day_use'],
-        ]]
-    );
-
-    llama_place_report_append_applicable(
-        $fields,
-        ['collecting_firewood'],
-        [[
-            'field' => 'type',
-            'operator' => 'not_equals',
-            'value' => 'scenic-overlook',
         ]]
     );
 
