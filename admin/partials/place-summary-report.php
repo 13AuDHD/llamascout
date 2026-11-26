@@ -132,6 +132,12 @@ $placeReportSelectedSite = isset($placeReportSiteOptions[$requestedSite]) ? $req
                     array_fill_keys(admin_place_site_shared_question_keys(), true)
                 ),
                 'place_field_keys' => admin_place_site_section_place_field_keys(),
+                // Read-only published context, including shared amenities not
+                // editable on Sites. Do not inherit Site-owned legacy values.
+                'place_context' => array_intersect_key(
+                    llama_place_report_form_input_from_data($reportData),
+                    llama_place_report_fields_for_scope('place')
+                ),
                 'unknown_token' => llama_place_report_unknown_token(),
                 'unanswered_token' => llama_place_report_unanswered_token(),
             ],
@@ -162,6 +168,10 @@ $placeReportSelectedSite = isset($placeReportSiteOptions[$requestedSite]) ? $req
         $placeReportPhotoContext = 'admin-place';
 
         $placeReportSiteSharedPartial = __DIR__ . '/place-report-site-shared-questions.php';
+        // Include dependency definitions for namespaced Site policies that
+        // are absent from the ordinary Place renderer. Context-only entries
+        // do not add controls or completion items.
+        $placeReportContextKeys = array_keys(llama_report_questions());
         require dirname(__DIR__, 2) . '/partials/place-report/form.php';
 
         ?>
