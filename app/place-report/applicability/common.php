@@ -787,8 +787,6 @@ function llama_place_report_apply_accessibility_safety_matrix(array &$fields): v
         ],
     ]]);
 
-    // Row 152 gives wheelchair_friendly a No dependency on site_accessible,
-    // but row 149 excludes its parent for dispersed camping while row 152
-    // includes dispersed camping. Keep the established independent behavior
-    // until the owner resolves this contradiction.
+    // Owner approved wheelchair_friendly as independent of official
+    // accessibility designation for every Place type (including dispersed).
 }
