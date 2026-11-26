@@ -161,6 +161,33 @@ assert.equal(field('hookup_electric').hidden, true,
 assert.equal(field('hookup_electric_service').hidden, true,
     'An inapplicable parent cannot activate its child');
 
+// A standalone Site has no editable Place-type or shared-amenity control.
+// Read-only context must drive the same visibility and never enter FormData.
+const contextual = new JSDOM('<form class="place-report-form" data-report-context=\'{"type":"developed-campground","amenity_wifi":"1"}\'>'
+    + '<script type="application/json" data-place-report-schema-config>'
+    + JSON.stringify({...config, fields: [
+        {key:'type', type:'select', counts_toward_completion:false, applicable_if:[]},
+        {key:'amenity_wifi', type:'tri', counts_toward_completion:false, applicable_if:[{field:'type',operator:'in',value:['developed-campground']}]},
+        {key:'site_wifi_rating', type:'rating', applicable_if:[{field:'amenity_wifi',operator:'equals',value:'1'}]},
+    ]}) + '</script>' + fieldHtml('site_wifi_rating') + '</form>', {runScripts:'outside-only'});
+const cw = contextual.window;
+cw.CSS = {escape:value=>String(value).replace(/[^a-zA-Z0-9_-]/g, '\\window.close();
+
+const siteLists')};
+cw.LlamaPlaceReportForm = {setupRecovery() {}};
+cw.eval(source);
+const cf = cw.document.querySelector('form');
+const child = cf.querySelector('[data-report-field="site_wifi_rating"]');
+assert.equal(child.hidden, false, 'Read-only inherited Yes reveals child');
+cf.dataset.reportContext = JSON.stringify({type:'public-parking',amenity_wifi:'1'});
+cf.dispatchEvent(new cw.Event('change',{bubbles:true}));
+assert.equal(child.hidden, true, 'Stale inherited Yes is ignored on inapplicable type');
+cf.dataset.reportContext = '{}';
+cf.dispatchEvent(new cw.Event('change',{bubbles:true}));
+assert.equal(child.hidden, true, 'Clearing selected parent clears its context');
+assert.equal(new cw.FormData(cf).has('amenity_wifi'), false, 'Context is not submitted');
+assert.equal(new cw.FormData(cf).has('type'), false, 'Parent type is not submitted');
+cw.close();
 window.close();
 
 const siteLists = {
