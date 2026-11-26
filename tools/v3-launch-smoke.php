@@ -3599,6 +3599,22 @@ $check('Standalone Place form, draft and moderation share the eligible scoring i
         'Saved draft must estimate standalone Place readiness');
 });
 
+$check('Add Place presentation uses Basic date and Site-only name suggestions', static function () use ($assert): void {
+    $root = dirname(__DIR__);
+    $place = file_get_contents($root . '/add-place.php');
+    $site = file_get_contents($root . '/add-site.php');
+    $form = file_get_contents($root . '/partials/place-report/form.php');
+    $identity = file_get_contents($root . '/partials/place-report/site-identity-fields.php');
+    $assert(empty(llama_report_question('name')['name_suggestion']), 'Place identity must never generate a suggested name');
+    $assert(!str_contains($place, '/js/add-place-name.js') && str_contains($site, '/js/add-place-name.js'),
+        'Name suggestion controller must load only on Add Site');
+    $assert(str_contains($identity, 'data-refresh-site-name'), 'Site must provide a manual suggestion control');
+    $assert(!str_contains($place, 'name="visited_at"') && str_contains($form, "$" . "fieldKey === 'description'"),
+        'Standalone date belongs immediately before Description in shared Basic rendering');
+    $assert(str_contains($place, 'data-scout-card-meter') && strpos($place, 'data-scout-card-controls') > strpos($place, '/partials/place-report/form.php'),
+        'Guided progress and below-question navigation required');
+});
+
 $check('Canonical field contract', static function () use ($assert): void {
     $issues = llama_place_report_contract_issues();
     $assert(!$issues, 'Contract issues: ' . implode(' | ', array_slice($issues, 0, 12)) . ' (total ' . count($issues) . ')');
