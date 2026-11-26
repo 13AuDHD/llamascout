@@ -22,6 +22,15 @@ const field = (key, group, type, label = key) => ({
     derived:false, location:false, excluded:false
 });
 const fields = [
+    {...field('type','information_location','select','Place type'), scopes:['place'],
+        options:{'developed-campground':'Developed Campground','public-parking':'Public Parking'}},
+    {...field('amenity_wifi','shared_amenities','tri','Shared WiFi'), scopes:['place','area'],
+        applicable_if:[{field:'type',operator:'in',value:['developed-campground']}]},
+    {...field('site_wifi_rating','connectivity_services','select','Site WiFi'),
+        applicable_if:[{field:'type',operator:'in',value:['developed-campground']},
+            {field:'amenity_wifi',operator:'equals',value:'1'}]},
+    {...field('dogs_required_to_be_leashed','place_rules','tri','Leash required'),
+        applicable_if:[{field:'pets_allowed',operator:'equals',value:'1'}]},
     field('site_number','selection_type','text','Site number'),
     field('parking_surface','parking_maneuvering','select','Parking surface'),
     {...field('overnight_camping_allowed','place_rules','select','Overnight stay permitted?'),
@@ -114,6 +123,8 @@ const html = [
                     experience_summary:'Old review', scout_note_1:'Old tip'
                 },
                 inherited:{
+                    type:{value:'developed-campground',from:'Place'},
+                    amenity_wifi:{value:'1',from:'Place'},
                     overnight_camping_allowed:{value:'1',from:'Place'},
                     pets_allowed:{value:'1',from:'Place'}
                 },
@@ -128,6 +139,8 @@ const html = [
                     daytime_noise:'one', connectivity_verizon:'two'
                 },
                 inherited:{
+                    type:{value:'developed-campground',from:'Place'},
+                    amenity_wifi:{value:'0',from:'Facility'},
                     overnight_camping_allowed:{value:'0',from:'Place'},
                     pets_allowed:{value:'0',from:'Place'}
                 },
@@ -163,6 +176,8 @@ const html = [
         'Inherited Place overnight policy must select Yes, not show a note.');
     const selectedPet = () => get('pets_allowed').querySelector('input[type="radio"]:checked')?.value;
     assert.equal(selectedPet(),'1','Inherited Pets Allowed: 1 must check the Yes radio.');
+    assert.equal(get('site_wifi_rating').hidden,false,'Inherited WiFi Yes reveals Site WiFi');
+    assert.equal(get('dogs_required_to_be_leashed').hidden,false,'Inherited Pets Yes reveals leash question');
     assert.equal(value('daytime_noise'),'','Daytime ratings must start fresh.');
     assert.equal(value('connectivity_verizon'),'','Connectivity must start fresh.');
     assert.equal(value('experience_summary'),'','Personal experience must start fresh.');
@@ -193,12 +208,25 @@ const html = [
     petNo.dispatchEvent(new w.Event('change',{bubbles:true}));
     assert.deepEqual(JSON.parse(report.value),[{key:'pets_allowed',value:'0'}],
         'Changing Yes to No must submit one clear policy correction.');
+    assert.equal(get('dogs_required_to_be_leashed').hidden,true,'Draft parent No hides leash question');
     const petYes = [...get('pets_allowed').querySelectorAll('input[type="radio"]')]
         .find(input=>input.value==='1');
     petYes.checked = true;
     petYes.dispatchEvent(new w.Event('change',{bubbles:true}));
     assert.deepEqual(JSON.parse(report.value),[],
         'Restoring Yes must remove the policy from the proposed report.');
+    assert.equal(get('dogs_required_to_be_leashed').hidden,false,'Restored parent Yes reveals leash question');
+    const leash = get('dogs_required_to_be_leashed').querySelector('input[value="1"]');
+    leash.checked = true;
+    leash.dispatchEvent(new w.Event('change',{bubbles:true}));
+    petNo.checked = true;
+    petNo.dispatchEvent(new w.Event('change',{bubbles:true}));
+    assert.deepEqual(JSON.parse(report.value),[{key:'pets_allowed',value:'0'}], 'Hidden child draft must not submit');
+    petYes.checked = true;
+    petYes.dispatchEvent(new w.Event('change',{bubbles:true}));
+    assert.deepEqual(JSON.parse(report.value),[{key:'dogs_required_to_be_leashed',value:'1'}], 'Restored parent reveals retained child draft');
+    get('dogs_required_to_be_leashed').querySelector('input[value="1"]').checked = false;
+    leash.dispatchEvent(new w.Event('change',{bubbles:true}));
 
     const number = get('site_number').querySelector('input');
     number.value = '14B';
@@ -216,6 +244,8 @@ const html = [
     assert.equal(value('daytime_noise'),'');
     assert.equal(value('overnight_camping_allowed'),'0');
     assert.equal(selectedPet(),'0');
+    assert.equal(get('site_wifi_rating').hidden,true,'Other target inherited No hides Site WiFi');
+    assert.equal(get('dogs_required_to_be_leashed').hidden,true,'Other target Pets No hides leash');
     assert.deepEqual(JSON.parse(report.value),[], 'One Site draft must not leak to another.');
     assert.equal(identity.value,'');
 

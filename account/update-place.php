@@ -1379,6 +1379,7 @@ $e =
                         'layout_section_label' => $scopedReportLayoutSections[$layoutSection],
                         'layout_group_label' => $scopedReportLayoutGroups[$layoutSection][$layoutGroup],
                         'applicable_if' => (array) ($field['applicable_if'] ?? []),
+                        'min_characters' => max(0, (int) ($field['min_characters'] ?? 0)),
                         'type' => (string) $field['type'],
                         'scopes' => array_values((array) ($field['report_scopes'] ?? ['place'])),
                         'options' => (array) ($field['options'] ?? []),
