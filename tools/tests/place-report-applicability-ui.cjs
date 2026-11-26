@@ -171,9 +171,7 @@ const contextual = new JSDOM('<form class="place-report-form" data-report-contex
         {key:'site_wifi_rating', type:'rating', applicable_if:[{field:'amenity_wifi',operator:'equals',value:'1'}]},
     ]}) + '</script>' + fieldHtml('site_wifi_rating') + '</form>', {runScripts:'outside-only'});
 const cw = contextual.window;
-cw.CSS = {escape:value=>String(value).replace(/[^a-zA-Z0-9_-]/g, '\\window.close();
-
-const siteLists')};
+cw.CSS = window.CSS;
 cw.LlamaPlaceReportForm = {setupRecovery() {}};
 cw.eval(source);
 const cf = cw.document.querySelector('form');
