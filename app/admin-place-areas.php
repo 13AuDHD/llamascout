@@ -15,6 +15,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/place-report.php';
 require_once __DIR__ . '/place-report/report-targets.php';
 require_once __DIR__ . '/place-report/scoped-answers.php';
+require_once __DIR__ . '/place-report/target-model.php';
 
 /** @return array<string, array<string, mixed>> */
 function admin_place_area_fields(?array $verifiedTarget = null): array
@@ -91,6 +92,57 @@ function admin_place_area_form_catalog(PDO $db, int $placeId): array
 }
 
 /**
+ * Validate the complete prospective Facility observation before any writes.
+ * A kind change must not erase old kind-specific answers; only explicitly
+ * submitted, eligible keys may be changed. Clear operations restore the
+ * canonical inherited value, not an invented default.
+ */
+function admin_place_plan_area_answers(array $target, array $model, array $answers): array
+{
+    $fields = admin_place_area_fields($target);
+    $effective = (array) ($model['values'] ?? []);
+    $inherited = (array) ($model['inherited'] ?? []);
+    $direct = (array) ($model['direct'] ?? []);
+    $writes = [];
+    $newKeys = [];
+    $unanswered = llama_place_report_unanswered_token();
+    foreach ($answers as $key => $raw) {
+        if (!is_string($key) || !isset($fields[$key])) {
+            throw new InvalidArgumentException('An invalid Area reporting field was submitted.');
+        }
+        if ($raw === null || $raw === '' || $raw === $unanswered) {
+            if (array_key_exists($key, $direct)) { $writes[$key] = $unanswered; }
+            unset($effective[$key]);
+            if (array_key_exists($key, $inherited)) { $effective[$key] = $inherited[$key]; }
+            continue;
+        }
+        $answer = llama_place_report_submission_answer($fields[$key], $raw);
+        if (!$answer['recorded']) {
+            throw new InvalidArgumentException('Clear the Facility override explicitly instead.');
+        }
+        $value = $answer['scoped_value'];
+        if (array_key_exists($key, $direct) && llama_scoped_report_values_equal($direct[$key], $value)) {
+            continue;
+        }
+        $effective[$key] = $value;
+        $writes[$key] = $value;
+        $newKeys[] = $key;
+    }
+    $input = [];
+    foreach ($effective as $key => $value) {
+        $field = llama_report_question((string) $key);
+        if ($field !== null) { $input[$key] = llama_place_report_answer_form_value($field, $value); }
+    }
+    foreach ($newKeys as $key) {
+        if (!llama_place_report_question_applicable($input, $key)) {
+            throw new InvalidArgumentException(($fields[$key]['label'] ?? $key)
+                . ' does not apply to the selected Facility. Review the parent answers.');
+        }
+    }
+    return $writes;
+}
+
+/**
  * Save the explicitly selected Area's answers only.
  *
  * $answers must contain Area-owned field keys, not the entire Place form.
@@ -115,8 +167,11 @@ function admin_place_save_area_answers(
         $areaId
     );
 
+    // Metadata is saved first by the enclosing Admin transaction; verify
+    // the updated kind and effective parent answers, not stale page data.
+    $answers = admin_place_plan_area_answers($verifiedTarget,
+        llama_place_report_target_model($db, $placeId, $verifiedTarget), $answers);
     $fields = admin_place_area_fields($verifiedTarget);
-    $unknownToken = llama_place_report_unknown_token();
     $unansweredToken = llama_place_report_unanswered_token();
     $saved = 0;
 
