@@ -241,12 +241,20 @@ async function testAdminSiteEditing(overrides = null) {
     const site = {id: 'campsite_record:5', site_id: 5, label: 'Site 5', imported_values: {tent_pad: '1'}, override_values: overrides};
     const catalog = {
         sites: [site],
-        site_field_keys: ['tent_pad', 'tent_pad_width_feet', 'independent_site_question', ...Object.keys(siteLists)],
+        site_field_keys: ['tent_pad', 'tent_pad_width_feet', 'independent_site_question', 'pets_allowed', 'dogs_required_to_be_leashed', 'site_wifi_rating', ...Object.keys(siteLists)],
+        site_shared_field_keys: ['pets_allowed', 'dogs_required_to_be_leashed'],
+        place_shared_answers: {pets_allowed:'1'},
+        place_context: {type:'developed-campground', amenity_wifi:'1'},
         place_field_keys: ['generator_restrictions'],
     };
     const adminConfig = {
         ...config,
-        fields: [...config.fields, ...Object.keys(siteLists).map(key => ({key, type: 'multiselect'}))],
+        fields: [...config.fields, ...Object.keys(siteLists).map(key => ({key, type: 'multiselect'})),
+            {key:'pets_allowed', type:'tri', applicable_if:[]},
+            {key:'dogs_required_to_be_leashed', type:'tri', applicable_if:[{field:'pets_allowed',operator:'equals',value:'1'}]},
+            {key:'amenity_wifi', type:'tri', applicable_if:[{field:'type',operator:'in',value:['developed-campground']}]},
+            {key:'site_wifi_rating', type:'tri', applicable_if:[{field:'amenity_wifi',operator:'equals',value:'1'}]},
+        ],
     };
     const listFields = Object.entries(siteLists).map(([key, options]) =>
         `<div data-report-field="${key}" data-place-report-multiselect>`
@@ -273,8 +281,12 @@ async function testAdminSiteEditing(overrides = null) {
         + '<option value="campsite_record:5"' + (overrides ? ' selected' : '') + '>Site 5</option>'
         + '</select></label><label data-admin-overwrite-site-panel hidden>'
         + '<input type="checkbox" role="switch" data-admin-overwrite-site-answers></label>'
-        + keys.map(fieldHtml).join('') + listFields
-        + '</details><button type="button" data-place-report-admin-save>Save Place Report</button></form>',
+        + keys.map(fieldHtml).join('') + listFields + fieldHtml('site_wifi_rating')
+        + '</details>' + fieldHtml('pets_allowed') + fieldHtml('amenity_wifi')
+        + '<fieldset data-admin-site-shared-questions>'
+        + fieldHtml('pets_allowed').replace('name="pets_allowed"', 'name="admin_site_pets_allowed"')
+        + fieldHtml('dogs_required_to_be_leashed').replace('name="dogs_required_to_be_leashed"', 'name="admin_site_dogs_required_to_be_leashed"')
+        + '</fieldset><button type="button" data-place-report-admin-save>Save Place Report</button></form>',
         {url: 'https://admin.llamascout.com/place.php?id=17', runScripts: 'outside-only'}
     );
     const w = admin.window;
@@ -374,6 +386,23 @@ async function testAdminSiteEditing(overrides = null) {
         assert.equal(get('[data-report-main-section="site"]').open, true, 'Selecting a map Site opens its report section');
         assert.equal(question('independent_site_question').hidden, false, 'A selected Site reveals its own questions');
         assert.equal(input('tent_pad').disabled, false, 'Imported Site answers are editable');
+        const sitePets = input('admin_site_pets_allowed');
+        const leash = input('admin_site_dogs_required_to_be_leashed');
+        const leashQuestion = leash.closest('[data-report-field]');
+        assert.equal(sitePets.value,'1','Site uses inherited pets policy');
+        assert.equal(leashQuestion.hidden,false,'Site inherited Yes reveals leash policy');
+        assert.equal(question('site_wifi_rating').hidden,false,'Published WiFi context reveals Site rating');
+        update(sitePets,'0');
+        assert.equal(leashQuestion.hidden,true,'Site No hides child independently of Place control');
+        update(sitePets,'1');
+        assert.equal(leashQuestion.hidden,false,'Site Yes restores dependent question');
+        update(leash,'1');
+        update(sitePets,'0');
+        assert.equal(leashQuestion.hidden,true);
+        // Restore the original parent and clear the draft before other tests.
+        update(sitePets,'1');
+        update(leash,'');
+        assert.equal(input('pets_allowed').value,'__LLAMA_UNANSWERED__','Site does not edit Place control');
         assert.equal(input('generator_restrictions').disabled, false, 'Place answers stay editable with a Site selected');
         assert.equal(input('tent_pad').value, '0', 'Successful bulk overwrite stays visible when reopening an individual Site');
         assert.equal(question('tent_pad_width_feet').hidden, true, 'Bulk-updated parent No keeps its child hidden');
