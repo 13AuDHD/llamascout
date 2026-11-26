@@ -461,7 +461,7 @@ if ($placeReportNewPlaceOnly) {
 }
 $placeReportExistingPhotos = $existingSubmissionPhotos;
 $placeReportShowLocate = true;
-$placeReportShowNameSuggestion = true;
+$placeReportShowNameSuggestion = false;
 $placeReportShowFieldHelp = true;
 $placeReportPhotoCsrf = llama_photo_csrf_token();
 $placeReportPhotoTitle = 'Photos of this Place';
@@ -607,25 +607,14 @@ $placeReportPhotoHelp =
         <?php if (!$legacyPlaceBundle): ?>
         <div class="scout-card-navigation" data-scout-card-navigation hidden>
             <div class="scout-card-toolbar">
-                <button type="button" data-scout-card-toggle aria-pressed="false">Card view</button>
-                <span data-scout-card-progress role="status" aria-live="polite"></span>
-            </div>
-            <div data-scout-card-controls hidden>
-                <h2 data-scout-card-heading tabindex="-1"></h2>
-                <div class="scout-card-buttons">
-                    <button type="button" data-scout-card-back>Back</button>
-                    <button type="button" data-scout-card-next>Next</button>
+                <div class="scout-card-progress" data-scout-card-progress-wrap>
+                    <progress data-scout-card-meter max="100" value="0" aria-label="Questionnaire progress"></progress>
+                    <span data-scout-card-progress role="status" aria-live="polite">0%</span>
                 </div>
-                <div data-scout-card-gesture class="scout-card-gesture" aria-hidden="true">
-                    <span data-scout-card-gesture-help>Swipe left or right here to navigate.</span>
-                </div>
+                <button class="scout-card-view-link" type="button" data-scout-card-toggle aria-pressed="false">Full questionnaire</button>
             </div>
+            <h2 data-scout-card-heading tabindex="-1" class="scout-card-heading"></h2>
         </div>
-        <label class="contribution-field" data-scout-card-step="Date visited">
-            <span class="place-report-field-label">Date visited *</span>
-            <input type="date" name="visited_at" required
-                   value="<?= htmlspecialchars((string) ($_POST['visited_at'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
-        </label>
         <?php endif; ?>
         <input
             type="hidden"
@@ -723,6 +712,17 @@ $placeReportPhotoHelp =
 
             <a href="/map.php">Cancel</a>
         </div>
+        <?php if (!$legacyPlaceBundle): ?>
+        <div class="scout-card-controls" data-scout-card-controls hidden>
+            <div class="scout-card-buttons">
+                <button type="button" data-scout-card-back>Back</button>
+                <button type="button" data-scout-card-next>Next</button>
+            </div>
+            <div data-scout-card-gesture class="scout-card-gesture" aria-hidden="true">
+                <span data-scout-card-gesture-help>Swipe left or right here to navigate.</span>
+            </div>
+        </div>
+        <?php endif; ?>
     </form>
     </div>
 </section>
@@ -745,14 +745,6 @@ $placeReportPhotoHelp =
         ENT_QUOTES, 'UTF-8'
     ) ?>"
     defer
-></script>
-
-<script
-    src="<?= htmlspecialchars(
-        $siteUrl . '/js/add-place-name.js',
-        ENT_QUOTES,
-        'UTF-8'
-    ) ?>"
 ></script>
 
 <script
