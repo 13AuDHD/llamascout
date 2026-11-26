@@ -3523,6 +3523,46 @@ $check('Published Place completeness excludes child-owned questions and respects
         'Unknown hazard must never create a warning');
 });
 
+$check('Place-only moderation retains provenance but excludes legacy bundled Site inventory', static function () use ($assert): void {
+    $input = ['type'=>'developed-campground','name'=>'Test campground','visited_at'=>'2026-11-26',
+        'amenity_wifi'=>'1','site_wifi_rating'=>'4'];
+    $legacy = llama_new_place_completion_summary($input, 1, false);
+    $one = llama_new_place_completion_summary($input, 1, true);
+    $assert($legacy === llama_place_report_question_completion_summary($input, 1),
+        'Legacy pending bundle completion must stay unchanged');
+    $assert($one['total'] < $legacy['total'], 'Place-only readiness must exclude Site questions');
+    $withoutChild = $input;
+    unset($withoutChild['site_wifi_rating']);
+    $assert(llama_new_place_completion_summary($withoutChild, 1, true) === $one,
+        'A Site observation must not improve Place-only readiness');
+    $withoutDate = $input;
+    unset($withoutDate['visited_at']);
+    $assert(in_array('Date visited', llama_new_place_completion_summary($withoutDate, 1, true)['missing_minimum'], true),
+        'Visit date remains required provenance');
+    $data = ['_submission_target_kind'=>'place','type'=>'dispersed-camping','name'=>'Test dispersed',
+        'visited_at'=>'2026-11-26','photos'=>[['src'=>'test.jpg']]];
+    $field = llama_report_question('place_opening_time');
+    llama_place_report_set_path($data, $field['storage'], '08:00');
+    $data['_answer_state'] = ['place_opening_time'];
+    $assert(in_array('place_opening_time', llama_new_place_inapplicable_keys($data), true),
+        'Stale pending operating hours must be detected');
+    $failed = false;
+    try { llama_new_place_assert_pending_applicability($data); }
+    catch (InvalidArgumentException $exception) { $failed = true; }
+    $assert($failed, 'Approval must refuse stale pending evidence');
+    $clean = llama_new_place_normalize_pending_applicability($data);
+    llama_new_place_assert_pending_applicability($clean);
+    $assert(llama_place_report_answer_state($clean, 'place_opening_time') === 'unanswered'
+        && llama_place_report_answer_state($data, 'place_opening_time') === 'unknown',
+        'Pending normalization must clear stale Unknown without modifying original');
+    $assert($clean['visited_at'] === $data['visited_at'] && $clean['photos'] === $data['photos'],
+        'Preserve visit provenance and photo evidence');
+    $bundle = $data;
+    unset($bundle['_submission_target_kind']);
+    $assert(llama_new_place_normalize_pending_applicability($bundle) === $bundle,
+        'Legacy pending bundle must remain intact');
+});
+
 $check('Canonical field contract', static function () use ($assert): void {
     $issues = llama_place_report_contract_issues();
     $assert(!$issues, 'Contract issues: ' . implode(' | ', array_slice($issues, 0, 12)) . ' (total ' . count($issues) . ')');
