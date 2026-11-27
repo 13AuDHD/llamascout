@@ -3654,6 +3654,38 @@ $check('Contribution intro boxes contain descriptions only', static function () 
         'All four shared intro descriptions must remain without duplicate headings');
 });
 
+$check('Ground elevation uses USGS then existing global fallback', static function () use ($assert): void {
+    require_once dirname(__DIR__) . '/app/location-elevation.php';
+    $run = static function (array $responses) use ($assert): array {
+        $calls = [];
+        $lookup = static function (string $url, array $headers, int $timeout) use (&$calls, &$responses): ?array {
+            $calls[] = $url;
+            return array_shift($responses);
+        };
+        $result = llama_location_elevation(37.25, -107.12, $lookup);
+        $assert(str_contains($calls[0], 'epqs.nationalmap.gov/v1/json?')
+            && str_contains($calls[0], 'x=-107.1200000')
+            && str_contains($calls[0], 'y=37.2500000')
+            && str_contains($calls[0], 'units=Meters'), 'USGS coordinates and units must be correct');
+        return [$result, $calls];
+    };
+    [$result, $calls] = $run([['value' => '2000']]);
+    $assert($result === ['feet' => 6562, 'source' => 'usgs_3dep'] && count($calls) === 1,
+        'USGS valid result should convert meters and avoid fallback');
+    [$result, $calls] = $run([['value' => -1000000], ['elevation' => [1200]]]);
+    $assert($result === ['feet' => 3937, 'source' => 'open_meteo']
+        && count($calls) === 2 && str_contains($calls[1], 'api.open-meteo.com/v1/elevation?'),
+        'No-data sentinel must trigger fallback');
+    [$result] = $run([['value' => 0]]);
+    $assert($result['feet'] === 0, 'Sea level is not missing');
+    [$result] = $run([null, ['elevation' => [-20]]]);
+    $assert($result['feet'] === -66, 'Below-sea-level land remains valid');
+    [$result] = $run([['value' => 'NaN'], ['elevation' => [null]]]);
+    $assert($result === ['feet' => null, 'source' => null], 'Both unavailable must stay unknown');
+    [$result] = $run([null, null]);
+    $assert($result === ['feet' => null, 'source' => null], 'Transport failures must stay unknown');
+});
+
 $check('Canonical field contract', static function () use ($assert): void {
     $issues = llama_place_report_contract_issues();
     $assert(!$issues, 'Contract issues: ' . implode(' | ', array_slice($issues, 0, 12)) . ' (total ' . count($issues) . ')');
