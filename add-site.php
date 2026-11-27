@@ -196,6 +196,16 @@ require __DIR__ . '/partials/header.php';
     <form method="post" class="contribution-form add-place-form place-report-form"
           data-place-report-completion-form id="add-site-main-form"
           data-report-context="<?= $e(json_encode((object) $placeReportParentContext, JSON_THROW_ON_ERROR)) ?>">
+        <div class="scout-card-navigation" data-scout-card-navigation hidden>
+            <div class="scout-card-toolbar">
+                <div class="scout-card-progress" data-scout-card-progress-wrap>
+                    <progress data-scout-card-meter max="100" value="0" aria-label="Questionnaire progress"></progress>
+                    <span data-scout-card-progress role="status" aria-live="polite">0%</span>
+                </div>
+                <button class="scout-card-view-link" type="button" data-scout-card-toggle aria-pressed="false">Full questionnaire</button>
+            </div>
+            <h2 data-scout-card-heading tabindex="-1" class="scout-card-heading"></h2>
+        </div>
         <input type="hidden" name="csrf_token" value="<?= $e(community_csrf_token()) ?>">
         <?php if ($isNeedsChanges): ?>
             <input type="hidden" name="submission_id" value="<?= $revisionId ?>">
@@ -206,11 +216,18 @@ require __DIR__ . '/partials/header.php';
                value="<?= $e($_POST['photos_json'] ?? '[]') ?>">
 
         <?php require __DIR__ . '/partials/place-report/form.php'; ?>
-        <div class="contribution-actions add-place-submit-bar">
+        <div class="contribution-actions add-place-submit-bar" data-scout-card-step="Review and submit">
             <button class="contribution-submit" type="submit" <?= $ready ? '' : 'disabled' ?>>
                 <?= llama_icon('send') ?> <?= $isNeedsChanges ? 'Resubmit Site for Review' : 'Submit Site for Review' ?>
             </button>
             <a href="/map.php">Cancel</a>
+        </div>
+        <div class="scout-card-controls" data-scout-card-controls hidden>
+            <span class="scout-card-gesture" data-scout-card-gesture-help aria-hidden="true">← Swipe →</span>
+            <div class="scout-card-buttons">
+                <button type="button" data-scout-card-back>Back</button>
+                <button type="button" data-scout-card-next>Next</button>
+            </div>
         </div>
     </form>
 </section>
