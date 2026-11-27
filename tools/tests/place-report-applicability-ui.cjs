@@ -672,6 +672,11 @@ async function testGuidedLocateMe() {
                     <div data-report-field="elevation_feet"><input data-location-field="elevation_feet" name="elevation_feet"></div>
                 </div>
             </details>
+            <details data-report-subsection="nearest_services"><summary>Nearest Services</summary><div class="contribution-grid">
+                <div data-report-field="nearest_fuel"><label>Nearest fuel</label><select name="nearest_fuel"><option value="">Select</option><option value="1 mile">1 mile</option><option value="3 miles">3 miles</option></select></div>
+                <div data-report-field="nearest_grocery"><label>Nearest grocery</label><select name="nearest_grocery"><option value="">Select</option><option value="1 mile" selected>1 mile</option><option value="3 miles">3 miles</option></select></div>
+                <div data-report-field="nearest_hospital"><label>Nearest hospital</label><select name="nearest_hospital"><option value="">Select</option><option value="Over 20 miles">Over 20 miles</option></select></div>
+            </div></details>
         </details>
         <div data-scout-card-controls hidden>
             <button type="button" data-scout-card-back></button><span data-scout-card-gesture-help></span><button type="button" data-scout-card-next></button>
@@ -683,7 +688,7 @@ async function testGuidedLocateMe() {
         const requests = [], lookups = [];
         const results = [];
         const position = (latitude, longitude, accuracy) => ({coords:{latitude,longitude,accuracy}});
-        let lookupFails = false, elevation = 6562;
+        let lookupFails = false, elevation = 6562, fuelMiles = 0.8, nearestState = 'ready';
         Object.defineProperty(w.navigator, 'geolocation', {value:{
             getCurrentPosition(success, failure, options) {
                 requests.push(options);
@@ -695,7 +700,14 @@ async function testGuidedLocateMe() {
         w.fetch = async url => {
             lookups.push(url);
             if (lookupFails) throw new Error('Offline');
-            return {ok:true,text:async()=>JSON.stringify({success:true,location:{city:'Example city',elevation_feet:elevation}})};
+            return {ok:true,text:async()=>JSON.stringify({
+                success:true,location:{city:'Example city',elevation_feet:elevation},
+                nearest_services:{state:nearestState,services:[
+                    {key:'nearest_fuel',match:{name:'Example fuel',distance_miles:fuelMiles,source:'OpenStreetMap',status:'unknown'}},
+                    {key:'nearest_grocery',match:{name:'Example grocery',distance_miles:3,source:'OpenStreetMap'}},
+                    {key:'nearest_hospital',match:null}
+                ]}
+            })};
         };
         w.eval(fs.readFileSync(path.resolve(__dirname,'../../js/add-place-location.js'),'utf8'));
         w.eval(source.slice(source.indexOf('// Guided Add Place presentation is deliberately separate')));
@@ -719,10 +731,18 @@ async function testGuidedLocateMe() {
         assert.equal(requests.length,1);
         assert.equal(requests[0].enableHighAccuracy,true);
         assert.equal(lookups.length,1);
+        assert.match(lookups[0],/&nearest=1/);
+        assert.equal(new w.FormData(form).get('nearest_fuel'),'1 mile');
+        assert.equal(new w.FormData(form).get('nearest_grocery'),'1 mile','Manual existing answers are preserved');
+        assert.equal(new w.FormData(form).get('nearest_hospital'),'','Missing results remain unanswered');
+        assert.match(q('[data-nearest-autofill-hint]').textContent,/Example fuel · 0.8 mi straight-line/);
+        assert.doesNotMatch(q('[data-nearest-autofill-hint]').textContent,/Availability unknown/);
+        assert.ok(q('[data-nearest-autofill-hint] a[href="https://www.openstreetmap.org/copyright"]'));
         q('[data-scout-card-next]').click();
         q('[data-scout-card-back]').click();
         assert.equal(q('[data-coordinate-input]').value,'37.2500000, -107.1200000','Coordinates survive card navigation');
         elevation = null;
+        fuelMiles = 2.6;
         results.push({code:3},position(37.26,-107.13,850));
         locate.click();
         await settle();
@@ -733,6 +753,7 @@ async function testGuidedLocateMe() {
         assert.equal(q('[name="elevation_feet"]').value,'','Missing elevation remains blank');
         assert.equal(status.classList.contains('is-warning'),true);
         assert.equal(new w.FormData(form).get('latitude'),'37.2600000');
+        assert.equal(new w.FormData(form).get('nearest_fuel'),'3 miles');
         results.push({code:1});
         locate.click();
         await settle();
@@ -748,6 +769,7 @@ async function testGuidedLocateMe() {
         assert.equal(requests.length,6,'Unavailable position retries standard location');
         assert.equal(status.classList.contains('is-warning'),true,'Lookup failure does not imply GPS failure');
         assert.equal(new w.FormData(form).get('latitude'),'37.2700000');
+        assert.equal(new w.FormData(form).get('nearest_fuel'),'','Stale automatically filled values are cleared when lookup fails at a new point');
         assert.equal(locate.disabled,false);
         q('[data-scout-card-toggle]').click();
         lookupFails = false;
@@ -759,6 +781,26 @@ async function testGuidedLocateMe() {
         assert.equal(new w.FormData(form).get('latitude'),'37.2800000','Full view uses the same location handler');
         assert.equal(q('[name="elevation_feet"]').value,'0','Sea level is a valid elevation');
         assert.equal(status.classList.contains('is-success'),true);
+        assert.equal(new w.FormData(form).get('nearest_fuel'),'3 miles','Full questionnaire receives the same autofill');
+        const coordinates = q('[data-coordinate-input]');
+        coordinates.value = '37.29, -107.16';
+        coordinates.dispatchEvent(new w.Event('input',{bubbles:true}));
+        fuelMiles = 0.3;
+        q('[data-search-coordinates]').click();
+        await settle();
+        assert.equal(new w.FormData(form).get('nearest_fuel'),'1 mile','Manual coordinate Search also autofills');
+        assert.match(q('[data-nearest-autofill-hint]').textContent,/0.3 mi straight-line/);
+        const fuel = q('[name="nearest_fuel"]');
+        fuel.value = '3 miles';
+        fuel.dispatchEvent(new w.Event('change',{bubbles:true}));
+        assert.equal(q('[data-nearest-autofill-hint]'),null,'Manual edits remove the automatic hint');
+        nearestState = 'unavailable';
+        coordinates.value = '37.30, -107.17';
+        coordinates.dispatchEvent(new w.Event('input',{bubbles:true}));
+        q('[data-search-coordinates]').click();
+        await settle();
+        assert.equal(fuel.value,'3 miles','Manual override survives coordinate changes and service failures');
+        assert.match(status.textContent,/Nearest Services could not be looked up/);
     } finally { w.close(); }
 }
 
@@ -969,42 +1011,7 @@ async function testResponsiveGuidedDefaults() {
     }
 }
 
-async function testAutomaticNearestServices() {
-    const dom = new JSDOM(`<form>
-        <input name="site_place_id" value="pending:17">
-        <input name="site_coordinates" data-site-coordinate-input>
-        <section data-site-nearest-preview><p data-nearest-status></p><div data-nearest-results></div></section>
-    </form>`, {runScripts:'outside-only',url:'https://llamascout.com/add-site.php'});
-    const w=dom.window,d=w.document;
-    try {
-        const requests=[];
-        w.fetch=async url=>{
-            requests.push(new URL(url).searchParams);
-            return {ok:true,json:async()=>({state:'ready',radius_miles:100,services:[
-                {label:'Nearest fuel',match:{name:'Known fuel',distance_miles:0.691,status:'available'}},
-                {label:'Nearest hospital',match:null,supported:false},
-            ]})};
-        };
-        w.eval(fs.readFileSync(path.resolve(__dirname,'../../js/nearest-services.js'),'utf8'));
-        await new Promise(resolve=>d.addEventListener('DOMContentLoaded',resolve,{once:true}));
-        const input=d.querySelector('[data-site-coordinate-input]');
-        input.value='37.25, -107.12';
-        input.dispatchEvent(new w.Event('input',{bubbles:true}));
-        await new Promise(resolve=>setTimeout(resolve,420));
-        assert.equal(requests.length,1);
-        assert.equal(requests[0].get('site_place_id'),'pending:17');
-        assert.equal(requests[0].get('lat'),'37.25');
-        assert.match(d.querySelector('[data-nearest-results]').textContent,/Known fuel · 0.7 mi/);
-        assert.match(d.querySelector('[data-nearest-results]').textContent,/No data source yet/);
-        assert.match(d.querySelector('[data-nearest-status]').textContent,/not driving distances/);
-        assert.deepEqual([...new w.FormData(d.querySelector('form')).keys()],['site_place_id','site_coordinates']);
-        input.value='';
-        input.dispatchEvent(new w.Event('input',{bubbles:true}));
-        assert.equal(d.querySelector('[data-nearest-results]').textContent,'','Changing coordinates removes stale results immediately');
-    } finally {w.close();}
-}
-
-testAdminSiteEditing().then(testAdminSiteEditing).then(testClosureDates).then(testGuidedPlaceCards).then(testGuidedLocateMe).then(testGuidedSiteCards).then(testResponsiveGuidedDefaults).then(testAutomaticNearestServices).then(() => {
+testAdminSiteEditing().then(testAdminSiteEditing).then(testClosureDates).then(testGuidedPlaceCards).then(testGuidedLocateMe).then(testGuidedSiteCards).then(testResponsiveGuidedDefaults).then(() => {
     console.log('PASS: closure dates and Site selections survive reload, parent-child visibility and scoped saves');
 }).catch(error => {
     console.error(error);

@@ -288,17 +288,6 @@ try {
         array_replace(llama_report_answer_sources($db, $currentAnswers), $seasonSpecificSources)
     ));
 
-    // Calculated services are separately gated by Complete Place access,
-    // and never change published Scout answers or their completeness.
-    try {
-        require_once dirname(__DIR__) . '/app/nearest-services.php';
-        $site['nearest_services'] = llama_nearest_services($db, $site['latitude'] ?? null,
-            $site['longitude'] ?? null, $placeId);
-    } catch (Throwable $exception) {
-        llama_log_caught_exception($exception, 'site.nearest_services.public', ['place_id' => $placeId]);
-        $site['nearest_services'] = ['state' => 'unavailable'];
-    }
-
     $site['report_warnings'] =
         llama_scoped_report_quick_warnings(
             $effectiveValues, (string) ($place['type'] ?? $publicPlace['type'] ?? '')
