@@ -28,12 +28,24 @@
                 const miles = Number(match.distance_miles);
                 const distance = miles < 0.1 ? 'Under 0.1 mi' : miles.toFixed(1) + ' mi';
                 value.textContent = match.name + ' · ' + distance
+                    + (match.source === 'OpenStreetMap' ? ' · OpenStreetMap' : '')
                     + (match.facility ? ' · Parent Place facility' : '')
                     + (match.status === 'seasonal' ? ' · Seasonal' : match.status === 'unknown' ? ' · Availability unknown' : '');
             }
             dl.append(term, value);
         }
         results.append(dl);
+        if (payload.osm_data_loaded) {
+            const credit = document.createElement('small');
+            const license = document.createElement('a');
+            license.href = 'https://www.openstreetmap.org/copyright';
+            license.textContent = '© OpenStreetMap contributors (ODbL)';
+            const download = document.createElement('a');
+            download.href = '/api/osm-nearest-data.php';
+            download.textContent = 'Download reference data';
+            credit.append(license, ' · ', download);
+            results.append(credit);
+        }
     };
     window.LlamaScoutNearestServices = {render};
 
