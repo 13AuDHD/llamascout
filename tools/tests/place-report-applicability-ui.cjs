@@ -602,6 +602,7 @@ async function testGuidedLocateMe() {
                     </div>
                     <div data-scout-card-group="Location" data-location-status>Tap Locate me.</div>
                     <div data-report-field="city"><input data-location-field="city" name="city"></div>
+                    <div data-report-field="elevation_feet"><input data-location-field="elevation_feet" name="elevation_feet"></div>
                 </div>
             </details>
         </details>
@@ -614,7 +615,7 @@ async function testGuidedLocateMe() {
         const requests = [], lookups = [];
         const results = [];
         const position = (latitude, longitude, accuracy) => ({coords:{latitude,longitude,accuracy}});
-        let lookupFails = false;
+        let lookupFails = false, elevation = 6562;
         Object.defineProperty(w.navigator, 'geolocation', {value:{
             getCurrentPosition(success, failure, options) {
                 requests.push(options);
@@ -626,7 +627,7 @@ async function testGuidedLocateMe() {
         w.fetch = async url => {
             lookups.push(url);
             if (lookupFails) throw new Error('Offline');
-            return {ok:true,text:async()=>JSON.stringify({success:true,location:{city:'Example city'}})};
+            return {ok:true,text:async()=>JSON.stringify({success:true,location:{city:'Example city',elevation_feet:elevation}})};
         };
         w.eval(fs.readFileSync(path.resolve(__dirname,'../../js/add-place-location.js'),'utf8'));
         w.eval(source.slice(source.indexOf('// Guided Add Place presentation is deliberately separate')));
@@ -645,6 +646,7 @@ async function testGuidedLocateMe() {
         assert.equal(new w.FormData(form).get('latitude'),'37.2500000');
         assert.equal(new w.FormData(form).get('longitude'),'-107.1200000');
         assert.equal(q('[name="city"]').value,'Example city');
+        assert.equal(q('[name="elevation_feet"]').value,'6562');
         assert.equal(status.classList.contains('is-success'),true);
         assert.equal(requests.length,1);
         assert.equal(requests[0].enableHighAccuracy,true);
@@ -652,12 +654,15 @@ async function testGuidedLocateMe() {
         q('[data-scout-card-next]').click();
         q('[data-scout-card-back]').click();
         assert.equal(q('[data-coordinate-input]').value,'37.2500000, -107.1200000','Coordinates survive card navigation');
+        elevation = null;
         results.push({code:3},position(37.26,-107.13,850));
         locate.click();
         await settle();
         assert.equal(requests.length,3);
         assert.equal(requests[2].enableHighAccuracy,false,'Timeout retries standard location');
         assert.match(status.textContent,/850 m/);
+        assert.match(status.textContent,/Elevation is unavailable/);
+        assert.equal(q('[name="elevation_feet"]').value,'','Missing elevation remains blank');
         assert.equal(status.classList.contains('is-warning'),true);
         assert.equal(new w.FormData(form).get('latitude'),'37.2600000');
         results.push({code:1});
@@ -678,11 +683,14 @@ async function testGuidedLocateMe() {
         assert.equal(locate.disabled,false);
         q('[data-scout-card-toggle]').click();
         lookupFails = false;
+        elevation = 0;
         results.push(position(37.28,-107.15,10));
         locate.click();
         await settle();
         assert.equal(form.classList.contains('is-scout-card-view'),false);
         assert.equal(new w.FormData(form).get('latitude'),'37.2800000','Full view uses the same location handler');
+        assert.equal(q('[name="elevation_feet"]').value,'0','Sea level is a valid elevation');
+        assert.equal(status.classList.contains('is-success'),true);
     } finally { w.close(); }
 }
 
