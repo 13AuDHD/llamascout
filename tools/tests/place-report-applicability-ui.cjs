@@ -583,7 +583,110 @@ async function testGuidedPlaceCards() {
     } finally { w.close(); }
 }
 
-testAdminSiteEditing().then(testAdminSiteEditing).then(testClosureDates).then(testGuidedPlaceCards).then(() => {
+async function testGuidedLocateMe() {
+    const dom = new JSDOM(`<form id="add-place-main-form">
+        <div data-scout-card-navigation hidden>
+            <button type="button" data-scout-card-toggle></button>
+            <div data-scout-card-progress-wrap><progress data-scout-card-meter max="100"></progress><span data-scout-card-progress></span></div>
+            <h2 data-scout-card-heading tabindex="-1"></h2>
+        </div>
+        <details data-report-main-section="place" open><summary>Place</summary>
+            <details data-report-subsection="location" open><summary>Location</summary>
+                <div class="contribution-grid">
+                    <div data-scout-card-group="Location"><button type="button" data-locate-place>Locate me</button></div>
+                    <div data-scout-card-group="Location">
+                        <input data-coordinate-input name="coordinates">
+                        <input type="hidden" data-location-field="latitude" name="latitude">
+                        <input type="hidden" data-location-field="longitude" name="longitude">
+                        <button type="button" data-search-coordinates>Search</button>
+                    </div>
+                    <div data-scout-card-group="Location" data-location-status>Tap Locate me.</div>
+                    <div data-report-field="city"><input data-location-field="city" name="city"></div>
+                </div>
+            </details>
+        </details>
+        <div data-scout-card-controls hidden>
+            <button type="button" data-scout-card-back></button><span data-scout-card-gesture-help></span><button type="button" data-scout-card-next></button>
+        </div>
+    </form>`, {runScripts:'outside-only',url:'https://llamascout.com/add-place.php'});
+    const w = dom.window, d = w.document;
+    try {
+        const requests = [], lookups = [];
+        const results = [];
+        const position = (latitude, longitude, accuracy) => ({coords:{latitude,longitude,accuracy}});
+        let lookupFails = false;
+        Object.defineProperty(w.navigator, 'geolocation', {value:{
+            getCurrentPosition(success, failure, options) {
+                requests.push(options);
+                const result = results.shift();
+                if (result?.code) failure(result);
+                else success(result);
+            }
+        }});
+        w.fetch = async url => {
+            lookups.push(url);
+            if (lookupFails) throw new Error('Offline');
+            return {ok:true,text:async()=>JSON.stringify({success:true,location:{city:'Example city'}})};
+        };
+        w.eval(fs.readFileSync(path.resolve(__dirname,'../../js/add-place-location.js'),'utf8'));
+        w.eval(source.slice(source.indexOf('// Guided Add Place presentation is deliberately separate')));
+        await new Promise(resolve=>d.addEventListener('DOMContentLoaded',resolve,{once:true}));
+        const q = s=>d.querySelector(s), form = q('form');
+        const locate = q('[data-locate-place]'), status = q('[data-location-status]');
+        const settle = () => new Promise(resolve=>setImmediate(resolve));
+        assert.equal(form.classList.contains('is-scout-card-view'),true);
+        assert.equal(q('[data-scout-card-heading]').textContent,'Location');
+        results.push(position(37.25,-107.12,12));
+        locate.click();
+        assert.equal(locate.disabled,true,'Location controls are busy while resolving');
+        await settle();
+        assert.equal(locate.disabled,false);
+        assert.equal(q('[data-coordinate-input]').value,'37.2500000, -107.1200000');
+        assert.equal(new w.FormData(form).get('latitude'),'37.2500000');
+        assert.equal(new w.FormData(form).get('longitude'),'-107.1200000');
+        assert.equal(q('[name="city"]').value,'Example city');
+        assert.equal(status.classList.contains('is-success'),true);
+        assert.equal(requests.length,1);
+        assert.equal(requests[0].enableHighAccuracy,true);
+        assert.equal(lookups.length,1);
+        q('[data-scout-card-next]').click();
+        q('[data-scout-card-back]').click();
+        assert.equal(q('[data-coordinate-input]').value,'37.2500000, -107.1200000','Coordinates survive card navigation');
+        results.push({code:3},position(37.26,-107.13,850));
+        locate.click();
+        await settle();
+        assert.equal(requests.length,3);
+        assert.equal(requests[2].enableHighAccuracy,false,'Timeout retries standard location');
+        assert.match(status.textContent,/850 m/);
+        assert.equal(status.classList.contains('is-warning'),true);
+        assert.equal(new w.FormData(form).get('latitude'),'37.2600000');
+        results.push({code:1});
+        locate.click();
+        await settle();
+        assert.equal(requests.length,4,'Permission denial is never retried');
+        assert.match(status.textContent,/permission was denied/);
+        assert.equal(locate.disabled,false);
+        assert.equal(new w.FormData(form).get('latitude'),'37.2600000','Failed GPS does not erase existing coordinates');
+        assert.equal(lookups.length,2);
+        lookupFails = true;
+        results.push({code:2},position(37.27,-107.14,20));
+        locate.click();
+        await settle();
+        assert.equal(requests.length,6,'Unavailable position retries standard location');
+        assert.equal(status.classList.contains('is-warning'),true,'Lookup failure does not imply GPS failure');
+        assert.equal(new w.FormData(form).get('latitude'),'37.2700000');
+        assert.equal(locate.disabled,false);
+        q('[data-scout-card-toggle]').click();
+        lookupFails = false;
+        results.push(position(37.28,-107.15,10));
+        locate.click();
+        await settle();
+        assert.equal(form.classList.contains('is-scout-card-view'),false);
+        assert.equal(new w.FormData(form).get('latitude'),'37.2800000','Full view uses the same location handler');
+    } finally { w.close(); }
+}
+
+testAdminSiteEditing().then(testAdminSiteEditing).then(testClosureDates).then(testGuidedPlaceCards).then(testGuidedLocateMe).then(() => {
     console.log('PASS: closure dates and Site selections survive reload, parent-child visibility and scoped saves');
 }).catch(error => {
     console.error(error);
