@@ -26,6 +26,23 @@ if ($placeId < 1) {
     exit;
 }
 
+// Read-only, same-origin preview for the Admin's Nearest Services button.
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET' && ($_GET['nearest_services'] ?? '') === '1') {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: private, no-store');
+    try {
+        if (!admin_place_get($db, $placeId)) throw new RuntimeException('Place not found.');
+        require_once dirname(__DIR__) . '/app/nearest-services.php';
+        echo json_encode(llama_nearest_services($db, $_GET['lat'] ?? null, $_GET['lng'] ?? null),
+            JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR);
+    } catch (Throwable $exception) {
+        llama_log_caught_exception($exception, 'admin.place.nearest_preview', ['place_id'=>$placeId]);
+        http_response_code(503);
+        echo json_encode(['state'=>'unavailable']);
+    }
+    exit;
+}
+
 $actionState = admin_place_handle_actions($db, $actorUserId, $placeId);
 $notice = (string) ($actionState['notice'] ?? '');
 if (($_GET['facility_saved'] ?? '') === '1') {
@@ -393,6 +410,7 @@ $placeReportMode = 'moderator';
 $contributionAdminPlaceId = $placeId;
 $placeReportExistingPhotos = $images;
 $placeReportShowLocate = true;
+$placeReportAdminNearestLookup = true;
 $placeReportShowNameSuggestion = true;
 $placeReportPhotoEndpoint = '/photo-upload.php';
 $placeReportPhotoCsrf = llama_photo_csrf_token();
