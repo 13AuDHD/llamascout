@@ -2348,20 +2348,17 @@ window.LlamaPlaceReportForm
         sectionContext.id = form.id + '-card-section-context';
         sectionContext.hidden = true;
         heading.before(sectionContext);
-        // Place type is the sole exception to the full form's section order:
-        // it is needed to determine which Getting There questions apply.
-        // The rest of Getting There precedes Place > Basic, just as in the
-        // full questionnaire. Site retains its own identity-first order.
+        // Place cards must follow the actual full questionnaire order.
+        // Place type remains in Basic, even though earlier questions may
+        // become applicable after the Scout chooses it.
         const isPlace = form.id === 'add-place-main-form';
-        const priority = isPlace
-            ? ['type']
-            : ['site_parent', 'site_name', 'visited_at', 'site_location'];
+        const priority = ['site_parent', 'site_name', 'visited_at', 'site_location'];
         const typeControl = isPlace ? form.querySelector('select[name="type"]') : null;
         const needsType = card => Boolean(typeControl && card?.key === 'type' &&
             (!typeControl.value || typeControl.selectedOptions[0]?.disabled));
         const typeHint = document.createElement('p');
         typeHint.className = 'scout-card-section-context';
-        typeHint.textContent = 'Choose the Place type to load its applicable Getting There questions.';
+        typeHint.textContent = 'Choose the Place type to determine which questions apply.';
         typeHint.hidden = true;
         heading.after(typeHint);
         // Build dependency order from the same browser schema that drives
@@ -2385,6 +2382,7 @@ window.LlamaPlaceReportForm
             ...[...node.querySelectorAll('[data-report-field]')].map(child => child.dataset.reportField),
         ]).filter(Boolean))];
         const orderCards = cards => {
+            if (isPlace) return cards;
             const first = priority.map(key => cards.find(card => card.key === key)).filter(Boolean);
             const ordered = [...first, ...cards.filter(card => !first.includes(card))];
             const owners = new Map();
@@ -2409,6 +2407,12 @@ window.LlamaPlaceReportForm
         all = orderCards(all);
         let active = false, selected = null, openStates = new Map(), drag = null, suppressClick = false;
         const seenNodes = new WeakSet();
+        let resumeNode = null;
+        const revisitHint = document.createElement('p');
+        revisitHint.className = 'scout-card-section-context';
+        revisitHint.textContent = 'Additional question based on your answers.';
+        revisitHint.hidden = true;
+        typeHint.after(revisitHint);
         // Match the contribution layout's existing 700px mobile breakpoint.
         // A deliberate view choice wins over automatic viewport changes.
         const mobileQuery = '(max-width: 700px)';
@@ -2512,7 +2516,10 @@ window.LlamaPlaceReportForm
             if (selected.nodes.some(node => node.dataset.scoutCardStep === 'Review and submit')) {
                 const missed = cards.slice(0, cards.indexOf(selected)).find(card =>
                     card.nodes.some(node => isApplicable(node) && !seenNodes.has(node)));
-                if (missed) selected = missed;
+                if (missed) {
+                    if (isPlace) resumeNode = selected.nodes[0];
+                    selected = missed;
+                }
             }
             const index = cards.indexOf(selected);
             const onstage = selected.nodes.filter(isApplicable);
@@ -2537,6 +2544,9 @@ window.LlamaPlaceReportForm
             progress.textContent = percent + '%';
             syncChoices(onstage);
             back.disabled = index === 0;
+            const resumeIndex = resumeNode ? cards.findIndex(card => card.nodes.includes(resumeNode)) : -1;
+            const revisiting = resumeIndex >= 0 && index < resumeIndex;
+            if (revisitHint.hidden !== !revisiting) revisitHint.hidden = !revisiting;
             const typeRequired = needsType(selected);
             if (typeHint.hidden !== !typeRequired) typeHint.hidden = !typeRequired;
             next.disabled = typeRequired || (index === cards.length - 1 && !cards.slice(0, index).some(card =>
@@ -2577,6 +2587,8 @@ window.LlamaPlaceReportForm
                 progress.textContent = '';
                 sectionContext.hidden = true;
                 typeHint.hidden = true;
+                revisitHint.hidden = true;
+                resumeNode = null;
                 sectionContext.textContent = '';
                 heading.removeAttribute('aria-describedby');
                 if (focus) toggle.focus();
@@ -2593,9 +2605,31 @@ window.LlamaPlaceReportForm
             const index = cards.indexOf(selected);
             // Newly applicable earlier cards (e.g. after an async lookup)
             // must not be lost simply because the Scout passed their slot.
-            const missed = direction > 0 ? cards.slice(0, index).find(card =>
-                card.nodes.some(node => isApplicable(node) && !seenNodes.has(node))) : null;
-            const target = missed || cards[index + direction];
+            const unseen = card => card.nodes.some(node => isApplicable(node) && !seenNodes.has(node));
+            let target;
+            if (isPlace && direction > 0) {
+                const resumeIndex = resumeNode ? cards.findIndex(card => card.nodes.includes(resumeNode)) : -1;
+                if (resumeIndex > index) {
+                    // Only revisit newly applicable earlier cards. Do not
+                    // make the Scout repeat the rest of the previous section.
+                    target = cards.slice(0, resumeIndex).find(unseen);
+                    if (!target) {
+                        target = cards[resumeIndex + 1] || cards[resumeIndex];
+                        resumeNode = null;
+                    }
+                } else {
+                    resumeNode = null;
+                    const missed = cards.slice(0, index).find(unseen);
+                    if (missed) {
+                        resumeNode = selected.nodes[0];
+                        target = missed;
+                    } else target = cards[index + 1];
+                }
+            } else {
+                if (direction < 0) resumeNode = null;
+                const missed = direction > 0 ? cards.slice(0, index).find(unseen) : null;
+                target = missed || cards[index + direction];
+            }
             if (target) { selected = target; render(true); }
         };
         // Drag the whole card, not a separate gesture pad. Native vertical
