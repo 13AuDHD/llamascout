@@ -1416,68 +1416,10 @@ $state =
  * =========================================================
  */
 
-$elevationUrl =
-    'https://api.open-meteo.com/v1/elevation?'
-    . http_build_query([
-        'latitude' =>
-            number_format(
-                $lat,
-                7,
-                '.',
-                ''
-            ),
+require_once dirname(__DIR__) . '/app/location-elevation.php';
 
-        'longitude' =>
-            number_format(
-                $lng,
-                7,
-                '.',
-                ''
-            ),
-    ]);
-
-
-$elevationData =
-    location_lookup_json(
-        $elevationUrl
-    );
-
-
-$meters =
-    null;
-
-
-if (
-    isset(
-        $elevationData['elevation']
-    )
-) {
-    if (
-        is_array(
-            $elevationData['elevation']
-        )
-    ) {
-        $meters =
-            $elevationData[
-                'elevation'
-            ][0]
-            ?? null;
-    } else {
-        $meters =
-            $elevationData[
-                'elevation'
-            ];
-    }
-}
-
-
-$elevationFeet =
-    is_numeric($meters)
-        ? (int) round(
-            ((float) $meters)
-            * 3.28084
-        )
-        : null;
+$elevation = llama_location_elevation($lat, $lng, 'location_lookup_json');
+$elevationFeet = $elevation['feet'];
 
 
 /*
@@ -1756,6 +1698,8 @@ echo json_encode(
 
             'elevation_feet' =>
                 $elevationFeet,
+
+            'elevation_source' => $elevation['source'],
 
             'road' =>
                 $road,
