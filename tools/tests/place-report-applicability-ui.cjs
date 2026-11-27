@@ -783,7 +783,7 @@ async function testGuidedLocateMe() {
         assert.equal(status.classList.contains('is-success'),true);
         assert.equal(new w.FormData(form).get('nearest_fuel'),'3 miles','Full questionnaire receives the same autofill');
         const coordinates = q('[data-coordinate-input]');
-        coordinates.value = '37.29, -107.16';
+        coordinates.value = '37.2900000, -107.1600000';
         coordinates.dispatchEvent(new w.Event('input',{bubbles:true}));
         fuelMiles = 0.3;
         q('[data-search-coordinates]').click();
@@ -795,7 +795,7 @@ async function testGuidedLocateMe() {
         fuel.dispatchEvent(new w.Event('change',{bubbles:true}));
         assert.equal(q('[data-nearest-autofill-hint]'),null,'Manual edits remove the automatic hint');
         nearestState = 'unavailable';
-        coordinates.value = '37.30, -107.17';
+        coordinates.value = '37.3000000, -107.1700000';
         coordinates.dispatchEvent(new w.Event('input',{bubbles:true}));
         q('[data-search-coordinates]').click();
         await settle();

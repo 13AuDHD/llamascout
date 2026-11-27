@@ -1,0 +1,44 @@
+name: Guided questionnaire parity
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/guided-questionnaire-parity.yml'
+      - 'js/place-report-form.js'
+      - 'js/place-report-road-hazards.js'
+      - 'js/add-site-parent-search.js'
+      - 'js/add-place-location.js'
+      - 'js/add-site-location.js'
+      - 'app/place-report.php'
+      - 'app/place-report/**'
+      - 'partials/place-report/**'
+      - 'add-place.php'
+      - 'add-site.php'
+      - 'tools/tests/guided-questionnaire-*'
+      - 'tools/tests/place-report-applicability-ui.cjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install isolated browser DOM dependency
+        run: npm install --prefix "$RUNNER_TEMP/llama-guided-ui" --no-save --ignore-scripts jsdom@26.1.0
+      - name: Verify questionnaire scripts and rendered fixtures
+        run: |
+          node --check js/place-report-form.js
+          php -l tools/tests/guided-questionnaire-render-fixture.php
+      - name: Compare full and guided questionnaires using actual PHP rendering
+        env:
+          NODE_PATH: ${{ runner.temp }}/llama-guided-ui/node_modules
+        run: node tools/tests/guided-questionnaire-parity.cjs
+      - name: Verify existing questionnaire navigation and conditional behavior
+        env:
+          NODE_PATH: ${{ runner.temp }}/llama-guided-ui/node_modules
+        run: node tools/tests/place-report-applicability-ui.cjs

@@ -2286,8 +2286,16 @@ window.LlamaPlaceReportForm
         const restoreGesture = () => {
             if (gestureHelp.parentElement !== gestureHome) gestureAnchor.after(gestureHelp);
         };
-        const sections = [...form.querySelectorAll('details[data-report-main-section], details[data-report-subsection], details[data-contribution-place-photo-panel], details[data-site-location-section]')];
-        const candidates = [...form.querySelectorAll('[data-scout-card-step], [data-report-subsection] .contribution-grid > [data-report-field], [data-report-subsection] .contribution-grid > [data-report-compound-question], [data-scout-card-group], [data-contribution-place-photo-panel], [data-site-location-section]')];
+        const sectionSelector = 'details[data-report-main-section], details[data-report-subsection], details[data-contribution-place-photo-panel], details[data-site-location-section]';
+        // Discover every canonical question wrapper, including wrappers
+        // nested inside a layout container. Do not require a direct grid
+        // child. Keep compound questions and workflow panels together.
+        const cardSelector = '[data-scout-card-step], [data-report-field], [data-report-compound-question], [data-scout-card-group], [data-contribution-place-photo-panel], [data-site-location-section]';
+        const discoverCandidates = () => [...form.querySelectorAll(cardSelector)].filter(node =>
+            !node.parentElement?.closest(cardSelector)
+            && !node.closest('template, [data-scoped-field-templates]'));
+        let sections = [...form.querySelectorAll(sectionSelector)];
+        let candidates = discoverCandidates();
         const isApplicable = node => {
             for (let current = node; current && current !== form; current = current.parentElement) {
                 if (current.hidden || current.classList.contains('is-applicability-hidden') || current.classList.contains('is-force-hidden')) return false;
@@ -2295,9 +2303,11 @@ window.LlamaPlaceReportForm
             return true;
         };
         // Location helper, coordinates and feedback form one related card.
-        const all = [];
-        const groups = new Map();
-        for (const node of candidates) {
+        let all = [];
+        const collectCards = () => {
+            const groups = new Map();
+            const cards = [];
+            for (const node of candidates) {
             const group = node.dataset.scoutCardGroup;
             if (group && groups.has(group)) { groups.get(group).nodes.push(node); continue; }
             const label = node.dataset.scoutCardStep || group
@@ -2306,9 +2316,12 @@ window.LlamaPlaceReportForm
                 || node.querySelector('.place-report-field-label > span:first-child, .place-report-field-label')?.textContent.trim()
                 || 'Scout Report question';
             const card = {nodes:[node], label, key:node.dataset.scoutCardKey || node.dataset.reportField || (node.hasAttribute('data-site-location-section') ? 'site_location' : '')};
-            all.push(card);
+            cards.push(card);
             if (group) groups.set(group, card);
-        }
+            }
+            return cards;
+        };
+        all = collectCards();
         if (!all.length) return;
         // Read the existing accordion labels, never the changing completion
         // percentages or a second, hard-coded copy of the questionnaire.
@@ -2340,9 +2353,51 @@ window.LlamaPlaceReportForm
         const priority = form.id === 'add-site-main-form'
             ? ['site_parent', 'site_name', 'visited_at', 'site_location']
             : ['type', 'name', 'visited_at', 'description'];
-        const first = priority.map(key => all.find(card => card.key === key)).filter(Boolean);
-        all.splice(0, all.length, ...first, ...all.filter(card => !first.includes(card)));
+        // Build dependency order from the same browser schema that drives
+        // visibility. A child located earlier in the full layout must not
+        // be skipped before its parent can be answered.
+        const config = (() => {
+            try { return JSON.parse(form.querySelector('[data-place-report-schema-config]')?.textContent || '{}'); }
+            catch (_) { return {}; }
+        })();
+        const fieldConfig = new Map((config.fields || []).map(field => [String(field.key), field]));
+        const dependencies = (rules, keys = new Set()) => {
+            for (const rule of Array.isArray(rules) ? rules : []) {
+                if (!rule || typeof rule !== 'object') continue;
+                if (rule.field) keys.add(String(rule.field));
+                dependencies(rule.rules || rule.any || rule.all, keys);
+            }
+            return keys;
+        };
+        const keysFor = card => [...new Set(card.nodes.flatMap(node => [
+            node.dataset.reportField,
+            ...[...node.querySelectorAll('[data-report-field]')].map(child => child.dataset.reportField),
+        ]).filter(Boolean))];
+        const orderCards = cards => {
+            const first = priority.map(key => cards.find(card => card.key === key)).filter(Boolean);
+            const ordered = [...first, ...cards.filter(card => !first.includes(card))];
+            const owners = new Map();
+            for (const card of ordered) for (const key of keysFor(card)) owners.set(key, card);
+            const done = new Set(), visiting = new Set(), result = [];
+            const visit = card => {
+                if (done.has(card) || visiting.has(card)) return;
+                visiting.add(card);
+                for (const key of keysFor(card)) {
+                    for (const parent of dependencies(fieldConfig.get(key)?.applicable_if)) {
+                        const owner = owners.get(parent);
+                        if (owner && owner !== card) visit(owner);
+                    }
+                }
+                visiting.delete(card);
+                done.add(card);
+                result.push(card);
+            };
+            ordered.forEach(visit);
+            return result;
+        };
+        all = orderCards(all);
         let active = false, selected = null, openStates = new Map(), drag = null, suppressClick = false;
+        const seenNodes = new WeakSet();
         // Match the contribution layout's existing 700px mobile breakpoint.
         // A deliberate view choice wins over automatic viewport changes.
         const mobileQuery = '(max-width: 700px)';
@@ -2382,7 +2437,8 @@ window.LlamaPlaceReportForm
                 }
                 const options = [...select.options].filter(option => !option.hidden);
                 const signature = JSON.stringify(options.map(option => [option.value, option.textContent, option.disabled]));
-                if (signature !== view.signature) {
+                if (signature !== view.signature || options.length !== view.buttons.length
+                    || options.some((option, index) => option !== view.buttons[index]?.option)) {
                     view.signature = signature;
                     view.group.replaceChildren();
                     if (select.hasAttribute('aria-label') && label !== selected.label) {
@@ -2414,20 +2470,42 @@ window.LlamaPlaceReportForm
                 }
             }
         };
+        const refreshInventory = () => {
+            const latest = discoverCandidates();
+            const latestSections = [...form.querySelectorAll(sectionSelector)];
+            if (latest.length === candidates.length && latest.every((node, index) => node === candidates[index])
+                && latestSections.length === sections.length && latestSections.every((node, index) => node === sections[index])) return;
+            const anchor = selected?.nodes[0];
+            for (const node of [...sections, ...candidates]) node.classList.remove('is-scout-card-offstage');
+            for (const section of latestSections) {
+                if (active && !openStates.has(section)) openStates.set(section, section.open);
+            }
+            candidates = latest;
+            sections = latestSections;
+            all = orderCards(collectCards());
+            selected = all.find(card => card.nodes.includes(anchor)) || null;
+        };
         const visible = () => all.filter(card => card.nodes.some(isApplicable));
         const clearPresentation = () => {
             for (const node of [...sections, ...candidates]) node.classList.remove('is-scout-card-offstage');
         };
         const render = (focus = false) => {
             if (!active) return;
+            refreshInventory();
             const cards = visible();
             if (!cards.length) { setMode(false); return; }
             if (!cards.includes(selected)) {
                 const old = all.indexOf(selected);
                 selected = cards.find(card => all.indexOf(card) >= old) || cards.at(-1);
             }
+            if (selected.nodes.some(node => node.dataset.scoutCardStep === 'Review and submit')) {
+                const missed = cards.slice(0, cards.indexOf(selected)).find(card =>
+                    card.nodes.some(node => isApplicable(node) && !seenNodes.has(node)));
+                if (missed) selected = missed;
+            }
             const index = cards.indexOf(selected);
             const onstage = selected.nodes.filter(isApplicable);
+            for (const node of onstage) seenNodes.add(node);
             for (const node of candidates) node.classList.toggle('is-scout-card-offstage', !onstage.includes(node));
             for (const section of sections) {
                 const keep = onstage.some(node => section === node || section.contains(node));
@@ -2448,7 +2526,8 @@ window.LlamaPlaceReportForm
             progress.textContent = percent + '%';
             syncChoices(onstage);
             back.disabled = index === 0;
-            next.disabled = index === cards.length - 1;
+            next.disabled = index === cards.length - 1 && !cards.slice(0, index).some(card =>
+                card.nodes.some(node => isApplicable(node) && !seenNodes.has(node)));
             // Put the single swipe hint beside the last applicable Clear
             // control, without moving or duplicating any canonical answers.
             const clear = onstage.flatMap(node => [...node.querySelectorAll('[data-place-report-clear]')])
@@ -2490,9 +2569,18 @@ window.LlamaPlaceReportForm
             }
         };
         const step = direction => {
+            // Reconcile immediately before navigation, after canonical
+            // change handlers and any asynchronous parent-context update.
+            const before = selected?.nodes[0];
+            render();
+            if (!active || (before && !selected?.nodes.includes(before))) return;
             const cards = visible();
             const index = cards.indexOf(selected);
-            const target = cards[index + direction];
+            // Newly applicable earlier cards (e.g. after an async lookup)
+            // must not be lost simply because the Scout passed their slot.
+            const missed = direction > 0 ? cards.slice(0, index).find(card =>
+                card.nodes.some(node => isApplicable(node) && !seenNodes.has(node))) : null;
+            const target = missed || cards[index + direction];
             if (target) { selected = target; render(true); }
         };
         // Drag the whole card, not a separate gesture pad. Native vertical
@@ -2562,8 +2650,30 @@ window.LlamaPlaceReportForm
         // changes as well, without observing our own presentation classes.
         form.addEventListener('input', () => render());
         form.addEventListener('change', () => render());
-        const observer = new MutationObserver(() => { if (active) render(); });
-        observer.observe(form, {subtree:true, attributes:true, attributeFilter:['hidden']});
+        const observer = new MutationObserver(records => {
+            if (!active) return;
+            // Ignore our own option buttons and heading text; detect newly
+            // inserted/removed canonical wrappers and applicability changes.
+            const changed = records.some(record => {
+                if (record.type === 'attributes') {
+                    if (record.attributeName === 'data-report-context') return record.target === form;
+                    if (record.attributeName === 'class') {
+                        const flags = value => String(value || '').split(/\s+/).filter(name =>
+                            name === 'is-applicability-hidden' || name === 'is-force-hidden').sort().join(' ');
+                        return flags(record.oldValue) !== flags(record.target.className);
+                    }
+                    return record.target.matches(cardSelector + ', ' + sectionSelector)
+                        || !!record.target.querySelector(cardSelector);
+                }
+                return [...record.addedNodes, ...record.removedNodes].some(node => node.nodeType === 1
+                    && (node.matches(cardSelector + ', ' + sectionSelector) || node.querySelector(cardSelector + ', ' + sectionSelector)));
+            });
+            if (changed) render();
+        });
+        observer.observe(form, {subtree:true, childList:true, attributes:true, attributeOldValue:true,
+            attributeFilter:['hidden','class','data-report-context']});
+        form.addEventListener('llama:admin-site-context-changed', () => render());
+        form.addEventListener('llama:place-update-target-changed', () => render());
         // Taxonomy and recurring season controls can replace options without
         // changing the original field identity.
         const optionObserver = new MutationObserver(() => { if (active) render(); });
