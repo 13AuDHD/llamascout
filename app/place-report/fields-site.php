@@ -483,11 +483,12 @@ function llama_place_report_add_site_fields(
         'site_river_access' => ['River Access', 'Direct river access from this campsite.'],
         'site_trail_access' => ['Trail Access', 'Direct access to a trail from this campsite.'],
     ] as $key => [$label, $help]) {
-        $add($key, $label, 'site_vehicle', 'tri', 'details.' . $key, [
+        $seasonalWater = $key === 'site_potable_water';
+        $add($key, $label, 'site_vehicle', $seasonalWater ? 'select' : 'tri', 'details.' . $key, [
             'allow_unknown' => true,
-            'help' => $help,
+            'help' => $help . ($seasonalWater ? ' Choose Seasonal if the water is shut off for part of the year.' : ''),
             'points_categories' => ['site_vehicle'],
-        ]);
+        ] + ($seasonalWater ? ['options'=>['1'=>'Yes','0'=>'No','2'=>'Seasonal']] : []));
     }
 
     $add('site_wifi_rating', 'WiFi', 'site_vehicle', 'rating', 'details.site_wifi_rating', [
