@@ -78,6 +78,10 @@ def main():
             if lat == 0 and lon == 0:
                 return
             for key in sorted(services(tags)):
+                # Settlement nodes represent populated-place centers. A
+                # city's administrative polygon is not a reliable center.
+                if key == "town" and kind != "node":
+                    continue
                 name = (tags.get("name") or tags.get("brand") or tags.get("operator") or LABELS[key]).strip()
                 if not name:
                     name = LABELS[key]
