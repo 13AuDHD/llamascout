@@ -493,10 +493,11 @@ async function testGuidedPlaceCards() {
           <button type="button" data-scout-card-toggle></button><div data-scout-card-progress-wrap><progress data-scout-card-meter max="100"></progress><span data-scout-card-progress></span></div>
           <h2 data-scout-card-heading tabindex="-1"></h2>
         </div>
-        <details data-report-main-section="place"><summary>Place</summary><details data-report-subsection="basic"><summary>Basic</summary>
+        <details data-report-main-section="place"><summary><span><svg><title>Icon</title></svg>Place</span><span data-section-completion-percent>80%</span></summary><details data-report-subsection="basic"><summary><span>Basic</span><span data-section-completion-percent>20%</span></summary>
           <div class="contribution-grid">
             <label data-report-field="visited_at"><span class="place-report-field-label">Date visited</span><input name="visited_at" value="2026-11-26"></label>
             <div data-report-field="parent"><span class="place-report-field-label"><span>Parent</span></span><select name="parent"><option value="">Select...</option><option value="1">Yes</option><option value="0">No</option></select></div>
+            </div></details><details data-report-subsection="road_conditions"><summary><span>Road Conditions</span><span data-section-completion-percent>60%</span></summary><div class="contribution-grid">
             <div data-report-field="child" hidden><input name="child" value="retained"><div class="add-place-radio-row"><div class="add-place-radio-options"></div><button type="button" class="add-place-radio-clear" data-place-report-clear="child">Clear</button></div></div>
             <div data-scout-card-group="Location"><input name="coordinates" value="37,-107"></div><div data-scout-card-group="Location">Helper</div>
           </div>
@@ -532,6 +533,10 @@ async function testGuidedPlaceCards() {
         assert.equal(form.classList.contains('is-scout-card-view'),true,'Guided view opens by default');
         assert.equal(toggle.textContent,'Full questionnaire');
         assert.equal(heading.textContent,'Date visited');
+        const context = q('[data-scout-card-context]');
+        assert.equal(context.textContent,'Place / Basic','Context uses actual section labels without progress or icon text');
+        assert.equal(context.hidden,false);
+        assert.equal(heading.getAttribute('aria-describedby'),context.id);
         assert.equal(progress.textContent,'0%');
         assert.ok(q('[data-scout-card-controls]').compareDocumentPosition(parent) & w.Node.DOCUMENT_POSITION_PRECEDING,'Navigation follows questions');
         const controls = q('[data-scout-card-controls]');
@@ -608,6 +613,7 @@ async function testGuidedPlaceCards() {
         assert.equal(q('[data-scout-card-meter]').value,20);
         next.click();
         assert.equal(child.classList.contains('is-scout-card-offstage'),false);
+        assert.equal(context.textContent,'Place / Road Conditions','Context changes with the question group');
         assert.equal(gesture.parentElement,child.querySelector('.add-place-radio-row'),'Swipe hint shares the current Clear row');
         assert.equal(gesture.nextElementSibling,child.querySelector('[data-place-report-clear]'));
         child.hidden = true;
@@ -618,6 +624,7 @@ async function testGuidedPlaceCards() {
         const location = q('[data-scout-card-group]');
         swipe(location,25,100);
         assert.equal(heading.textContent,'Photos','Left swipe from card content advances');
+        assert.equal(context.hidden,true,'Standalone Photos heading is not duplicated');
         swipe(q('[data-contribution-place-photo-panel]'),170,100);
         assert.equal(heading.textContent,'Location','Right swipe from card content goes back');
         pointer(location,'pointerdown',100,100);
@@ -627,6 +634,8 @@ async function testGuidedPlaceCards() {
         assert.equal(form.classList.contains('is-scout-card-dragging'),false);
         toggle.click();
         assert.equal(form.classList.contains('is-scout-card-view'),false);
+        assert.equal(context.hidden,true,'Full view hides guided context');
+        assert.equal(heading.hasAttribute('aria-describedby'),false);
         assert.equal(save.parentElement,q('.add-place-submit-bar'),'Full questionnaire restores the original draft button');
         assert.equal(status.parentElement,q('.add-place-submit-bar'),'Full questionnaire restores draft status');
         assert.equal(child.hidden,true,'Full view preserves canonical eligibility');
@@ -808,6 +817,8 @@ async function testGuidedSiteCards() {
         const location = q('[data-site-location-section]');
         assert.equal(form.classList.contains('is-scout-card-view'),true);
         assert.equal(heading.textContent,'Parent Place');
+        const context = q('[data-scout-card-context]');
+        assert.equal(context.textContent,'Site / Site Info');
         assert.equal(back.disabled,true);
         assert.equal(q('[data-site-parent-picker]').classList.contains('is-scout-card-offstage'),false);
         assert.equal(location.classList.contains('is-scout-card-offstage'),true);
@@ -819,6 +830,7 @@ async function testGuidedSiteCards() {
         assert.equal(heading.textContent,'Date visited');
         next.click();
         assert.equal(heading.textContent,'Location');
+        assert.equal(context.textContent,'Site','Site Location retains parent section without repeating Location');
         assert.equal(heading.classList.contains('is-scout-heading-hidden'),false);
         assert.equal(location.open,true);
         q('[data-site-locate]').click();
@@ -826,6 +838,7 @@ async function testGuidedSiteCards() {
         assert.match(q('[data-site-location-status]').textContent,/Parent Place coordinates were not changed/);
         next.click();
         assert.equal(heading.textContent,'Surface');
+        assert.equal(context.textContent,'Site / Site Info');
         const gravel = [...d.querySelectorAll('.scout-card-choice')].find(button=>button.textContent==='Gravel');
         gravel.click();
         assert.equal(new w.FormData(form).get('site_surface'),'gravel');
@@ -842,6 +855,7 @@ async function testGuidedSiteCards() {
         assert.equal(q('[data-contribution-place-photo-panel]').open,true);
         next.click();
         assert.equal(heading.textContent,'Review and submit');
+        assert.equal(context.hidden,true,'Review has no redundant context');
         assert.equal(next.disabled,true);
         const data = new w.FormData(form);
         assert.equal(data.get('site_place_id'),'17');
