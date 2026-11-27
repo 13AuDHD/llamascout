@@ -3686,6 +3686,35 @@ $check('Ground elevation uses USGS then existing global fallback', static functi
     $assert($result === ['feet' => null, 'source' => null], 'Transport failures must stay unknown');
 });
 
+$check('Nearest services use named mapped records and straight-line distances', static function () use ($assert): void {
+    require_once dirname(__DIR__) . '/app/nearest-services.php';
+    $row = static fn ($id, $name, $service, $latitude, $longitude) => [
+        'id'=>$id, 'name'=>$name, 'service_type'=>$service, 'latitude'=>$latitude,
+        'longitude'=>$longitude, 'parent_place_id'=>null, 'status'=>'available',
+    ];
+    $results = array_column(llama_nearest_service_results(37.25, -107.12, [
+        $row(1, 'Far fuel', 'fuel', 37.4, -107.12),
+        $row(2, 'Near fuel', 'fuel', 37.26, -107.12),
+        $row(3, 'Fresh water', 'potable_water', 37.25, -107.12),
+        $row(4, 'Unverified water fill', 'water_fill', 37.25, -107.12),
+        $row(5, 'Too far', 'groceries', 41.25, -107.12),
+        $row(6, 'Invalid coordinates', 'toilet', 99, -107.12),
+    ]), null, 'key');
+    $assert(count($results) === 9, 'All Nearest labels must have an explicit result state');
+    $assert($results['nearest_fuel']['match']['name'] === 'Near fuel'
+        && abs($results['nearest_fuel']['match']['distance_miles'] - .691) < .01,
+        'Rank actual nearby named records using unrounded great-circle distance');
+    $assert($results['nearest_water']['match']['resource_id'] === 3
+        && $results['nearest_water']['match']['distance_miles'] === 0.0,
+        'Zero-distance potable water remains valid; generic water fill is not potable');
+    $assert($results['nearest_grocery']['match'] === null && $results['nearest_toilet']['match'] === null,
+        'Outside-radius and invalid points cannot be suggested');
+    $assert(!$results['nearest_hospital']['supported'] && $results['nearest_hospital']['match'] === null,
+        'Missing service source must not invent a hospital');
+    $assert(llama_nearest_distance_miles(0,179.9,0,-179.9) < 14,
+        'Great-circle calculation wraps antimeridian');
+});
+
 $check('Canonical field contract', static function () use ($assert): void {
     $issues = llama_place_report_contract_issues();
     $assert(!$issues, 'Contract issues: ' . implode(' | ', array_slice($issues, 0, 12)) . ' (total ' . count($issues) . ')');

@@ -969,7 +969,42 @@ async function testResponsiveGuidedDefaults() {
     }
 }
 
-testAdminSiteEditing().then(testAdminSiteEditing).then(testClosureDates).then(testGuidedPlaceCards).then(testGuidedLocateMe).then(testGuidedSiteCards).then(testResponsiveGuidedDefaults).then(() => {
+async function testAutomaticNearestServices() {
+    const dom = new JSDOM(`<form>
+        <input name="site_place_id" value="pending:17">
+        <input name="site_coordinates" data-site-coordinate-input>
+        <section data-site-nearest-preview><p data-nearest-status></p><div data-nearest-results></div></section>
+    </form>`, {runScripts:'outside-only',url:'https://llamascout.com/add-site.php'});
+    const w=dom.window,d=w.document;
+    try {
+        const requests=[];
+        w.fetch=async url=>{
+            requests.push(new URL(url).searchParams);
+            return {ok:true,json:async()=>({state:'ready',radius_miles:100,services:[
+                {label:'Nearest fuel',match:{name:'Known fuel',distance_miles:0.691,status:'available'}},
+                {label:'Nearest hospital',match:null,supported:false},
+            ]})};
+        };
+        w.eval(fs.readFileSync(path.resolve(__dirname,'../../js/nearest-services.js'),'utf8'));
+        await new Promise(resolve=>d.addEventListener('DOMContentLoaded',resolve,{once:true}));
+        const input=d.querySelector('[data-site-coordinate-input]');
+        input.value='37.25, -107.12';
+        input.dispatchEvent(new w.Event('input',{bubbles:true}));
+        await new Promise(resolve=>setTimeout(resolve,420));
+        assert.equal(requests.length,1);
+        assert.equal(requests[0].get('site_place_id'),'pending:17');
+        assert.equal(requests[0].get('lat'),'37.25');
+        assert.match(d.querySelector('[data-nearest-results]').textContent,/Known fuel · 0.7 mi/);
+        assert.match(d.querySelector('[data-nearest-results]').textContent,/No data source yet/);
+        assert.match(d.querySelector('[data-nearest-status]').textContent,/not driving distances/);
+        assert.deepEqual([...new w.FormData(d.querySelector('form')).keys()],['site_place_id','site_coordinates']);
+        input.value='';
+        input.dispatchEvent(new w.Event('input',{bubbles:true}));
+        assert.equal(d.querySelector('[data-nearest-results]').textContent,'','Changing coordinates removes stale results immediately');
+    } finally {w.close();}
+}
+
+testAdminSiteEditing().then(testAdminSiteEditing).then(testClosureDates).then(testGuidedPlaceCards).then(testGuidedLocateMe).then(testGuidedSiteCards).then(testResponsiveGuidedDefaults).then(testAutomaticNearestServices).then(() => {
     console.log('PASS: closure dates and Site selections survive reload, parent-child visibility and scoped saves');
 }).catch(error => {
     console.error(error);
