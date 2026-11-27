@@ -94,6 +94,25 @@ if (is_array($publicReportSeason)) {
     );
 }
 
+// Only Complete Access viewers may receive precise location-derived
+// distances. Use the persisted Place point and the same local lookup as
+// Add Place/Admin. No remote requests or changes to approved answers.
+$publicNearestMatches = [];
+if ($placeReportCanViewCommunity && empty($isDemoScoutReport) && !empty($placeReportSource['id'])) {
+    try {
+        require_once dirname(__DIR__, 3) . '/app/nearest-services.php';
+        $nearest = llama_nearest_services(db(), $placeReportSource['latitude'] ?? null, $placeReportSource['longitude'] ?? null);
+        foreach ($nearest['services'] as $service) {
+            $key = $service['key'];
+            if (llama_place_report_answer_state($placeReportData, $key) !== 'answered') continue;
+            $label = llama_nearest_public_match_label($service['match'], (string) llama_place_report_display_value($placeReportData, $key));
+            if ($label !== null) $publicNearestMatches[$key] = $label;
+        }
+    } catch (Throwable $exception) {
+        llama_log_caught_exception($exception, 'scout-report.nearest-services');
+    }
+}
+
 $placeReportReadMode =
     'scout-report';
 
