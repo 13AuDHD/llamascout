@@ -1678,10 +1678,25 @@ if (
  * =========================================================
  */
 
+// Nearby services use the same Place point as the other autofill fields.
+// Only request this local lookup for a questionnaire that has Nearest fields.
+$nearestServices = null;
+if (($_GET['nearest'] ?? '') === '1') {
+    try {
+        require_once dirname(__DIR__) . '/app/nearest-services.php';
+        $nearestServices = llama_nearest_services(db(), $lat, $lng);
+    } catch (Throwable $exception) {
+        llama_log_caught_exception($exception, 'location_lookup.nearest_services');
+        $nearestServices = ['state' => 'unavailable'];
+    }
+}
+
 echo json_encode(
     [
         'success' =>
             true,
+
+        'nearest_services' => $nearestServices,
 
         'location' => [
             'latitude' =>
