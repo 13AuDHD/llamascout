@@ -112,6 +112,21 @@ function llama_place_report_add_shared_amenity_fields(
         $fields[$key]['layout_group'] = 'shared_amenities';
     }
 
+    if (isset($fields['amenity_potable_water'])) {
+        // Keep the existing nullable numeric amenity column and canonical
+        // question key: 0 = No, 1 = Yes, 2 = Seasonal. Legacy binary answers
+        // retain their original meaning and boolean representation.
+        $fields['amenity_potable_water']['type'] = 'select';
+        unset($fields['amenity_potable_water']['control']);
+        $fields['amenity_potable_water']['options'] = [
+            '1' => 'Yes',
+            '0' => 'No',
+            '2' => 'Seasonal',
+        ];
+        $fields['amenity_potable_water']['help'] =
+            'Choose Seasonal if shared drinking water is normally available only during part of the year, such as when pipes are shut off to prevent freezing.';
+    }
+
     if (isset($fields['amenity_toilets'])) {
         /*
          * M1-008: keep the canonical question key, but move the richer answer

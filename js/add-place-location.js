@@ -26,10 +26,17 @@ document.addEventListener("DOMContentLoaded", () => {
     const elevationHint = elevation === null || elevation === undefined || elevation === ""
       ? " Elevation is unavailable; you can enter it manually."
       : "";
-    const nearestHint = result?.nearest_services?.state === "unavailable"
-      ? " Nearest Services could not be looked up; you can fill them in manually." : "";
+    const nearest = result?.nearest_services;
+    const nearestWarning = nearest?.state === "unavailable" || (nearest?.state === "ready" && nearest.matched === 0);
+    const nearestHint = nearest?.state === "unavailable"
+      ? " Nearest Services lookup is unavailable."
+      : nearest?.state === "ready" && nearest.matched === 0
+        ? " No mapped services found near these coordinates. Regional data may not be imported yet."
+        : nearest?.state === "ready" && nearest.filled > 0
+          ? " Nearest Services: " + nearest.filled + " distances populated."
+          : "";
     setStatus(lookupSucceeded + elevationHint + nearestHint + accuracyHint,
-      elevationHint || nearestHint || accuracyHint ? "is-warning" : "is-success");
+      elevationHint || nearestWarning || accuracyHint ? "is-warning" : "is-success");
   };
 
   const clearStatus = () => {
@@ -284,7 +291,11 @@ document.addEventListener("DOMContentLoaded", () => {
       const match = result?.match;
       const miles = Number(match?.distance_miles);
       const previous = nearestAuto.get(field);
-      if (field.value !== "" && field.value !== previous) continue;
+      // Admin can refresh the calculated distances through the same
+      // Location action, while explicit Unknown / manual values remain
+      // protected in the contributor questionnaire.
+      const isAdmin = form?.id === "place-report";
+      if (!isAdmin && field.value !== "" && field.value !== previous) continue;
       if (!match || match.distance_miles == null || !Number.isFinite(miles) || miles < 0) {
         if (previous !== undefined) setNearest(field, "");
         nearestAuto.delete(field);
@@ -321,41 +332,6 @@ document.addEventListener("DOMContentLoaded", () => {
   };
   coordinateInput?.addEventListener("input", () => {
     if (nearestPoint && coordinateInput.value.trim() !== nearestPoint) resetNearest();
-  });
-
-  const adminNearestButton = form?.querySelector("[data-admin-nearest-lookup]");
-  const adminNearestStatus = form?.querySelector("[data-admin-nearest-status]");
-  adminNearestButton?.addEventListener("click", async () => {
-    if (!adminNearestStatus) return;
-    try {
-      const parsed = parseCoordinates(coordinateInput.value);
-      if (parsed.empty) throw new Error("Enter Place coordinates first.");
-      syncCoordinates(parsed);
-      adminNearestButton.disabled = true;
-      adminNearestStatus.textContent = "Looking up nearby mapped services…";
-      const url = new URL(window.location.href);
-      url.search = "";
-      url.searchParams.set("id", form.querySelector('[name="place_id"]').value);
-      url.searchParams.set("nearest_services", "1");
-      url.searchParams.set("lat", parsed.latitude);
-      url.searchParams.set("lng", parsed.longitude);
-      const response = await fetch(url, {credentials:"same-origin", headers:{Accept:"application/json"}});
-      if (!response.ok) throw new Error("Nearest Services lookup is unavailable.");
-      const payload = await response.json();
-      if (payload.state !== "ready") throw new Error("No valid Place coordinates or lookup unavailable.");
-      if (coordinateInput.value.trim() !== parsed.formatted) {
-        adminNearestStatus.textContent = "Coordinates changed. Look up Nearest Services again.";
-        return;
-      }
-      const filled = applyNearest(payload, parsed.latitude, parsed.longitude);
-      adminNearestStatus.textContent = filled
-        ? filled + " distance field(s) populated. Save the report to keep them."
-        : "No additional mapped matches for missing fields. Existing answers were preserved.";
-    } catch (error) {
-      adminNearestStatus.textContent = error.message || "Nearest Services lookup is unavailable.";
-    } finally {
-      adminNearestButton.disabled = false;
-    }
   });
 
   const lookupLocation = async (
@@ -651,7 +627,11 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    applyNearest(result.nearest_services, latitude, longitude);
+    const filled = applyNearest(result.nearest_services, latitude, longitude);
+    if (result.nearest_services?.state === "ready") {
+      result.nearest_services.filled = filled;
+      result.nearest_services.matched = (result.nearest_services.services || []).filter(item => item.match).length;
+    }
     return result;
   };
 

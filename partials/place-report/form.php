@@ -1557,12 +1557,6 @@ foreach ($reportMainLabels as $reportMainKey => [$reportMainLabel, $reportMainIc
                         aria-label="Subsection completion"></span>
                 </summary>
                 <div class="contribution-section-body">
-                    <?php if (!empty($placeReportAdminNearestLookup) && $reportMainKey === 'place' && $approvedKey === 'nearest_services'): ?>
-                        <div class="contribution-field">
-                            <button type="button" class="admin-button" data-admin-nearest-lookup>Look up Nearest Services</button>
-                            <small data-admin-nearest-status role="status" aria-live="polite">Fill missing distances using the Place coordinates, then save the report.</small>
-                        </div>
-                    <?php endif; ?>
                     <div class="contribution-grid">
                         <?php if ($placeReportOnlyScope === 'site'
                             && $reportMainKey === 'site'

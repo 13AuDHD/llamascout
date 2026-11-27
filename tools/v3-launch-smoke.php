@@ -3740,8 +3740,24 @@ $check('Admin Nearest Services import only fills missing canonical Place distanc
     $ridb = file_get_contents($root . '/admin/ridb-import.php');
     $assert(strpos($ridb,'admin_place_nearest_after_import(') > strpos($ridb,'llama_ridb_useful_sync('),
         'New and repeat RIDB imports enrich after final core import.');
-    $assert(str_contains(file_get_contents($root . '/admin/place.php'), "'nearest_services'"),
-        'Admin has a same-origin read-only lookup endpoint.');
+    $assert(str_contains(file_get_contents($root . '/admin/api/location-lookup.php'), '/api/location-lookup.php'),
+        'Admin uses the same location lookup endpoint as the contributor form.');
+    $assert(!str_contains(file_get_contents($root . '/partials/place-report/form.php'), 'data-admin-nearest-lookup'),
+        'No redundant Nearest Services button.');
+});
+
+$check('Seasonal potable water retains the same canonical keys and legacy booleans', static function () use ($assert): void {
+    foreach (['amenity_potable_water'=>'amenities.potable_water','site_potable_water'=>'details.site_potable_water'] as $key=>$storage) {
+        $field = llama_report_question($key);
+        $assert($field['type'] === 'select' && ($field['options'][2] ?? '') === 'Seasonal'
+            && $field['storage'] === $storage, 'Seasonal option on existing ' . $key);
+        foreach (['1'=>true,'0'=>false,'2'=>2] as $raw=>$value) {
+            $parsed = llama_place_report_parse_answer($field, (string) $raw);
+            $assert($parsed['state'] === 'answered' && $parsed['value'] === $value, 'Preserve distinct answer ' . $key . ':' . $raw);
+            $assert(llama_place_report_answer_form_value($field,$value) === (string)$raw, 'Round trip form value');
+        }
+        $assert(llama_place_report_parse_answer($field,llama_place_report_unknown_token())['state'] === 'unknown', 'Unknown remains distinct');
+    }
 });
 
 $check('Canonical field contract', static function () use ($assert): void {
