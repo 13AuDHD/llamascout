@@ -2362,7 +2362,7 @@ window.LlamaPlaceReportForm
         })();
         const fieldConfig = new Map((config.fields || []).map(field => [String(field.key), field]));
         const dependencies = (rules, keys = new Set()) => {
-            for (const rule of rules || []) {
+            for (const rule of Array.isArray(rules) ? rules : []) {
                 if (!rule || typeof rule !== 'object') continue;
                 if (rule.field) keys.add(String(rule.field));
                 dependencies(rule.rules || rule.any || rule.all, keys);
@@ -2397,6 +2397,7 @@ window.LlamaPlaceReportForm
         };
         all = orderCards(all);
         let active = false, selected = null, openStates = new Map(), drag = null, suppressClick = false;
+        const seenNodes = new WeakSet();
         // Match the contribution layout's existing 700px mobile breakpoint.
         // A deliberate view choice wins over automatic viewport changes.
         const mobileQuery = '(max-width: 700px)';
@@ -2497,8 +2498,14 @@ window.LlamaPlaceReportForm
                 const old = all.indexOf(selected);
                 selected = cards.find(card => all.indexOf(card) >= old) || cards.at(-1);
             }
+            if (selected.nodes.some(node => node.dataset.scoutCardStep === 'Review and submit')) {
+                const missed = cards.slice(0, cards.indexOf(selected)).find(card =>
+                    card.nodes.some(node => isApplicable(node) && !seenNodes.has(node)));
+                if (missed) selected = missed;
+            }
             const index = cards.indexOf(selected);
             const onstage = selected.nodes.filter(isApplicable);
+            for (const node of onstage) seenNodes.add(node);
             for (const node of candidates) node.classList.toggle('is-scout-card-offstage', !onstage.includes(node));
             for (const section of sections) {
                 const keep = onstage.some(node => section === node || section.contains(node));
@@ -2519,7 +2526,8 @@ window.LlamaPlaceReportForm
             progress.textContent = percent + '%';
             syncChoices(onstage);
             back.disabled = index === 0;
-            next.disabled = index === cards.length - 1;
+            next.disabled = index === cards.length - 1 && !cards.slice(0, index).some(card =>
+                card.nodes.some(node => isApplicable(node) && !seenNodes.has(node)));
             // Put the single swipe hint beside the last applicable Clear
             // control, without moving or duplicating any canonical answers.
             const clear = onstage.flatMap(node => [...node.querySelectorAll('[data-place-report-clear]')])
@@ -2563,10 +2571,16 @@ window.LlamaPlaceReportForm
         const step = direction => {
             // Reconcile immediately before navigation, after canonical
             // change handlers and any asynchronous parent-context update.
+            const before = selected?.nodes[0];
             render();
+            if (!active || (before && !selected?.nodes.includes(before))) return;
             const cards = visible();
             const index = cards.indexOf(selected);
-            const target = cards[index + direction];
+            // Newly applicable earlier cards (e.g. after an async lookup)
+            // must not be lost simply because the Scout passed their slot.
+            const missed = direction > 0 ? cards.slice(0, index).find(card =>
+                card.nodes.some(node => isApplicable(node) && !seenNodes.has(node))) : null;
+            const target = missed || cards[index + direction];
             if (target) { selected = target; render(true); }
         };
         // Drag the whole card, not a separate gesture pad. Native vertical
@@ -2640,13 +2654,24 @@ window.LlamaPlaceReportForm
             if (!active) return;
             // Ignore our own option buttons and heading text; detect newly
             // inserted/removed canonical wrappers and applicability changes.
-            const changed = records.some(record => record.type === 'attributes'
-                ? record.target === form || record.target.matches(cardSelector + ', ' + sectionSelector)
-                : [...record.addedNodes, ...record.removedNodes].some(node => node.nodeType === 1
-                    && (node.matches(cardSelector + ', ' + sectionSelector) || node.querySelector(cardSelector + ', ' + sectionSelector))));
+            const changed = records.some(record => {
+                if (record.type === 'attributes') {
+                    if (record.attributeName === 'data-report-context') return record.target === form;
+                    if (record.attributeName === 'class') {
+                        const flags = value => String(value || '').split(/\s+/).filter(name =>
+                            name === 'is-applicability-hidden' || name === 'is-force-hidden').sort().join(' ');
+                        return flags(record.oldValue) !== flags(record.target.className);
+                    }
+                    return record.target.matches(cardSelector + ', ' + sectionSelector)
+                        || !!record.target.querySelector(cardSelector);
+                }
+                return [...record.addedNodes, ...record.removedNodes].some(node => node.nodeType === 1
+                    && (node.matches(cardSelector + ', ' + sectionSelector) || node.querySelector(cardSelector + ', ' + sectionSelector)));
+            });
             if (changed) render();
         });
-        observer.observe(form, {subtree:true, childList:true, attributes:true, attributeFilter:['hidden','data-report-context']});
+        observer.observe(form, {subtree:true, childList:true, attributes:true, attributeOldValue:true,
+            attributeFilter:['hidden','class','data-report-context']});
         form.addEventListener('llama:admin-site-context-changed', () => render());
         form.addEventListener('llama:place-update-target-changed', () => render());
         // Taxonomy and recurring season controls can replace options without
