@@ -336,4 +336,39 @@ $stmt = $db->prepare('SELECT place_id FROM place_campsites WHERE id=?');
 $stmt->execute([$waitingSite]);
 $check((int) $stmt->fetchColumn() === 3, 'Site publishes only under the newly approved Parent Place.');
 
+// Exercise the real nearest-service query against disposable fixtures.
+require_once dirname(__DIR__, 2) . '/app/nearest-services.php';
+$db->exec('CREATE TABLE resources (
+    id BIGINT UNSIGNED PRIMARY KEY, parent_place_id BIGINT UNSIGNED NULL,
+    name VARCHAR(150), latitude DECIMAL(10,7), longitude DECIMAL(11,7),
+    status VARCHAR(30), is_active TINYINT
+) ENGINE=InnoDB');
+$db->exec('CREATE TABLE resource_services (
+    resource_id BIGINT UNSIGNED, service_type VARCHAR(30),
+    status VARCHAR(30), is_active TINYINT
+) ENGINE=InnoDB');
+$db->exec("INSERT INTO resources VALUES
+    (1,NULL,'Known fuel',37.26,-107.12,'available',1),
+    (2,NULL,'Closed fuel',37.25,-107.12,'closed',1),
+    (3,2,'Other Place facility',37.25,-107.12,'available',1),
+    (4,1,'Own Place facility',37.251,-107.12,'available',1),
+    (5,NULL,'Inactive fuel',37.25,-107.12,'available',0),
+    (6,NULL,'Unavailable fuel',37.25,-107.12,'available',1)");
+$db->exec("INSERT INTO resource_services VALUES
+    (1,'fuel','available',1),(2,'fuel','available',1),
+    (3,'toilet','available',1),(4,'toilet','seasonal',1),
+    (5,'fuel','available',1),(6,'fuel','temporarily_unavailable',1)");
+$nearest = llama_nearest_services($db,37.25,-107.12,1);
+$nearestRows = array_column($nearest['services'],null,'key');
+$check($nearest['state'] === 'ready' && $nearestRows['nearest_fuel']['match']['resource_id'] === 1,
+    'Nearest query excludes closed, inactive and unavailable services.');
+$check($nearestRows['nearest_toilet']['match']['resource_id'] === 4
+    && $nearestRows['nearest_toilet']['match']['status'] === 'seasonal',
+    'Only the selected Parent Place facilities are eligible; seasonal status remains visible.');
+$standalone = array_column(llama_nearest_services($db,37.25,-107.12)['services'],null,'key');
+$check($standalone['nearest_toilet']['match'] === null,
+    'An unassociated/pending Site cannot discover another Place facility.');
+$check(llama_nearest_services($db,null,null)['state'] === 'no_coordinates',
+    'Missing Site coordinates are never replaced with Parent Place GPS.');
+
 echo "PASS: Site submit, revision, rejection, one-target approval, immutable/current answers, duplicates and rollback in MariaDB.\n";
