@@ -289,7 +289,7 @@ $check((int) $db->query('SELECT COUNT(*) FROM scout_reports')->fetchColumn() ===
 $pendingInsert = $db->prepare('INSERT INTO place_submissions
     (id,user_id,place_id,place_name,status,submission_data) VALUES (?,?,NULL,?,?,?)');
 $pendingData = json_encode(llama_place_report_build_data([
-    'name'=>'Pending campground','type'=>'developed-campground','state'=>'CO',
+    'name'=>'Pending campground','type'=>'developed-campground','state'=>'Colorado',
     'amenity_wifi'=>'1','amenity_toilets'=>'flush',
 ]), JSON_THROW_ON_ERROR);
 $pendingInsert->execute([1,7,'Pending campground','pending',$pendingData]);
