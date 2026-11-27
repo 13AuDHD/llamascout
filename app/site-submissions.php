@@ -134,11 +134,10 @@ function llama_site_parent_reference(PDO $db, string $reference, int $userId = 0
         }
         $context = ['type' => $data['type']];
         foreach (['amenity_wifi', 'amenity_toilets'] as $key) {
-            if (!array_key_exists($key, $data)) continue;
-            $field = llama_report_questions()[$key];
-            $answer = llama_place_report_submission_answer($field, $data[$key]);
-            if ($answer['recorded']) {
-                $context[$key] = llama_place_report_answer_form_value($field, $answer['scoped_value']);
+            // Pending Place answers use the canonical nested storage layout,
+            // including explicit Unknown metadata, not flat POST keys.
+            if (llama_place_report_answer_state($data, $key) !== 'unanswered') {
+                $context[$key] = llama_place_report_form_value_from_data($data, $key);
             }
         }
         return [
