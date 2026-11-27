@@ -160,6 +160,8 @@ $compareReportHistoryUrl =
         <?php endif; ?>
     </header>
 
+    <p class="scout-report-summary" data-site-report-status role="status" aria-live="polite" hidden>Loading this Site’s Scout Report…</p>
+
     <section class="scout-report-area-context" data-area-report-context hidden>
         <p class="eyebrow">Facility Scout Report</p>
         <h3 data-area-report-name>Selected Facility</h3>
