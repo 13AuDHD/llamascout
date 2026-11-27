@@ -158,7 +158,7 @@ function llama_place_report_parse_answer(array $field, mixed $raw): array
         }
         // Preserve old boolean answer envelopes and numeric SQL storage
         // while allowing the third, distinct seasonal water state.
-        $value = $key === 'amenity_potable_water'
+        $value = in_array($key, ['amenity_potable_water','site_potable_water'], true)
             ? ($text === '2' ? 2 : $text === '1')
             : $text;
     }
