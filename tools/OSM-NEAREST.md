@@ -1,6 +1,6 @@
 # Automatic Nearest Services: regional OSM import
 
-This is an independent ODbL reference layer, not a source of authored Scout answers or Resource/Facility records. The live lookup compares the closest mapped service within 100 straight-line miles from the actual Site coordinate against eligible Scout Resources and same-parent Facilities. Distances are calculated on demand. The first six categories retain Scout data even without OSM. Once regional data is imported, the additional town, alcohol sales and hospital categories can also return results. Missing data is not evidence that a service does not exist.
+This is an independent ODbL reference layer, not a source of authored Scout answers or Resource/Facility records. The live lookup compares the closest mapped service within 100 straight-line miles from the actual Place coordinate against eligible standalone Scout Resources. Locate me and coordinate Search calculate distances and fill blank canonical Place Nearest Services selects; the named match and precise straight-line estimate appear below each automatically populated field. The Scout can review or edit the rounded distance before submitting. The current native fields store whole-mile choices (minimum 1 mile, or Over 20 miles), not the source name. No Site Nearest preview or report panel is needed. The first six categories retain Scout data even without OSM. Once regional data is imported, the additional town, alcohol sales and hospital categories can also return results. Missing data is not evidence that a service does not exist.
 
 ## cPanel / phpMyAdmin
 
@@ -12,7 +12,7 @@ This is an independent ODbL reference layer, not a source of authored Scout answ
    SELECT region, MAX(snapshot_date) AS snapshot_date, COUNT(*) AS service_rows
    FROM osm_nearest_services GROUP BY region ORDER BY region;
    ```
-5. Test a known Site and confirm its Nearest results identify OpenStreetMap or Scout records and their straight-line distance. Then repeat for neighboring states and eventually the remaining states. Geofabrik region names must match its US download listing; this workflow is intentionally per-state, not the whole-country PBF.
+5. Test Add a Place with known coordinates and confirm its existing Nearest Services fields are automatically populated after Locate me or Search, with OpenStreetMap or Scout attribution and straight-line distances. Then repeat for neighboring states and eventually the remaining states. Geofabrik region names must match its US download listing; this workflow is intentionally per-state, not the whole-country PBF.
 
 Refresh a region by repeating the extraction and import. Older snapshots are refused, and missing records from the new snapshot are removed from that region. Adjacent extracts may contain the same OSM object; the lookup chooses one result per service category and never inserts those records into Scout tables.
 
@@ -34,7 +34,7 @@ The deploy workflow deliberately excludes tools. Use a checked-out copy with the
 * Fuel, EV charging, explicit propane tags (not generic LPG), grocery/supermarket, explicitly tagged alcohol retail, potable water, toilets, named settlements, hospitals.
 * No access to private, customer-only or explicitly closed/disused mapped objects when those tags are present. Missing access tags or opening hours do not guarantee public access. Propane tags do not confirm cylinder filling/exchange; hospital tags do not confirm a 24-hour emergency department.
 * No real-time hours, route distance, or availability guarantees. Unnamed facilities have generic category labels; no business names are invented.
-* No automatic contributions or points. Existing manual Place-level Nearest answers are unchanged.
+* No automatic submissions or Resource contributions. Existing manual Place-level answers are preserved. Autofilled distances are reviewed and submitted through the normal Place workflow. Previously approved answers are not retroactively rewritten.
 * No external queries are made for a visitor's GPS; only the local reference database is queried. Existing Complete Place access checks remain in place.
 
 ## License
