@@ -2318,6 +2318,13 @@ window.LlamaPlaceReportForm
         const first = priority.map(key => all.find(card => card.key === key)).filter(Boolean);
         all.splice(0, all.length, ...first, ...all.filter(card => !first.includes(card)));
         let active = false, selected = null, openStates = new Map(), drag = null, suppressClick = false;
+        // Match the contribution layout's existing 700px mobile breakpoint.
+        // A deliberate view choice wins over automatic viewport changes.
+        const mobileQuery = '(max-width: 700px)';
+        const mobileViewport = typeof window.matchMedia === 'function'
+            ? window.matchMedia(mobileQuery) : null;
+        const prefersCards = () => mobileViewport ? mobileViewport.matches : window.innerWidth <= 700;
+        let explicitMode = false;
         const choiceViews = new Map();
         const removeChoices = () => {
             for (const [select, view] of choiceViews) {
@@ -2422,8 +2429,9 @@ window.LlamaPlaceReportForm
             }
             if (focus) heading.focus();
         };
-        const setMode = enabled => {
+        const setMode = (enabled, focus = true) => {
             resetDrag();
+            suppressClick = false;
             active = enabled;
             toggle.setAttribute('aria-pressed', String(active));
             toggle.textContent = active ? 'Full questionnaire' : 'Card view';
@@ -2435,7 +2443,7 @@ window.LlamaPlaceReportForm
                 openStates = new Map(sections.map(section => [section, section.open]));
                 if (save) next.before(save);
                 if (saveStatus) controls.append(saveStatus);
-                render(true);
+                render(focus);
             } else {
                 restoreGesture();
                 for (const {node, anchor} of movable) anchor.after(node);
@@ -2443,7 +2451,7 @@ window.LlamaPlaceReportForm
                 removeChoices();
                 for (const [section, open] of openStates) section.open = open;
                 progress.textContent = '';
-                toggle.focus();
+                if (focus) toggle.focus();
             }
         };
         const step = direction => {
@@ -2460,7 +2468,10 @@ window.LlamaPlaceReportForm
             form.style.removeProperty('--scout-card-drag-x');
             form.style.removeProperty('--scout-card-drag-angle');
         };
-        toggle.addEventListener('click', () => setMode(!active));
+        toggle.addEventListener('click', () => {
+            explicitMode = true;
+            setMode(!active);
+        });
         back.addEventListener('click', () => step(-1));
         next.addEventListener('click', () => step(1));
         form.addEventListener('pointerdown', event => {
@@ -2528,13 +2539,26 @@ window.LlamaPlaceReportForm
         // Keep browser validation focusable even when another card is showing.
         form.addEventListener('invalid', event => {
             if (!active) return;
-            setMode(false);
+            explicitMode = true;
+            setMode(false, false);
             for (let node = event.target.parentElement; node && node !== form; node = node.parentElement) {
                 if (node.tagName === 'DETAILS') node.open = true;
             }
         }, true);
         nav.hidden = false;
-        setMode(true);
+        setMode(prefersCards(), false);
+        const updateViewportMode = () => {
+            if (explicitMode) return;
+            const enabled = prefersCards();
+            if (enabled !== active) setMode(enabled, false);
+        };
+        if (mobileViewport?.addEventListener) {
+            mobileViewport.addEventListener('change', updateViewportMode);
+        } else if (mobileViewport?.addListener) {
+            mobileViewport.addListener(updateViewportMode);
+        } else {
+            window.addEventListener('resize', updateViewportMode);
+        }
     };
     const init = () => {
         for (const id of ['add-place-main-form', 'add-site-main-form']) {

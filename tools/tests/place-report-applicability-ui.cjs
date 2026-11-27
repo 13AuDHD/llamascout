@@ -464,6 +464,29 @@ async function testClosureDates() {
 }
 
 
+function mockGuidedViewport(w, initialWidth) {
+    let width = initialWidth;
+    const listeners = new Set();
+    const query = {
+        get matches() { return width <= 700; },
+        addEventListener(type, listener) {
+            assert.equal(type,'change');
+            listeners.add(listener);
+        }
+    };
+    w.matchMedia = media => {
+        assert.equal(media,'(max-width: 700px)');
+        return query;
+    };
+    return nextWidth => {
+        const before = query.matches;
+        width = nextWidth;
+        if (query.matches !== before) {
+            for (const listener of listeners) listener({matches:query.matches});
+        }
+    };
+}
+
 async function testGuidedPlaceCards() {
     const dom = new JSDOM(`<form id="add-place-main-form" class="add-place-form">
         <div data-scout-card-navigation hidden>
@@ -485,6 +508,7 @@ async function testGuidedPlaceCards() {
         </div>
     </form>`, {runScripts:'outside-only'});
     const w = dom.window, d = w.document;
+    mockGuidedViewport(w, 390);
     try {
         // Exercise the production presentation adapter independently of the
         // shared questionnaire engine (covered by the tests above).
@@ -645,6 +669,7 @@ async function testGuidedLocateMe() {
         </div>
     </form>`, {runScripts:'outside-only',url:'https://llamascout.com/add-place.php'});
     const w = dom.window, d = w.document;
+    mockGuidedViewport(w, 390);
     try {
         const requests = [], lookups = [];
         const results = [];
@@ -769,6 +794,7 @@ async function testGuidedSiteCards() {
         </div>
     </form>`, {runScripts:'outside-only',url:'https://llamascout.com/add-site.php'});
     const w = dom.window, d = w.document;
+    mockGuidedViewport(w, 390);
     try {
         Object.defineProperty(w.navigator,'geolocation',{value:{
             getCurrentPosition(success) { success({coords:{latitude:37.25,longitude:-107.12}}); }
@@ -831,7 +857,64 @@ async function testGuidedSiteCards() {
     } finally { w.close(); }
 }
 
-testAdminSiteEditing().then(testAdminSiteEditing).then(testClosureDates).then(testGuidedPlaceCards).then(testGuidedLocateMe).then(testGuidedSiteCards).then(() => {
+async function testResponsiveGuidedDefaults() {
+    for (const id of ['add-place-main-form','add-site-main-form']) {
+        for (const width of [390,700,701,820,1440]) {
+            const dom = new JSDOM(`<form id="${id}">
+                <div data-scout-card-navigation hidden>
+                    <button type="button" data-scout-card-toggle></button>
+                    <div data-scout-card-progress-wrap><progress data-scout-card-meter max="100"></progress><span data-scout-card-progress></span></div>
+                    <h2 data-scout-card-heading tabindex="-1"></h2>
+                </div>
+                <details data-report-main-section="place" open><summary>Report</summary>
+                    <details data-report-subsection="basic" open><summary>Basic</summary><div class="contribution-grid">
+                        <div data-report-field="name"><span class="place-report-field-label">Name</span><input name="name" value="Original"></div>
+                        <div data-report-field="surface"><span class="place-report-field-label">Surface</span><select name="surface"><option value="gravel" selected>Gravel</option><option value="dirt">Dirt</option></select></div>
+                    </div></details>
+                </details>
+                <div data-scout-card-step="Review and submit"><button type="submit">Submit</button></div>
+                <div data-scout-card-controls hidden><span data-scout-card-gesture-help>← Swipe →</span><button type="button" data-scout-card-back>Back</button><button type="button" data-scout-card-next>Next</button></div>
+            </form>`, {runScripts:'outside-only'});
+            const w=dom.window,d=w.document;
+            const resize=mockGuidedViewport(w,width);
+            try {
+                w.eval(source.slice(source.indexOf('// Guided Add Place presentation is deliberately separate')));
+                await new Promise(resolve=>d.addEventListener('DOMContentLoaded',resolve,{once:true}));
+                const q=s=>d.querySelector(s),form=q('form'),toggle=q('[data-scout-card-toggle]');
+                const cardMode=()=>form.classList.contains('is-scout-card-view');
+                assert.equal(cardMode(),width<=700,id+' initial mode at '+width);
+                assert.equal(q('[data-scout-card-navigation]').hidden,false);
+                assert.equal(q('[data-scout-card-controls]').hidden,width>700);
+                assert.equal(toggle.textContent,width<=700?'Full questionnaire':'Card view');
+                if(width>700){
+                    assert.equal(q('[data-report-field="surface"]').classList.contains('is-scout-card-offstage'),false);
+                    assert.equal(q('[data-report-subsection]').open,true);
+                }
+                const input=q('[name="name"]');
+                input.value='Edited';
+                q('[name="surface"]').value='dirt';
+                const before=Array.from(new w.FormData(form).entries());
+                resize(390);
+                assert.equal(cardMode(),true);
+                resize(820);
+                assert.equal(cardMode(),false);
+                assert.equal(q('[data-report-subsection]').open,true);
+                assert.deepEqual(Array.from(new w.FormData(form).entries()),before);
+                assert.equal(q('[name="name"]'),input,'Native field identity survives automatic mode changes');
+                toggle.click();
+                assert.equal(cardMode(),true,'Larger screens can choose cards manually');
+                resize(390);resize(1440);
+                assert.equal(cardMode(),true,'Explicit card choice survives resizing');
+                toggle.click();
+                resize(390);
+                assert.equal(cardMode(),false,'Explicit full questionnaire choice survives resizing');
+                assert.deepEqual(Array.from(new w.FormData(form).entries()),before);
+            } finally {w.close();}
+        }
+    }
+}
+
+testAdminSiteEditing().then(testAdminSiteEditing).then(testClosureDates).then(testGuidedPlaceCards).then(testGuidedLocateMe).then(testGuidedSiteCards).then(testResponsiveGuidedDefaults).then(() => {
     console.log('PASS: closure dates and Site selections survive reload, parent-child visibility and scoped saves');
 }).catch(error => {
     console.error(error);
