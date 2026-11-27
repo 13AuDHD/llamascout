@@ -166,6 +166,10 @@ $footerUser = current_user();
                     Terms of Use
                 </a>
 
+                <a href="<?= htmlspecialchars($footerSiteBase . '/terms.php#data-licenses', ENT_QUOTES, 'UTF-8') ?>">
+                    Data licenses
+                </a>
+
                 <a href="<?= htmlspecialchars($footerSiteBase . '/returns.php', ENT_QUOTES, 'UTF-8') ?>">
                     Returns &amp; Refunds
                 </a>
