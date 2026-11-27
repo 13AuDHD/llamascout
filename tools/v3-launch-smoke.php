@@ -3631,6 +3631,23 @@ $check('Guided Place inline answer help and outer-only accent', static function 
         'Nested section accents must exclude guided cards');
 });
 
+$check('Guided Unknown labels cover both radio rendering paths', static function () use ($assert): void {
+    $root = dirname(__DIR__);
+    $yesNo = file_get_contents($root . '/partials/place-report/yes-no-control.php');
+    $form = file_get_contents($root . '/partials/place-report/form.php');
+    $css = file_get_contents($root . '/css/site/features/place-report-form.css');
+    foreach ([$yesNo, $form] as $renderer) {
+        $assert(str_contains($renderer, 'class="scout-card-unknown-symbol">?</span>')
+            && str_contains($renderer, 'class="scout-card-unknown-label">Unknown</span>'),
+            'Both shared radio renderers must support explicit guided Unknown labels');
+    }
+    $assert(str_contains($form, "require __DIR__ . '/yes-no-control.php'"),
+        'Shared Yes/No control must be covered by guided label regression');
+    $assert(str_contains($css, '.place-report-form.is-scout-card-view .add-place-radio-option .scout-card-unknown-symbol')
+        && str_contains($css, '.place-report-form.is-scout-card-view .add-place-radio-option .scout-card-unknown-label'),
+        'Guided mode must switch from symbol to Unknown');
+});
+
 $check('Contribution intro boxes contain descriptions only', static function () use ($assert): void {
     $intro = file_get_contents(dirname(__DIR__) . '/partials/place-report/contribution-tabs.php');
     $assert(!str_contains($intro, '<h2>') && substr_count($intro, "'description' =>") === 4,
