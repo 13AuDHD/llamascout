@@ -28,8 +28,8 @@ if ($revision && (string) $revision['status'] !== 'needs-changes') {
 }
 $isNeedsChanges = $revision !== null;
 $selectedPlaceId = $isNeedsChanges
-    ? (int) $revision['place_id']
-    : max(0, (int) ($_POST['site_place_id'] ?? $_GET['site_place_id'] ?? $_GET['place_id'] ?? 0));
+    ? llama_site_submission_parent_reference($revision)
+    : (string) ($_POST['site_place_id'] ?? $_GET['site_place_id'] ?? $_GET['place_id'] ?? '');
 
 // The same authenticated Add Site URL supplies on-demand suggestions for
 // the Parent Place combobox. Never load the entire Places table in the DOM.
@@ -37,12 +37,16 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET'
     && isset($_GET['parent_place_suggestions'])) {
     header('Content-Type: application/json; charset=utf-8');
     header('Cache-Control: private, no-store');
-    echo json_encode(
-        ['places' => llama_site_parent_place_choices(
-            $db, (string) ($_GET['q'] ?? '')
-        )],
-        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
-    );
+    try {
+        echo json_encode(
+            ['places' => llama_site_parent_place_choices($db, (string) ($_GET['q'] ?? ''), $userId)],
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR
+        );
+    } catch (Throwable $exception) {
+        llama_log_caught_exception($exception, 'site.parent_search', ['user_id' => $userId]);
+        http_response_code(503);
+        echo json_encode(['error' => 'Parent Place search is temporarily unavailable.']);
+    }
     exit;
 }
 // Fetch the selected Place's limited, read-only applicability context.
@@ -50,7 +54,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET' && isset($_GET['parent_repor
     header('Content-Type: application/json; charset=utf-8');
     header('Cache-Control: private, no-store');
     try {
-        echo json_encode(['context' => llama_site_parent_report_context($db, (int) $_GET['parent_report_context'])],
+        $parent = llama_site_parent_reference($db, (string) $_GET['parent_report_context'], $userId);
+        echo json_encode(['context' => $parent['context']],
             JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_THROW_ON_ERROR);
     } catch (InvalidArgumentException $exception) {
         http_response_code(404);
@@ -59,13 +64,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET' && isset($_GET['parent_repor
     exit;
 }
 $selectedParentPlace = null;
-if ($selectedPlaceId > 0) {
-    $parentQuery = $db->prepare(
-        'SELECT id, name, state FROM places
-         WHERE id = ? AND status IN ("active", "featured") LIMIT 1'
-    );
-    $parentQuery->execute([$selectedPlaceId]);
-    $selectedParentPlace = $parentQuery->fetch(PDO::FETCH_ASSOC) ?: null;
+if ($selectedPlaceId !== '' && $selectedPlaceId !== '0') {
+    try {
+        $selectedParentPlace = llama_site_parent_reference($db, $selectedPlaceId, $userId);
+    } catch (InvalidArgumentException $exception) {
+        $error = $exception->getMessage();
+    }
 }
 $siteFields = llama_site_submission_fields();
 
@@ -82,7 +86,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         // target/scope nor Place question data from a stale tab.
         $answers = array_intersect_key($_POST, $siteFields);
         $submissionInput = [
-            'site_place_id' => $selectedPlaceId,
+            'site_place_id' => $isNeedsChanges
+                ? (string) ($_POST['site_place_id'] ?? $selectedPlaceId)
+                : $selectedPlaceId,
             'site_name' => $_POST['site_name'] ?? '',
             'site_coordinates' => $_POST['site_coordinates'] ?? '',
             'site_answers' => $answers,
@@ -142,8 +148,7 @@ $placeReportExistingPhotos = $isNeedsChanges
 $placeReportMode = 'contributor';
 $placeReportOnlyScope = 'site';
 $placeReportContextKeys = ['type', 'amenity_wifi', 'amenity_toilets'];
-$placeReportParentContext = $selectedParentPlace
-    ? llama_site_parent_report_context($db, $selectedPlaceId) : [];
+$placeReportParentContext = $selectedParentPlace['context'] ?? [];
 $placeReportSiteIdentityPartial = __DIR__ . '/partials/place-report/site-identity-fields.php';
 $placeReportShowLocate = true;
 $placeReportShowNameSuggestion = false;
