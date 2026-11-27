@@ -2310,6 +2310,32 @@ window.LlamaPlaceReportForm
             if (group) groups.set(group, card);
         }
         if (!all.length) return;
+        // Read the existing accordion labels, never the changing completion
+        // percentages or a second, hard-coded copy of the questionnaire.
+        const sectionLabel = section => {
+            const summary = section?.querySelector(':scope > summary');
+            if (!summary) return '';
+            const label = summary.querySelector(':scope > span:not([data-section-completion-percent])');
+            if (label) return label.textContent.trim();
+            const copy = summary.cloneNode(true);
+            copy.querySelectorAll('[data-section-completion-percent], svg, small').forEach(node => node.remove());
+            return copy.textContent.trim();
+        };
+        const contextFor = (node, card) => {
+            const main = node.closest('[data-report-main-section]');
+            const subsection = node.closest('[data-report-subsection], [data-site-location-section]');
+            const labels = [sectionLabel(main), sectionLabel(subsection)].filter(Boolean);
+            // Location, Photos and Review already have their own visible
+            // headings. Avoid repeating the identical heading as context.
+            const visibleQuestionHeading = !card.key || card.key === 'site_location';
+            return [...new Set(labels)].filter(label => !visibleQuestionHeading || label !== card.label).join(' / ');
+        };
+        const sectionContext = document.createElement('p');
+        sectionContext.className = 'scout-card-section-context';
+        sectionContext.dataset.scoutCardContext = '';
+        sectionContext.id = form.id + '-card-section-context';
+        sectionContext.hidden = true;
+        heading.before(sectionContext);
         // Establish the type before showing dependent questions. The date
         // follows identity and precedes Description in the guided sequence.
         const priority = form.id === 'add-site-main-form'
@@ -2411,6 +2437,11 @@ window.LlamaPlaceReportForm
             }
             heading.textContent = selected.label;
             heading.classList.toggle('is-scout-heading-hidden', Boolean(selected.key) && selected.key !== 'site_location');
+            const context = contextFor(onstage[0], selected);
+            sectionContext.textContent = context;
+            sectionContext.hidden = !context;
+            if (context) heading.setAttribute('aria-describedby', sectionContext.id);
+            else heading.removeAttribute('aria-describedby');
             const percent = cards.length > 1 ? Math.round(100 * index / (cards.length - 1)) : 100;
             meter.value = percent;
             progress.textContent = percent + '%';
@@ -2451,6 +2482,9 @@ window.LlamaPlaceReportForm
                 removeChoices();
                 for (const [section, open] of openStates) section.open = open;
                 progress.textContent = '';
+                sectionContext.hidden = true;
+                sectionContext.textContent = '';
+                heading.removeAttribute('aria-describedby');
                 if (focus) toggle.focus();
             }
         };
