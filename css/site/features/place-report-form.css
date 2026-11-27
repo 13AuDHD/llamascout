@@ -1306,3 +1306,31 @@ input[type="checkbox"] {
     box-shadow: none;
     touch-action: pan-y;
 }
+
+/* Calculated Site services, separate from authored report answers. */
+.nearest-services-panel[hidden] { display: none !important; }
+.nearest-services-panel {
+    min-width: 0;
+    grid-column: 1 / -1;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    overflow-wrap: anywhere;
+}
+.nearest-services-panel h3 { margin: 0 0 6px; font-size: 1rem; }
+.nearest-services-panel p { margin: 0 0 10px; color: var(--text-muted); font-size: .85rem; }
+.nearest-services-list {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+    gap: 8px 12px;
+    margin: 0;
+    font-size: .85rem;
+}
+.nearest-services-list dt { font-weight: 700; }
+.nearest-services-list dd { margin: 0; }
+.place-report-form.is-scout-card-view .nearest-services-panel { padding: 0; border: 0; }
+@media (max-width: 450px) {
+    .nearest-services-list { grid-template-columns: minmax(0, 1fr); gap: 3px; }
+    .nearest-services-list dd { margin-bottom: 8px; }
+}
