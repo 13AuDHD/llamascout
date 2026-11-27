@@ -798,7 +798,6 @@ require
 
 <script src="/js/place-gallery.js?v=<?= (int) filemtime(__DIR__ . '/js/place-gallery.js') ?>"></script>
 <script src="/js/place.js"></script>
-<script src="/js/nearest-services.js?v=<?= (int) filemtime(__DIR__ . '/js/nearest-services.js') ?>"></script>
 <script src="/js/place-campsites.js?v=<?= (int) filemtime(__DIR__ . '/js/place-campsites.js') ?>"></script>
 
 <?php
