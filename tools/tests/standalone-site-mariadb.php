@@ -288,7 +288,10 @@ $check((int) $db->query('SELECT COUNT(*) FROM scout_reports')->fetchColumn() ===
 // Published Place ID 1 and pending submission ID 1 intentionally collide.
 $pendingInsert = $db->prepare('INSERT INTO place_submissions
     (id,user_id,place_id,place_name,status,submission_data) VALUES (?,?,NULL,?,?,?)');
-$pendingData = json_encode(['type'=>'developed-campground','state'=>'CO','amenity_wifi'=>'1'], JSON_THROW_ON_ERROR);
+$pendingData = json_encode(llama_place_report_build_data([
+    'name'=>'Pending campground','type'=>'developed-campground','state'=>'CO',
+    'amenity_wifi'=>'1','amenity_toilets'=>'flush',
+]), JSON_THROW_ON_ERROR);
 $pendingInsert->execute([1,7,'Pending campground','pending',$pendingData]);
 $pendingInsert->execute([2,8,'Pending private campground','pending',$pendingData]);
 $pendingInsert->execute([3,7,'Pending rejected campground','rejected',$pendingData]);
@@ -300,8 +303,11 @@ $check(count(llama_site_parent_place_choices($db, 'Parent Place', 7)) === 1,
     'Published parent remains searchable.');
 $failure(static fn () => llama_site_parent_reference($db, 'pending:2', 7), 'Other member pending parent must be private.');
 $failure(static fn () => llama_site_parent_reference($db, 'pending:3', 7), 'Rejected parent must be unavailable.');
-$check(llama_site_parent_reference($db, 'pending:1', 7)['context']['type'] === 'developed-campground',
-    'Pending parent context derives from the owned submission.');
+$pendingContext = llama_site_parent_reference($db, 'pending:1', 7)['context'];
+$check($pendingContext['type'] === 'developed-campground'
+    && ($pendingContext['amenity_wifi'] ?? '') === '1'
+    && ($pendingContext['amenity_toilets'] ?? '') === 'flush',
+    'Pending parent context derives from the canonical stored submission.');
 $pendingPayload = array_replace($payload, ['site_place_id'=>'pending:1','site_name'=>'Waiting Site',
     'site_answers'=>['site_number'=>'21']]);
 $waiting = llama_site_submission_submit($db, 7, $pendingPayload);
