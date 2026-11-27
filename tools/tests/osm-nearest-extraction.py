@@ -2,6 +2,7 @@
 """Exercise actual PBF/XML geometry extraction with a disposable tiny OSM file."""
 import datetime
 import importlib.util
+import gzip
 import json
 import subprocess
 import sys
@@ -57,4 +58,19 @@ with tempfile.TemporaryDirectory() as temp:
     assert hospital["osm_id"] == 20 and hospital["osm_type"] == "way"
     assert 37.26 <= hospital["latitude"] <= 37.27
     assert -107.13 <= hospital["longitude"] <= -107.12
+    sql = Path(temp)/"output.sql.gz"
+    subprocess.run([sys.executable,str(tool.with_name("osm-nearest-to-sql.py")),str(output),str(sql)],check=True)
+    text = gzip.open(sql,"rt",encoding="utf-8").read()
+    assert "© OpenStreetMap contributors" in text
+    assert "SELECT COUNT(*) FROM osm_nearest_stage)=3" in text
+    assert "Example Hospital" not in text # imported strings are hex encoded
+    assert "DELETE FROM osm_nearest_services WHERE region=@osm_region AND @osm_ok=1;" in text
+    assert text.index("START TRANSACTION;") < text.index("DELETE FROM osm_nearest_services")
+    assert text.index("DELETE FROM osm_nearest_services") < text.index("COMMIT;")
+    output.write_text("\n".join(json.dumps(row) for row in rows[:-1])+"\n")
+    failed = subprocess.run([sys.executable,str(tool.with_name("osm-nearest-to-sql.py")),str(output),str(sql)],
+                            capture_output=True)
+    assert failed.returncode != 0
+    assert gzip.open(sql,"rt",encoding="utf-8").read() == text
+
 print("PASS: OSM classification, node and area extraction, access exclusion and licensed snapshot.")
