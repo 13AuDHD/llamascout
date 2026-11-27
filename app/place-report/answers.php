@@ -156,7 +156,11 @@ function llama_place_report_parse_answer(array $field, mixed $raw): array
         if (mb_strlen($text, 'UTF-8') > (int) ($field['maxlength'] ?? 5000)) {
             $invalid('The answer is too long.');
         }
-        $value = $text;
+        // Preserve old boolean answer envelopes and numeric SQL storage
+        // while allowing the third, distinct seasonal water state.
+        $value = $key === 'amenity_potable_water'
+            ? ($text === '2' ? 2 : $text === '1')
+            : $text;
     }
     return ['state' => 'answered', 'value' => $value];
 }
