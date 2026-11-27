@@ -2348,11 +2348,22 @@ window.LlamaPlaceReportForm
         sectionContext.id = form.id + '-card-section-context';
         sectionContext.hidden = true;
         heading.before(sectionContext);
-        // Establish the type before showing dependent questions. The date
-        // follows identity and precedes Description in the guided sequence.
-        const priority = form.id === 'add-site-main-form'
-            ? ['site_parent', 'site_name', 'visited_at', 'site_location']
-            : ['type', 'name', 'visited_at', 'description'];
+        // Place type is the sole exception to the full form's section order:
+        // it is needed to determine which Getting There questions apply.
+        // The rest of Getting There precedes Place > Basic, just as in the
+        // full questionnaire. Site retains its own identity-first order.
+        const isPlace = form.id === 'add-place-main-form';
+        const priority = isPlace
+            ? ['type']
+            : ['site_parent', 'site_name', 'visited_at', 'site_location'];
+        const typeControl = isPlace ? form.querySelector('select[name="type"]') : null;
+        const needsType = card => Boolean(typeControl && card?.key === 'type' &&
+            (!typeControl.value || typeControl.selectedOptions[0]?.disabled));
+        const typeHint = document.createElement('p');
+        typeHint.className = 'scout-card-section-context';
+        typeHint.textContent = 'Choose the Place type to load its applicable Getting There questions.';
+        typeHint.hidden = true;
+        heading.after(typeHint);
         // Build dependency order from the same browser schema that drives
         // visibility. A child located earlier in the full layout must not
         // be skipped before its parent can be answered.
@@ -2526,8 +2537,10 @@ window.LlamaPlaceReportForm
             progress.textContent = percent + '%';
             syncChoices(onstage);
             back.disabled = index === 0;
-            next.disabled = index === cards.length - 1 && !cards.slice(0, index).some(card =>
-                card.nodes.some(node => isApplicable(node) && !seenNodes.has(node)));
+            const typeRequired = needsType(selected);
+            if (typeHint.hidden !== !typeRequired) typeHint.hidden = !typeRequired;
+            next.disabled = typeRequired || (index === cards.length - 1 && !cards.slice(0, index).some(card =>
+                card.nodes.some(node => isApplicable(node) && !seenNodes.has(node))));
             // Put the single swipe hint beside the last applicable Clear
             // control, without moving or duplicating any canonical answers.
             const clear = onstage.flatMap(node => [...node.querySelectorAll('[data-place-report-clear]')])
@@ -2563,6 +2576,7 @@ window.LlamaPlaceReportForm
                 for (const [section, open] of openStates) section.open = open;
                 progress.textContent = '';
                 sectionContext.hidden = true;
+                typeHint.hidden = true;
                 sectionContext.textContent = '';
                 heading.removeAttribute('aria-describedby');
                 if (focus) toggle.focus();
@@ -2574,6 +2588,7 @@ window.LlamaPlaceReportForm
             const before = selected?.nodes[0];
             render();
             if (!active || (before && !selected?.nodes.includes(before))) return;
+            if (direction > 0 && needsType(selected)) return;
             const cards = visible();
             const index = cards.indexOf(selected);
             // Newly applicable earlier cards (e.g. after an async lookup)
