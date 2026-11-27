@@ -1101,6 +1101,17 @@ input[type="checkbox"] {
     outline: 2px solid var(--scout-card-accent, var(--place-accent, #0a3d25));
     outline-offset: 3px;
 }
+.scout-card-section-context {
+    margin: 10px 0 0;
+    color: var(--text-muted);
+    font-size: .8rem;
+    font-weight: 700;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+.scout-card-section-context:not([hidden]) + .scout-card-heading {
+    margin-top: 4px;
+}
 .scout-card-heading {
     margin: 10px 0 0;
     font-size: 1.15rem;
