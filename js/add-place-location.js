@@ -272,12 +272,13 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
   const applyNearest = (payload, latitude, longitude) => {
-    if (!nearestFields.length) return;
+    if (!nearestFields.length) return 0;
     const point = Number(latitude).toFixed(7) + ", " + Number(longitude).toFixed(7);
-    if (coordinateInput?.value.trim() !== point) return;
+    if (coordinateInput?.value.trim() !== point) return 0;
     if (nearestPoint && nearestPoint !== point) resetNearest();
     nearestPoint = point;
-    if (payload?.state !== "ready") return;
+    if (payload?.state !== "ready") return 0;
+    let filled = 0;
     for (const field of nearestFields) {
       const result = (payload.services || []).find(item => item.key === field.name);
       const match = result?.match;
@@ -314,10 +315,47 @@ document.addEventListener("DOMContentLoaded", () => {
       const wrapper = field.closest("[data-report-field]");
       wrapper?.append(hint);
       nearestHints.set(field, hint);
+      filled++;
     }
+    return filled;
   };
   coordinateInput?.addEventListener("input", () => {
     if (nearestPoint && coordinateInput.value.trim() !== nearestPoint) resetNearest();
+  });
+
+  const adminNearestButton = form?.querySelector("[data-admin-nearest-lookup]");
+  const adminNearestStatus = form?.querySelector("[data-admin-nearest-status]");
+  adminNearestButton?.addEventListener("click", async () => {
+    if (!adminNearestStatus) return;
+    try {
+      const parsed = parseCoordinates(coordinateInput.value);
+      if (parsed.empty) throw new Error("Enter Place coordinates first.");
+      syncCoordinates(parsed);
+      adminNearestButton.disabled = true;
+      adminNearestStatus.textContent = "Looking up nearby mapped services…";
+      const url = new URL(window.location.href);
+      url.search = "";
+      url.searchParams.set("id", form.querySelector('[name="place_id"]').value);
+      url.searchParams.set("nearest_services", "1");
+      url.searchParams.set("lat", parsed.latitude);
+      url.searchParams.set("lng", parsed.longitude);
+      const response = await fetch(url, {credentials:"same-origin", headers:{Accept:"application/json"}});
+      if (!response.ok) throw new Error("Nearest Services lookup is unavailable.");
+      const payload = await response.json();
+      if (payload.state !== "ready") throw new Error("No valid Place coordinates or lookup unavailable.");
+      if (coordinateInput.value.trim() !== parsed.formatted) {
+        adminNearestStatus.textContent = "Coordinates changed. Look up Nearest Services again.";
+        return;
+      }
+      const filled = applyNearest(payload, parsed.latitude, parsed.longitude);
+      adminNearestStatus.textContent = filled
+        ? filled + " distance field(s) populated. Save the report to keep them."
+        : "No additional mapped matches for missing fields. Existing answers were preserved.";
+    } catch (error) {
+      adminNearestStatus.textContent = error.message || "Nearest Services lookup is unavailable.";
+    } finally {
+      adminNearestButton.disabled = false;
+    }
   });
 
   const lookupLocation = async (
