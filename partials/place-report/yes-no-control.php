@@ -47,7 +47,8 @@ if (
                     value="<?= $yesNoEscape(llama_place_report_unknown_token()) ?>"
                     aria-label="Unknown"
                     <?= $yesNoCurrent === llama_place_report_unknown_token() ? 'checked' : '' ?>>
-                <span>?</span>
+                <span class="scout-card-unknown-symbol">?</span>
+                <span class="scout-card-unknown-label">Unknown</span>
             </label>
             <?php foreach ($yesNoOptions as $yesNoOption => $yesNoOptionLabel): ?>
                 <label class="add-place-radio-option">
