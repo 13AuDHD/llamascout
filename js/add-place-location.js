@@ -733,116 +733,92 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   if (locateButton) {
-    locateButton.addEventListener(
-      "click",
-      () => {
-        if (
-          !navigator.geolocation
-        ) {
-          setStatus(
-            "This browser does not provide device location.",
-            "is-error"
-          );
+    // Keep the same native geolocation path in full and guided forms.
+    // A GPS-only attempt can time out indoors or on Android; let the
+    // browser fall back to its normal location provider before giving up.
+    const getPosition = options => new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, options);
+    });
 
-          return;
+    locateButton.addEventListener("click", async () => {
+      if (!navigator.geolocation) {
+        setStatus(
+          "This browser does not provide device location.",
+          "is-error"
+        );
+        return;
+      }
+
+      setLookupLoading(true);
+      setStatus(
+        "The llamas are waiting for your device’s GPS.",
+        "is-warning"
+      );
+
+      try {
+        let position;
+        try {
+          position = await getPosition({
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 30000
+          });
+        } catch (error) {
+          // Permission denial must not prompt again or be bypassed.
+          if (error?.code !== 2 && error?.code !== 3) throw error;
+          setStatus(
+            "GPS is taking longer than expected. Trying your device’s standard location service.",
+            "is-warning"
+          );
+          position = await getPosition({
+            enableHighAccuracy: false,
+            timeout: 20000,
+            maximumAge: 30000
+          });
         }
 
-        setLookupLoading(
-          true
-        );
+        const latitude = Number(position.coords.latitude);
+        const longitude = Number(position.coords.longitude);
+        if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90
+          || !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
+          throw new Error("Your device returned invalid coordinates. Enter coordinates manually.");
+        }
 
-        setStatus(
-          "The llamas are waiting for your device’s GPS.",
-          "is-warning"
-        );
+        const parsed = {empty: false, latitude, longitude};
+        syncCoordinates(parsed);
 
-        navigator.geolocation.getCurrentPosition(
-          async position => {
-            const latitude =
-              Number(
-                position.coords.latitude
-              );
+        // Standard location can be coarse. Save what the browser provided,
+        // but do not imply that decimal precision guarantees GPS accuracy.
+        const accuracy = Number(position.coords.accuracy);
+        const accuracyHint = Number.isFinite(accuracy) && accuracy > 100
+          ? ` Device reports accuracy of about ${Math.round(accuracy)} m; verify the coordinates before saving.`
+          : "";
 
-            const longitude =
-              Number(
-                position.coords.longitude
-              );
-
-            const parsed = {
-              empty: false,
-              latitude,
-              longitude,
-              formatted:
-                `${latitude.toFixed(7)}, ${longitude.toFixed(7)}`
-            };
-
-            try {
-              syncCoordinates(
-                parsed
-              );
-
-              setStatus(
-                `GPS found. ${lookupInProgress}`,
-                "is-warning"
-              );
-
-              await lookupLocation(
-                latitude,
-                longitude
-              );
-
-              setStatus(
-                lookupSucceeded,
-                "is-success"
-              );
-
-            } catch (error) {
-              console.error(
-                error
-              );
-
-              setStatus(
-                "The llamas added your GPS coordinates. Fill in any details they couldn’t find.",
-                "is-warning"
-              );
-
-            } finally {
-              setLookupLoading(
-                false
-              );
-            }
-          },
-
-          error => {
-            setLookupLoading(
-              false
-            );
-
-            const message =
-              error.code === 1
-                ? "Location permission was denied. You can still enter coordinates manually."
-                : error.code === 2
-                  ? "Your device could not determine its current location."
-                  : "The location request timed out. Try again or enter coordinates manually.";
-
-            setStatus(
-              message,
-              "is-error"
-            );
-          },
-
-          {
-            enableHighAccuracy:
-              true,
-
-            timeout:
-              15000,
-
-            maximumAge:
-              30000
-          }
-        );
+        setStatus(`Location found.${accuracyHint} ${lookupInProgress}`, "is-warning");
+        try {
+          await lookupLocation(latitude, longitude);
+          setStatus(lookupSucceeded + accuracyHint, accuracyHint ? "is-warning" : "is-success");
+        } catch (error) {
+          console.error(error);
+          setStatus(
+            "The llamas added your coordinates. Fill in any details they couldn’t find." + accuracyHint,
+            "is-warning"
+          );
+        }
+      } catch (error) {
+        const message = error?.code === 1
+          ? "Location permission was denied. Allow location access for this site in your browser and device settings, or enter coordinates manually."
+          : error?.code === 2
+            ? "Your device could not determine its location. Check that device location is turned on, or enter coordinates manually."
+            : error?.code === 3
+              ? "The location request timed out. Try again with a clearer view of the sky, or enter coordinates manually."
+              : error instanceof Error
+                ? error.message
+                : "Device location could not be obtained. Enter coordinates manually.";
+        setStatus(message, "is-error");
+      } finally {
+        setLookupLoading(false);
       }
-    );
+    });
   }
 });
