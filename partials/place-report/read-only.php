@@ -307,6 +307,8 @@ $campsiteSwitchableFields =
         )
     );
 
+$publicNearestMatches = is_array($publicNearestMatches ?? null) ? $publicNearestMatches : [];
+
 $renderValue =
     static function (
         string $key,
@@ -321,7 +323,8 @@ $renderValue =
         $campsiteSwitchableFields,
         $renderSafeDescription,
         $publicPlaceReportAttribution,
-        $placeReportCanViewCommunity
+        $placeReportCanViewCommunity,
+        $publicNearestMatches
     ): void {
         $visibility =
             (string) (
@@ -661,6 +664,10 @@ $renderValue =
                                 <?= $e($value) ?>
                             <?php endif; ?>
                         </strong>
+                        <?php if ($placeReportReadMode === 'scout-report' && $placeReportCanViewCommunity
+                            && !$isAccessLocked && $state === 'answered' && isset($publicNearestMatches[$key])): ?>
+                            <small class="scout-report-nearest-match"><?= $e($publicNearestMatches[$key]) ?></small>
+                        <?php endif; ?>
                     <?php endif; ?>
                 </div>
 
@@ -1304,10 +1311,7 @@ foreach (
 
         <?php if ($placeReportReadMode === 'scout-report' && $sectionKey === 'nearest_services'): ?>
             <p class="scout-report-summary">
-                Distances may be Scout estimates or automatically calculated straight-line distances.
-                Verify access and hours before traveling. Reference data:
-                <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors (ODbL)</a>
-                · <a href="/api/osm-nearest-data.php">Download reference data</a>.
+                Mapped distances are straight-line estimates. <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors (ODbL)</a>
             </p>
         <?php endif; ?>
 
