@@ -14,13 +14,13 @@ const renderFixture = scope => execFileSync('php',[
 ],{encoding:'utf8',maxBuffer:16*1024*1024});
 const fixtures = {place:renderFixture('place'),site:renderFixture('site')};
 
-async function boot(scope) {
+async function boot(scope, mobile = true) {
     const dom = new JSDOM(fixtures[scope],{runScripts:'outside-only',
         url:'https://llamascout.com/add-'+scope+'.php'});
     const w = dom.window, d = w.document;
     w.CSS = w.CSS || {};
     w.CSS.escape = value => String(value).replace(/[^a-zA-Z0-9_-]/g,'\\$&');
-    w.matchMedia = () => ({matches:true,addEventListener(){}});
+    w.matchMedia = () => ({matches:mobile,addEventListener(){}});
     w.LlamaPlaceReportForm = {setupRecovery(){}};
     const errors = [];
     w.addEventListener('error',event=>errors.push(event.message));
@@ -84,15 +84,31 @@ async function boot(scope) {
         while (!back.disabled && count++<450) {back.click(); await settle();}
         assert.ok(back.disabled,'Reached first card');
         const visited = new Set();
+        const ordered = [];
         count=0;
         while (true) {
-            for (const key of visibleKeys(true)) visited.add(key);
+            for (const key of visibleKeys(true)) {
+                if (!visited.has(key)) ordered.push(key);
+                visited.add(key);
+            }
             if (next.disabled) break;
             assert.ok(count++<450,'Guided navigation got stuck');
             next.click(); await settle();
         }
         assert.equal(heading.textContent,'Review and submit');
         assert.deepEqual([...visited].sort(),expected,label+' missing or extra question(s)');
+        if (scope === 'place') {
+            assert.equal(ordered[0],'type');
+            const road = [...form.querySelectorAll('[data-report-main-section="getting_there"] [data-report-field]')]
+                .filter(node=>eligible(node,false)).map(node=>node.dataset.reportField);
+            assert.ok(road.length>0,label+' must include Getting There');
+            assert.ok(ordered.indexOf('name')>0);
+            for (const key of road) {
+                assert.ok(ordered.indexOf(key)>0 && ordered.indexOf(key)<ordered.indexOf('name'),
+                    label+' Getting There field '+key+' must precede Place name');
+            }
+            assert.ok(ordered.indexOf('visited_at')<ordered.indexOf('description'),'Date visited stays before Description');
+        }
         assert.equal(q('[data-scout-card-progress]').textContent,'100%');
         toggle.click();
         await settle();
@@ -105,12 +121,19 @@ async function boot(scope) {
 }
 
 (async()=>{
-    const p=await boot('place');
+    const p=await boot('place',false);
     try {
-        assert.ok(p.form.classList.contains('is-scout-card-view'));
-        await p.goTo('type');
+        assert.ok(!p.form.classList.contains('is-scout-card-view'),'Tablet starts in full questionnaire');
+        p.toggle.click();
+        assert.ok(p.form.classList.contains('is-scout-card-view'),'Manual Card View uses the same order as mobile');
+        assert.deepEqual(p.visibleKeys(true),['type'],'Place type is the required prerequisite');
+        assert.equal(p.next.disabled,true,'Cannot skip Place type before type-dependent questions');
         p.chooseCard('type','developed-campground');
         await p.settle();
+        assert.equal(p.next.disabled,false);
+        p.next.click();
+        await p.settle();
+        assert.match(p.q('[data-scout-card-context]').textContent,/^Getting There.*Road Conditions/,'Getting There begins immediately after type');
         await p.goTo('approach_road_hazards');
         const rocks=p.q('[name="approach_road_hazards[]"][value="rocks"]');
         assert.ok(rocks && p.eligible(rocks,true),'Road Hazards card must show actual options');
@@ -123,6 +146,21 @@ async function boot(scope) {
         await p.settle();
         await p.goTo('high_clearance_recommended');
         await p.goTo('four_wheel_drive_recommended');
+        const gettingThereKeys = [...p.form.querySelectorAll('[data-report-main-section="getting_there"] [data-report-field]')]
+            .filter(node=>p.eligible(node,false)).map(node=>node.dataset.reportField);
+        const visitedRoad = new Set(p.visibleKeys(true));
+        // Ensure every remaining road card is offered before entering Basic.
+        let guard=0;
+        while (!p.visibleKeys(true).includes('name') && !p.next.disabled && guard++<450) {
+            p.next.click();
+            await p.settle();
+            for (const key of p.visibleKeys(true)) visitedRoad.add(key);
+        }
+        assert.ok(p.visibleKeys(true).includes('name'),'Basic follows Getting There');
+        // The early road cards were individually exercised above; a full
+        // walk also asserts section ordering and complete eligible coverage.
+        assert.ok(gettingThereKeys.length>0);
+        assert.ok(visitedRoad.has('four_wheel_drive_recommended'));
         const camp=await p.compareWalk('Developed campground with hazards and restricted vehicle access');
         assert.ok(camp.includes('road_surface')&&camp.includes('rocks')&&camp.includes('high_clearance_recommended'));
         // Same native Place type controls, different approved eligibility.
