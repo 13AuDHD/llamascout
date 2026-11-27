@@ -4,11 +4,12 @@
     // V3 report context: Place, Area and Site are separate record levels.
     // Reuse the existing explorer/browser selection events; no second selector.
     const report = document.querySelector('.scout-report');
+    let refreshReportSections = () => {};
     if (report) {
         const sections =
             Array.from(
                 report.querySelectorAll(
-                    '.scout-report-section[data-report-page]'
+                    '.scout-report-section[data-report-page]:not([data-report-warnings])'
                 )
             );
 
@@ -57,7 +58,7 @@
                 )
                 .forEach(
                     (element) => {
-                        element.hidden = false;
+                        if (!element.closest('[data-report-warnings]')) element.hidden = false;
                     }
                 );
         };
@@ -68,10 +69,29 @@
         const placeCompleteness = report.querySelector('.scout-report-completeness');
         const compareLink = report.querySelector('.scout-report-history-link');
 
+        // Reconcile ancestor visibility after the async response has set
+        // each card's own applicability. Never reset its loaded state here.
+        refreshReportSections = (scope) => {
+            for (const section of sections) {
+                const allowed = scope === 'area'
+                    ? scopesFor(section).includes('area')
+                    : section.dataset.reportPage === scope;
+                if (!allowed) { section.hidden = true; continue; }
+                const items = section.querySelectorAll('.scout-report-item');
+                const visibleCard = container => !!container.querySelector('.scout-report-item:not([hidden])');
+                section.querySelectorAll('.scout-report-subsection, .scout-report-grid')
+                    .forEach(container => { container.hidden = !visibleCard(container); });
+                section.hidden = items.length > 0 && !visibleCard(section);
+            }
+        };
         const showReportScope = (scope) => {
             report.dataset.activeReportScope = scope;
             const isArea = scope === 'area';
             if (areaContext) areaContext.hidden = !isArea;
+            if (scope !== 'site') {
+                const status = report.querySelector('[data-site-report-status]');
+                if (status) status.hidden = true;
+            }
             if (placeCompleteness) {
                 const currentSiteCompletion = scope === 'site' && placeCompleteness.dataset.completionScope === 'site';
                 placeCompleteness.hidden = scope !== 'place' && !currentSiteCompletion;
@@ -79,6 +99,12 @@
             if (compareLink) compareLink.hidden = isArea;
 
             restoreItemVisibility(scope);
+            // Quick Warnings has its own async renderer. A generic empty
+            // report section must not reveal its heading or hide its grid.
+            if (scope !== 'site') {
+                const warnings = report.querySelector('[data-report-warnings]');
+                if (warnings) warnings.hidden = true;
+            }
 
             // Every target shows only its own canonical questions.
             // No inventory-review mode may expose Place cards in an Area.
@@ -1384,6 +1410,7 @@
             );
 
 
+        refreshReportSections(targetScope);
         updateTargetContributionPrompts(targetScope, site.report_pending === true);
 
         if (targetScope === 'area' && site.report_pending !== true) {
@@ -1408,10 +1435,14 @@
             }
         }
 
+        const siteStatus = document.querySelector('[data-site-report-status]');
+        if (siteStatus) {
+            siteStatus.hidden = targetScope !== 'site' || site.report_pending !== true;
+            if (!siteStatus.hidden) siteStatus.textContent = 'Loading this Site’s Scout Report…';
+        }
         const warningState = {
             warnings:
-                site.report_warnings
-                || {},
+                site.report_pending === true ? {} : (site.report_warnings || {}),
             target:
                 targetScope === 'area' ? 'Facility' : 'Site',
         };
@@ -1481,6 +1512,8 @@
             return;
         }
         if (kind !== 'area' && kind !== 'parking') return;
+        // Invalidate any in-flight Site report when changing to a Facility.
+        window.LlamaScoutCampsiteBrowser?.clearSelection();
 
         const areaId = Number(
             event.detail?.id ?? event.detail?.featureId ?? event.detail?.areaId
@@ -1761,6 +1794,13 @@
                     })
                     .catch((error) => {
                         console.error('Llama Scout Site detail error:', error);
+                        if (selectionRequest === request && selectedId === activeId) {
+                            const status = document.querySelector('[data-site-report-status]');
+                            if (status) {
+                                status.textContent = 'This Site report could not be loaded. Select the Site again to retry.';
+                                status.hidden = false;
+                            }
+                        }
                     });
             }
 
