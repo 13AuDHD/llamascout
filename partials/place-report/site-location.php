@@ -33,6 +33,13 @@ $adminSiteLocation = $placeReportMode === 'moderator';
                 At the Site? Tap Locate me. Otherwise, enter coordinates and tap Search.
                 These identify the Site, not its Parent Place.
             </div>
+            <?php if (!$adminSiteLocation && $placeReportOnlyScope === 'site'): ?>
+                <section class="nearest-services-panel" data-site-nearest-preview aria-label="Nearest Services">
+                    <h3>Nearest Services</h3>
+                    <p data-nearest-status role="status" aria-live="polite">Enter Site coordinates to automatically find nearby mapped services.</p>
+                    <div data-nearest-results></div>
+                </section>
+            <?php endif; ?>
             <?php if ($adminSiteLocation): ?>
                 <input type="hidden" name="admin_site_coordinates_changed"
                        value="0" data-admin-site-coordinates-changed>
