@@ -252,6 +252,30 @@
     text-align: center;
 }
 
+/* Named nearest-service details have their own row below the distance.
+   Keep the existing title, mileage, icon and attribution layout intact. */
+.scout-report-value-item:has(.scout-report-nearest-match) {
+    grid-template-rows: auto 4px auto auto auto;
+    grid-template-areas:
+        "title title"
+        ". ."
+        "value icon"
+        "nearest nearest"
+        "source source";
+}
+
+.scout-report-value-item > .scout-report-value-content > .scout-report-nearest-match {
+    grid-area: nearest;
+    display: block;
+    min-width: 0;
+    margin: 0;
+    color: var(--text-muted);
+    font-size: .78rem;
+    font-weight: 400;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
 /* Member/source attribution lives in its own grid row beneath the answer. */
 .scout-report-value-item > .scout-report-value-content > .scout-report-answer-source,
 .scout-report-value-item > .scout-report-answer-source,
