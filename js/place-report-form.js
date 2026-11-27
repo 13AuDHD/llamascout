@@ -2254,6 +2254,7 @@ window.LlamaPlaceReportForm
 
 
 // Guided Add Place presentation is deliberately separate from answer logic.
+// Standalone Add Site uses the same presentation adapter.
 // The original form remains the source of truth (including draft recovery,
 // native validation, applicability, compound questions and photo staging).
 (() => {
@@ -2285,8 +2286,8 @@ window.LlamaPlaceReportForm
         const restoreGesture = () => {
             if (gestureHelp.parentElement !== gestureHome) gestureAnchor.after(gestureHelp);
         };
-        const sections = [...form.querySelectorAll('details[data-report-main-section], details[data-report-subsection], details[data-contribution-place-photo-panel]')];
-        const candidates = [...form.querySelectorAll('[data-scout-card-step], [data-report-subsection] .contribution-grid > [data-report-field], [data-report-subsection] .contribution-grid > [data-report-compound-question], [data-scout-card-group], [data-contribution-place-photo-panel]')];
+        const sections = [...form.querySelectorAll('details[data-report-main-section], details[data-report-subsection], details[data-contribution-place-photo-panel], details[data-site-location-section]')];
+        const candidates = [...form.querySelectorAll('[data-scout-card-step], [data-report-subsection] .contribution-grid > [data-report-field], [data-report-subsection] .contribution-grid > [data-report-compound-question], [data-scout-card-group], [data-contribution-place-photo-panel], [data-site-location-section]')];
         const isApplicable = node => {
             for (let current = node; current && current !== form; current = current.parentElement) {
                 if (current.hidden || current.classList.contains('is-applicability-hidden') || current.classList.contains('is-force-hidden')) return false;
@@ -2300,17 +2301,20 @@ window.LlamaPlaceReportForm
             const group = node.dataset.scoutCardGroup;
             if (group && groups.has(group)) { groups.get(group).nodes.push(node); continue; }
             const label = node.dataset.scoutCardStep || group
+                || (node.hasAttribute('data-site-location-section') ? 'Location' : '')
                 || (node.hasAttribute('data-contribution-place-photo-panel') ? 'Photos' : '')
                 || node.querySelector('.place-report-field-label > span:first-child, .place-report-field-label')?.textContent.trim()
                 || 'Scout Report question';
-            const card = {nodes:[node], label, key:node.dataset.reportField || ''};
+            const card = {nodes:[node], label, key:node.dataset.scoutCardKey || node.dataset.reportField || (node.hasAttribute('data-site-location-section') ? 'site_location' : '')};
             all.push(card);
             if (group) groups.set(group, card);
         }
         if (!all.length) return;
         // Establish the type before showing dependent questions. The date
         // follows identity and precedes Description in the guided sequence.
-        const priority = ['type', 'name', 'visited_at', 'description'];
+        const priority = form.id === 'add-site-main-form'
+            ? ['site_parent', 'site_name', 'visited_at', 'site_location']
+            : ['type', 'name', 'visited_at', 'description'];
         const first = priority.map(key => all.find(card => card.key === key)).filter(Boolean);
         all.splice(0, all.length, ...first, ...all.filter(card => !first.includes(card)));
         let active = false, selected = null, openStates = new Map(), drag = null, suppressClick = false;
@@ -2399,7 +2403,7 @@ window.LlamaPlaceReportForm
                 if (keep) section.open = true;
             }
             heading.textContent = selected.label;
-            heading.classList.toggle('is-scout-heading-hidden', Boolean(selected.key));
+            heading.classList.toggle('is-scout-heading-hidden', Boolean(selected.key) && selected.key !== 'site_location');
             const percent = cards.length > 1 ? Math.round(100 * index / (cards.length - 1)) : 100;
             meter.value = percent;
             progress.textContent = percent + '%';
@@ -2533,8 +2537,10 @@ window.LlamaPlaceReportForm
         setMode(true);
     };
     const init = () => {
-        const form = document.getElementById('add-place-main-form');
-        if (form) setup(form);
+        for (const id of ['add-place-main-form', 'add-site-main-form']) {
+            const form = document.getElementById(id);
+            if (form) setup(form);
+        }
     };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, {once:true});
     else init();
