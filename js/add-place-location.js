@@ -21,6 +21,15 @@ document.addEventListener("DOMContentLoaded", () => {
     status.classList.toggle("is-visible", Boolean(message));
   };
 
+  const reportLookupSuccess = (result, accuracyHint = "") => {
+    const elevation = result?.location?.elevation_feet;
+    const elevationHint = elevation === null || elevation === undefined || elevation === ""
+      ? " Elevation is unavailable; you can enter it manually."
+      : "";
+    setStatus(lookupSucceeded + elevationHint + accuracyHint,
+      elevationHint || accuracyHint ? "is-warning" : "is-success");
+  };
+
   const clearStatus = () => {
     setStatus(locationHint, "is-info");
   };
@@ -523,15 +532,12 @@ document.addEventListener("DOMContentLoaded", () => {
         "is-warning"
       );
 
-      await lookupLocation(
+      const result = await lookupLocation(
         parsed.latitude,
         parsed.longitude
       );
 
-      setStatus(
-        lookupSucceeded,
-        "is-success"
-      );
+      reportLookupSuccess(result);
     };
 
   const setLookupLoading =
@@ -796,8 +802,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         setStatus(`Location found.${accuracyHint} ${lookupInProgress}`, "is-warning");
         try {
-          await lookupLocation(latitude, longitude);
-          setStatus(lookupSucceeded + accuracyHint, accuracyHint ? "is-warning" : "is-success");
+          const result = await lookupLocation(latitude, longitude);
+          reportLookupSuccess(result, accuracyHint);
         } catch (error) {
           console.error(error);
           setStatus(
