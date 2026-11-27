@@ -26,8 +26,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const elevationHint = elevation === null || elevation === undefined || elevation === ""
       ? " Elevation is unavailable; you can enter it manually."
       : "";
-    setStatus(lookupSucceeded + elevationHint + accuracyHint,
-      elevationHint || accuracyHint ? "is-warning" : "is-success");
+    const nearestHint = result?.nearest_services?.state === "unavailable"
+      ? " Nearest Services could not be looked up; you can fill them in manually." : "";
+    setStatus(lookupSucceeded + elevationHint + nearestHint + accuracyHint,
+      elevationHint || nearestHint || accuracyHint ? "is-warning" : "is-success");
   };
 
   const clearStatus = () => {
@@ -227,13 +229,106 @@ document.addEventListener("DOMContentLoaded", () => {
     );
   };
 
+  // These are existing Place-owned questionnaire inputs, not extra Site
+  // observations. Keep the native selects and their card-view adapters.
+  const nearestFields = Array.from(form?.querySelectorAll(
+    '[data-report-subsection="nearest_services"] select[name^="nearest_"]'
+  ) || []);
+  const nearestAuto = new Map();
+  const nearestHints = new Map();
+  let nearestPoint = "";
+  let applyingNearest = false;
+  const nearestFieldValue = (miles) => {
+    if (miles > 20) return "Over 20 miles";
+    const rounded = Math.max(1, Math.round(miles));
+    return rounded + (rounded === 1 ? " mile" : " miles");
+  };
+  const setNearest = (field, value) => {
+    applyingNearest = true;
+    try {
+      field.value = value;
+      field.dispatchEvent(new Event("input", {bubbles:true}));
+      field.dispatchEvent(new Event("change", {bubbles:true}));
+    } finally { applyingNearest = false; }
+  };
+  const clearNearestHint = (field) => {
+    nearestHints.get(field)?.remove();
+    nearestHints.delete(field);
+  };
+  const resetNearest = () => {
+    for (const field of nearestFields) {
+      if (nearestAuto.has(field) && field.value === nearestAuto.get(field)) setNearest(field, "");
+      nearestAuto.delete(field);
+      clearNearestHint(field);
+    }
+    nearestPoint = "";
+  };
+  for (const field of nearestFields) {
+    field.addEventListener("change", () => {
+      if (!applyingNearest) {
+        nearestAuto.delete(field);
+        clearNearestHint(field);
+      }
+    });
+  }
+  const applyNearest = (payload, latitude, longitude) => {
+    if (!nearestFields.length) return;
+    const point = Number(latitude).toFixed(7) + ", " + Number(longitude).toFixed(7);
+    if (coordinateInput?.value.trim() !== point) return;
+    if (nearestPoint && nearestPoint !== point) resetNearest();
+    nearestPoint = point;
+    if (payload?.state !== "ready") return;
+    for (const field of nearestFields) {
+      const result = (payload.services || []).find(item => item.key === field.name);
+      const match = result?.match;
+      const miles = Number(match?.distance_miles);
+      const previous = nearestAuto.get(field);
+      if (field.value !== "" && field.value !== previous) continue;
+      if (!match || match.distance_miles == null || !Number.isFinite(miles) || miles < 0) {
+        if (previous !== undefined) setNearest(field, "");
+        nearestAuto.delete(field);
+        clearNearestHint(field);
+        continue;
+      }
+      const value = nearestFieldValue(miles);
+      if (![...field.options].some(option => option.value === value && !option.disabled)) continue;
+      setNearest(field, value);
+      nearestAuto.set(field, value);
+      clearNearestHint(field);
+      const hint = document.createElement("small");
+      hint.dataset.nearestAutofillHint = "";
+      const distance = miles < 0.1 ? "under 0.1 mi" : miles.toFixed(1) + " mi";
+      hint.textContent = match.name + " · " + distance + " straight-line"
+        + (match.status === "seasonal" ? " · Seasonal" : "");
+      if (match.source === "OpenStreetMap") {
+        const source = document.createElement("a");
+        source.href = "https://www.openstreetmap.org/copyright";
+        source.textContent = "© OpenStreetMap contributors (ODbL)";
+        const download = document.createElement("a");
+        download.href = "/api/osm-nearest-data.php";
+        download.textContent = "Data";
+        hint.append(" · ", source, " · ", download);
+      } else {
+        hint.append(" · Llama Scout");
+      }
+      const wrapper = field.closest("[data-report-field]");
+      wrapper?.append(hint);
+      nearestHints.set(field, hint);
+    }
+  };
+  coordinateInput?.addEventListener("input", () => {
+    if (nearestPoint && coordinateInput.value.trim() !== nearestPoint) resetNearest();
+  });
+
   const lookupLocation = async (
     latitude,
     longitude
   ) => {
+    const point = Number(latitude).toFixed(7) + ", " + Number(longitude).toFixed(7);
+    if (nearestPoint && nearestPoint !== point) resetNearest();
     const url =
       `/api/location-lookup.php?lat=${encodeURIComponent(latitude)}` +
-      `&lng=${encodeURIComponent(longitude)}`;
+      `&lng=${encodeURIComponent(longitude)}` + (nearestFields.length ? "&nearest=1" : "");
 
     const response = await fetch(
       url,
@@ -518,6 +613,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
+    applyNearest(result.nearest_services, latitude, longitude);
     return result;
   };
 
