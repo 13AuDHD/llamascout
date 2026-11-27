@@ -5,6 +5,7 @@
     // Reuse the existing explorer/browser selection events; no second selector.
     const report = document.querySelector('.scout-report');
     let refreshReportSections = () => {};
+    let restorePlaceScope = () => {};
     if (report) {
         const sections =
             Array.from(
@@ -162,6 +163,7 @@
             }
         };
 
+        restorePlaceScope = () => showReportScope('place');
         const initialParams = new URLSearchParams(window.location.search);
         const initialArea = initialParams.get('area') || '';
         const initialSite = initialParams.get('site') || '';
@@ -1501,6 +1503,7 @@
             card.hidden = saved.hidden;
             if (saved.content) saved.content.innerHTML = saved.markup;
         }
+        restorePlaceScope();
         updateTargetContributionPrompts();
     };
     let areaReportRequest = 0;
@@ -1508,6 +1511,7 @@
         const token = ++areaReportRequest;
         const kind = String(event.detail?.kind || 'place');
         if (kind === 'place') {
+            window.LlamaScoutCampsiteBrowser?.clearSelection();
             restorePlaceAnswers();
             return;
         }
