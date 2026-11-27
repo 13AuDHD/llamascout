@@ -316,10 +316,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const source = document.createElement("a");
         source.href = "https://www.openstreetmap.org/copyright";
         source.textContent = "© OpenStreetMap contributors (ODbL)";
-        const download = document.createElement("a");
-        download.href = "https://llamascout.com/api/osm-nearest-data.php";
-        download.textContent = "Data";
-        hint.append(" · ", source, " · ", download);
+        hint.append(" · ", source);
       } else {
         hint.append(" · Llama Scout");
       }
