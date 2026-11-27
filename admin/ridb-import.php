@@ -11,6 +11,7 @@ require_once dirname(__DIR__) . '/app/ridb-facility-details.php';
 require_once dirname(__DIR__) . '/app/ridb-safe-sync.php';
 require_once dirname(__DIR__) . '/app/ridb-status.php';
 require_once dirname(__DIR__) . '/app/ridb-useful-fields.php';
+require_once dirname(__DIR__) . '/app/admin-place-nearest.php';
 
 $adminUser =
     moderation_require_admin();
@@ -200,6 +201,12 @@ if (
                         $useful
                     );
 
+                // Enrich only after the source import has finalized its
+                // persisted coordinates. Applies to new and repeat imports.
+                $result['nearest_services'] = admin_place_nearest_after_import(
+                    $mainDb, (int) ($result['place_id'] ?? 0), $userId
+                );
+
                 $results[] =
                     array_merge(
                         [
@@ -292,6 +299,7 @@ require __DIR__ . '/_header.php';
     <th>Site photos</th>
     <th>Place answers</th>
     <th>Location fields</th>
+    <th>Nearest Services</th>
     <th>Place photos</th>
     <th>Official links</th>
     <th></th>
@@ -397,6 +405,17 @@ require __DIR__ . '/_header.php';
             (int) $result['core_fields_imported']
         )
         : '' ?>
+</td>
+
+<td data-label="Nearest Services">
+    <?php $nearest = $result['nearest_services'] ?? null; ?>
+    <?php if (is_array($nearest)): ?>
+        <?= match ($nearest['state']) {
+            'ready' => number_format($nearest['filled']) . ' filled',
+            'no_coordinates' => 'No coordinates',
+            default => 'Lookup unavailable',
+        } ?>
+    <?php endif; ?>
 </td>
 
 <td data-label="Place photos">

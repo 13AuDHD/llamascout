@@ -3715,6 +3715,35 @@ $check('Nearest services use named mapped records and straight-line distances', 
         'Great-circle calculation wraps antimeridian');
 });
 
+$check('Admin Nearest Services import only fills missing canonical Place distances', static function () use ($assert): void {
+    require_once dirname(__DIR__) . '/app/admin-place-nearest.php';
+    $service = static fn ($key, $distance) => ['key'=>$key, 'match'=>$distance === null ? null : ['distance_miles'=>$distance]];
+    $payload = ['state'=>'ready', 'services'=>[
+        $service('nearest_town', 3.2),
+        $service('nearest_fuel', .3),
+        $service('nearest_water', 0),
+        $service('nearest_grocery', 20.1),
+        $service('nearest_toilet', 1),
+        $service('nearest_hospital', 8),
+        $service('nearest_propane', null),
+        $service('nearest_ev_charging', -1),
+        $service('site_length_feet', 6),
+    ]];
+    $base = ['rules'=>['nearest_fuel'=>'5 miles'], '_answer_state'=>['nearest_toilet']];
+    $current = ['nearest_hospital'=>['recorded'=>true,'state'=>'unknown']];
+    $expected = ['nearest_town'=>'3 miles','nearest_water'=>'1 mile','nearest_grocery'=>'Over 20 miles'];
+    $assert(admin_place_nearest_missing_inputs($payload,$base,$current) === $expected,
+        'Preserve existing and explicit Unknown values in legacy and current stores; convert only valid mapped distances.');
+    $assert(admin_place_nearest_missing_inputs(['state'=>'unavailable'],$base,$current) === [],
+        'Failed lookup cannot write any answers.');
+    $root = dirname(__DIR__);
+    $ridb = file_get_contents($root . '/admin/ridb-import.php');
+    $assert(strpos($ridb,'admin_place_nearest_after_import(') > strpos($ridb,'llama_ridb_useful_sync('),
+        'New and repeat RIDB imports enrich after final core import.');
+    $assert(str_contains(file_get_contents($root . '/admin/place.php'), "'nearest_services'"),
+        'Admin has a same-origin read-only lookup endpoint.');
+});
+
 $check('Canonical field contract', static function () use ($assert): void {
     $issues = llama_place_report_contract_issues();
     $assert(!$issues, 'Contract issues: ' . implode(' | ', array_slice($issues, 0, 12)) . ' (total ' . count($issues) . ')');
