@@ -1302,6 +1302,15 @@ foreach (
             ) ?>
         </h3>
 
+        <?php if ($placeReportReadMode === 'scout-report' && $sectionKey === 'nearest_services'): ?>
+            <p class="scout-report-summary">
+                Distances may be Scout estimates or automatically calculated straight-line distances.
+                Verify access and hours before traveling. Reference data:
+                <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors (ODbL)</a>
+                · <a href="/api/osm-nearest-data.php">Download reference data</a>.
+            </p>
+        <?php endif; ?>
+
         <?php if ($placeReportReadMode === 'scout-report' && $sectionKey === 'basic'): ?>
             <?php
             require_once dirname(__DIR__, 2) . '/app/place-report/contact-links.php';
