@@ -371,4 +371,49 @@ $check($standalone['nearest_toilet']['match'] === null,
 $check(llama_nearest_services($db,null,null)['state'] === 'no_coordinates',
     'Missing Site coordinates are never replaced with Parent Place GPS.');
 
+// Separate OSM snapshot import and mixed-source nearest ranking.
+$db->exec((string) file_get_contents(dirname(__DIR__, 2) . '/tools/migrations/20261127_osm_nearest_services.sql'));
+$check(!llama_osm_nearest_ready($db), 'Empty OSM layer must not claim coverage.');
+$snapshot = static function (array $rows, bool $complete = true, string $date = '2026-11-20', string $region = 'colorado') {
+    $stream = fopen('php://temp', 'w+');
+    fwrite($stream, json_encode(llama_osm_nearest_header($region,$date)) . "\n");
+    foreach ($rows as $row) fwrite($stream, json_encode($row) . "\n");
+    if ($complete) fwrite($stream, json_encode(['end'=>true,'count'=>count($rows)]) . "\n");
+    rewind($stream);
+    return $stream;
+};
+$osmRow = static fn ($id,$type,$name,$lat,$lon) => ['osm_type'=>'node','osm_id'=>$id,
+    'service_type'=>$type,'name'=>$name,'latitude'=>$lat,'longitude'=>$lon];
+$osmRows = [
+    $osmRow(1,'fuel','Closer OSM fuel',37.255,-107.12),
+    $osmRow(2,'hospital','Mapped hospital',37.3,-107.12),
+    $osmRow(3,'town','Mapped town',37.29,-107.12),
+    $osmRow(4,'alcohol_sales','Mapped store',37.28,-107.12),
+    $osmRow(5,'toilet','Tied OSM toilet',37.251,-107.12),
+];
+$check(llama_osm_nearest_import($db,$snapshot($osmRows)) === 5,'Complete OSM snapshot imports.');
+$mixed = llama_nearest_services($db,37.25,-107.12,1);
+$byKey = array_column($mixed['services'],null,'key');
+$check($mixed['osm_data_loaded'] && $byKey['nearest_fuel']['match']['source'] === 'OpenStreetMap'
+    && $byKey['nearest_fuel']['match']['osm_id'] === 1
+    && $byKey['nearest_fuel']['match']['resource_id'] === null,
+    'Closer OSM result retains distinct source identity.');
+$check($byKey['nearest_toilet']['match']['source'] === 'Llama Scout',
+    'Exact tie prefers original Scout resource.');
+$check($byKey['nearest_hospital']['match']['name'] === 'Mapped hospital'
+    && $byKey['nearest_town']['supported'] && $byKey['nearest_alcohol_sales']['supported'],
+    'Imported reference layer supplies previously unsupported categories.');
+$failure(static fn () => llama_osm_nearest_import($db,$snapshot([$osmRows[0]],false)),
+    'Truncated snapshot must roll back.');
+$check((int)$db->query('SELECT COUNT(*) FROM osm_nearest_services')->fetchColumn() === 5,
+    'Failed import preserves old snapshot.');
+$failure(static fn () => llama_osm_nearest_import($db,$snapshot([$osmRows[0]],true,'2026-11-19')),
+    'Older regional snapshot cannot overwrite newer data.');
+llama_osm_nearest_import($db,$snapshot([$osmRows[0]],true,'2026-11-21'));
+$check((int)$db->query('SELECT COUNT(*) FROM osm_nearest_services')->fetchColumn() === 1,
+    'Refresh removes stale regional POIs.');
+$check((int)$db->query('SELECT COUNT(*) FROM resources')->fetchColumn() === 6,
+    'OSM import never mutates Scout resources.');
+$check(llama_osm_nearest_regions($db)[0]['snapshot_date'] === '2026-11-21',
+    'Public download index lists current regional snapshot.');
 echo "PASS: Site submit, revision, rejection, one-target approval, immutable/current answers, duplicates and rollback in MariaDB.\n";
