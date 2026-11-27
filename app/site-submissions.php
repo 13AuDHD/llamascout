@@ -166,6 +166,17 @@ function llama_site_parent_reference(PDO $db, string $reference, int $userId = 0
     ];
 }
 
+/** Caller holds the parent submission lock in the Place approval transaction. */
+function llama_site_link_approved_parent(PDO $db, int $submissionId, int $userId, int $placeId): void
+{
+    if (!llama_site_pending_parent_ready($db)) return;
+    $stmt = $db->prepare(
+        'UPDATE place_site_submissions SET place_id = ?
+         WHERE parent_submission_id = ? AND submitted_by = ? AND place_id IS NULL'
+    );
+    $stmt->execute([$placeId, $submissionId, $userId]);
+}
+
 /** Keep a stable typed identity for revisions and moderation. */
 function llama_site_submission_parent_reference(array $row): string
 {
@@ -459,7 +470,9 @@ function llama_site_submission_resubmit(
         $parentRef = llama_site_submission_parent_reference($row);
         $submittedRef = (string) ($input['site_place_id'] ?? '');
         // A Place might have been approved while the revision was open.
-        if ($submittedRef !== $parentRef && $submittedRef !== 'pending:' . (int) ($row['parent_submission_id'] ?? 0)) {
+        $originalPendingId = (int) ($row['parent_submission_id'] ?? 0);
+        if ($submittedRef !== $parentRef
+            && !($originalPendingId > 0 && $submittedRef === 'pending:' . $originalPendingId)) {
             throw new InvalidArgumentException(
                 'The parent Place cannot change during a Site revision.'
             );
@@ -496,6 +509,7 @@ function llama_site_submission_resubmit(
 
         $input['site_place_id'] = $parentRef;
         $data = llama_site_submission_prepare($db, $input, $userId);
+        $data['parent_submission_id'] = $originalPendingId ?: null;
         $observations = $data['answers'];
         unset($observations['visited_at']);
         if (!$observations && !$keptPhotos && !$submittedPhotos) {
