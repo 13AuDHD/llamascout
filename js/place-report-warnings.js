@@ -75,6 +75,7 @@
                     );
 
             grid.replaceChildren();
+            grid.hidden = !items.length;
 
             if (!items.length) {
                 section.hidden =
@@ -91,6 +92,12 @@
 
                 item.className =
                     'scout-report-item scout-report-value-item scout-report-warning-item';
+
+                // Match the selected report scope so the public CSS guard
+                // does not hide dynamically created warning cards.
+                const scope = target === 'Facility' ? 'area' : 'site';
+                item.dataset.reportScopes = scope;
+                item.dataset.reportOwner = scope;
 
                 const content =
                     document.createElement(
@@ -183,6 +190,7 @@
 
         grid.innerHTML =
             baseline.html;
+        grid.hidden = false;
 
         section.hidden =
             baseline.hidden;

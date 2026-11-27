@@ -154,7 +154,98 @@ event('place');
 assert.ok(isShown(place));
 assert.ok(!isShown(site));
 dom.window.close();
-console.log('PASS: original Place questions, Area isolation, scope CSS, Site restoration and returning to Place');
+
+// Reproduce a real Site browser selection, with a deferred authorized
+// report response. Inspect ancestors, not just the card's own hidden flag.
+const detail = new JSDOM(`<!doctype html><body><style>${css}</style>
+<section class="scout-report">
+  <p data-site-report-status hidden></p>
+  <section class="scout-report-section" data-report-page="place" data-report-scopes="place">
+    <div class="scout-report-grid"><div class="scout-report-item" data-report-scopes="place" data-report-owner="place"><strong>Campground</strong></div></div>
+  </section>
+  <section class="scout-report-section" data-report-page="site" data-report-scopes="site" data-report-warnings hidden>
+    <p data-report-warning-summary></p><div class="scout-report-grid" data-report-warning-grid></div>
+  </section>
+  <section class="scout-report-section" data-report-page="site" data-report-scopes="site" data-report-target-section="1">
+    <div class="scout-report-subsection"><div class="scout-report-grid">
+      <div class="scout-report-item" data-report-scopes="site" data-report-owner="site" data-campsite-report-field="site_length_feet" hidden><div class="scout-report-value-content"><strong>Not provided</strong></div></div>
+      <div class="scout-report-item" data-report-scopes="site" data-report-owner="site" data-campsite-report-field="site_potable_water" hidden><div class="scout-report-value-content"><strong>Not provided</strong></div></div>
+    </div></div>
+    <div data-target-report-prompt hidden><strong></strong><p></p></div>
+  </section>
+</section>
+<div data-place-campsites-mount data-place-slug="example" data-complete-access="1"></div></body>`,{url:'https://llamascout.com/place.php?slug=example',runScripts:'outside-only'});
+const win = detail.window;
+const find = selector => win.document.querySelector(selector);
+const wait = () => new Promise(resolve=>setImmediate(resolve));
+const shown = node => {
+    for (let el=node; el; el=el.parentElement) {
+        if (el.hidden || win.getComputedStyle(el).display==='none') return false;
+    }
+    return true;
+};
+win.CSS = win.CSS || {};
+win.CSS.escape = String;
+win.HTMLElement.prototype.scrollTo = () => {};
+win.matchMedia = () => ({matches:false});
+const pending = [];
+win.fetch = url => String(url).includes('mode=report')
+    ? new Promise(resolve=>pending.push(resolve))
+    : Promise.resolve({ok:true,json:async()=>({ok:true,browser:{show_site_layer:true},sites:[
+        {feature_id:2,display_name:'Site 2',summary:[]},
+        {feature_id:3,display_name:'Site 3',summary:[]},
+        {feature_id:4,display_name:'Site 4',summary:[]},
+    ]})});
+win.eval(read('js/place-report-warnings.js'));
+win.eval(js);
+await wait();
+const choose = id => find('[data-campsite-id="'+id+'"]').click();
+const length = find('[data-campsite-report-field="site_length_feet"]');
+const water = find('[data-campsite-report-field="site_potable_water"]');
+const warnings = find('[data-report-warnings]');
+const status = find('[data-site-report-status]');
+choose(2);
+assert.equal(pending.length,1);
+assert.ok(!shown(length),'While loading, do not show previous or placeholder answers');
+assert.ok(!shown(warnings),'No empty Quick Warnings heading');
+assert.ok(shown(status),'Visible loading state');
+pending.shift()({ok:true,json:async()=>({ok:true,site:{
+    id:2,display_name:'Site 2',report_effective_values:{site_length_feet:'35 ft',site_potable_water:'Seasonal'},
+    report_inapplicable_keys:[],report_warnings:{hazard:{label:'Steep access',icon:'alert-triangle'}},
+}})});
+await wait();
+assert.ok(shown(length),'Site answers and every enclosing section/grid must be visible after asynchronous load');
+assert.ok(shown(water),'Seasonal Site water answer is visible');
+assert.equal(length.querySelector('strong').textContent,'35 ft');
+assert.equal(water.querySelector('strong').textContent,'Seasonal');
+assert.ok(shown(find('.scout-report-warning-item')),'Actual warning survives scope guard and grid visibility');
+assert.ok(!shown(status));
+choose(3);
+assert.ok(!shown(length),'Next Site clears prior answers');
+pending.shift()({ok:true,json:async()=>({ok:true,site:{
+    id:3,display_name:'Site 3',report_effective_values:{site_length_feet:'18 ft'},
+    report_inapplicable_keys:['site_potable_water'],report_warnings:{},
+}})});
+await wait();
+assert.ok(shown(length));
+assert.equal(length.querySelector('strong').textContent,'18 ft');
+assert.ok(!shown(water),'Inapplicable Site field remains hidden');
+assert.ok(!shown(warnings),'No warnings means no warning heading');
+choose(2);
+assert.ok(shown(length),'Cached report restores the enclosing section too');
+assert.ok(shown(find('.scout-report-warning-item')));
+choose(4);
+pending.shift()({ok:false});
+await wait();
+assert.match(status.textContent,/could not be loaded/);
+assert.ok(shown(status),'Failed API response must not silently leave blank report');
+win.dispatchEvent(new win.CustomEvent('llama:explorer-selection',{detail:{kind:'place'}}));
+assert.ok(shown(find('[data-report-owner="place"]')));
+assert.ok(!shown(length));
+assert.ok(!shown(status));
+assert.ok(!shown(warnings));
+win.close();
+console.log('PASS: Place and Facility isolation, delayed Site report, cached Site, warnings, API errors and return to Place');
 })().catch(error => {
     console.error(error);
     process.exitCode = 1;
