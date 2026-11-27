@@ -209,6 +209,12 @@ $compareReportHistoryUrl =
         <script defer src="/js/place-report-seasons.js"></script>
     <?php endif; ?>
 
+    <section class="nearest-services-panel" data-site-nearest-report hidden aria-label="Nearest Services">
+        <h3>Nearest Services</h3>
+        <p data-nearest-status role="status"></p>
+        <div data-nearest-results></div>
+    </section>
+
     <?php
     require dirname(__DIR__, 2)
         . '/place-report/read-only.php';
