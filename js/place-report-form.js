@@ -2270,6 +2270,21 @@ window.LlamaPlaceReportForm
         const next = controls?.querySelector('[data-scout-card-next]');
         const gestureHelp = controls?.querySelector('[data-scout-card-gesture-help]');
         if (![toggle, controls, heading, progress, meter, progressWrap, back, next, gestureHelp].every(Boolean)) return;
+        const save = form.querySelector('button[name="save_for_later"]');
+        // Move the original control and live status, not a proxy or clone.
+        // Their existing click listener, form association and draft state survive.
+        const saveStatus = form.querySelector('[data-draft-save-status]');
+        const movable = [save, saveStatus].filter(Boolean).map(node => {
+            const anchor = document.createComment('guided draft control original position');
+            node.before(anchor);
+            return {node, anchor};
+        });
+        const gestureHome = gestureHelp.parentElement;
+        const gestureAnchor = document.createComment('guided swipe hint original position');
+        gestureHelp.before(gestureAnchor);
+        const restoreGesture = () => {
+            if (gestureHelp.parentElement !== gestureHome) gestureAnchor.after(gestureHelp);
+        };
         const sections = [...form.querySelectorAll('details[data-report-main-section], details[data-report-subsection], details[data-contribution-place-photo-panel]')];
         const candidates = [...form.querySelectorAll('[data-scout-card-step], [data-report-subsection] .contribution-grid > [data-report-field], [data-report-subsection] .contribution-grid > [data-report-compound-question], [data-scout-card-group], [data-contribution-place-photo-panel]')];
         const isApplicable = node => {
@@ -2391,7 +2406,16 @@ window.LlamaPlaceReportForm
             syncChoices(onstage);
             back.disabled = index === 0;
             next.disabled = index === cards.length - 1;
-            gestureHelp.textContent = '← Swipe →';
+            // Put the single swipe hint beside the last applicable Clear
+            // control, without moving or duplicating any canonical answers.
+            const clear = onstage.flatMap(node => [...node.querySelectorAll('[data-place-report-clear]')])
+                .filter(button => isApplicable(button) && !button.disabled).at(-1);
+            const clearRow = clear?.closest('.add-place-radio-row');
+            if (clearRow) {
+                if (gestureHelp.parentElement !== clearRow) clear.before(gestureHelp);
+            } else {
+                restoreGesture();
+            }
             if (focus) heading.focus();
         };
         const setMode = enabled => {
@@ -2405,8 +2429,12 @@ window.LlamaPlaceReportForm
             form.classList.toggle('is-scout-card-view', active);
             if (active) {
                 openStates = new Map(sections.map(section => [section, section.open]));
+                if (save) next.before(save);
+                if (saveStatus) controls.append(saveStatus);
                 render(true);
             } else {
+                restoreGesture();
+                for (const {node, anchor} of movable) anchor.after(node);
                 clearPresentation();
                 removeChoices();
                 for (const [section, open] of openStates) section.open = open;
