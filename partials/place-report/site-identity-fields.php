@@ -4,13 +4,13 @@
 ?>
 <?php if ($isNeedsChanges): ?>
     <input type="hidden" name="site_place_id" value="<?= $selectedPlaceId ?>">
-    <div class="contribution-field">
+    <div class="contribution-field" data-scout-card-step="Parent Place" data-scout-card-key="site_parent">
         <span class="place-report-field-label">Parent Place</span>
         <strong><?= $e((string) ($revision['data']['place_name']
             ?? $selectedParentPlace['name'] ?? ('Place #' . $selectedPlaceId))) ?></strong>
     </div>
 <?php else: ?>
-    <div class="contribution-field site-parent-place-picker" data-site-parent-picker>
+    <div class="contribution-field site-parent-place-picker" data-site-parent-picker data-scout-card-step="Parent Place" data-scout-card-key="site_parent">
         <label class="place-report-field-label" for="site-parent-place">Parent Place *</label>
         <input type="hidden" name="site_place_id" data-site-parent-id
             value="<?= (int) ($selectedParentPlace['id'] ?? 0) ?: '' ?>">
@@ -23,7 +23,7 @@
             data-site-parent-results role="listbox" hidden></div>
     </div>
 <?php endif; ?>
-<div class="contribution-field">
+<div class="contribution-field" data-scout-card-step="Site name" data-scout-card-key="site_name">
     <label class="place-report-field-label" for="contribution-site-name">Site name *</label>
     <div class="add-place-name-control">
         <input type="text" id="contribution-site-name" name="site_name" maxlength="120" required

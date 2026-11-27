@@ -728,7 +728,110 @@ async function testGuidedLocateMe() {
     } finally { w.close(); }
 }
 
-testAdminSiteEditing().then(testAdminSiteEditing).then(testClosureDates).then(testGuidedPlaceCards).then(testGuidedLocateMe).then(() => {
+async function testGuidedSiteCards() {
+    const dom = new JSDOM(`<form id="add-site-main-form" class="place-report-form">
+        <div data-scout-card-navigation hidden>
+            <button type="button" data-scout-card-toggle></button>
+            <div data-scout-card-progress-wrap><progress data-scout-card-meter max="100"></progress><span data-scout-card-progress></span></div>
+            <h2 data-scout-card-heading tabindex="-1"></h2>
+        </div>
+        <details data-report-main-section="site" open><summary>Site</summary><div>
+            <details data-report-subsection="site_info"><summary>Site Info</summary><div class="contribution-grid">
+                <div data-scout-card-step="Parent Place" data-scout-card-key="site_parent" data-site-parent-picker>
+                    <label>Parent Place *</label><input name="site_place_id" type="hidden" value="17"><input data-site-parent-input value="Example campground" required>
+                    <div data-site-parent-results hidden></div>
+                </div>
+                <div data-scout-card-step="Site name" data-scout-card-key="site_name">
+                    <label>Site name *</label><input name="site_name" required value="Site 12">
+                    <button type="button" data-refresh-site-name>Suggest</button>
+                </div>
+                <div data-report-field="site_surface"><span class="place-report-field-label"><span>Surface</span></span>
+                    <select name="site_surface"><option value="">Select</option><option value="gravel">Gravel</option></select>
+                </div>
+                <div data-report-field="site_accessible"><span class="place-report-field-label">Accessible?</span>
+                    <div class="add-place-radio-row"><div class="add-place-radio-options"><label><input type="radio" name="site_accessible" value="1">Yes</label></div>
+                    <button type="button" data-place-report-clear="site_accessible">Clear</button></div>
+                </div>
+                <div data-report-field="visited_at"><span class="place-report-field-label">Date visited</span><input name="visited_at" value="2026-11-26"></div>
+                <div data-report-field="conditional" hidden><input name="conditional" value="retained"></div>
+            </div></details>
+            <details data-site-location-section><summary>Location</summary><div class="contribution-grid">
+                <button type="button" data-site-locate>Locate me</button>
+                <input name="site_coordinates" data-site-coordinate-input>
+                <button type="button" data-site-coordinate-search>Search</button>
+                <div data-site-location-status>Tap Locate me.</div>
+            </div></details>
+        </div></details>
+        <details data-contribution-place-photo-panel open><summary>Photos</summary><input name="photos_json" value="[]"></details>
+        <div data-scout-card-step="Review and submit"><button type="submit">Submit</button></div>
+        <div data-scout-card-controls hidden><span data-scout-card-gesture-help>← Swipe →</span>
+            <div class="scout-card-buttons"><button type="button" data-scout-card-back>Back</button><button type="button" data-scout-card-next>Next</button></div>
+        </div>
+    </form>`, {runScripts:'outside-only',url:'https://llamascout.com/add-site.php'});
+    const w = dom.window, d = w.document;
+    try {
+        Object.defineProperty(w.navigator,'geolocation',{value:{
+            getCurrentPosition(success) { success({coords:{latitude:37.25,longitude:-107.12}}); }
+        }});
+        w.eval(fs.readFileSync(path.resolve(__dirname,'../../js/add-site-location.js'),'utf8'));
+        w.eval(source.slice(source.indexOf('// Guided Add Place presentation is deliberately separate')));
+        await new Promise(resolve=>d.addEventListener('DOMContentLoaded',resolve,{once:true}));
+        const q = s=>d.querySelector(s), form = q('form');
+        const heading = q('[data-scout-card-heading]'), next = q('[data-scout-card-next]'), back = q('[data-scout-card-back]');
+        const toggle = q('[data-scout-card-toggle]'), gesture = q('[data-scout-card-gesture-help]');
+        const location = q('[data-site-location-section]');
+        assert.equal(form.classList.contains('is-scout-card-view'),true);
+        assert.equal(heading.textContent,'Parent Place');
+        assert.equal(back.disabled,true);
+        assert.equal(q('[data-site-parent-picker]').classList.contains('is-scout-card-offstage'),false);
+        assert.equal(location.classList.contains('is-scout-card-offstage'),true);
+        assert.equal(q('[name="save_for_later"]'),null,'Site must not use the Place draft endpoint');
+        next.click();
+        assert.equal(heading.textContent,'Site name');
+        assert.equal(q('[data-refresh-site-name]').closest('[data-scout-card-step]').classList.contains('is-scout-card-offstage'),false);
+        next.click();
+        assert.equal(heading.textContent,'Date visited');
+        next.click();
+        assert.equal(heading.textContent,'Location');
+        assert.equal(heading.classList.contains('is-scout-heading-hidden'),false);
+        assert.equal(location.open,true);
+        q('[data-site-locate]').click();
+        assert.equal(new w.FormData(form).get('site_coordinates'),'37.2500000, -107.1200000');
+        assert.match(q('[data-site-location-status]').textContent,/Parent Place coordinates were not changed/);
+        next.click();
+        assert.equal(heading.textContent,'Surface');
+        const gravel = [...d.querySelectorAll('.scout-card-choice')].find(button=>button.textContent==='Gravel');
+        gravel.click();
+        assert.equal(new w.FormData(form).get('site_surface'),'gravel');
+        next.click();
+        assert.equal(heading.textContent,'Accessible?');
+        assert.equal(gesture.parentElement,q('.add-place-radio-row'));
+        const pointer = (name,x,y) => {
+            const event = new w.MouseEvent(name,{bubbles:true,cancelable:true,clientX:x,clientY:y,button:0});
+            Object.defineProperties(event,{pointerId:{value:1},isPrimary:{value:true}});
+            q('[data-report-field="site_accessible"]').dispatchEvent(event);
+        };
+        pointer('pointerdown',100,100); pointer('pointermove',25,100); pointer('pointerup',25,100);
+        assert.equal(heading.textContent,'Photos');
+        assert.equal(q('[data-contribution-place-photo-panel]').open,true);
+        next.click();
+        assert.equal(heading.textContent,'Review and submit');
+        assert.equal(next.disabled,true);
+        const data = new w.FormData(form);
+        assert.equal(data.get('site_place_id'),'17');
+        assert.equal(data.get('site_name'),'Site 12');
+        assert.equal(data.get('site_coordinates'),'37.2500000, -107.1200000');
+        assert.equal(data.has('latitude'),false,'Site GPS never creates Place coordinate fields');
+        toggle.click();
+        assert.equal(form.classList.contains('is-scout-card-view'),false);
+        assert.equal(location.open,false,'Original accordion state is restored');
+        assert.equal(q('[data-report-field="conditional"]').hidden,true);
+        assert.equal(q('[name="site_surface"]').classList.contains('is-scout-choice-source'),false);
+        assert.equal(new w.FormData(form).get('site_surface'),'gravel');
+    } finally { w.close(); }
+}
+
+testAdminSiteEditing().then(testAdminSiteEditing).then(testClosureDates).then(testGuidedPlaceCards).then(testGuidedLocateMe).then(testGuidedSiteCards).then(() => {
     console.log('PASS: closure dates and Site selections survive reload, parent-child visibility and scoped saves');
 }).catch(error => {
     console.error(error);
