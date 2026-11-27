@@ -71,22 +71,6 @@ if ($selectedPlaceId !== '' && $selectedPlaceId !== '0') {
         $error = $exception->getMessage();
     }
 }
-// The preview uses the entered Site point, not device or Parent Place GPS.
-if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET' && isset($_GET['nearest_services'])) {
-    header('Content-Type: application/json; charset=utf-8');
-    header('Cache-Control: private, no-store');
-    try {
-        require_once __DIR__ . '/app/nearest-services.php';
-        $result = llama_nearest_services($db, $_GET['lat'] ?? null, $_GET['lng'] ?? null,
-            (int) ($selectedParentPlace['place_id'] ?? 0));
-        echo json_encode($result, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR);
-    } catch (Throwable $exception) {
-        llama_log_caught_exception($exception, 'site.nearest_services', ['user_id' => $userId]);
-        http_response_code(503);
-        echo json_encode(['state' => 'unavailable']);
-    }
-    exit;
-}
 $siteFields = llama_site_submission_fields();
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
@@ -258,8 +242,6 @@ require __DIR__ . '/partials/header.php';
     . (int) filemtime(__DIR__ . '/js/add-place-name.js')) ?>" defer></script>
 <script src="<?= $e($siteUrl . '/js/add-site-location.js?v='
     . (int) filemtime(__DIR__ . '/js/add-site-location.js')) ?>" defer></script>
-<script src="<?= $e($siteUrl . '/js/nearest-services.js?v='
-    . (int) filemtime(__DIR__ . '/js/nearest-services.js')) ?>" defer></script>
 <script src="<?= $e($siteUrl . '/js/place-report-form.js?v='
     . (int) filemtime(__DIR__ . '/js/place-report-form.js')) ?>" defer></script>
 <?php require __DIR__ . '/partials/footer.php'; ?>
