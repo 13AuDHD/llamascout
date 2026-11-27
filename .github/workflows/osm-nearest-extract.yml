@@ -1,0 +1,62 @@
+name: Extract OSM Nearest Services
+on:
+  pull_request:
+    paths:
+      - 'tools/extract-osm-nearest.py'
+      - 'tools/osm-nearest-to-sql.py'
+      - 'tools/tests/osm-nearest-extraction.py'
+      - '.github/workflows/osm-nearest-extract.yml'
+  workflow_dispatch:
+    inputs:
+      region:
+        description: Geofabrik US state slug (e.g. colorado or new-mexico)
+        required: true
+        default: colorado
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m pip install osmium shapely
+      - run: python tools/tests/osm-nearest-extraction.py
+  extract:
+    if: github.event_name == 'workflow_dispatch'
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install extraction tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y osmium-tool
+          python -m pip install osmium shapely
+      - name: Download and filter state extract
+        env:
+          REGION: ${{ inputs.region }}
+        run: |
+          set -euo pipefail
+          [[ "$REGION" =~ ^[a-z0-9][a-z0-9-]{0,63}$ ]]
+          curl --fail --location --retry 3 --output source.osm.pbf "https://download.geofabrik.de/north-america/us/${REGION}-latest.osm.pbf"
+          timestamp="$(osmium fileinfo -g header.option.osmosis_replication_timestamp source.osm.pbf)"
+          snapshot="${timestamp:0:10}"
+          [[ "$snapshot" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]
+          osmium tags-filter source.osm.pbf -o filtered.osm.pbf \
+            'nwr/amenity=fuel,charging_station,drinking_water,toilets,hospital' \
+            'nwr/shop=alcohol,wine,supermarket,grocery,convenience' \
+            'nwr/place=city,town,village' 'nwr/healthcare=hospital' \
+            'nwr/drinking_water=yes' 'nwr/fuel:propane=yes' 'nwr/propane=yes'
+          mkdir -p output
+          python tools/extract-osm-nearest.py filtered.osm.pbf "output/${REGION}.ndjson" --region "$REGION" --snapshot "$snapshot"
+          python tools/osm-nearest-to-sql.py "output/${REGION}.ndjson" "output/${REGION}.sql.gz"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: osm-nearest-${{ inputs.region }}
+          path: output/
+          if-no-files-found: error
+          retention-days: 14

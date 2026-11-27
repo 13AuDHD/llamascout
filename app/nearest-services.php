@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/resources.php';
+require_once __DIR__ . '/osm-nearest-data.php';
 
 /**
  * Calculated map distances are not Scout observations. Never write them
@@ -44,10 +45,13 @@ function llama_nearest_distance_miles(float $lat, float $lng, float $otherLat, f
     return 3958.7613 * 2 * asin(sqrt(max(0.0, min(1.0, $a))));
 }
 
-function llama_nearest_service_results(float $lat, float $lng, iterable $rows, float $radius = 100.0): array
+function llama_nearest_service_results(float $lat, float $lng, iterable $rows, float $radius = 100.0, bool $osmEnabled = false): array
 {
     $matches = [];
     $keys = llama_nearest_service_keys();
+    if ($osmEnabled) $keys += [
+        'town'=>'nearest_town','alcohol_sales'=>'nearest_alcohol_sales','hospital'=>'nearest_hospital',
+    ];
     foreach ($rows as $row) {
         $key = $keys[$row['service_type'] ?? ''] ?? null;
         if ($key === null || !llama_resource_coordinates_valid($row['latitude'] ?? null, $row['longitude'] ?? null)) continue;
@@ -55,14 +59,22 @@ function llama_nearest_service_results(float $lat, float $lng, iterable $rows, f
         if ($name === '') continue;
         $distance = llama_nearest_distance_miles($lat, $lng, (float) $row['latitude'], (float) $row['longitude']);
         if ($distance > $radius) continue;
+        $osm = ($row['source'] ?? '') === 'OpenStreetMap';
         $id = (int) ($row['id'] ?? 0);
+        // Prefer the Scout record on an exact distance tie, but do not
+        // suppress a genuinely closer independently mapped OSM service.
+        $tie = [$osm ? 1 : 0, $id, (string) ($row['osm_type'] ?? '')];
         if (isset($matches[$key]) && ($distance > $matches[$key]['distance_miles']
-            || ($distance === $matches[$key]['distance_miles'] && $id >= $matches[$key]['resource_id']))) continue;
+            || ($distance === $matches[$key]['distance_miles'] && $tie >= $matches[$key]['_tie']))) continue;
         $matches[$key] = [
-            'resource_id' => $id,
+            'resource_id' => $osm ? null : $id,
+            'osm_id' => $osm ? $id : null,
+            'osm_type' => $osm ? $row['osm_type'] : null,
+            'snapshot_date' => $osm ? ($row['snapshot_date'] ?? null) : null,
+            '_tie' => $tie,
             'name' => $name,
             'distance_miles' => $distance,
-            'source' => 'Llama Scout',
+            'source' => $osm ? 'OpenStreetMap' : 'Llama Scout',
             'facility' => (int) ($row['parent_place_id'] ?? 0) > 0,
             'status' => (string) ($row['status'] ?? 'unknown'),
         ];
@@ -70,7 +82,10 @@ function llama_nearest_service_results(float $lat, float $lng, iterable $rows, f
     $results = [];
     foreach (llama_nearest_service_categories() as $key => $label) {
         $match = $matches[$key] ?? null;
-        if ($match !== null) $match['distance_miles'] = round($match['distance_miles'], 3);
+        if ($match !== null) {
+            $match['distance_miles'] = round($match['distance_miles'], 3);
+            unset($match['_tie']);
+        }
         $results[] = [
             'key' => $key, 'label' => $label, 'match' => $match,
             'supported' => in_array($key, $keys, true),
@@ -116,11 +131,41 @@ function llama_nearest_services(PDO $db, mixed $latitude, mixed $longitude, int 
     }
     $stmt = $db->prepare($sql);
     $stmt->execute($params);
-    $rows = (static function () use ($stmt): Generator {
+    $osmEnabled = llama_osm_nearest_ready($db);
+    $rows = (static function () use ($stmt, $db, $lat, $lng, $osmEnabled): Generator {
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) yield $row;
+        $stmt->closeCursor();
+        if (!$osmEnabled) return;
+        $sql = 'SELECT osm_id AS id,osm_type,name,latitude,longitude,service_type,snapshot_date
+                FROM osm_nearest_services WHERE latitude BETWEEN ? AND ?';
+        $params = [max(-90, $lat - 1.5), min(90, $lat + 1.5)];
+        // Conservative longitude bound, with wrap at the dateline and
+        // unrestricted longitude near the poles. Exact distance follows.
+        $pole = min(90.0, abs($lat) + 1.5);
+        $delta = $pole >= 89.9 ? 180.0 : min(180.0, 1.5 / cos(deg2rad($pole)));
+        if ($delta < 180) {
+            $west = $lng - $delta;
+            $east = $lng + $delta;
+            if ($west < -180) {
+                $sql .= ' AND (longitude >= ? OR longitude <= ?)';
+                array_push($params, $west + 360, $east);
+            } elseif ($east > 180) {
+                $sql .= ' AND (longitude >= ? OR longitude <= ?)';
+                array_push($params, $west, $east - 360);
+            } else {
+                $sql .= ' AND longitude BETWEEN ? AND ?';
+                array_push($params, $west, $east);
+            }
+        }
+        $osm = $db->prepare($sql);
+        $osm->execute($params);
+        while ($row = $osm->fetch(PDO::FETCH_ASSOC)) {
+            yield $row + ['source'=>'OpenStreetMap','status'=>'unknown','parent_place_id'=>null];
+        }
     })();
     return array_replace($base, [
         'state' => 'ready',
-        'services' => llama_nearest_service_results($lat, $lng, $rows),
+        'services' => llama_nearest_service_results($lat, $lng, $rows, 100.0, $osmEnabled),
+        'osm_data_loaded' => $osmEnabled,
     ]);
 }
