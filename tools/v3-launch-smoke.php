@@ -3760,6 +3760,22 @@ $check('Seasonal potable water retains the same canonical keys and legacy boolea
     }
 });
 
+$check('Public nearest details supplement matching approved distance answers', static function () use ($assert): void {
+    require_once dirname(__DIR__) . '/app/nearest-services.php';
+    $match = ['name'=>'Example Fuel','distance_miles'=>2.37];
+    $assert(llama_nearest_public_match_label($match,'2 miles') === 'Example Fuel (2.4 mi)', 'Named precise distance');
+    $assert(llama_nearest_public_match_label($match,'5 miles') === null, 'Do not attach contradictory match');
+    $assert(llama_nearest_public_match_label(null,'2 miles') === null, 'No invented match');
+    $assert(llama_nearest_public_match_label(['name'=>'Nearby water','distance_miles'=>.027],'1 mile') === 'Nearby water (0.027 mi)', 'Short distance remains accurate');
+    $assert(llama_nearest_public_match_label(['name'=>'Market','distance_miles'=>25.3],'Over 20 miles') === 'Market (25.3 mi)', 'Exact long distance');
+    $root = dirname(__DIR__);
+    $page = file_get_contents($root . '/partials/place/scout-report/index.php');
+    $assert(str_contains($page, 'if ($placeReportCanViewCommunity && empty($isDemoScoutReport)'), 'Precise details gated by existing access');
+    $readOnly = file_get_contents($root . '/partials/place-report/read-only.php');
+    $assert(str_contains($readOnly,'scout-report-nearest-match') && !str_contains($readOnly,'Download reference data'), 'Compact public answer with no export link');
+    $assert(str_contains(file_get_contents($root . '/terms.php'),'/api/osm-nearest-data.php'), 'ODbL reference data remains available');
+});
+
 $check('Canonical field contract', static function () use ($assert): void {
     $issues = llama_place_report_contract_issues();
     $assert(!$issues, 'Contract issues: ' . implode(' | ', array_slice($issues, 0, 12)) . ' (total ' . count($issues) . ')');
