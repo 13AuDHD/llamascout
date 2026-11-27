@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'tools/extract-osm-nearest.py'
+      - 'tools/osm-nearest-to-sql.py'
       - 'tools/tests/osm-nearest-extraction.py'
       - '.github/workflows/osm-nearest-extract.yml'
   workflow_dispatch:
@@ -52,9 +53,10 @@ jobs:
             'nwr/drinking_water=yes' 'nwr/fuel:propane=yes' 'nwr/propane=yes'
           mkdir -p output
           python tools/extract-osm-nearest.py filtered.osm.pbf "output/${REGION}.ndjson" --region "$REGION" --snapshot "$snapshot"
+          python tools/osm-nearest-to-sql.py "output/${REGION}.ndjson" "output/${REGION}.sql.gz"
       - uses: actions/upload-artifact@v4
         with:
           name: osm-nearest-${{ inputs.region }}
-          path: output/*.ndjson
+          path: output/
           if-no-files-found: error
           retention-days: 14
