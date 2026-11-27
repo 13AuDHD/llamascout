@@ -800,7 +800,7 @@ async function testGuidedLocateMe() {
         q('[data-search-coordinates]').click();
         await settle();
         assert.equal(fuel.value,'3 miles','Manual override survives coordinate changes and service failures');
-        assert.match(status.textContent,/Nearest Services could not be looked up/);
+        assert.match(status.textContent,/Nearest Services lookup is unavailable/);
     } finally { w.close(); }
 }
 
@@ -1017,10 +1017,10 @@ async function testAdminNearestLookup() {
         <input data-coordinate-input value="37.2500000, -107.1200000">
         <input data-location-field="latitude" name="latitude" type="hidden">
         <input data-location-field="longitude" name="longitude" type="hidden">
+        <input data-location-field="elevation_feet" name="elevation_feet">
+        <button type="button" data-search-coordinates>Search</button>
         <div data-location-status></div>
         <details data-report-subsection="nearest_services">
-            <button type="button" data-admin-nearest-lookup>Look up Nearest Services</button>
-            <small data-admin-nearest-status></small>
             <div data-report-field="nearest_fuel"><select name="nearest_fuel"><option value="">Select</option><option value="1 mile">1 mile</option></select></div>
             <div data-report-field="nearest_grocery"><select name="nearest_grocery"><option value="3 miles" selected>3 miles</option><option value="1 mile">1 mile</option></select></div>
         </details>
@@ -1028,25 +1028,34 @@ async function testAdminNearestLookup() {
     const w=dom.window,d=w.document;
     try {
         const requests=[];
+        let matches=true;
         w.fetch=async url=>{
-            requests.push(new URL(url));
-            return {ok:true,json:async()=>({state:'ready',services:[
+            requests.push(new URL(url,w.location.href));
+            return {ok:true,text:async()=>JSON.stringify({success:true,location:{elevation_feet:7000},
+                nearest_services:{state:'ready',services:matches?[
                 {key:'nearest_fuel',match:{name:'Example fuel',distance_miles:.4,source:'OpenStreetMap'}},
                 {key:'nearest_grocery',match:{name:'Example grocery',distance_miles:.2}}
-            ]})};
+            ]:[]}})};
         };
         w.eval(fs.readFileSync(path.resolve(__dirname,'../../js/add-place-location.js'),'utf8'));
         await new Promise(resolve=>d.addEventListener('DOMContentLoaded',resolve,{once:true}));
-        d.querySelector('[data-admin-nearest-lookup]').click();
+        d.querySelector('[data-search-coordinates]').click();
         await new Promise(resolve=>setImmediate(resolve));
         assert.equal(requests.length,1);
         assert.equal(requests[0].origin,'https://admin.llamascout.com');
-        assert.equal(requests[0].searchParams.get('nearest_services'),'1');
-        assert.equal(requests[0].searchParams.get('id'),'17');
+        assert.equal(requests[0].pathname,'/api/location-lookup.php');
+        assert.equal(requests[0].searchParams.get('nearest'),'1');
         assert.equal(d.querySelector('[name="nearest_fuel"]').value,'1 mile');
-        assert.equal(d.querySelector('[name="nearest_grocery"]').value,'3 miles');
-        assert.match(d.querySelector('[data-admin-nearest-status]').textContent,/Save the report/);
+        assert.equal(d.querySelector('[name="nearest_grocery"]').value,'1 mile');
+        assert.equal(d.querySelector('[name="elevation_feet"]').value,'7000');
+        assert.match(d.querySelector('[data-location-status]').textContent,/2 distances populated/);
         assert.match(d.querySelector('[data-nearest-autofill-hint]').textContent,/Example fuel/);
+        matches=false;
+        d.querySelector('[data-coordinate-input]').value='44.5000000, -122.0000000';
+        d.querySelector('[data-coordinate-input]').dispatchEvent(new w.Event('input',{bubbles:true}));
+        d.querySelector('[data-search-coordinates]').click();
+        await new Promise(resolve=>setImmediate(resolve));
+        assert.match(d.querySelector('[data-location-status]').textContent,/Regional data may not be imported yet/);
     } finally {w.close();}
 }
 
