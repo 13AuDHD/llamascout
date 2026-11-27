@@ -2316,8 +2316,7 @@ window.LlamaPlaceReportForm
             const summary = section?.querySelector(':scope > summary');
             if (!summary) return '';
             const label = summary.querySelector(':scope > span:not([data-section-completion-percent])');
-            if (label) return label.textContent.trim();
-            const copy = summary.cloneNode(true);
+            const copy = (label || summary).cloneNode(true);
             copy.querySelectorAll('[data-section-completion-percent], svg, small').forEach(node => node.remove());
             return copy.textContent.trim();
         };
@@ -2438,8 +2437,10 @@ window.LlamaPlaceReportForm
             heading.textContent = selected.label;
             heading.classList.toggle('is-scout-heading-hidden', Boolean(selected.key) && selected.key !== 'site_location');
             const context = contextFor(onstage[0], selected);
-            sectionContext.textContent = context;
-            sectionContext.hidden = !context;
+            if (sectionContext.textContent !== context) sectionContext.textContent = context;
+            // The shared hidden-attribute observer also watches this node.
+            // Only mutate visibility when it actually changes.
+            if (sectionContext.hidden !== !context) sectionContext.hidden = !context;
             if (context) heading.setAttribute('aria-describedby', sectionContext.id);
             else heading.removeAttribute('aria-describedby');
             const percent = cards.length > 1 ? Math.round(100 * index / (cards.length - 1)) : 100;
