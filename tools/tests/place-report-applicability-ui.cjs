@@ -772,8 +772,8 @@ async function testGuidedSiteCards() {
         <details data-report-main-section="site" open><summary>Site</summary><div>
             <details data-report-subsection="site_info"><summary>Site Info</summary><div class="contribution-grid">
                 <div data-scout-card-step="Parent Place" data-scout-card-key="site_parent" data-site-parent-picker>
-                    <label>Parent Place *</label><input name="site_place_id" type="hidden" value="17"><input data-site-parent-input value="Example campground" required>
-                    <div data-site-parent-results hidden></div>
+                    <label>Parent Place *</label><input name="site_place_id" type="hidden" data-site-parent-id value="17"><input data-site-parent-input value="Example campground" required>
+                    <small data-site-parent-status></small><div data-site-parent-results hidden></div>
                 </div>
                 <div data-scout-card-step="Site name" data-scout-card-key="site_name">
                     <label>Site name *</label><input name="site_name" required value="Site 12">
@@ -808,6 +808,18 @@ async function testGuidedSiteCards() {
         Object.defineProperty(w.navigator,'geolocation',{value:{
             getCurrentPosition(success) { success({coords:{latitude:37.25,longitude:-107.12}}); }
         }});
+        const requests = [];
+        w.fetch = async url => {
+            const params = new URL(url).searchParams;
+            requests.push(params);
+            if (params.has('parent_report_context')) return {ok:true,json:async()=>({context:{type:'developed-campground'}})};
+            if (params.get('q') === 'error') return {ok:false};
+            return {ok:true,json:async()=>({places:params.get('q') === 'empty' ? [] : [
+                {id:'pending:17',name:'My pending campground',status:'pending',state:'CO'},
+                {id:17,name:'Example campground',state:'CO'}
+            ]})};
+        };
+        w.eval(fs.readFileSync(path.resolve(__dirname,'../../js/add-site-parent-search.js'),'utf8'));
         w.eval(fs.readFileSync(path.resolve(__dirname,'../../js/add-site-location.js'),'utf8'));
         w.eval(source.slice(source.indexOf('// Guided Add Place presentation is deliberately separate')));
         await new Promise(resolve=>d.addEventListener('DOMContentLoaded',resolve,{once:true}));
@@ -820,6 +832,18 @@ async function testGuidedSiteCards() {
         const context = q('[data-scout-card-context]');
         assert.equal(context.textContent,'Site / Site Info');
         assert.equal(back.disabled,true);
+        const parentInput = q('[data-site-parent-input]');
+        const settle = () => new Promise(resolve=>setImmediate(resolve));
+        parentInput.focus();
+        await settle();
+        const pendingChoice = q('[data-site-parent-results] button');
+        assert.match(pendingChoice.textContent,/Pending review/);
+        pendingChoice.click();
+        await settle();
+        assert.equal(new w.FormData(form).get('site_place_id'),'pending:17');
+        assert.equal(JSON.parse(form.dataset.reportContext).type,'developed-campground');
+        assert.ok(requests.some(params=>params.get('parent_report_context')==='pending:17'));
+        assert.match(q('[data-site-parent-status]').textContent,/cannot be published/);
         assert.equal(q('[data-site-parent-picker]').classList.contains('is-scout-card-offstage'),false);
         assert.equal(location.classList.contains('is-scout-card-offstage'),true);
         assert.equal(q('[name="save_for_later"]'),null,'Site must not use the Place draft endpoint');
@@ -858,7 +882,7 @@ async function testGuidedSiteCards() {
         assert.equal(context.hidden,true,'Review has no redundant context');
         assert.equal(next.disabled,true);
         const data = new w.FormData(form);
-        assert.equal(data.get('site_place_id'),'17');
+        assert.equal(data.get('site_place_id'),'pending:17');
         assert.equal(data.get('site_name'),'Site 12');
         assert.equal(data.get('site_coordinates'),'37.2500000, -107.1200000');
         assert.equal(data.has('latitude'),false,'Site GPS never creates Place coordinate fields');
@@ -868,6 +892,23 @@ async function testGuidedSiteCards() {
         assert.equal(q('[data-report-field="conditional"]').hidden,true);
         assert.equal(q('[name="site_surface"]').classList.contains('is-scout-choice-source'),false);
         assert.equal(new w.FormData(form).get('site_surface'),'gravel');
+        // The same search control remains functional in the full questionnaire.
+        parentInput.focus();
+        await settle();
+        const search = async value => {
+            parentInput.value = value;
+            parentInput.dispatchEvent(new w.Event('input',{bubbles:true}));
+            await new Promise(resolve=>setTimeout(resolve,220));
+        };
+        await search('empty');
+        assert.match(q('[data-site-parent-status]').textContent,/No matching/);
+        await search('error');
+        assert.match(q('[data-site-parent-status]').textContent,/unavailable/);
+        await search('Example');
+        assert.equal(q('[data-site-parent-results]').hidden,false);
+        q('[data-site-parent-results] button:nth-child(2)').click();
+        await settle();
+        assert.equal(new w.FormData(form).get('site_place_id'),'17');
     } finally { w.close(); }
 }
 

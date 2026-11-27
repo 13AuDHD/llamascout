@@ -1296,3 +1296,13 @@ input[type="checkbox"] {
     grid-column: 3;
     justify-self: end;
 }
+
+/* Keep autocomplete choices inside the current mobile card, above navigation,
+   instead of letting an absolutely positioned menu cover its buttons. */
+.add-place-page .place-report-form.is-scout-card-view .site-parent-place-results {
+    position: static;
+    margin-top: 4px;
+    max-height: 240px;
+    box-shadow: none;
+    touch-action: pan-y;
+}

@@ -46,9 +46,14 @@ $failure = static function (callable $run, string $message) use ($check): void {
 $sql = (string) file_get_contents(dirname(__DIR__, 2)
     . '/tools/migrations/20261118_standalone_site_submissions.sql');
 $db->exec($sql);
+$db->exec((string) file_get_contents(dirname(__DIR__, 2) . '/tools/migrations/20261127_site_pending_parent.sql'));
+$db->exec('CREATE TABLE place_submissions (
+    id BIGINT UNSIGNED PRIMARY KEY, user_id BIGINT UNSIGNED, place_id BIGINT UNSIGNED NULL,
+    place_name VARCHAR(150), status VARCHAR(30), submission_data LONGTEXT
+) ENGINE=InnoDB');
 $db->exec('CREATE TABLE places (
     id BIGINT UNSIGNED PRIMARY KEY, name VARCHAR(150), status VARCHAR(30),
-    type VARCHAR(60), place_report_answer_state LONGTEXT NULL
+    type VARCHAR(60), state VARCHAR(60), place_report_answer_state LONGTEXT NULL
 ) ENGINE=InnoDB');
 // Parent context now reads canonical published Place answers. Build the
 // legacy read fixture from the actual storage adapter (nullable columns),
@@ -65,7 +70,7 @@ foreach (llama_place_report_published_definitions() as $definition) {
 }
 foreach ($legacyTables as $table => $columns) {
     if ($table === 'places') {
-        foreach (array_diff_key($columns, array_fill_keys(['id', 'name', 'type', 'status', 'place_report_answer_state'], true)) as $column => $_) {
+        foreach (array_diff_key($columns, array_fill_keys(['id', 'name', 'type', 'status', 'state', 'place_report_answer_state'], true)) as $column => $_) {
             $db->exec("ALTER TABLE places ADD COLUMN `$column` TEXT NULL");
         }
         continue;
@@ -279,5 +284,56 @@ $check((int) $db->query('SELECT COUNT(*) FROM place_campsites')->fetchColumn() =
     'Reject must not publish any Site.');
 $check((int) $db->query('SELECT COUNT(*) FROM scout_reports')->fetchColumn() === 1,
     'Only approved Sites may create immutable Scout Reports.');
+
+// Published Place ID 1 and pending submission ID 1 intentionally collide.
+$pendingInsert = $db->prepare('INSERT INTO place_submissions
+    (id,user_id,place_id,place_name,status,submission_data) VALUES (?,?,NULL,?,?,?)');
+$pendingData = json_encode(llama_place_report_build_data([
+    'name'=>'Pending campground','type'=>'developed-campground','state'=>'Colorado',
+    'amenity_wifi'=>'1','amenity_toilets'=>'flush',
+]), JSON_THROW_ON_ERROR);
+$pendingInsert->execute([1,7,'Pending campground','pending',$pendingData]);
+$pendingInsert->execute([2,8,'Pending private campground','pending',$pendingData]);
+$pendingInsert->execute([3,7,'Pending rejected campground','rejected',$pendingData]);
+$pendingInsert->execute([4,7,'Pending revise campground','needs-changes',$pendingData]);
+$choices = llama_site_parent_place_choices($db, 'Pending', 7);
+$ids = array_column($choices, 'id');
+$check($ids === ['pending:1','pending:4'], 'Search includes owned pending and needs-changes parents only.');
+$check(count(llama_site_parent_place_choices($db, 'Parent Place', 7)) === 1,
+    'Published parent remains searchable.');
+$failure(static fn () => llama_site_parent_reference($db, 'pending:2', 7), 'Other member pending parent must be private.');
+$failure(static fn () => llama_site_parent_reference($db, 'pending:3', 7), 'Rejected parent must be unavailable.');
+$pendingContext = llama_site_parent_reference($db, 'pending:1', 7)['context'];
+$check($pendingContext['type'] === 'developed-campground'
+    && ($pendingContext['amenity_wifi'] ?? '') === '1'
+    && ($pendingContext['amenity_toilets'] ?? '') === 'flush',
+    'Pending parent context derives from the canonical stored submission.');
+$pendingPayload = array_replace($payload, ['site_place_id'=>'pending:1','site_name'=>'Waiting Site',
+    'site_answers'=>['site_number'=>'21']]);
+$waiting = llama_site_submission_submit($db, 7, $pendingPayload);
+$row = llama_site_submission_for_user($db, 7, $waiting);
+$check($row['place_id'] === null && (int) $row['parent_submission_id'] === 1,
+    'Pending parent is not confused with a published Place of the same ID.');
+$check(in_array($waiting, array_map('intval',array_column(llama_site_submission_queue($db),'id')),true),
+    'Waiting Site remains visible to moderators.');
+$failure(static fn () => llama_site_submission_moderate($db, $waiting, 9, 'approved'),
+    'Site cannot publish before parent approval.');
+llama_site_submission_moderate($db, $waiting, 9, 'needs-changes', 'Verify the Site name.');
+$check(llama_site_submission_resubmit($db, 7, $waiting, $pendingPayload) === $waiting,
+    'Owned Site can be revised while parent is pending.');
+$db->beginTransaction();
+$db->exec("INSERT INTO places (id,name,status,type) VALUES (3,'Pending campground','active','developed-campground')");
+$db->exec("UPDATE place_submissions SET place_id=3,status='approved' WHERE id=1");
+llama_site_link_approved_parent($db,1,7,3);
+$db->commit();
+$row = llama_site_submission_for_user($db, 7, $waiting);
+$check((int) $row['place_id'] === 3 && $row['status'] === 'pending',
+    'Parent approval attaches the correct Place without approving the child.');
+$check(llama_site_parent_reference($db, 'pending:1', 7)['place_id'] === 3,
+    'Stale owned pending reference follows approval.');
+$waitingSite = llama_site_submission_moderate($db, $waiting, 9, 'approved');
+$stmt = $db->prepare('SELECT place_id FROM place_campsites WHERE id=?');
+$stmt->execute([$waitingSite]);
+$check((int) $stmt->fetchColumn() === 3, 'Site publishes only under the newly approved Parent Place.');
 
 echo "PASS: Site submit, revision, rejection, one-target approval, immutable/current answers, duplicates and rollback in MariaDB.\n";

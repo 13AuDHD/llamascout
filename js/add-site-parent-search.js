@@ -8,6 +8,9 @@
     const selectedId = picker.querySelector("[data-site-parent-id]");
     const list = picker.querySelector("[data-site-parent-results]");
     const form = picker.closest("form");
+    const status = picker.querySelector("[data-site-parent-status]");
+    const hint = "Search published Places or your own submitted Places awaiting review.";
+    const show = message => { if (status) status.textContent = message; };
     let options = [];
     let active = -1;
     let requestNumber = 0;
@@ -37,6 +40,7 @@
             if (seq !== contextRequest) return;
             selectedId.value = '';
             input.setCustomValidity('Select the parent Place again. Its details could not be loaded.');
+            show('The parent Place details could not be loaded. Select it again.');
         } finally {
             if (seq === contextRequest) contextPending = false;
         }
@@ -58,7 +62,7 @@
         });
         if (active >= 0) {
             input.setAttribute("aria-activedescendant", buttons[active].id);
-            buttons[active].scrollIntoView({block: "nearest"});
+            buttons[active].scrollIntoView?.({block: "nearest"});
         } else {
             input.removeAttribute("aria-activedescendant");
         }
@@ -72,6 +76,9 @@
         loadContext(place.id);
         input.value = String(place.name);
         input.setCustomValidity("");
+        show(place.status === "pending" || place.status === "needs-changes"
+            ? "Your Place is awaiting review. This Site can be submitted now, but cannot be published until its Parent Place is approved."
+            : "Parent Place selected.");
         close();
         suppressFocusLookup = true;
         input.focus();
@@ -81,7 +88,8 @@
     const render = (places) => {
         list.replaceChildren();
         options = places.filter(place =>
-            Number.isSafeInteger(Number(place.id)) && Number(place.id) > 0
+            /^(?:pending:)?[1-9][0-9]*$/.test(String(place.id))
+            && Number.isSafeInteger(Number(String(place.id).replace(/^pending:/, "")))
             && typeof place.name === "string"
         );
         options.forEach((place, index) => {
@@ -91,13 +99,16 @@
             button.id = "site-parent-option-" + index;
             button.setAttribute("role", "option");
             button.setAttribute("aria-selected", "false");
-            button.textContent = place.name + (place.state ? " (" + place.state + ")" : "");
+            button.textContent = place.name + (place.state ? " (" + place.state + ")" : "")
+                + (place.status === "pending" ? " · Pending review"
+                    : place.status === "needs-changes" ? " · Needs changes" : "");
             button.addEventListener("click", () => select(place));
             list.appendChild(button);
         });
         list.hidden = options.length === 0;
         input.setAttribute("aria-expanded", String(options.length > 0));
         highlight(-1);
+        show(options.length ? "Select the matching Parent Place." : "No matching Places found.");
     };
 
     const lookup = async () => {
@@ -105,6 +116,7 @@
         pending?.abort();
         pending = new AbortController();
         const query = input.value.trim();
+        show("Searching Places…");
         try {
             const url = new URL("/add-site.php", window.location.origin);
             url.searchParams.set("parent_place_suggestions", "1");
@@ -119,7 +131,10 @@
             if (seq !== requestNumber || document.activeElement !== input) return;
             render(Array.isArray(data.places) ? data.places : []);
         } catch (error) {
-            if (seq === requestNumber && error.name !== "AbortError") close();
+            if (seq === requestNumber && error.name !== "AbortError") {
+                close();
+                show("Parent Place search is unavailable. Try again.");
+            }
         }
     };
 
@@ -133,10 +148,13 @@
     });
     input.addEventListener("input", () => {
         selectedId.value = "";
+        ++requestNumber;
+        pending?.abort();
         ++contextRequest;
         contextPending = false;
         setContext({});
         input.setCustomValidity("");
+        show(hint);
         close();
         schedule();
     });
@@ -178,7 +196,7 @@
         }
         if (!selectedId.value || !input.value.trim()) {
             event.preventDefault();
-            input.setCustomValidity("Select an existing parent Place.");
+            input.setCustomValidity("Select a Parent Place from the search results.");
             input.reportValidity();
             input.focus();
         }

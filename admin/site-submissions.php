@@ -89,8 +89,16 @@ require __DIR__ . '/_header.php';
                        · <?= $e($item['contributor_name'] ?? 'Member') ?></p>
                     <h2><?= $e($item['site_name']) ?></h2>
                     <p>Parent Place: <?= $e($item['place_name']) ?>
-                       (#<?= (int) $item['place_id'] ?>)
+                       <?php if ((int) ($item['place_id'] ?? 0) > 0): ?>
+                           (#<?= (int) $item['place_id'] ?>)
+                       <?php else: ?>
+                           (Place submission #<?= (int) ($item['parent_submission_id'] ?? 0) ?>)
+                       <?php endif; ?>
                        · Visited <?= $e($data['visit_date'] ?? 'Unknown') ?></p>
+                    <?php if ((int) ($item['place_id'] ?? 0) < 1): ?>
+                        <p class="admin-notice" role="status">Parent Place: <?= $e(moderation_status_label((string) ($item['parent_submission_status'] ?? 'unavailable'))) ?>.
+                            Approve the Parent Place before publishing this Site.</p>
+                    <?php endif; ?>
                     <p><?= is_array($data['coordinates'] ?? null)
                         ? 'Site coordinates: ' . $e($data['coordinates']['latitude'] ?? '')
                             . ', ' . $e($data['coordinates']['longitude'] ?? '')
@@ -134,7 +142,7 @@ require __DIR__ . '/_header.php';
                 </label>
                 <div class="admin-actions">
                     <button class="admin-button" type="submit"
-                            name="site_decision" value="approved">Approve &amp; publish Site</button>
+                            name="site_decision" value="approved" <?= (int) ($item['place_id'] ?? 0) > 0 ? '' : 'disabled' ?>>Approve &amp; publish Site</button>
                     <button class="admin-button is-muted" type="submit"
                             name="site_decision" value="needs-changes">Request Changes</button>
                     <button class="admin-button is-muted" type="submit"

@@ -1537,6 +1537,11 @@ $name = trim(
         $submissionId,
     ]);
 
+    // Link any independently submitted Sites to this exact newly published
+    // Place in the same approval transaction. Do not approve the Sites here.
+    require_once __DIR__ . '/site-submissions.php';
+    llama_site_link_approved_parent($db, $submissionId, (int) $submission['user_id'], $placeId);
+
     /*
      * Do not remove the source submission folder here.
      *

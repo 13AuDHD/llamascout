@@ -3,7 +3,7 @@
 // cannot reparent an existing pending contribution.
 ?>
 <?php if ($isNeedsChanges): ?>
-    <input type="hidden" name="site_place_id" value="<?= $selectedPlaceId ?>">
+    <input type="hidden" name="site_place_id" value="<?= $e($selectedPlaceId) ?>">
     <div class="contribution-field" data-scout-card-step="Parent Place" data-scout-card-key="site_parent">
         <span class="place-report-field-label">Parent Place</span>
         <strong><?= $e((string) ($revision['data']['place_name']
@@ -13,12 +13,15 @@
     <div class="contribution-field site-parent-place-picker" data-site-parent-picker data-scout-card-step="Parent Place" data-scout-card-key="site_parent">
         <label class="place-report-field-label" for="site-parent-place">Parent Place *</label>
         <input type="hidden" name="site_place_id" data-site-parent-id
-            value="<?= (int) ($selectedParentPlace['id'] ?? 0) ?: '' ?>">
+            value="<?= $e($selectedParentPlace['id'] ?? '') ?>">
         <input type="text" id="site-parent-place" data-site-parent-input
             autocomplete="off" spellcheck="false" required
             role="combobox" aria-autocomplete="list" aria-haspopup="listbox"
             aria-controls="site-parent-place-results" aria-expanded="false"
             value="<?= $e((string) ($selectedParentPlace['name'] ?? '')) ?>">
+        <small data-site-parent-status role="status" aria-live="polite"><?= $selectedParentPlace && in_array($selectedParentPlace['status'], ['pending', 'needs-changes'], true)
+            ? 'Your Place is awaiting review. This Site can be submitted now, but cannot be published until its Parent Place is approved.'
+            : 'Search published Places or your own submitted Places awaiting review.' ?></small>
         <div class="site-parent-place-results" id="site-parent-place-results"
             data-site-parent-results role="listbox" hidden></div>
     </div>

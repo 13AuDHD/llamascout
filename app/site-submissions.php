@@ -21,6 +21,17 @@ function llama_site_submissions_ready(PDO $db): bool
     }
 }
 
+/** Optional migration: published-parent submissions remain usable without it. */
+function llama_site_pending_parent_ready(PDO $db): bool
+{
+    try {
+        $db->query('SELECT parent_submission_id FROM place_site_submissions LIMIT 0');
+        return true;
+    } catch (PDOException) {
+        return false;
+    }
+}
+
 /** Site questions are projected solely from the approved canonical registry. */
 function llama_site_submission_fields(): array
 {
@@ -42,7 +53,7 @@ function llama_site_submission_fields(): array
  * Each query searches the database, not the first page of a select list.
  * Eligibility matches the real Site submission parent validator.
  */
-function llama_site_parent_place_choices(PDO $db, string $needle = ''): array
+function llama_site_parent_place_choices(PDO $db, string $needle = '', int $userId = 0): array
 {
     $needle = trim(mb_substr($needle, 0, 120));
     $sql = 'SELECT id, name, state FROM places
@@ -58,7 +69,120 @@ function llama_site_parent_place_choices(PDO $db, string $needle = ''): array
     $sql .= ' ORDER BY name ASC, id ASC LIMIT 6';
     $statement = $db->prepare($sql);
     $statement->execute($params);
-    return $statement->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    $published = $statement->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    if ($userId < 1 || !llama_site_pending_parent_ready($db)) {
+        return $published;
+    }
+    // Pending records have their own ID namespace. Never expose another
+    // Scout's unpublished Place, even if a name or submission ID matches.
+    $sql = 'SELECT id, place_name AS name, status, submission_data
+            FROM place_submissions
+            WHERE user_id = ? AND status IN ("pending", "needs-changes")
+              AND (place_id IS NULL OR place_id = 0)';
+    $params = [$userId];
+    if ($needle !== '') {
+        $sql .= ' AND (place_name LIKE ? OR CAST(id AS CHAR) = ?)';
+        $params[] = '%' . str_replace(
+            ['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $needle
+        ) . '%';
+        $params[] = $needle;
+    }
+    $sql .= ' ORDER BY place_name ASC, id ASC LIMIT 6';
+    $statement = $db->prepare($sql);
+    $statement->execute($params);
+    $pending = [];
+    foreach ($statement->fetchAll(PDO::FETCH_ASSOC) ?: [] as $row) {
+        $data = json_decode((string) $row['submission_data'], true);
+        if (!is_array($data) || empty($data['type'])) continue;
+        $pending[] = [
+            'id' => 'pending:' . (int) $row['id'],
+            'name' => (string) $row['name'],
+            'state' => (string) ($data['state'] ?? ''),
+            'status' => (string) $row['status'],
+        ];
+    }
+    return array_merge($pending, $published);
+}
+
+/** Resolve a typed parent reference, checking ownership server-side. */
+function llama_site_parent_reference(PDO $db, string $reference, int $userId = 0, bool $lock = false): array
+{
+    if (preg_match('/^pending:([1-9][0-9]*)$/D', $reference, $match)) {
+        if ($userId < 1 || !llama_site_pending_parent_ready($db)) {
+            throw new InvalidArgumentException('The selected parent Place is not available.');
+        }
+        $stmt = $db->prepare(
+            'SELECT id, user_id, place_id, place_name, status, submission_data
+             FROM place_submissions WHERE id = ? AND user_id = ? LIMIT 1'
+            . ($lock ? ' FOR UPDATE' : '')
+        );
+        $stmt->execute([(int) $match[1], $userId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            throw new InvalidArgumentException('The selected parent Place is not available.');
+        }
+        if ($row['status'] === 'approved' && (int) $row['place_id'] > 0) {
+            return llama_site_parent_reference($db, (string) $row['place_id'], $userId, $lock);
+        }
+        if (!in_array($row['status'], ['pending', 'needs-changes'], true)
+            || (int) $row['place_id'] > 0) {
+            throw new InvalidArgumentException('The parent Place is no longer awaiting review. Choose an available Place.');
+        }
+        $data = json_decode((string) $row['submission_data'], true);
+        if (!is_array($data) || !is_string($data['type'] ?? null) || $data['type'] === '') {
+            throw new InvalidArgumentException('The selected parent Place details are unavailable.');
+        }
+        $context = ['type' => $data['type']];
+        foreach (['amenity_wifi', 'amenity_toilets'] as $key) {
+            // Pending Place answers use the canonical nested storage layout,
+            // including explicit Unknown metadata, not flat POST keys.
+            if (llama_place_report_answer_state($data, $key) !== 'unanswered') {
+                $context[$key] = llama_place_report_form_value_from_data($data, $key);
+            }
+        }
+        return [
+            'id' => $reference, 'place_id' => null, 'parent_submission_id' => (int) $row['id'],
+            'name' => (string) $row['place_name'], 'state' => (string) ($data['state'] ?? ''),
+            'status' => (string) $row['status'], 'context' => $context,
+        ];
+    }
+    if (!preg_match('/^[1-9][0-9]*$/D', $reference)) {
+        throw new InvalidArgumentException('Select a parent Place first.');
+    }
+    $placeId = (int) $reference;
+    $stmt = $db->prepare(
+        'SELECT id, name, state FROM places WHERE id = ? AND status IN ("active","featured") LIMIT 1'
+        . ($lock ? ' FOR UPDATE' : '')
+    );
+    $stmt->execute([$placeId]);
+    $place = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$place) {
+        throw new InvalidArgumentException('The selected parent Place is not available.');
+    }
+    return $place + [
+        'place_id' => $placeId, 'parent_submission_id' => null, 'status' => 'published',
+        'context' => llama_site_parent_report_context($db, $placeId),
+    ];
+}
+
+/** Caller holds the parent submission lock in the Place approval transaction. */
+function llama_site_link_approved_parent(PDO $db, int $submissionId, int $userId, int $placeId): void
+{
+    if (!llama_site_pending_parent_ready($db)) return;
+    $stmt = $db->prepare(
+        'UPDATE place_site_submissions SET place_id = ?
+         WHERE parent_submission_id = ? AND submitted_by = ? AND place_id IS NULL'
+    );
+    $stmt->execute([$placeId, $submissionId, $userId]);
+}
+
+/** Keep a stable typed identity for revisions and moderation. */
+function llama_site_submission_parent_reference(array $row): string
+{
+    return (int) ($row['place_id'] ?? 0) > 0
+        ? (string) $row['place_id']
+        : ((int) ($row['parent_submission_id'] ?? 0) > 0
+            ? 'pending:' . (int) $row['parent_submission_id'] : '');
 }
 
 /**
@@ -155,20 +279,10 @@ function llama_site_submission_photos(array $data, int $submissionId): array
 }
 
 /** All fields except Site questions are identity/metadata, never parent answers. */
-function llama_site_submission_prepare(PDO $db, array $input): array
+function llama_site_submission_prepare(PDO $db, array $input, int $userId = 0, bool $lock = false): array
 {
-    $placeId = (int) ($input['site_place_id'] ?? 0);
-    if ($placeId < 1) {
-        throw new InvalidArgumentException('Select an existing parent Place first.');
-    }
-    $stmt = $db->prepare(
-        'SELECT id, name FROM places WHERE id = ? AND status IN ("active","featured") LIMIT 1'
-    );
-    $stmt->execute([$placeId]);
-    $place = $stmt->fetch(PDO::FETCH_ASSOC);
-    if (!$place) {
-        throw new InvalidArgumentException('The selected parent Place is not available.');
-    }
+    $place = llama_site_parent_reference($db, (string) ($input['site_place_id'] ?? ''), $userId, $lock);
+    $placeId = $place['place_id'];
 
     $name = trim((string) ($input['site_name'] ?? ''));
     if ($name === '' || mb_strlen($name) > 120) {
@@ -180,7 +294,7 @@ function llama_site_submission_prepare(PDO $db, array $input): array
     }
     $answers = llama_site_submission_applicable_answers(
         llama_site_submission_parse_answers($rawAnswers),
-        llama_site_parent_report_context($db, $placeId)
+        $place['context']
     );
 
     $visitDate = trim((string) ($input['visited_at'] ?? $answers['visited_at'] ?? ''));
@@ -201,6 +315,7 @@ function llama_site_submission_prepare(PDO $db, array $input): array
     );
     return [
         'place_id' => $placeId,
+        'parent_submission_id' => $place['parent_submission_id'],
         'place_name' => (string) $place['name'],
         'site_name' => $name,
         'visit_date' => $visitDate,
@@ -223,32 +338,43 @@ function llama_site_submission_submit(
         throw new RuntimeException('The Site submission database migration is not installed.');
     }
 
-    $data = llama_site_submission_prepare($db, $input);
     if (count($submittedPhotos) > llama_location_gallery_photo_limit('site')) {
         throw new InvalidArgumentException('A Site can have up to ten photos.');
     }
     if ($submittedPhotos && trim($photoStageToken) === '') {
         throw new InvalidArgumentException('The Site photo upload session is missing.');
     }
-    $observations = $data['answers'];
-    unset($observations['visited_at']);
-    if (!$observations && !$submittedPhotos) {
-        throw new InvalidArgumentException('Report at least one Site observation or photograph.');
-    }
-
     $submissionId = 0;
     try {
         $db->beginTransaction();
-        $stmt = $db->prepare(
-            'INSERT INTO place_site_submissions
-                (place_id, submitted_by, role_at_submission, site_name, status, submission_data)
-             VALUES (?, ?, ?, ?, "pending", ?)'
-        );
-        $stmt->execute([
+        // Lock the parent submission before inserting the Site so approval
+        // cannot race past a newly linked Site.
+        $data = llama_site_submission_prepare($db, $input, $userId, true);
+        $observations = $data['answers'];
+        unset($observations['visited_at']);
+        if (!$observations && !$submittedPhotos) {
+            throw new InvalidArgumentException('Report at least one Site observation or photograph.');
+        }
+        $params = [
             $data['place_id'], $userId, community_role_at_submission($userId),
             $data['site_name'],
             json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
-        ]);
+        ];
+        if (llama_site_pending_parent_ready($db)) {
+            $stmt = $db->prepare(
+                'INSERT INTO place_site_submissions
+                    (place_id, submitted_by, role_at_submission, site_name, status, submission_data, parent_submission_id)
+                 VALUES (?, ?, ?, ?, "pending", ?, ?)'
+            );
+            $params[] = $data['parent_submission_id'];
+        } else {
+            $stmt = $db->prepare(
+                'INSERT INTO place_site_submissions
+                    (place_id, submitted_by, role_at_submission, site_name, status, submission_data)
+                 VALUES (?, ?, ?, ?, "pending", ?)'
+            );
+        }
+        $stmt->execute($params);
         $submissionId = (int) $db->lastInsertId();
         if ($submissionId < 1) {
             throw new RuntimeException('The Site submission could not be created.');
@@ -340,8 +466,12 @@ function llama_site_submission_resubmit(
         if (!$row) {
             throw new InvalidArgumentException('That Site is not awaiting your revisions.');
         }
-        $parentId = (int) $row['place_id'];
-        if ((int) ($input['site_place_id'] ?? 0) !== $parentId) {
+        $parentRef = llama_site_submission_parent_reference($row);
+        $submittedRef = (string) ($input['site_place_id'] ?? '');
+        // A Place might have been approved while the revision was open.
+        $originalPendingId = (int) ($row['parent_submission_id'] ?? 0);
+        if ($submittedRef !== $parentRef
+            && !($originalPendingId > 0 && $submittedRef === 'pending:' . $originalPendingId)) {
             throw new InvalidArgumentException(
                 'The parent Place cannot change during a Site revision.'
             );
@@ -376,7 +506,9 @@ function llama_site_submission_resubmit(
             throw new InvalidArgumentException('The new Site photo session is missing.');
         }
 
-        $data = llama_site_submission_prepare($db, $input);
+        $input['site_place_id'] = $parentRef;
+        $data = llama_site_submission_prepare($db, $input, $userId);
+        $data['parent_submission_id'] = $originalPendingId ?: null;
         $observations = $data['answers'];
         unset($observations['visited_at']);
         if (!$observations && !$keptPhotos && !$submittedPhotos) {
@@ -434,6 +566,21 @@ function llama_site_submission_queue(PDO $db, int $limit = 100): array
     if (!llama_site_submissions_ready($db)) {
         return [];
     }
+    if (llama_site_pending_parent_ready($db)) {
+        $stmt = $db->query(
+            'SELECT s.*, COALESCE(p.name, ps.place_name, "Unavailable Place") AS place_name,
+                ps.status AS parent_submission_status,
+                COALESCE(NULLIF(u.display_name, ""), u.username, "Member") AS contributor_name
+             FROM place_site_submissions s
+             LEFT JOIN places p ON p.id = s.place_id
+             LEFT JOIN place_submissions ps ON ps.id = s.parent_submission_id AND ps.user_id = s.submitted_by
+             LEFT JOIN users u ON u.id = s.submitted_by
+             WHERE s.status = "pending"
+             ORDER BY s.created_at ASC, s.id ASC
+             LIMIT ' . max(1, min(200, $limit))
+        );
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
     $stmt = $db->query(
         'SELECT s.*, p.name AS place_name,
             COALESCE(NULLIF(u.display_name, ""), u.username, "Member") AS contributor_name
@@ -485,6 +632,9 @@ function llama_site_submission_moderate(
         }
         $siteId = null;
         if ($decision === 'approved') {
+            if ((int) ($item['place_id'] ?? 0) < 1) {
+                throw new InvalidArgumentException('Approve the parent Place before publishing this Site.');
+            }
             $saved = json_decode((string) $item['submission_data'], true, 512, JSON_THROW_ON_ERROR);
             if (!is_array($saved)) {
                 throw new InvalidArgumentException('Invalid submitted Site report.');
