@@ -714,9 +714,9 @@ $placeReportPhotoHelp =
         </div>
         <?php if (!$legacyPlaceBundle): ?>
         <div class="scout-card-controls" data-scout-card-controls hidden>
+            <span class="scout-card-gesture" data-scout-card-gesture-help aria-hidden="true">← Swipe →</span>
             <div class="scout-card-buttons">
                 <button type="button" data-scout-card-back>Back</button>
-                <span class="scout-card-gesture" data-scout-card-gesture-help aria-hidden="true">← Swipe →</span>
                 <button type="button" data-scout-card-next>Next</button>
             </div>
         </div>

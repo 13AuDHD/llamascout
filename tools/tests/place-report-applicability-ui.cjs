@@ -465,7 +465,7 @@ async function testClosureDates() {
 
 
 async function testGuidedPlaceCards() {
-    const dom = new JSDOM(`<form id="add-place-main-form">
+    const dom = new JSDOM(`<form id="add-place-main-form" class="add-place-form">
         <div data-scout-card-navigation hidden>
           <button type="button" data-scout-card-toggle></button><div data-scout-card-progress-wrap><progress data-scout-card-meter max="100"></progress><span data-scout-card-progress></span></div>
           <h2 data-scout-card-heading tabindex="-1"></h2>
@@ -474,14 +474,14 @@ async function testGuidedPlaceCards() {
           <div class="contribution-grid">
             <label data-report-field="visited_at"><span class="place-report-field-label">Date visited</span><input name="visited_at" value="2026-11-26"></label>
             <div data-report-field="parent"><span class="place-report-field-label"><span>Parent</span></span><select name="parent"><option value="">Select...</option><option value="1">Yes</option><option value="0">No</option></select></div>
-            <div data-report-field="child" hidden><input name="child" value="retained"></div>
+            <div data-report-field="child" hidden><input name="child" value="retained"><div class="add-place-radio-row"><div class="add-place-radio-options"></div><button type="button" class="add-place-radio-clear" data-place-report-clear="child">Clear</button></div></div>
             <div data-scout-card-group="Location"><input name="coordinates" value="37,-107"></div><div data-scout-card-group="Location">Helper</div>
           </div>
         </details></details>
         <details data-contribution-place-photo-panel open><summary>Photos</summary><input name="photos_json" value="[]"></details>
-        <div data-scout-card-step="Review and submit"><button type="submit">Submit</button></div>
+        <div class="add-place-submit-bar" data-scout-card-step="Review and submit"><button type="submit" name="submit_for_review" value="1">Submit</button><button type="submit" name="save_for_later" value="1" formnovalidate>Continue Later</button><a href="/map.php">Cancel</a></div>
         <div data-scout-card-controls hidden>
-          <button type="button" data-scout-card-back></button><span data-scout-card-gesture-help></span><button type="button" data-scout-card-next></button>
+          <span data-scout-card-gesture-help>← Swipe →</span><div class="scout-card-buttons"><button type="button" data-scout-card-back></button><button type="button" data-scout-card-next></button></div>
         </div>
     </form>`, {runScripts:'outside-only'});
     const w = dom.window, d = w.document;
@@ -491,6 +491,13 @@ async function testGuidedPlaceCards() {
         const marker = '// Guided Add Place presentation is deliberately separate';
         const start = source.indexOf(marker);
         assert.ok(start >= 0);
+        const originalSave = d.querySelector('[name="save_for_later"]');
+        const posts = [];
+        w.fetch = async (url, options) => {
+            posts.push({url, body:options.body});
+            return {ok:false,text:async()=>JSON.stringify({success:false,message:'Example draft error'})};
+        };
+        w.eval(fs.readFileSync(path.resolve(__dirname,'../../js/add-place-draft.js'),'utf8'));
         w.eval(source.slice(start));
         await new Promise(resolve => d.addEventListener('DOMContentLoaded',resolve,{once:true}));
         const q = s => d.querySelector(s), form = q('form');
@@ -503,6 +510,27 @@ async function testGuidedPlaceCards() {
         assert.equal(heading.textContent,'Date visited');
         assert.equal(progress.textContent,'0%');
         assert.ok(q('[data-scout-card-controls]').compareDocumentPosition(parent) & w.Node.DOCUMENT_POSITION_PRECEDING,'Navigation follows questions');
+        const controls = q('[data-scout-card-controls]');
+        const gesture = q('[data-scout-card-gesture-help]');
+        const save = q('[name="save_for_later"]');
+        const status = q('[data-draft-save-status]');
+        assert.equal(save,originalSave,'The original draft button is moved, not cloned');
+        assert.equal(form.querySelectorAll('[name="save_for_later"]').length,1);
+        assert.equal(save.previousElementSibling,q('[data-scout-card-back]'));
+        assert.equal(save.nextElementSibling,next);
+        assert.equal(save.form,form);
+        assert.equal(save.formNoValidate,true);
+        assert.equal(status.parentElement,controls,'Draft errors are visible on every card');
+        assert.equal(gesture.parentElement,controls,'Cards without Clear show the hint above navigation');
+        save.click();
+        await new Promise(resolve=>setImmediate(resolve));
+        assert.equal(posts.length,1,'Early card uses actual draft save handler');
+        assert.equal(posts[0].url,'/api/save-place-draft.php');
+        assert.equal(posts[0].body.get('save_for_later'),'1');
+        assert.equal(posts[0].body.has('submit_for_review'),false);
+        assert.equal(posts[0].body.get('visited_at'),'2026-11-26');
+        assert.equal(status.textContent,'Example draft error');
+        assert.equal(save.textContent,'Continue Later','Failed save restores the original button');
         const initial = Array.from(new w.FormData(form).entries());
         next.click();
         assert.equal(heading.textContent,'Parent');
@@ -556,9 +584,12 @@ async function testGuidedPlaceCards() {
         assert.equal(q('[data-scout-card-meter]').value,20);
         next.click();
         assert.equal(child.classList.contains('is-scout-card-offstage'),false);
+        assert.equal(gesture.parentElement,child.querySelector('.add-place-radio-row'),'Swipe hint shares the current Clear row');
+        assert.equal(gesture.nextElementSibling,child.querySelector('[data-place-report-clear]'));
         child.hidden = true;
         await Promise.resolve();
         assert.equal(heading.textContent,'Location');
+        assert.equal(gesture.parentElement,controls,'Leaving a Clear card restores the hint');
         assert.ok([...d.querySelectorAll('[data-scout-card-group]')].every(node => !node.classList.contains('is-scout-card-offstage')));
         const location = q('[data-scout-card-group]');
         swipe(location,25,100);
@@ -572,12 +603,15 @@ async function testGuidedPlaceCards() {
         assert.equal(form.classList.contains('is-scout-card-dragging'),false);
         toggle.click();
         assert.equal(form.classList.contains('is-scout-card-view'),false);
+        assert.equal(save.parentElement,q('.add-place-submit-bar'),'Full questionnaire restores the original draft button');
+        assert.equal(status.parentElement,q('.add-place-submit-bar'),'Full questionnaire restores draft status');
         assert.equal(child.hidden,true,'Full view preserves canonical eligibility');
         assert.equal(select.classList.contains('is-scout-choice-source'),false,'Full view restores original dropdown');
         assert.equal(new w.FormData(form).get('parent'),'1','Full view retains choice');
         assert.equal(q('[name="child"]').value,'retained');
         assert.equal(q('[data-report-main-section]').open,false,'Restore expanded sections');
         toggle.click();
+        assert.equal(save.nextElementSibling,next,'Re-entering card mode moves the same button again');
         q('[name="visited_at"]').dispatchEvent(new w.Event('invalid'));
         assert.equal(form.classList.contains('is-scout-card-view'),false,'Native validation returns to full view');
     } finally { w.close(); }
