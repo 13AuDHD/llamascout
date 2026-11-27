@@ -1383,12 +1383,6 @@
                 }
             );
 
-        const nearestPanel = document.querySelector('[data-site-nearest-report]');
-        if (nearestPanel) {
-            nearestPanel.hidden = !(hasCompleteAccess && targetScope === 'site' && site.nearest_services);
-            if (nearestPanel.hidden) nearestPanel.querySelector('[data-nearest-results]')?.replaceChildren();
-            else window.LlamaScoutNearestServices?.render(nearestPanel, site.nearest_services);
-        }
 
         updateTargetContributionPrompts(targetScope, site.report_pending === true);
 
@@ -1466,11 +1460,6 @@
     );
     const initialCompletionText = document.querySelector('.scout-report-completeness span')?.textContent;
     const restorePlaceAnswers = () => {
-        const nearestPanel = document.querySelector('[data-site-nearest-report]');
-        if (nearestPanel) {
-            nearestPanel.hidden = true;
-            nearestPanel.querySelector('[data-nearest-results]')?.replaceChildren();
-        }
         const completion = document.querySelector('.scout-report-completeness span');
         if (completion && initialCompletionText !== undefined) {
             completion.textContent = initialCompletionText;
