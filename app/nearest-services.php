@@ -36,6 +36,26 @@ function llama_nearest_service_keys(): array
     ];
 }
 
+/**
+ * A named live match is supplementary to the approved distance answer.
+ * Never attach a different distance bucket to an authored observation, or
+ * imply a mapped service exists when no local reference record matches.
+ */
+function llama_nearest_public_match_label(?array $match, string $publishedDistance): ?string
+{
+    if (!$match || !is_numeric($match['distance_miles'] ?? null)) return null;
+    $miles = (float) $match['distance_miles'];
+    $name = trim((string) ($match['name'] ?? ''));
+    if ($name === '' || !is_finite($miles) || $miles < 0) return null;
+    $rounded = max(1, (int) round($miles));
+    $bucket = $miles > 20 ? 'Over 20 miles' : $rounded . ($rounded === 1 ? ' mile' : ' miles');
+    if ($publishedDistance !== $bucket) return null;
+    $precise = $miles > 0 && $miles < .1
+        ? rtrim(rtrim(number_format($miles, 3, '.', ''), '0'), '.')
+        : number_format($miles, 1, '.', ',');
+    return $name . ' (' . $precise . ' mi)';
+}
+
 /** Great-circle distance in international miles, including antimeridian wrap. */
 function llama_nearest_distance_miles(float $lat, float $lng, float $otherLat, float $otherLng): float
 {
