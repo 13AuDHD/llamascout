@@ -242,6 +242,7 @@
 .resource-map-section {
     width: 100%;
     margin: 0;
+    padding-top: 0;
 }
 .resource-map-section .place-map-heading {
     align-items: center;
