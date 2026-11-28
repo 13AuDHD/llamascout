@@ -24,6 +24,11 @@ function llama_resource_map_query_input(array $input): array
     }
     // Leaflet bounds are continuous, even across a world copy.
     $width=$east-$west;
+    // Bound the SQL work even for forged high-zoom requests. Allow a much
+    // wider viewport than a typical desktop or mobile map at each zoom.
+    if ($zoom>=7 && ($width>min(180,120 / (2 ** (floor($zoom)-7))) || $north-$south>min(180,120 / (2 ** (floor($zoom)-7))))) {
+        throw new InvalidArgumentException('Map bounds are too wide for the selected zoom.');
+    }
     if ($width>=360) { $west=-180.0; $east=180.0; }
     else {
         $west=fmod(fmod($west+180,360)+360,360)-180;
