@@ -5,6 +5,12 @@ on:
     paths:
       - 'app/osm-resource-import.php'
       - 'app/osm-resource-enrichment.php'
+      - 'app/resource-photo-discovery.php'
+      - 'admin/resource-photo-discovery*.php'
+      - 'admin/js/admin-resource-photo-discovery.js'
+      - 'tools/tests/resource-photo-discovery.php'
+      - 'tools/migrations/20261128_resource_photo_discovery.sql'
+      - 'resource.php'
       - 'admin/resource-enrichment*.php'
       - 'admin/js/admin-resource-enrichment.js'
       - 'api/osm-resource-enrichment.php'
@@ -70,6 +76,12 @@ jobs:
         run: |
           php -l app/osm-resource-import.php
           php -l app/osm-resource-enrichment.php
+          php -l app/resource-photo-discovery.php
+          php -l admin/resource-photo-discovery.php
+          php -l admin/resource-photo-discovery-step.php
+          php -l resource.php
+          node --check admin/js/admin-resource-photo-discovery.js
+          php tools/tests/resource-photo-discovery.php
           php -l admin/resource-enrichment.php
           php -l admin/resource-enrichment-step.php
           php -l api/osm-resource-enrichment.php

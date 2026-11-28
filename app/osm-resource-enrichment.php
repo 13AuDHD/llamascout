@@ -13,7 +13,7 @@ function llama_enrichment_ready(PDO $db): bool {
 
 /** Only business/location attributes; no contributor information or arbitrary tags. */
 function llama_enrichment_tags(array $tags): array {
-    $allowed=['name','brand','operator','addr:housenumber','addr:street','addr:full','addr:city','addr:town','addr:village','addr:postcode','addr:state','addr:country','addr:county','contact:phone','phone','contact:website','website','opening_hours','fee','access','wheelchair','description','drinking_water','toilets','shower','sanitary_dump_station','fuel:propane','propane','self_service','payment:cash','payment:credit_cards','payment:debit_cards','disused','abandoned','construction','demolished'];
+    $allowed=['name','brand','operator','wikimedia_commons','wikidata','image','addr:housenumber','addr:street','addr:full','addr:city','addr:town','addr:village','addr:postcode','addr:state','addr:country','addr:county','contact:phone','phone','contact:website','website','opening_hours','fee','access','wheelchair','description','drinking_water','toilets','shower','sanitary_dump_station','fuel:propane','propane','self_service','payment:cash','payment:credit_cards','payment:debit_cards','disused','abandoned','construction','demolished'];
     $result=[];
     foreach ($allowed as $key) {
         $value=$tags[$key] ?? '';

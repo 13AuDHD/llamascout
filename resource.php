@@ -435,6 +435,10 @@ require __DIR__ . '/partials/header.php';
 </header>
 
 <div class="place-detail-container resource-detail-body">
+<?php if (($heroImage['source_provider'] ?? '') === 'Wikimedia Commons'
+    && str_starts_with((string)($heroImage['source_url'] ?? ''),'https://commons.wikimedia.org/wiki/File:')): ?>
+    <p class="resource-photo-credit">Hero photo: <a href="<?= htmlspecialchars($heroImage['source_url'],ENT_QUOTES,'UTF-8') ?>" target="_blank" rel="noopener noreferrer"><?= htmlspecialchars((string)($heroImage['caption'] ?? 'Wikimedia Commons'),ENT_QUOTES,'UTF-8') ?></a> · Wikimedia Commons (display thumbnail)</p>
+<?php endif; ?>
 
 <section class="resource-detail-section">
     <div class="resource-section-heading">
@@ -752,6 +756,9 @@ foreach ($resourceReport['groups'] as $group) {
                 class="place-photo-thumb<?= !empty($image['is_featured']) ? ' is-featured' : '' ?>"
                 type="button"
                 data-gallery-open="<?= (int) $index ?>"
+                <?php if (($image['source_provider'] ?? '') === 'Wikimedia Commons'): ?>
+                    data-photo-credit="<?= htmlspecialchars((string)($image['caption'] ?? 'Wikimedia Commons'),ENT_QUOTES,'UTF-8') ?>"
+                <?php endif; ?>
                 aria-label="Open <?= $isFacility ? 'Facility' : 'Resource' ?> photo <?= (int) $index + 1 ?>"
             >
                 <img
@@ -783,6 +790,11 @@ foreach ($resourceReport['groups'] as $group) {
             </button>
         <?php endforeach; ?>
     </div>
+    <?php foreach ($images as $index=>$image): ?>
+        <?php if (($image['source_provider'] ?? '') === 'Wikimedia Commons' && str_starts_with((string)($image['source_url'] ?? ''),'https://commons.wikimedia.org/wiki/File:')): ?>
+            <p class="resource-photo-credit">Photo <?= (int)$index+1 ?>: <a href="<?= htmlspecialchars($image['source_url'],ENT_QUOTES,'UTF-8') ?>" target="_blank" rel="noopener noreferrer"><?= htmlspecialchars((string)($image['caption'] ?? 'Wikimedia Commons'),ENT_QUOTES,'UTF-8') ?></a> · Wikimedia Commons (display thumbnail)</p>
+        <?php endif; ?>
+    <?php endforeach; ?>
 
 </section>
 
