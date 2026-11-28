@@ -13,17 +13,39 @@ function llama_kartaview_ready(PDO $db): bool {
     } catch (PDOException $e) {return false;}
 }
 
-function llama_kartaview_processed_url(array $photo): ?string {
-    // Never use raw or unblurred source images. Prefer the explicit processed version.
-    $url=(string)($photo['fileurlProc'] ?? '');
-    if ($url==='') {
-        $template=(string)($photo['fileurl'] ?? '');
-        if (str_contains($template,'[[sizeprefix]]')) $url=str_replace('[[sizeprefix]]','proc',$template);
-    }
+function llama_kartaview_storage_url(string $url): ?string {
     $url=preg_replace('~^http://~','https://',$url);
     if (!is_string($url) || strlen($url)>500
         || !preg_match('~^https://storage[0-9]*\.(?:openstreetcam|kartaview)\.org/files/photo/[0-9/]+/proc/[a-zA-Z0-9_.-]+\.(?:jpe?g|png|webp)$~iD',$url)) return null;
     return $url;
+}
+
+function llama_kartaview_cdn_url(string $url): ?string {
+    if (strlen($url)>500 || !preg_match('~^https://cdn\.kartaview\.org/pr:sharp(?:/rs:fit:[0-9]{1,4}:[0-9]{1,4})?/([A-Za-z0-9_-]+={0,2})$~D',$url,$m)) return null;
+    $inner=base64_decode(strtr($m[1],'-_','+/'),true);
+    if (!is_string($inner) || !llama_kartaview_storage_url($inner)) return null;
+    return $url;
+}
+
+function llama_kartaview_processed_urls(array $photo): array {
+    $urls=[];
+    $cdn=llama_kartaview_cdn_url((string)($photo['imageProcUrl'] ?? ''));
+    if ($cdn) $urls[]=$cdn;
+    $storage=llama_kartaview_storage_url((string)($photo['fileurlProc'] ?? ''));
+    if (!$storage) {
+        $template=(string)($photo['fileurl'] ?? '');
+        if (str_contains($template,'[[sizeprefix]]')) $storage=llama_kartaview_storage_url(str_replace('[[sizeprefix]]','proc',$template));
+    }
+    if ($storage) {
+        $proxy='https://cdn.kartaview.org/pr:sharp/'.rtrim(strtr(base64_encode($storage),'+/','-_'),'=');
+        if (llama_kartaview_cdn_url($proxy)) $urls[]=$proxy;
+        $urls[]=$storage;
+    }
+    return array_values(array_unique($urls));
+}
+
+function llama_kartaview_processed_url(array $photo): ?string {
+    return llama_kartaview_processed_urls($photo)[0] ?? null;
 }
 
 function llama_kartaview_candidates(array $r,?callable $request=null): array {
@@ -42,27 +64,73 @@ function llama_kartaview_candidates(array $r,?callable $request=null): array {
         $distance=llama_photo_pilot_distance($lat,$lon,$a,$b);
         if ($distance>LLAMA_KARTAVIEW_RADIUS) continue;
         if (isset($p['projection']) && strtoupper((string)$p['projection'])==='SPHERE') continue;
-        $src=llama_kartaview_processed_url($p);
-        if (!$src) continue;
+        $urls=llama_kartaview_processed_urls($p);
+        if (!$urls) continue;
+        $src=$urls[0];
         $date=(string)($p['dateAdded'] ?? '');
         $date=preg_match('/^\d{4}-\d{2}-\d{2}/',$date,$m)?$m[0]:'';
         $caption='Nearby street view ('.round($distance).' m from Resource) · © Grab and KartaView Contributors · CC BY-SA 4.0';
         if ($date!=='') $caption.=' · Image added '.$date;
-        $photos[]=['src'=>$src,'distance'=>$distance,'credit'=>$caption,'source'=>'https://kartaview.org/map/@'.$a.','.$b.',18z','photo_id'=>(string)($p['id'] ?? '')];
+        $photos[]=['src'=>$src,'urls'=>$urls,'distance'=>$distance,'credit'=>$caption,'source'=>'https://kartaview.org/map/@'.$a.','.$b.',18z','photo_id'=>(string)($p['id'] ?? '')];
     }
     usort($photos,static fn($a,$b)=>$a['distance']<=>$b['distance']);
     return ['raw'=>count($rows),'photos'=>array_slice($photos,0,3)];
 }
 
-/** Validate a public processed image without downloading the full image or following redirects. */
-function llama_kartaview_image_available(string $src): bool {
-    if (llama_kartaview_processed_url(['fileurlProc'=>$src])!==$src) return false;
-    $curl=curl_init($src);
-    curl_setopt_array($curl,[CURLOPT_NOBODY=>true,CURLOPT_RETURNTRANSFER=>true,CURLOPT_CONNECTTIMEOUT=>4,CURLOPT_TIMEOUT=>8,
-        CURLOPT_USERAGENT=>'LlamaScout-ResourcePhotos/1.0 (https://llamascout.com)']);
-    $ok=curl_exec($curl);$code=(int)curl_getinfo($curl,CURLINFO_RESPONSE_CODE);$type=(string)curl_getinfo($curl,CURLINFO_CONTENT_TYPE);curl_close($curl);
-    if (!$ok || $code===429 || $code>=500 || $code===0) throw new RuntimeException('KartaView image host temporarily unavailable. Resume later.');
-    return $code===200 && preg_match('~^image/(?:jpeg|png|webp)(?:;|$)~i',$type)===1;
+/** Bounded GET: archived objects may return 200 to HEAD but fail on GET. */
+function llama_kartaview_image_probe(string $src): array {
+    if (!llama_kartaview_cdn_url($src) && llama_kartaview_storage_url($src)!==$src) return ['ok'=>false,'status'=>0,'detail'=>'Invalid processed URL'];
+    $curl=curl_init($src);$prefix='';
+    curl_setopt_array($curl,[CURLOPT_RETURNTRANSFER=>false,CURLOPT_CONNECTTIMEOUT=>3,CURLOPT_TIMEOUT=>5,
+        CURLOPT_FOLLOWLOCATION=>false,CURLOPT_RANGE=>'0-4095',
+        CURLOPT_USERAGENT=>'LlamaScout-ResourcePhotos/1.0 (https://llamascout.com)',
+        CURLOPT_WRITEFUNCTION=>static function($handle,string $chunk) use (&$prefix):int {
+            $prefix.=substr($chunk,0,max(0,4096-strlen($prefix)));
+            // Abort intentionally after receiving a bounded prefix even when the host ignores Range.
+            return strlen($prefix)>=4096?0:strlen($chunk);
+        }]);
+    curl_exec($curl);$errno=curl_errno($curl);$error=curl_error($curl);
+    $code=(int)curl_getinfo($curl,CURLINFO_RESPONSE_CODE);$type=(string)curl_getinfo($curl,CURLINFO_CONTENT_TYPE);curl_close($curl);
+    $magic=str_starts_with($prefix,"\xff\xd8\xff") || str_starts_with($prefix,"\x89PNG\r\n\x1a\n")
+        || (str_starts_with($prefix,'RIFF') && substr($prefix,8,4)==='WEBP');
+    $ok=in_array($code,[200,206],true) && $magic && in_array($errno,[0,23],true);
+    return ['ok'=>$ok,'status'=>$code,'detail'=>$ok?'Image bytes received':('HTTP '.$code.($errno?' / cURL '.$errno.' '.$error:'').' / '.$type)];
+}
+
+/** Try alternate URLs and subsequent candidates, without letting one broken host block the queue. */
+function llama_kartaview_pick(array $photos,?callable $probe=null): array {
+    $probe ??= 'llama_kartaview_image_probe';
+    $failures=[];$attempted=[];
+    foreach ($photos as $candidate) {
+        foreach ($candidate['urls'] ?? [$candidate['src']] as $src) {
+            if (isset($attempted[$src])) continue;
+            $attempted[$src]=true;
+            // Bound the total number of network probes per web request.
+            if (count($attempted)>4) break 2;
+            $result=$probe($src);
+            if ($result['ok']) {
+                $candidate['src']=$src;unset($candidate['urls']);
+                return ['photo'=>$candidate,'failures'=>$failures];
+            }
+            $failures[]=['host'=>parse_url($src,PHP_URL_HOST),'status'=>$result['status'],'detail'=>$result['detail']];
+            if ($result['status']===429) return ['photo'=>null,'failures'=>$failures,'throttled'=>true];
+        }
+    }
+    return ['photo'=>null,'failures'=>$failures];
+}
+
+function llama_kartaview_retry_unusable(PDO $db,string $state=''): int {
+    $lock='llama-photo-discovery-'.substr(hash('sha256',(string)$db->query('SELECT DATABASE()')->fetchColumn()),0,32);
+    $stmt=$db->prepare('SELECT GET_LOCK(?,0)');$stmt->execute([$lock]);
+    if ((int)$stmt->fetchColumn()!==1) throw new RuntimeException('Pause photo discovery before resetting failed results.');
+    try {
+        $sql="DELETE k FROM resource_kartaview_discovery k JOIN resources r ON r.id=k.resource_id
+            WHERE k.status='unusable' AND r.is_active=1 AND r.parent_place_id IS NULL
+            AND NOT EXISTS (SELECT 1 FROM resource_images i WHERE i.resource_id=r.id)";
+        $params=[];
+        if ($state!=='') {$sql.=' AND r.state_region=?';$params[]=$state;}
+        $stmt=$db->prepare($sql);$stmt->execute($params);return $stmt->rowCount();
+    } finally {$db->prepare('SELECT RELEASE_LOCK(?)')->execute([$lock]);}
 }
 
 function llama_kartaview_step(PDO $db,string $state=''): array {
@@ -87,10 +155,9 @@ function llama_kartaview_step(PDO $db,string $state=''): array {
         }
         $db->exec('INSERT INTO resource_kartaview_requests () VALUES ()');
         $result=llama_kartaview_candidates($r);
-        $photo=null;
-        foreach ($result['photos'] as $candidate) {
-            if (llama_kartaview_image_available($candidate['src'])) {$photo=$candidate;break;}
-        }
+        $picked=llama_kartaview_pick($result['photos']);
+        if (!empty($picked['throttled'])) return ['done'=>true,'limit'=>true,'retry_after'=>300];
+        $photo=$picked['photo'];
         $status=$photo?'attached':($result['raw']?'unusable':'none');
         $db->beginTransaction();
         $stmt=$db->prepare('SELECT * FROM resources WHERE id=? AND is_active=1 AND parent_place_id IS NULL FOR UPDATE');
@@ -103,9 +170,9 @@ function llama_kartaview_step(PDO $db,string $state=''): array {
                 VALUES (?,?,?,?,1,0,?,?)')->execute([$r['id'],$photo['src'],'Nearby street view of the Resource area',$photo['credit'],'KartaView',$photo['source']]);
         }
         $db->prepare('INSERT INTO resource_kartaview_discovery (resource_id,location_hash,status,photo) VALUES (?,?,?,?)')
-            ->execute([$r['id'],llama_resource_photo_hash($r),$status,json_encode($photo??['raw'=>$result['raw']],JSON_THROW_ON_ERROR|JSON_INVALID_UTF8_SUBSTITUTE)]);
+            ->execute([$r['id'],llama_resource_photo_hash($r),$status,json_encode($photo??['raw'=>$result['raw'],'failures'=>$picked['failures']],JSON_THROW_ON_ERROR|JSON_INVALID_UTF8_SUBSTITUTE)]);
         $db->commit();
-        return ['done'=>false,'name'=>$r['name'],'status'=>$status,'count'=>$photo?1:0];
+        return ['done'=>false,'name'=>$r['name'],'status'=>$status,'count'=>$photo?1:0,'detail'=>!$photo && $picked['failures']?($picked['failures'][0]['detail']):''];
     } finally {
         if ($db->inTransaction()) $db->rollBack();
         $db->prepare('SELECT RELEASE_LOCK(?)')->execute([$lock]);

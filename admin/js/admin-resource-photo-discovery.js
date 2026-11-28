@@ -5,8 +5,9 @@
     const start = root.querySelector('[data-discovery-start]');
     const pause = root.querySelector('[data-discovery-pause]');
     const status = root.querySelector('[data-discovery-status]');
-    let running = false, pending = false, timer = null, count = 0, attached = 0, review = 0;
-    function controls() { start.disabled = running || pending; pause.disabled = !running; }
+    const retry = root.querySelector('[data-discovery-retry]');
+    let running = false, pending = false, timer = null, count = 0, attached = 0, review = 0, unusable = 0;
+    function controls() { start.disabled = running || pending; pause.disabled = !running; if (retry) retry.disabled = running || pending; }
     function stop(message) {
         running = false;
         if (timer !== null) clearTimeout(timer);
@@ -33,7 +34,8 @@
             count++;
             if (result.status === 'attached') attached++;
             if (result.status === 'review') review++;
-            status.textContent = result.name + ': ' + result.status + '. ' + count + ' searched, ' + attached + ' attached, ' + review + ' to review this session.';
+            if (result.status === 'unusable') unusable++;
+            status.textContent = result.name + ': ' + result.status + '. ' + count + ' searched, ' + attached + ' attached, ' + review + ' to review, ' + unusable + ' unusable this session.' + (result.detail ? ' Last image: ' + result.detail : '');
             if (!running) { stop('Paused after saving the current result.'); return; }
             timer = setTimeout(step, 3000);
         } catch (error) { stop(error.message + ' Previous results are saved.'); }
@@ -41,8 +43,23 @@
     }
     start.addEventListener('click', () => {
         if (running || pending) return;
-        running = true; count = attached = review = 0; controls(); step();
+        running = true; count = attached = review = unusable = 0; controls(); step();
     });
     pause.addEventListener('click', () => stop(pending ? 'Pausing after the current search…' : 'Paused. Results saved.'));
+    retry?.addEventListener('click', async () => {
+        if (running || pending) return;
+        pending = true; controls();
+        try {
+            const res = await fetch(root.dataset.endpoint, {
+                method: 'POST', credentials: 'same-origin', cache: 'no-store',
+                headers: {Accept: 'application/json'},
+                body: new URLSearchParams({action:'retry_unusable',csrf_token:root.dataset.csrf,state:root.dataset.state})
+            });
+            const data = await res.json();
+            if (!res.ok || !data.ok) throw new Error(data.error || 'Retry failed.');
+            status.textContent = data.reset + ' failed image results requeued. Click Find and attach to resume.';
+        } catch (error) { status.textContent = error.message; }
+        finally { pending = false; controls(); }
+    });
     controls();
 })();
