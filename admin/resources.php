@@ -562,6 +562,33 @@ $e =
             value="<?= (int) $resourceId ?>"
         >
 
+        <?php if ($editing && !$resourceSubmission
+            && empty($resource['parent_place_id'])
+            && ($resource['source_provider'] ?? '') === 'OpenStreetMap'
+            && preg_match('~^(node|way|relation)/[1-9][0-9]{0,18}$~D', (string) ($resource['source_external_id'] ?? ''))): ?>
+            <?php
+            $lookupCoordinates = (string) $resource['latitude'] . ',' . (string) $resource['longitude'];
+            $lookupName = (string) ($resource['name'] ?? '');
+            $lookupOsmUrl = 'https://www.openstreetmap.org/' . $resource['source_external_id'];
+            ?>
+            <section class="contribution-section" data-resource-lookup
+                data-resource-id="<?= (int) $resourceId ?>"
+                data-resource-coordinates="<?= $e($lookupCoordinates) ?>">
+                <div class="contribution-section-body">
+                    <h3>Look up missing Resource details</h3>
+                    <p>Fill empty fields from the original OpenStreetMap record and a coordinate-based address lookup. Review the results before saving.</p>
+                    <div class="admin-user-form-actions">
+                        <button class="admin-button" type="button" data-resource-lookup-button>Autofill missing details</button>
+                        <a class="admin-button is-muted" href="<?= $e($lookupOsmUrl) ?>" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>
+                        <a class="admin-button is-muted" href="<?= $e('https://www.google.com/maps/search/?api=1&query=' . rawurlencode($lookupCoordinates)) ?>" target="_blank" rel="noopener noreferrer">Google Maps</a>
+                        <a class="admin-button is-muted" href="<?= $e('https://www.google.com/search?q=' . rawurlencode($lookupName . ' ' . ($resource['city'] ?? '') . ' ' . ($resource['state_region'] ?? '') . ' ' . $lookupCoordinates)) ?>" target="_blank" rel="noopener noreferrer">Search business</a>
+                    </div>
+                    <p data-resource-lookup-status role="status" aria-live="polite"></p>
+                    <p>Sources: <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors</a> and <a href="https://www.geoapify.com/" target="_blank" rel="noopener noreferrer">Geoapify</a>.</p>
+                </div>
+            </section>
+        <?php endif; ?>
+
         <?php
         $resourceStaffFields = true;
         require dirname(__DIR__) . '/partials/resources/fields.php';
