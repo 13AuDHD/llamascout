@@ -101,8 +101,10 @@ try {
     }
 
     // Resume interrupted imports first. A cron run processes only one state.
-    $job = $db->query("SELECT * FROM osm_resource_import_jobs WHERE status IN ('queued','importing')
-        ORDER BY CASE WHEN status='importing' THEN 0 ELSE 1 END,updated_at,region LIMIT 1")->fetch(PDO::FETCH_ASSOC) ?: null;
+    $browserReady = llama_osm_resource_browser_ready($db);
+    $where = $browserReady ? "status='queued' OR (status='importing' AND import_mode='local')" : "status IN ('queued','importing')";
+    $job = $db->query("SELECT * FROM osm_resource_import_jobs WHERE " . $where .
+        " ORDER BY CASE WHEN status='importing' THEN 0 ELSE 1 END,updated_at,region LIMIT 1")->fetch(PDO::FETCH_ASSOC) ?: null;
     if (!$job) exit(0);
     $region = $job['region'];
     if (!isset(llama_osm_resource_states()[$region]) || !preg_match('/^[a-f0-9]{32}$/D',$job['batch_id'])) {
