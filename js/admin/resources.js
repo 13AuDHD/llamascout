@@ -201,6 +201,86 @@
         });
     }
 
+    function setupResourceLookup(form) {
+        const panel = form.querySelector('[data-resource-lookup]');
+        if (!panel) return;
+        const button = panel.querySelector('[data-resource-lookup-button]');
+        const status = panel.querySelector('[data-resource-lookup-status]');
+        const coordinates = form.elements.coordinates;
+        const fields = {
+            street_address: 'street address', city: 'city', county: 'county',
+            state_region: 'state', postal_code: 'ZIP', country_code: 'country',
+            phone: 'phone', website_url: 'website',
+        };
+        const sameCoordinates = (a, b) => {
+            const parse = value => value.split(',').map(part => part.trim());
+            const x = parse(a), y = parse(b);
+            return x.length === 2 && y.length === 2 && x.every((part, i) =>
+                part !== '' && y[i] !== '' && Number.isFinite(Number(part))
+                && Math.abs(Number(part) - Number(y[i])) < 0.00000005);
+        };
+        button.addEventListener('click', async () => {
+            if (!sameCoordinates(coordinates.value, panel.dataset.resourceCoordinates)) {
+                status.textContent = 'Coordinates differ from the saved Resource. Save the location first or use the coordinate Search button.';
+                return;
+            }
+            const original = coordinates.value;
+            const blanks = Object.keys(fields).filter(name =>
+                form.elements[name] && !form.elements[name].value.trim());
+            const originalHoursMode = form.elements.hours_mode?.value;
+            button.disabled = true;
+            status.textContent = 'Looking up the original OpenStreetMap record and address…';
+            try {
+                const response = await fetch('/resource-lookup.php', {
+                    method: 'POST', credentials: 'same-origin',
+                    headers: { Accept: 'application/json' },
+                    body: new URLSearchParams({
+                        csrf_token: form.elements.csrf_token.value,
+                        resource_id: panel.dataset.resourceId,
+                    }),
+                });
+                const result = await response.json();
+                if (!response.ok || !result.ok) {
+                    throw new Error(result.error || 'Resource lookup temporarily unavailable.');
+                }
+                if (!sameCoordinates(original, coordinates.value)) {
+                    status.textContent = 'Coordinates changed during lookup. No fields were filled.';
+                    return;
+                }
+                const filled = [];
+                const approximate = [];
+                for (const name of blanks) {
+                    const field = form.elements[name];
+                    const value = result.fields?.[name];
+                    if (field.value.trim() || typeof value !== 'string' || !value.trim()) continue;
+                    if (field.type === 'url' && !/^https?:\/\//i.test(value)) continue;
+                    if (field.maxLength > 0 && value.length > field.maxLength) continue;
+                    field.value = value;
+                    filled.push(fields[name]);
+                    if (result.reverse_fields?.includes(name)) approximate.push(fields[name]);
+                }
+                const messages = [filled.length ? 'Filled: ' + filled.join(', ') + '.' : 'No additional empty fields could be filled.'];
+                if (approximate.length) messages.push('Verify coordinate-based results: ' + approximate.join(', ') + '. These may describe a nearby address.');
+                if (!result.osm_found) messages.push('Original OpenStreetMap record unavailable or removed.');
+                if (!result.reverse_found) messages.push('Coordinate address lookup unavailable.');
+                if (result.opening_hours === '24/7' && originalHoursMode === 'unknown'
+                    && form.elements.hours_mode?.value === 'unknown') {
+                    form.elements.hours_mode.value = '24_hours';
+                    form.elements.hours_mode.dispatchEvent(new Event('change'));
+                    messages.push('Filled 24-hour opening schedule from OSM.');
+                } else if (result.opening_hours) {
+                    messages.push('OSM opening hours (review in Details): ' + result.opening_hours);
+                }
+                messages.push('Existing values were preserved. Review before saving.');
+                status.textContent = messages.join(' ');
+            } catch (error) {
+                status.textContent = error instanceof SyntaxError ? 'Resource lookup temporarily unavailable.' : error.message;
+            } finally {
+                button.disabled = false;
+            }
+        });
+    }
+
     function setupPhotoGallery(form) {
         const grid = form.querySelector('[data-resource-photo-gallery]');
         const catalog = form.querySelector('[data-resource-photo-catalog]');
@@ -269,6 +349,7 @@
         if (mode) sync();
 
         setupLocation(form);
+        setupResourceLookup(form);
         form.addEventListener('invalid', event => {
             let details = event.target.closest('details');
             while (details) {
