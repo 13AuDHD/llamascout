@@ -24,7 +24,7 @@ require __DIR__.'/_header.php';
 ?>
 <section class="admin-panel">
     <header class="admin-panel-header"><div><p>OpenStreetMap</p><h2>Bulk Resource Enrichment</h2></div>
-        <a class="admin-button" href="/resource-photo-discovery.php">Find Resource Photos</a>
+        <a class="admin-button" href="/resource-kartaview.php">KartaView Hero Images</a> <a class="admin-button" href="/resource-photo-discovery.php">Find Resource Photos</a>
         <a class="admin-button" href="/resource-address-enrichment.php">Fill missing addresses</a>
         <a class="admin-button is-muted" href="/resource-map-data.php">Back to Map Data</a></header>
     <?php if (!$ready): ?>
