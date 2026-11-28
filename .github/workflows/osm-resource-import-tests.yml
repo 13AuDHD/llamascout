@@ -13,6 +13,13 @@ on:
       - 'tools/migrations/20261128_resource_address_enrichment.sql'
       - 'css/site/features/resource-form.css'
       - 'resource.php'
+      - 'map.php'
+      - 'index.php'
+      - 'app/homepage-discovery.php'
+      - 'partials/homepage-discovery.php'
+      - 'partials/header.php'
+      - 'css/map.css'
+      - 'tools/tests/homepage-discovery.php'
       - 'admin/resource-enrichment*.php'
       - 'admin/js/admin-resource-enrichment.js'
       - 'api/osm-resource-enrichment.php'
@@ -84,6 +91,12 @@ jobs:
           node --check admin/js/admin-resource-address-enrichment.js
           php tools/tests/resource-address-enrichment.php
           php -l resource.php
+          php -l map.php
+          php -l index.php
+          php -l app/homepage-discovery.php
+          php -l partials/homepage-discovery.php
+          php -l partials/header.php
+          php tools/tests/homepage-discovery.php
           php -l admin/resource-enrichment.php
           php -l admin/resource-enrichment-step.php
           php -l api/osm-resource-enrichment.php
