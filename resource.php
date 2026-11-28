@@ -642,18 +642,25 @@ require __DIR__ . '/partials/header.php';
             <div class="resource-source">
                 <?php if (!empty($resource['source_provider'])): ?>
                     <span>
+                        <?php if (($resource['source_provider'] ?? '') === 'OpenStreetMap'): ?>
+                            Imported from <a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a> (ODbL).
+                            <?= empty($resource['verified_at']) ? 'Not yet verified.' : 'Verification recorded.' ?>
+                        <?php else: ?>
                         Source:
                         <?= htmlspecialchars(
                             (string) $resource['source_provider'],
                             ENT_QUOTES,
                             'UTF-8'
                         ) ?>
+                        <?php endif; ?>
                     </span>
                 <?php endif; ?>
 
                 <?php if ($sourceDateLabel !== ''): ?>
                     <span>
-                        Verified / updated
+                        <?= ($resource['source_provider'] ?? '') === 'OpenStreetMap'
+                            ? (!empty($resource['verified_at']) ? 'Verified' : 'Source snapshot')
+                            : 'Verified / updated' ?>
                         <?= htmlspecialchars(
                             $sourceDateLabel,
                             ENT_QUOTES,

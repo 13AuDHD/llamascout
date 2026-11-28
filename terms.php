@@ -113,7 +113,7 @@ require __DIR__ . '/partials/header.php';
 
       <section class="legal-section" id="data-licenses">
         <h2>OpenStreetMap data license</h2>
-        <p>Nearest Services uses a separate reference dataset containing data © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>, available under the <a href="https://opendatacommons.org/licenses/odbl/1-0/">Open Database License (ODbL) 1.0</a>. The derived reference dataset is available free of charge as <a href="/api/osm-nearest-data.php">machine-readable regional data</a>. Llama Scout's independently contributed data is not part of this export.</p>
+        <p>Nearest Services and imported Resources use a reference dataset containing data © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>, available under the <a href="https://opendatacommons.org/licenses/odbl/1-0/">Open Database License (ODbL) 1.0</a>. The derived reference dataset is available free of charge as <a href="/api/osm-nearest-data.php">machine-readable regional data</a>. Published imported Resources also retain an <a href="/api/osm-resource-publications.php">ODbL source baseline export</a>. These source exports do not contain independently contributed Scout observations.</p>
       </section>
 
       <section class="legal-section">

@@ -35,6 +35,7 @@ function llama_resource_slug(string $name): string
 function llama_resource_hours_modes(): array
 {
     return [
+        'unknown' => 'Unknown',
         '24_hours' => '24 Hours',
         'fixed_hours' => 'Fixed Hours',
         'varied_hours' => 'Varied Hours',
@@ -202,6 +203,7 @@ function llama_resource_types(): array
         'propane_fill' => 'Propane fill',
         'ev_charging' => 'EV charging',
         'fuel_station' => 'Fuel station',
+        'waste_disposal' => 'Waste disposal',
         'other' => 'Other resource',
     ];
 }

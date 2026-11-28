@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require_once dirname(__DIR__) . '/app/bootstrap.php';
 require_once dirname(__DIR__) . '/app/osm-resource-browser.php';
+require_once dirname(__DIR__) . '/app/osm-resource-publication.php';
 
 $adminUser = moderation_require_admin();
 $adminPageTitle = 'Resources';
@@ -11,6 +12,11 @@ $db = db();
 $ready = llama_osm_resource_ready($db);
 $browserReady = $ready && llama_osm_resource_browser_ready($db);
 $autoRun = false;
+$publicationReady = $ready && llama_osm_publication_ready($db);
+$publicationRegion = (string)($_POST['publication_region'] ?? $_GET['publication_region'] ?? 'colorado');
+if (!isset(llama_osm_resource_states()[$publicationRegion])) $publicationRegion = 'colorado';
+$publicationCategory = (string)($_POST['publication_category'] ?? $_GET['publication_category'] ?? '');
+if (!isset(llama_osm_publication_categories()[$publicationCategory])) $publicationCategory = '';
 $notice = '';
 $error = '';
 $inventory = $ready ? llama_osm_resource_inventory($db) : [];
@@ -20,6 +26,12 @@ if ($ready && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             throw new InvalidArgumentException('Session expired. Reload this page.');
         }
         $action = (string)($_POST['action'] ?? '');
+        if ($action === 'publish_resources') {
+            if (!$publicationReady) throw new RuntimeException('Run the Resource publication SQL migration first.');
+            $result = llama_osm_publication_publish($db,$publicationRegion,$publicationCategory,
+                (array)($_POST['candidate_ids'] ?? []),(int)($adminUser['id'] ?? 0));
+            $notice = $result['published'].' Resources published; '.$result['review'].' held for duplicate or Facility review.';
+        } else {
         $regions = (array)($_POST['regions'] ?? []);
         if ($action === 'missing') {
             $regions = array_keys(array_filter($inventory,static fn($state)=>$state['snapshot'] === null));
@@ -34,6 +46,7 @@ if ($ready && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         $autoRun = true;
         $notice = $queued ? count($queued) . ' state(s) queued. Existing snapshots remain available during refresh.'
             : 'No additional states to queue. Select a state for a selected-state action; existing queued or importing states were left untouched.';
+        }
     } catch (PDOException $e) {
         llama_log_caught_exception($e,'admin.osm_resource_import');
         $error = 'The database could not queue the import. Existing snapshots are unchanged.';
@@ -85,6 +98,15 @@ if ($ready) {
     $stmt = $db->prepare($query);
     $stmt->execute($params);
     $candidates = $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+$publicationCounts = $publicationReady ? llama_osm_publication_counts($db) : ['published'=>0,'review'=>0];
+$publicationRows = $publicationReady && $publicationCounts['published'] < LLAMA_OSM_PUBLICATION_LIMIT
+    ? llama_osm_publication_candidates($db,$publicationRegion,$publicationCategory) : [];
+$reviewRows = [];
+if ($publicationReady) {
+    $reviewStmt=$db->prepare("SELECT osm_type,osm_id,reason,source_snapshot FROM osm_resource_publications WHERE region=? AND disposition='review' ORDER BY created_at DESC LIMIT 50");
+    $reviewStmt->execute([$publicationRegion]);
+    $reviewRows=$reviewStmt->fetchAll(PDO::FETCH_ASSOC);
 }
 $e = static fn($value)=>moderation_e((string)$value);
 require __DIR__ . '/_header.php';
@@ -143,6 +165,58 @@ require __DIR__ . '/_header.php';
     <?php endif; ?>
 </section>
 <?php if ($ready): ?>
+<section class="admin-panel" id="resource-publication">
+    <header class="admin-panel-header"><div><p>OpenStreetMap</p><h2>Resource Publication</h2></div></header>
+    <?php if (!$publicationReady): ?>
+        <p>Run <code>20261127_osm_resource_publication.sql</code> in the primary database to enable publication. Existing imports are preserved.</p>
+    <?php else: ?>
+        <p><strong><?= number_format($publicationCounts['published']) ?> / <?= LLAMA_OSM_PUBLICATION_LIMIT ?> pilot Resources published</strong> · <?= number_format($publicationCounts['review']) ?> held for review.</p>
+        <p>Publish up to 25 selected candidates at a time. Each source feature becomes one editable Resource with its mapped priority services. Existing Resources and nearby Places are never overwritten. The temporary nationwide pilot cap protects the current public map until viewport loading is ready.</p>
+        <form method="get" action="/resource-map-data.php#resource-publication">
+            <label>State <select name="publication_region"><?php foreach (llama_osm_resource_states() as $slug=>$name): ?>
+                <option value="<?= $e($slug) ?>" <?= $slug===$publicationRegion?'selected':'' ?>><?= $e($name) ?></option>
+            <?php endforeach; ?></select></label>
+            <label>Service <select name="publication_category"><option value="">All seven priority services</option>
+                <?php foreach (llama_osm_publication_categories() as $key=>$type): ?>
+                    <option value="<?= $e($key) ?>" <?= $publicationCategory===$key?'selected':'' ?>><?= $e($priorities[$key]) ?></option>
+                <?php endforeach; ?>
+            </select></label>
+            <button class="admin-button">Preview candidates</button>
+        </form>
+        <?php if ($publicationRows): ?>
+        <form method="post" action="/resource-map-data.php#resource-publication">
+            <input type="hidden" name="csrf_token" value="<?= $e(moderation_csrf_token()) ?>">
+            <input type="hidden" name="publication_region" value="<?= $e($publicationRegion) ?>">
+            <input type="hidden" name="publication_category" value="<?= $e($publicationCategory) ?>">
+            <div class="admin-table-wrap"><table class="admin-table">
+                <thead><tr><th>Publish</th><th>Source name</th><th>Services</th><th>Coordinates</th><th>Source</th></tr></thead>
+                <tbody><?php foreach ($publicationRows as $row): $identity=$row['osm_type'].'/'.$row['osm_id']; ?>
+                    <tr>
+                        <td><input type="checkbox" checked name="candidate_ids[]" value="<?= $e($identity) ?>" aria-label="Publish <?= $e($row['name']) ?>"></td>
+                        <td><?= $e($row['name']) ?></td>
+                        <td><?= $e(implode(', ',array_map(static fn($type)=>$priorities[$type],$row['services']))) ?></td>
+                        <td><?= $e($row['latitude']) ?>, <?= $e($row['longitude']) ?></td>
+                        <td><a href="https://www.openstreetmap.org/<?= $e($identity) ?>" target="_blank" rel="noopener noreferrer">View source</a></td>
+                    </tr>
+                <?php endforeach; ?></tbody>
+            </table></div>
+            <button class="admin-button is-primary" name="action" value="publish_resources">Publish selected eligible Resources</button>
+        </form>
+        <?php else: ?>
+            <p><?= $publicationCounts['published']>=LLAMA_OSM_PUBLICATION_LIMIT?'Pilot cap reached.':'No undecided candidates match this state and service.' ?></p>
+        <?php endif; ?>
+        <?php if ($reviewRows): ?>
+            <h3>Held for review</h3>
+            <p>These records were not published. Review links identify the original mapped features; no existing Resource has been changed.</p>
+            <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Source</th><th>Reason</th></tr></thead><tbody>
+            <?php foreach ($reviewRows as $row): $baseline=json_decode($row['source_snapshot'],true); ?>
+                <tr><td><a href="https://www.openstreetmap.org/<?= $e($row['osm_type']) ?>/<?= (int)$row['osm_id'] ?>" target="_blank" rel="noopener noreferrer"><?= $e($baseline['name'] ?? 'OSM feature') ?></a></td><td><?= $e($row['reason']) ?></td></tr>
+            <?php endforeach; ?>
+            </tbody></table></div>
+        <?php endif; ?>
+        <small><a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors (ODbL)</a></small>
+    <?php endif; ?>
+</section>
 <section class="admin-panel" id="resource-candidates">
     <header class="admin-panel-header"><div><p>Imported reference inventory</p><h2>Resource candidates</h2></div></header>
     <form method="get" action="/resource-map-data.php#resource-candidates">
@@ -154,7 +228,7 @@ require __DIR__ . '/_header.php';
         <?php endforeach; ?></select></label>
         <button class="admin-button">View</button>
     </form>
-    <p>First 100 source candidates, grouped by OpenStreetMap feature identity. Counts are mapped services, not verified Resources. A separate publication and duplicate-review step is required before they appear on the public Resource map.</p>
+    <p>First 100 source candidates, grouped by OpenStreetMap feature identity. Counts are mapped services, not verified Resources. Use Resource Publication above to publish eligible priority candidates.</p>
     <div class="admin-table-wrap">
         <table class="admin-table"><thead><tr><th>Name</th><th>Services</th><th>Coordinates</th><th>Source</th></tr></thead><tbody>
         <?php foreach ($candidates as $candidate): ?>

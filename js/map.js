@@ -1054,6 +1054,7 @@ popupAnchor: [0, -42]
                     </span>
 
                     <strong>${escapeHtml(resource.name || 'Resource')}</strong>
+                    ${resource.source_provider === 'OpenStreetMap' ? '<span class="map-popup-location">Imported from OpenStreetMap · ' + (resource.verified_at ? 'Verification recorded' : 'Unverified') + '</span>' : ''}
 
                     ${
                         location
@@ -1211,6 +1212,7 @@ popupAnchor: [0, -42]
                     <strong class="map-result-card-name">
                         ${escapeHtml(resource.name || 'Resource')}
                     </strong>
+                    ${resource.source_provider === 'OpenStreetMap' ? '<span class="map-result-card-location">Imported · ' + (resource.verified_at ? 'Verification recorded' : 'Unverified') + '</span>' : ''}
 
                     ${
                         location
