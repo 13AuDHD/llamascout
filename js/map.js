@@ -87,8 +87,15 @@
     const filterButtons = [...document.querySelectorAll('[data-resource-filter]')];
     const showAllResources = document.querySelector('[data-resource-show-all]');
     const hideAllResources = document.querySelector('[data-resource-hide-all]');
-    let resourcesLoaded = false;
-    let resourcesLoading = null;
+    let resourceClusters = [];
+    let resourceMode = 'hidden';
+    let resourceTruncated = false;
+    let resourceCount = 0;
+    let resourceRequest = null;
+    let resourceRequestId = 0;
+    let resourceTimer = null;
+    let resourceStatus = '';
+    let clusterMarkers = [];
     let placesLoaded = false;
     let viewTouched = false;
 
@@ -558,7 +565,9 @@
             return null;
         }
 
-        return [latitude, longitude];
+        // Use the same world copy as the viewport, including across the dateline.
+        const center = map.getCenter().lng;
+        return [latitude, longitude + 360 * Math.round((center - longitude) / 360)];
     };
 
 
@@ -611,38 +620,7 @@
 
     const resourceMatches = (resource) => {
         if (!preferences.matchingService(resource, resourceFilters)) return false;
-        const search =
-            String(
-                controls.search?.value
-                || ''
-            )
-                .trim()
-                .toLowerCase();
-
-        if (search === '') {
-            return true;
-        }
-
-        const searchable = [
-            resource.name,
-            resource.resource_type,
-            resource.resource_type_label,
-            resource.street_address,
-            resource.city,
-            resource.state_region,
-            resource.postal_code,
-            ...resourceServices(resource).flatMap(
-                (service) => [
-                    service.service_type,
-                    service.service_type_label
-                ]
-            )
-        ]
-            .filter(Boolean)
-            .join(' ')
-            .toLowerCase();
-
-        return searchable.includes(search);
+        return true; // Search is applied by the viewport query before its result cap.
     };
 
 
@@ -926,6 +904,7 @@ popupAnchor: [0, -42]
         markers = [];
         markerByPlace.clear();
         markerByResource.clear();
+        clusterMarkers = [];
     };
 
 
@@ -1581,7 +1560,7 @@ popupAnchor: [0, -42]
 
         if (controls.status) {
             controls.status.textContent =
-                `${visiblePlaces.length} Place${visiblePlaces.length === 1 ? '' : 's'} · ${visibleResources.length} Resource${visibleResources.length === 1 ? '' : 's'} shown`;
+                `${visiblePlaces.length} Place${visiblePlaces.length === 1 ? '' : 's'} · ${resourceMode === 'clusters' ? resourceCount : visibleResources.length} Resources${resourceMode === 'clusters' ? ' grouped' : ' shown'}` + (resourceStatus ? ' · ' + resourceStatus : '');
         }
 
         if (controls.empty) {
@@ -1596,7 +1575,7 @@ popupAnchor: [0, -42]
                 + visibleResources.length;
 
             controls.empty.hidden =
-                visibleCount !== 0;
+                visibleCount !== 0 || resourceMode === 'clusters' && resourceCount > 0 || !!resourceStatus;
 
             if (visibleCount === 0) {
                 const filteredCount =
@@ -1629,6 +1608,54 @@ popupAnchor: [0, -42]
     };
 
 
+    function renderResourceMarkers() {
+        // Resource requests do not rebuild every Place marker or close its popup.
+        const previous = new Map([...markerByResource.entries()].map(([resource,marker]) => [resource.id,{resource,marker}]));
+        const discarded = new Set(clusterMarkers);
+        markerByResource.clear();
+        clusterMarkers = [];
+        filteredResources = resources.filter(resourceMatches);
+        for (const resource of filteredResources) {
+            const coords = resourceCoordinates(resource);
+            if (!coords) continue;
+            const prior = previous.get(resource.id);
+            let marker;
+            if (prior && JSON.stringify(prior.resource) === JSON.stringify(resource)) {
+                // Keep the same marker and popup when it is still in view.
+                marker = prior.marker;
+                const position = marker.getLatLng();
+                if (position.lat !== coords[0] || position.lng !== coords[1]) marker.setLatLng(coords);
+                previous.delete(resource.id);
+            } else {
+                marker = L.marker(coords,{icon:resourceMarkerIcon(resource)});
+                marker.bindPopup(resourcePopupHtml(resource));
+                marker.addTo(map);
+                markers.push(marker);
+            }
+            markerByResource.set(resource,marker);
+        }
+        for (const {marker} of previous.values()) discarded.add(marker);
+        discarded.forEach(marker => map.removeLayer(marker));
+        markers = markers.filter(marker => !discarded.has(marker));
+
+        for (const cluster of resourceClusters) {
+            const coords = resourceCoordinates(cluster);
+            if (!coords || !Number.isSafeInteger(cluster.count) || cluster.count < 1) continue;
+            const marker = L.marker(coords, {
+                icon: L.divIcon({
+                    className:'map-resource-marker-shell',
+                    html:'<span class="map-resource-cluster">' + cluster.count.toLocaleString() + '</span>',
+                    iconSize:[42,42], iconAnchor:[21,21]
+                }),
+                title: cluster.count + ' Resources; zoom in',
+                keyboard:true
+            }).addTo(map);
+            marker.on('click', () => map.setView(coords, Math.min(10,map.getZoom()+2)));
+            clusterMarkers.push(marker);
+            markers.push(marker);
+        }
+    }
+
     const render = (fitMap = false) => {
         filteredPlaces =
             places.filter(matches);
@@ -1659,42 +1686,7 @@ popupAnchor: [0, -42]
             markerByPlace.set(place, marker);
         });
 
-        filteredResources.forEach(
-            (resource) => {
-                const coordinates =
-                    resourceCoordinates(resource);
-
-                if (!coordinates) {
-                    return;
-                }
-
-                const marker =
-                    L.marker(
-                        coordinates,
-                        {
-                            icon:
-                                resourceMarkerIcon(
-                                    resource
-                                )
-                        }
-                    );
-
-                marker.bindPopup(
-                    resourcePopupHtml(
-                        resource
-                    )
-                );
-
-                marker.addTo(map);
-
-                markers.push(marker);
-
-                markerByResource.set(
-                    resource,
-                    marker
-                );
-            }
-        );
+        renderResourceMarkers();
 
         updateFilterCount();
 
@@ -1728,6 +1720,7 @@ popupAnchor: [0, -42]
 
         if (openOnlySwitch) openOnlySwitch.checked = false;
         render(true);
+        scheduleResourceLoad();
     };
 
 
@@ -1754,39 +1747,80 @@ popupAnchor: [0, -42]
         if (hideAllResources) hideAllResources.disabled = resourceFilters.length === 0;
     }
 
-    // Temporary lazy load of the existing bounded pilot inventory. The next
-    // change will replace this all-inventory endpoint with viewport queries.
-    async function loadEnabledResources() {
-        if (!resourceFilters.length || resourcesLoaded || resourcesLoading) return resourcesLoading;
-        resourcesLoading = (async () => {
-            try {
-                const response = await fetch('/api/resources.php', {
-                    cache: 'no-store', credentials: 'same-origin', headers: {'Accept': 'application/json'}
-                });
-                if (!response.ok) throw new Error('Unable to load Resources.');
-                const data = await response.json();
-                if (!data.ok || !Array.isArray(data.resources)) throw new Error('Unexpected Resources response.');
-                resources = data.resources;
-                resourcesLoaded = true;
-                if (placesLoaded) render(false);
-            } catch (error) {
-                console.error('Llama Scout Resources:', error);
-                if (controls.status) controls.status.textContent = 'Resources could not be loaded. Toggle a Resource filter to retry.';
-            } finally {
-                resourcesLoading = null;
-            }
-        })();
-        return resourcesLoading;
+    function clearResourceResults(message = '') {
+        resources = [];
+        resourceClusters = [];
+        resourceMode = 'hidden';
+        resourceCount = 0;
+        resourceTruncated = false;
+        resourceStatus = message;
+        renderResourceMarkers();
+        renderViewportCards();
+    }
+
+    function scheduleResourceLoad(clear = true) {
+        window.clearTimeout(resourceTimer);
+        const requestId = ++resourceRequestId;
+        resourceRequest?.abort();
+        resourceRequest = null;
+        if (!placesLoaded) return;
+        if (!resourceFilters.length) { clearResourceResults(); return; }
+        if (map.getZoom() < 7) { clearResourceResults('Zoom in to see Resources'); return; }
+        if (clear || (map.getZoom() < 10) !== (resourceMode === 'clusters')) {
+            clearResourceResults('Loading Resources…');
+        } else {
+            resourceStatus = 'Loading Resources…';
+            renderViewportCards();
+        }
+        resourceTimer = window.setTimeout(() => loadEnabledResources(requestId), 200);
+    }
+
+    async function loadEnabledResources(requestId) {
+        if (requestId !== resourceRequestId || !resourceFilters.length || map.getZoom() < 7) return;
+        const bounds = map.getBounds();
+        const params = new URLSearchParams({
+            south: Math.max(-90,bounds.getSouth()).toFixed(7),
+            north: Math.min(90,bounds.getNorth()).toFixed(7),
+            west: bounds.getWest().toFixed(7),
+            east: bounds.getEast().toFixed(7),
+            zoom: String(map.getZoom()),
+            services: [...preferences.serviceTypes(resourceFilters)].sort().join(','),
+            search: String(controls.search?.value || '').trim().slice(0,120)
+        });
+        const controller = new AbortController();
+        resourceRequest = controller;
+        try {
+            const response = await fetch('/api/resources.php?' + params.toString(), {
+                cache:'no-store', credentials:'same-origin', signal:controller.signal,
+                headers:{Accept:'application/json'}
+            });
+            if (!response.ok) throw new Error('Unable to load Resources.');
+            const data = await response.json();
+            if (requestId !== resourceRequestId || controller.signal.aborted) return;
+            if (!data.ok || !Array.isArray(data.resources) || !Array.isArray(data.clusters)) throw new Error('Unexpected Resource response.');
+            resources = data.resources;
+            resourceClusters = data.clusters;
+            resourceMode = data.mode;
+            resourceCount = Number(data.count) || 0;
+            resourceTruncated = data.truncated === true;
+            resourceStatus = resourceTruncated ? 'Zoom in for more Resources'
+                : resourceMode === 'clusters' && resourceCount ? 'Zoom in for individual Resources' : '';
+            renderResourceMarkers();
+            renderViewportCards();
+        } catch (error) {
+            if (requestId !== resourceRequestId || controller.signal.aborted) return;
+            console.error('Llama Scout Resources:',error);
+            clearResourceResults('Resources unavailable; move the map or toggle a filter to retry');
+        } finally {
+            if (resourceRequest === controller) resourceRequest = null;
+        }
     }
 
     function setResourceFilters(next) {
         resourceFilters = next;
         preferences.saveFilters(storage, next);
         syncResourceButtons();
-        if (placesLoaded) {
-            render(false);
-            if (resourceFilters.length) loadEnabledResources();
-        }
+        scheduleResourceLoad();
     }
 
     // Never prompt for device location automatically, and never replace a
@@ -1865,7 +1899,7 @@ popupAnchor: [0, -42]
             // Loading the dataset must not fit the entire country over a
             // remembered viewport or over a pan made during the request.
             render(false);
-            if (resourceFilters.length) loadEnabledResources();
+            scheduleResourceLoad();
             locateInitially();
 
 
@@ -1906,7 +1940,10 @@ popupAnchor: [0, -42]
         window.clearTimeout(searchRenderTimer);
 
         searchRenderTimer = window.setTimeout(
-            () => render(true),
+            () => {
+                render(!resourceFilters.length);
+                scheduleResourceLoad();
+            },
             180
         );
     });
@@ -1926,6 +1963,7 @@ popupAnchor: [0, -42]
     map.on('moveend', () => {
         if (!placesLoaded) return;
         renderViewportCards();
+        scheduleResourceLoad(false);
     });
 
     loadPlaces();

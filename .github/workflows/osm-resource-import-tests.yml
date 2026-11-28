@@ -12,6 +12,9 @@ on:
       - 'app/osm-resource-local.php'
       - 'app/osm-resource-browser.php'
       - 'app/osm-resource-publication.php'
+      - 'app/resource-map-query.php'
+      - 'api/resources.php'
+      - 'tools/tests/resource-map-query-mariadb.php'
       - 'app/resources.php'
       - 'app/admin-resources.php'
       - 'api/osm-resource-publications.php'
@@ -64,6 +67,8 @@ jobs:
           php -l app/osm-resource-browser.php
           php -l app/osm-resource-publication.php
           php -l api/osm-resource-publications.php
+          php -l api/resources.php
+          php -l app/resource-map-query.php
           node --check js/map.js
           php -l app/osm-resource-pbf.php
           php -l admin/resource-map-data-step.php
@@ -79,3 +84,4 @@ jobs:
           php tools/tests/osm-resource-import-mariadb.php
           php tools/tests/osm-resource-browser-mariadb.php
           php tools/tests/osm-resource-publication-mariadb.php
+          php tools/tests/resource-map-query-mariadb.php
