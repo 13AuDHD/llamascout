@@ -51,6 +51,17 @@ function llama_osm_resource_ready(PDO $db): bool
     }
 }
 
+function llama_osm_resource_browser_ready(PDO $db): bool
+{
+    try {
+        $db->query('SELECT import_mode,source_bytes,source_offset,source_row_offset,source_validator FROM osm_resource_import_jobs LIMIT 0');
+        return true;
+    } catch (PDOException $e) {
+        if (in_array($e->getCode(),['42S02','42S22'],true)) return false;
+        throw $e;
+    }
+}
+
 function llama_osm_resource_validate_regions(array $regions): array
 {
     $states = llama_osm_resource_states();
@@ -86,14 +97,17 @@ function llama_osm_resource_queue(PDO $db, array $regions, bool $restart = false
     $db->beginTransaction();
     try {
         $read = $db->prepare('SELECT status FROM osm_resource_import_jobs WHERE region=? FOR UPDATE');
+        $browserReady = llama_osm_resource_browser_ready($db);
+        $reset = $browserReady ? ",import_mode='local',source_bytes=0,source_offset=0,source_row_offset=0,source_validator=NULL" : '';
+        $message = $browserReady ? 'Queued; ready to process from Admin' : 'Waiting for local import worker';
         $write = $db->prepare("INSERT INTO osm_resource_import_jobs (region,batch_id,status,message)
-            VALUES (?,?,'queued','Waiting for local import worker')
+            VALUES (?,?,'queued',?)
             ON DUPLICATE KEY UPDATE batch_id=VALUES(batch_id),status='queued',snapshot_date=NULL,
-            expected_rows=0,received_rows=0,next_chunk=0,message=VALUES(message),updated_at=UTC_TIMESTAMP()");
+            expected_rows=0,received_rows=0,next_chunk=0,message=VALUES(message),updated_at=UTC_TIMESTAMP()" . $reset);
         foreach ($regions as $region) {
             $read->execute([$region]);
             if (!$restart && in_array($read->fetchColumn(),['queued','importing'],true)) continue;
-            $write->execute([$region,$batch]);
+            $write->execute([$region,$batch,$message]);
             $queued[] = $region;
         }
         $db->commit();
