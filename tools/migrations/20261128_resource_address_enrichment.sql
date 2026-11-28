@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS resource_address_enrichment (
     resource_id BIGINT UNSIGNED NOT NULL PRIMARY KEY,
     latitude DECIMAL(10,7) NOT NULL,
     longitude DECIMAL(10,7) NOT NULL,
-    status ENUM('filled','partial','review','none') NOT NULL,
+    status ENUM('pending','filled','partial','review','none') NOT NULL,
     candidate JSON NOT NULL,
     applied_fields JSON NOT NULL,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
