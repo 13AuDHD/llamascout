@@ -96,6 +96,18 @@ function llama_osm_local_job_current(PDO $db, array $job): bool
     return $stmt->fetchColumn() !== false;
 }
 
+/** Read status without creating files or starting any processing in Admin. */
+function llama_osm_local_worker_status(): ?array
+{
+    $file = dirname(__DIR__,2) . '/private/osm-resource-import/worker-status.json';
+    if (!is_readable($file)) return null;
+    $raw = file_get_contents($file,false,null,0,4096);
+    $status = is_string($raw) ? json_decode($raw,true) : null;
+    if (!is_array($status) || !in_array($status['state'] ?? '', ['ready','working','blocked'],true)
+        || !is_string($status['message'] ?? null) || !is_string($status['at'] ?? null)) return null;
+    return $status;
+}
+
 /** Private working files are not placed under a document root. */
 function llama_osm_local_directory(): string
 {
