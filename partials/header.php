@@ -148,6 +148,8 @@ $promotionBannerEndsAt = $activeWebsitePromotion
         content="<?= htmlspecialchars($pageTitle ?? 'Llama Scout', ENT_QUOTES, 'UTF-8') ?>"
     >
 
+    <meta property="og:site_name" content="Llama Scout">
+
     <meta
         property="og:type"
         content="<?= htmlspecialchars($pageSocialType, ENT_QUOTES, 'UTF-8') ?>"
@@ -168,6 +170,11 @@ $promotionBannerEndsAt = $activeWebsitePromotion
     <?php endif; ?>
 
     <?php if ($pageSocialImage !== ''): ?>
+        <?php if (!empty($pageSocialImageAlt)): ?>
+            <meta property="og:image:alt" content="<?= htmlspecialchars((string) $pageSocialImageAlt, ENT_QUOTES, 'UTF-8') ?>">
+            <meta name="twitter:image:alt" content="<?= htmlspecialchars((string) $pageSocialImageAlt, ENT_QUOTES, 'UTF-8') ?>">
+        <?php endif; ?>
+        <meta name="twitter:image" content="<?= htmlspecialchars($pageSocialImage, ENT_QUOTES, 'UTF-8') ?>">
         <meta
             property="og:image"
             content="<?= htmlspecialchars($pageSocialImage, ENT_QUOTES, 'UTF-8') ?>"
@@ -193,6 +200,13 @@ $promotionBannerEndsAt = $activeWebsitePromotion
             name="twitter:description"
             content="<?= htmlspecialchars($pageDescription, ENT_QUOTES, 'UTF-8') ?>"
         >
+    <?php endif; ?>
+
+    <?php if (!empty($pageStructuredData) && is_array($pageStructuredData)): ?>
+        <?php $structuredJson = json_encode($pageStructuredData, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE); ?>
+        <?php if ($structuredJson !== false): ?>
+            <script type="application/ld+json"><?= $structuredJson ?></script>
+        <?php endif; ?>
     <?php endif; ?>
 
     <script>
