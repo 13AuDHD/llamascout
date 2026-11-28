@@ -2,7 +2,7 @@
 declare(strict_types=1);
 require_once __DIR__.'/address-autocomplete.php';
 
-const LLAMA_RESOURCE_ADDRESS_DAILY_LIMIT = 250;
+const LLAMA_RESOURCE_ADDRESS_DAILY_LIMIT = 1000;
 const LLAMA_RESOURCE_ADDRESS_FIELDS = ['street_address'=>'address_line_1','city'=>'city','county'=>'county','state_region'=>'state_name','postal_code'=>'postal_code','country_code'=>'country_code'];
 
 function llama_resource_address_ready(PDO $db): bool {
@@ -105,7 +105,7 @@ function llama_resource_address_step(PDO $db,string $state=''): array {
         $stmt=$db->prepare('INSERT INTO resource_address_enrichment (resource_id,latitude,longitude,status,candidate,applied_fields)
             VALUES (?,?,?,?,?,?) ON DUPLICATE KEY UPDATE latitude=VALUES(latitude),longitude=VALUES(longitude),status=VALUES(status),
             candidate=VALUES(candidate),applied_fields=JSON_MERGE_PATCH(applied_fields,VALUES(applied_fields)),updated_at=CURRENT_TIMESTAMP');
-        $stmt->execute([$r['id'],$r['latitude'],$r['longitude'],$status,json_encode($candidate,JSON_THROW_ON_ERROR|JSON_INVALID_UTF8_SUBSTITUTE),json_encode($applied,JSON_THROW_ON_ERROR)]);
+        $stmt->execute([$r['id'],$r['latitude'],$r['longitude'],$status,json_encode($candidate,JSON_THROW_ON_ERROR|JSON_INVALID_UTF8_SUBSTITUTE),json_encode((object)$applied,JSON_THROW_ON_ERROR)]);
         $db->commit();
         return ['done'=>false,'id'=>$r['id'],'name'=>$r['name'],'status'=>$status,'applied'=>array_keys($applied)];
     } finally {
