@@ -24,7 +24,12 @@
             });
             const result = await response.json();
             if (!response.ok || !result.ok) throw new Error(result.error || 'Photo discovery unavailable.');
-            if (result.done) { stop(result.limit ? 'KartaView hourly limit reached. Resume when the rolling hour resets.' : 'All pending Resources in this selection have been searched. Refresh results.'); return; }
+            if (result.limit && result.retry_after && running) {
+                const wait = Math.max(5, Number(result.retry_after));
+                status.textContent = 'KartaView hourly limit reached. Automatically resuming in '+Math.ceil(wait/60)+' min. Keep this page open.';
+                timer = setTimeout(step,wait*1000); return;
+            }
+            if (result.done) { stop('All pending Resources in this selection have been searched. Refresh results.'); return; }
             count++;
             if (result.status === 'attached') attached++;
             if (result.status === 'review') review++;
