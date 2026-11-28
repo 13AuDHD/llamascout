@@ -48,5 +48,31 @@ $assert($live()===['Shower','Water','Water'],'Older snapshot cannot replace newe
 $run2('fail');
 $assert($live()===['Shower','Water','Water'],'Failure preserves live data');
 $assert((int)$db->query('SELECT COUNT(*) FROM osm_resource_import_stage')->fetchColumn()===0,'Failed stage cleaned');
+// No oversized snapshot can even enter staging under the default limit.
+$batch3 = str_repeat('c',32);
+$db->prepare("UPDATE osm_resource_import_jobs SET batch_id=?,status='queued',snapshot_date=NULL,expected_rows=0,received_rows=0,next_chunk=0 WHERE region='colorado'")->execute([$batch3]);
+$command = ['action'=>'begin','region'=>'colorado','batch_id'=>$batch3,'snapshot_date'=>$date,'count'=>LLAMA_OSM_IMPORT_DEFAULT_MAX_ROWS+1];
+$reject(static fn()=>llama_osm_resource_worker($db,$command));
+$assert($live()===['Shower','Water','Water'],'Oversized refresh preserves live data');
+$command['count']=1;
+try {
+    llama_osm_resource_paced_worker($db,$command);
+    $assert(false,'Recent write must enforce cooldown');
+} catch (LlamaOsmImportBusy $e) {}
+$db->exec("UPDATE osm_resource_import_jobs SET updated_at=UTC_TIMESTAMP()-INTERVAL 5 SECOND");
+$second = new PDO($dsn,(string)getenv('LLAMA_OSM_TEST_USER'),(string)getenv('LLAMA_OSM_TEST_PASSWORD'),[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);
+$globalLock = 'llama-osm-writes-' . substr(hash('sha256',(string)$db->query('SELECT DATABASE()')->fetchColumn()),0,32);
+$hold = $second->prepare('SELECT GET_LOCK(?,0)');
+$hold->execute([$globalLock]);
+$assert((int)$hold->fetchColumn()===1,'Second worker holds global lock');
+try {
+    llama_osm_resource_paced_worker($db,$command);
+    $assert(false,'Concurrent state write must be rejected');
+} catch (LlamaOsmImportBusy $e) {}
+$second->prepare('SELECT RELEASE_LOCK(?)')->execute([$globalLock]);
+$assert(llama_osm_resource_paced_worker($db,$command)['status']==='importing','Resume after global cooldown');
+$run3 = static fn(string $action,array $input=[])=>llama_osm_resource_worker($db,['action'=>$action,'region'=>'colorado','batch_id'=>$batch3]+$input);
+$reject(static fn()=> $run3('chunk',['seq'=>0,'rows'=>array_fill(0,101,$row(5,'fuel','Fuel'))]));
+$run3('fail');
 $reject(static fn()=>llama_osm_resource_validate_regions(['../../private']));
 echo "PASS: state inventory, staged transfer, idempotent retries, atomic refresh, stale worker and older data protection.\n";

@@ -10,6 +10,8 @@ import urllib.request
 from pathlib import Path
 
 ENDPOINT = "https://llamascout.com/api/osm-resource-import-worker.php"
+CHUNK_SIZE = 100
+PAUSE_SECONDS = 2.5
 
 
 def read_snapshot(path, region):
@@ -54,7 +56,7 @@ def send(region, batch_id, action, **data):
         "User-Agent": "LlamaScout-OSM-Worker",
     }, method="POST")
     opener = urllib.request.build_opener(NoRedirect())
-    for attempt in range(4):
+    for attempt in range(7):
         try:
             with opener.open(request, timeout=90) as response:
                 result = json.load(response)
@@ -62,12 +64,12 @@ def send(region, batch_id, action, **data):
                 raise RuntimeError("Worker rejected the request")
             return result
         except urllib.error.HTTPError as exc:
-            if exc.code < 500 or attempt == 3:
+            if (exc.code < 500 and exc.code != 429) or attempt == 6:
                 raise RuntimeError(f"Worker returned HTTP {exc.code}") from None
         except (urllib.error.URLError, TimeoutError, json.JSONDecodeError):
-            if attempt == 3:
+            if attempt == 6:
                 raise RuntimeError("Worker response unavailable") from None
-        time.sleep(2 ** attempt)
+        time.sleep(min(30, 2 ** (attempt + 1)))
 
 
 def main():
@@ -86,8 +88,10 @@ def main():
         parser.error("Snapshot required")
     date, rows = read_snapshot(args.snapshot, args.region)
     send(args.region, args.batch, "begin", snapshot_date=date, count=len(rows))
-    for seq, start in enumerate(range(0, len(rows), 250)):
-        send(args.region, args.batch, "chunk", seq=seq, rows=rows[start:start+250])
+    for seq, start in enumerate(range(0, len(rows), CHUNK_SIZE)):
+        time.sleep(PAUSE_SECONDS)
+        send(args.region, args.batch, "chunk", seq=seq, rows=rows[start:start+CHUNK_SIZE])
+    time.sleep(PAUSE_SECONDS)
     result = send(args.region, args.batch, "finish")
     if result["status"] != "complete":
         raise RuntimeError("Snapshot not committed")

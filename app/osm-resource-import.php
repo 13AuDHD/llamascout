@@ -155,9 +155,37 @@ function llama_osm_resource_row(array $row): array
     return [$kind,$id,$type,$name,$lat,$lon];
 }
 
-/** Worker mutations are serialized by region and bound to a unique queue batch. */
-function llama_osm_resource_worker(PDO $db, array $input): array
+const LLAMA_OSM_IMPORT_DEFAULT_MAX_ROWS = 50000;
+const LLAMA_OSM_IMPORT_CHUNK_SIZE = 100;
+
+final class LlamaOsmImportBusy extends RuntimeException {}
+
+/**
+ * Global transport guard, including separately dispatched workflows. Do not
+ * occupy a PHP worker waiting for another import or sleeping between batches.
+ * All successful mutations advance the persisted job timestamp.
+ */
+function llama_osm_resource_paced_worker(PDO $db, array $input, int $maxRows = LLAMA_OSM_IMPORT_DEFAULT_MAX_ROWS): array
 {
+    $lockName = 'llama-osm-writes-' . substr(hash('sha256',(string)$db->query('SELECT DATABASE()')->fetchColumn()),0,32);
+    $lock = $db->prepare('SELECT GET_LOCK(?,0)');
+    $lock->execute([$lockName]);
+    if ((int)$lock->fetchColumn() !== 1) throw new LlamaOsmImportBusy('Another import write is active.');
+    try {
+        $elapsed = $db->query('SELECT TIMESTAMPDIFF(SECOND,MAX(updated_at),UTC_TIMESTAMP()) FROM osm_resource_import_jobs')->fetchColumn();
+        if ($elapsed !== null && $elapsed !== false && (int)$elapsed < 2) {
+            throw new LlamaOsmImportBusy('Import cooling down; retry shortly.');
+        }
+        return llama_osm_resource_worker($db,$input,$maxRows);
+    } finally {
+        $db->prepare('SELECT RELEASE_LOCK(?)')->execute([$lockName]);
+    }
+}
+
+/** Worker mutations are serialized by region and bound to a unique queue batch. */
+function llama_osm_resource_worker(PDO $db, array $input, int $maxRows = LLAMA_OSM_IMPORT_DEFAULT_MAX_ROWS): array
+{
+    $maxRows = max(1,min(200000,$maxRows));
     $region = (string) ($input['region'] ?? '');
     $batch = (string) ($input['batch_id'] ?? '');
     $action = (string) ($input['action'] ?? '');
@@ -185,8 +213,8 @@ function llama_osm_resource_worker(PDO $db, array $input): array
             $date = (string)($input['snapshot_date'] ?? '');
             $count = $input['count'] ?? null;
             $parsed = DateTimeImmutable::createFromFormat('!Y-m-d',$date);
-            if (!$parsed || $parsed->format('Y-m-d') !== $date || $date > gmdate('Y-m-d') || !is_int($count) || $count < 1 || $count > 2000000) {
-                throw new InvalidArgumentException('Invalid snapshot metadata.');
+            if (!$parsed || $parsed->format('Y-m-d') !== $date || $date > gmdate('Y-m-d') || !is_int($count) || $count < 1 || $count > $maxRows) {
+                throw new InvalidArgumentException('Invalid snapshot metadata or state exceeds configured safety limit.');
             }
             if ($job['status'] === 'queued') {
                 $clear->execute([$region]);
@@ -197,7 +225,7 @@ function llama_osm_resource_worker(PDO $db, array $input): array
         } elseif ($action === 'chunk') {
             $seq = $input['seq'] ?? null;
             $rows = $input['rows'] ?? null;
-            if (!is_int($seq) || $seq < 0 || !is_array($rows) || !array_is_list($rows) || !$rows || count($rows)>250) throw new InvalidArgumentException('Invalid batch.');
+            if (!is_int($seq) || $seq < 0 || !is_array($rows) || !array_is_list($rows) || !$rows || count($rows)>LLAMA_OSM_IMPORT_CHUNK_SIZE) throw new InvalidArgumentException('Invalid batch.');
             if ($job['status'] === 'complete' || ($job['status'] === 'importing' && $seq < (int)$job['next_chunk'])) {
                 // Idempotent retry after an acknowledged transaction.
             } elseif ($job['status'] !== 'importing' || $seq !== (int)$job['next_chunk']
@@ -217,6 +245,11 @@ function llama_osm_resource_worker(PDO $db, array $input): array
             $previous = $db->prepare('SELECT MAX(snapshot_date) FROM osm_nearest_services WHERE region=?');
             $previous->execute([$region]);
             if ((string)$previous->fetchColumn() > $job['snapshot_date']) throw new InvalidArgumentException('A newer snapshot already exists.');
+            $oldCount = $db->prepare('SELECT COUNT(*) FROM osm_nearest_services WHERE region=?');
+            $oldCount->execute([$region]);
+            if ((int)$oldCount->fetchColumn() > $maxRows || (int)$job['expected_rows'] > $maxRows) {
+                throw new InvalidArgumentException('State exceeds configured atomic replacement safety limit.');
+            }
             $db->prepare('DELETE FROM osm_nearest_services WHERE region=?')->execute([$region]);
             $db->prepare('INSERT INTO osm_nearest_services (region,osm_type,osm_id,service_type,name,latitude,longitude,snapshot_date)
                 SELECT region,osm_type,osm_id,service_type,name,latitude,longitude,snapshot_date FROM osm_resource_import_stage WHERE region=?')->execute([$region]);
