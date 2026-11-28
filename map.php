@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/app/bootstrap.php';
+require_once __DIR__ . '/app/contribution-presentation.php';
+require_once __DIR__ . '/app/branding.php';
+require_once __DIR__ . '/app/homepage-discovery.php';
 
 $mapUser = current_user();
 $mapUserId =
@@ -17,9 +20,34 @@ $hasMapMemberAccess =
             : null
     );
 
-$pageTitle = 'Llama Scout | Know the Place Before You Go';
-$pageDescription = 'Find campgrounds, RV-friendly stops, overnight parking, and useful resources like water and dump stations. Explore real places and practical details before you go with Llama Scout.';
+$pageTitle = 'Camping Map, Campgrounds & RV Resources | Llama Scout';
+$pageDescription = 'Find campgrounds, RV parks, overnight parking, water fills, RV dump stations, showers and laundry. Plan camping and overlanding trips with Llama Scout.';
 $canonicalUrl = 'https://llamascout.com/';
+$pageSocialImage = llama_contribution_photo_url(db());
+$pageSocialImageAlt = 'Llama Scout default outdoor image';
+$pageStructuredData = [
+    '@context' => 'https://schema.org',
+    '@graph' => [
+        [
+            '@type' => 'WebSite',
+            '@id' => $canonicalUrl . '#website',
+            'url' => $canonicalUrl,
+            'name' => 'Llama Scout',
+            'description' => $pageDescription,
+            'inLanguage' => 'en-US',
+            'publisher' => ['@id' => $canonicalUrl . '#organization'],
+        ],
+        [
+            '@type' => 'Organization',
+            '@id' => $canonicalUrl . '#organization',
+            'name' => 'Llama Scout',
+            'url' => $canonicalUrl,
+            'logo' => llama_brand_logo_dark_url(),
+            'slogan' => 'Know the place before you go.',
+        ],
+    ],
+];
+$homepageLinks = llama_homepage_public_links(db());
 
 require __DIR__ . '/partials/header.php';
 require __DIR__ . '/partials/cell-coverage-update-banner.php';
@@ -43,15 +71,15 @@ require __DIR__ . '/partials/cell-coverage-update-banner.php';
         <div class="map-shell map-hero-grid<?= $hasMapMemberAccess ? ' map-hero-grid-single' : '' ?>">
 
             <div>
-                <p class="map-eyebrow">Welcome to Llama Scout</p>
+                <p class="map-eyebrow">Llama Scout · Know the place before you go.</p>
 
-                <h1>Know the place before you go.</h1>
+                <h1>Find campgrounds, RV stops and camping resources</h1>
 
                 <p class="map-hero-lede">
-                    Find campgrounds, places to park, and helpful roadside
-                    stops. Check amenities, elevation, and land management,
-                    or find Resources like water fills, dump stations, fuel,
-                    and laundry.
+                    Explore our camping and overlanding map. Find campgrounds,
+                    RV parks, overnight parking, water fills, RV dump stations,
+                    showers and laundry. Compare amenities and available Scout
+                    reports before your next trip.
                 </p>
 
                 <p class="map-hero-tip">
@@ -64,7 +92,7 @@ require __DIR__ . '/partials/cell-coverage-update-banner.php';
     </header>
 
 
-    <section class="map-explorer">
+    <section class="map-explorer" id="map-explorer" aria-label="Interactive camping and Resource map">
         <div class="map-shell">
 
             <div class="map-toolbar">
@@ -498,6 +526,9 @@ require __DIR__ . '/partials/cell-coverage-update-banner.php';
 
         </div>
     </section>
+
+    <noscript><div class="map-shell"><p>The interactive map requires JavaScript. You can still browse public Places, Resources and field guides below.</p></div></noscript>
+    <?php require __DIR__ . '/partials/homepage-discovery.php'; ?>
 
 </section>
 
