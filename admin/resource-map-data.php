@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once dirname(__DIR__) . '/app/bootstrap.php';
-require_once dirname(__DIR__) . '/app/osm-resource-import.php';
+require_once dirname(__DIR__) . '/app/osm-resource-local.php';
 
 $adminUser = moderation_require_admin();
 $adminPageTitle = 'Resources';
@@ -9,6 +9,7 @@ $adminPageEyebrow = 'Map Data';
 $adminActiveNav = 'resource-map-data';
 $db = db();
 $ready = llama_osm_resource_ready($db);
+$workerStatus = llama_osm_local_worker_status();
 $notice = '';
 $error = '';
 $inventory = $ready ? llama_osm_resource_inventory($db) : [];
@@ -95,7 +96,12 @@ require __DIR__ . '/_header.php';
     <?php else: ?>
         <p><?= $imported ?> of <?= count($inventory) ?> regions imported. <?= $working ?> queued or importing. Existing Colorado and Oregon snapshots are recognized automatically.</p>
         <p>Imports run through the local server worker; you do not need to download files or leave this page open. Refresh replaces only the selected reference snapshot after every row is received. Imported rows are not Scout observations.</p>
-        <p>Buttons queue work directly in the primary database. The local scheduled worker processes the queue one state at a time. No API credentials are required. If a state stays queued, the server worker has not started it yet.</p>
+        <p>Buttons queue work directly in the primary database. The local scheduled worker processes the queue one state at a time. No API credentials are required.</p>
+        <?php if ($workerStatus === null): ?>
+            <p role="status"><strong>Local worker not detected.</strong> Imports can be queued now, but will not start until the scheduled server worker is installed and running.</p>
+        <?php else: ?>
+            <p role="status"><strong>Local worker: <?= $e(ucfirst($workerStatus['state'])) ?></strong> · <?= $e($workerStatus['message']) ?> Last status: <?= $e($workerStatus['at']) ?>.</p>
+        <?php endif; ?>
         <form method="post">
             <input type="hidden" name="csrf_token" value="<?= $e(moderation_csrf_token()) ?>">
             <div class="admin-panel-header">
