@@ -9,8 +9,9 @@ on:
       - 'admin/resource-map-data.php'
       - 'tools/migrations/20261127_osm_resource_import.sql'
       - 'tools/tests/osm-resource-import-mariadb.php'
-      - 'tools/send-osm-resource-snapshot.py'
-      - '.github/workflows/osm-resource-import.yml'
+      - 'app/osm-resource-local.php'
+      - 'app/osm-resource-extract.py'
+      - 'jobs/osm-resource-import.php'
       - '.github/workflows/osm-resource-import-tests.yml'
   workflow_dispatch:
 
@@ -47,7 +48,9 @@ jobs:
           php -l app/osm-resource-import.php
           php -l api/osm-resource-import-worker.php
           php -l admin/resource-map-data.php
-          python -m py_compile tools/send-osm-resource-snapshot.py
+          php -l app/osm-resource-local.php
+          php -l jobs/osm-resource-import.php
+          python -m py_compile app/osm-resource-extract.py
       - name: Verify atomic refresh and retry behavior
         env:
           LLAMA_OSM_TEST_DSN: mysql:host=127.0.0.1;port=3306;dbname=llama_osm_import_test;charset=utf8mb4
