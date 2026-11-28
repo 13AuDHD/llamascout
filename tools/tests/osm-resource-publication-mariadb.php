@@ -47,4 +47,15 @@ $assert((int)$db->query('SELECT COUNT(DISTINCT slug) FROM resources')->fetchColu
 $baseline=json_decode($db->query("SELECT source_snapshot FROM osm_resource_publications WHERE osm_id=10")->fetchColumn(),true,32,JSON_THROW_ON_ERROR);
 $db->exec("DELETE FROM osm_nearest_services WHERE osm_id=10");
 $assert($baseline['name']==='Water' && $baseline['services']===['potable_water','dump_station'],'Retained source baseline independent of refresh');
+// Simulate a database that has already reached the former nationwide cap.
+$ledger=$db->prepare("INSERT INTO osm_resource_publications (osm_type,osm_id,region,source_snapshot,disposition) VALUES ('node',?,'utah','{}','published')");
+for ($i=1000;$i<1250;$i++) $ledger->execute([$i]);
+$add->execute(['colorado','node',20,'shower','Example Shower',41,-105,$date]);
+$add->execute(['colorado','node',21,'potable_water','Another Water',42,-105,$date]);
+$showerRows=llama_osm_publication_candidates($db,'colorado','shower');
+$assert(count($showerRows)===1 && $showerRows[0]['services']===['shower'],'Selected shower filter retained beyond old cap');
+$assert(llama_osm_publication_publish($db,'colorado','shower',[],42,true)===['published'=>1,'review'=>0],'Scoped bulk publication continues beyond old cap');
+$assert(llama_osm_publication_publish($db,'colorado','shower',[],42,true)===['published'=>0,'review'=>0],'Bulk resume is idempotent');
+$assert(count(llama_osm_publication_candidates($db,'colorado','potable_water'))===1,'Bulk shower publication did not publish water');
+$assert(llama_osm_publication_counts($db)['published']===254,'Global count may exceed former pilot cap');
 echo "PASS: priority publication, native services, unknown facts, duplicate review, source identity and provenance.\n";
