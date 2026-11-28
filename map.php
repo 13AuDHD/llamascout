@@ -502,7 +502,7 @@ require __DIR__ . '/partials/cell-coverage-update-banner.php';
 </section>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="/js/map-preferences.js?v=20261127-1"></script>
+<script src="/js/map-preferences.js?v=20261127-2"></script>
 <script src="/js/map.js?v=20261127-1"></script>
 
 <?php if ($hasMapMemberAccess): ?>
