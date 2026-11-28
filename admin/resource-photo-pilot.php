@@ -21,6 +21,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '')==='POST') {
             $_SESSION[$sessionKey]=['sample'=>$sample,'providers'=>array_keys($providers),'next'=>0,'last'=>0];
             echo json_encode(['ok'=>true,'sample'=>$sample,'providers'=>$providers],JSON_THROW_ON_ERROR|JSON_INVALID_UTF8_SUBSTITUTE); exit;
         }
+        if (!isset($_SESSION[$sessionKey])) throw new RuntimeException('Start a sample first.');
         $run=&$_SESSION[$sessionKey];
         if (!is_array($run) || !isset($run['sample'],$run['providers'],$run['next'])) throw new RuntimeException('Start a sample first.');
         if ($run['next']>=count($run['sample'])*count($run['providers'])) {
@@ -40,7 +41,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '')==='POST') {
             };
             $result['status']='ok';
         } catch (Throwable $e) {
-            $result=['status'=>'error','message'=>mb_substr($e->getMessage(),0,250)];
+            $message=mb_substr($e->getMessage(),0,250);
+            $result=['status'=>'error','message'=>$message,'pause'=>str_contains($message,'HTTP 429') || str_contains($message,'HTTP 503') || str_contains($message,'requested a pause')];
         }
         $run['next']++;
         echo json_encode(['ok'=>true,'id'=>$r['id'],'provider'=>$provider,'result'=>$result],JSON_THROW_ON_ERROR|JSON_INVALID_UTF8_SUBSTITUTE);
