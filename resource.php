@@ -444,6 +444,10 @@ require __DIR__ . '/partials/header.php';
 </header>
 
 <div class="place-detail-container resource-detail-body">
+<?php if (!$isFacility): ?>
+    <?php require __DIR__ . '/partials/resources/location-map.php'; ?>
+<?php endif; ?>
+
 <?php if (($heroImage['source_provider'] ?? '') === 'KartaView'): ?>
     <p class="resource-photo-credit">Nearby street view, not a verified Resource photo. <?= htmlspecialchars((string)($heroImage['caption'] ?? ''),ENT_QUOTES,'UTF-8') ?> · <a href="https://creativecommons.org/licenses/by-sa/4.0/">License</a> · <a href="<?= htmlspecialchars((string)$heroImage['source_url'],ENT_QUOTES,'UTF-8') ?>" target="_blank" rel="noopener noreferrer">View location on KartaView</a></p>
 <?php endif; ?>
@@ -700,10 +704,6 @@ require __DIR__ . '/partials/header.php';
     </article>
 
 </section>
-
-<?php if (!$isFacility): ?>
-    <?php require __DIR__ . '/partials/resources/location-map.php'; ?>
-<?php endif; ?>
 
 <?php
 // This read-only projection preserves the Resource / linked-Facility target
