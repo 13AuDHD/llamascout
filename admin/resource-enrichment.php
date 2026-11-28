@@ -48,7 +48,7 @@ require __DIR__.'/_header.php';
         <div class="admin-table-wrap"><table class="admin-table">
             <thead><tr><th>State</th><th>Published</th><th>Source found</th><th>Enriched</th><th>Review / no new fields</th><th>Scan</th></tr></thead>
             <tbody><?php foreach ($rows as $row): ?>
-                <tr><td><?= $e(llama_osm_resource_states()[$row['region']] ?? $row['region']) ?></td><td><?= number_format((int)$row['total']) ?></td>
+                <tr><td><?= $e(llama_osm_resource_states()[$row['region']] ?? $row['region']) ?> <a href="https://llamascout.com/api/osm-resource-enrichment.php?region=<?= $e(rawurlencode($row['region'])) ?>" target="_blank" rel="noopener noreferrer">Source export</a></td><td><?= number_format((int)$row['total']) ?></td>
                     <td><?= number_format((int)$row['found']) ?></td><td><?= number_format((int)$row['enriched']) ?></td>
                     <td><?= number_format((int)$row['review']) ?></td><td><?= $e($row['status'] ?? 'Not started') ?><?= (int)$row['source_bytes']>0?' ('.(int)floor(100*(int)$row['source_offset']/(int)$row['source_bytes']).'%)':'' ?></td></tr>
             <?php endforeach; ?></tbody>
