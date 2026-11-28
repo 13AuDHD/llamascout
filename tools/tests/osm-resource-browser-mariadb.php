@@ -46,22 +46,26 @@ $insert->execute(['colorado','node',800,'fuel','Old point',37,-107,$old]);
 $insert->execute(['colorado','way',900,'fuel','Old mapped area',37,-107,$old]);
 $assert(llama_osm_resource_queue($db,['colorado'])===['colorado'],'Admin action queues without credentials');
 $live=static fn()=> $db->query("SELECT name FROM osm_nearest_services WHERE region='colorado' ORDER BY name")->fetchAll(PDO::FETCH_COLUMN);
-$r=llama_osm_browser_step($db,$fetch,50000);
+try {
+    llama_osm_browser_step($db,$fetch,50000);
+    throw new LogicException('Cooldown not enforced');
+} catch (LlamaOsmBrowserRetry $e) {}
+$r=llama_osm_browser_step($db,$fetch,50000,false);
 $assert($r['job']['status']==='importing' && $r['job']['offset']===strlen($header),'First step reads header only');
-$r=llama_osm_browser_step($db,$fetch,50000);
+$r=llama_osm_browser_step($db,$fetch,50000,false);
 $assert($r['job']['rows']===100 && $r['job']['offset']===strlen($header),'Exactly 100 rows; same-block checkpoint saved');
 $assert($live()===['Old mapped area','Old point'],'Live snapshot untouched during staging');
-$r=llama_osm_browser_step($db,$fetch,50000);
+$r=llama_osm_browser_step($db,$fetch,50000,false);
 $assert($r['job']['rows']===101 && $r['job']['offset']===strlen($file),'Resume within block; private point excluded');
-$r=llama_osm_browser_step($db,$fetch,50000);
+$r=llama_osm_browser_step($db,$fetch,50000,false);
 $assert($r['job']['status']==='complete' && count($live())===102,'Atomic point refresh preserves mapped area');
 $assert($db->query("SELECT name FROM osm_nearest_services WHERE osm_type='way'")->fetchColumn()==='Old mapped area','Old area retained');
 $assert((int)$db->query("SELECT COUNT(*) FROM osm_nearest_services WHERE osm_type='node' AND name='Example Water'")->fetchColumn()===101,'All point identities imported');
-$assert(llama_osm_browser_step($db,$fetch,50000)['done']===true,'Queue drained');
+$assert(llama_osm_browser_step($db,$fetch,50000,false)['done']===true,'Queue drained');
 llama_osm_resource_queue($db,['colorado']);
-llama_osm_browser_step($db,$fetch,50000);
+llama_osm_browser_step($db,$fetch,50000,false);
 $changed=static fn($region,$offset,$length,$validator)=>['data'=>substr($file,$offset,$length),'size'=>strlen($file),'validator'=>'etag:"changed"'];
-try { llama_osm_browser_step($db,$changed,50000); throw new LogicException('Changed source accepted'); }
+try { llama_osm_browser_step($db,$changed,50000,false); throw new LogicException('Changed source accepted'); }
 catch (RuntimeException $e) { $assert(str_contains($e->getMessage(),'changed'),'Changed source rejected'); }
 $assert(count($live())===102,'Changed file preserves previous snapshot');
 $assert(llama_osm_resource_inventory($db)['colorado']['job']['status']==='error','Changed snapshot can be restarted');
