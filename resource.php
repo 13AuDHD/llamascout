@@ -580,7 +580,7 @@ require __DIR__ . '/partials/header.php';
             <?php
             $bulkAddressCredit = false;
             try {
-                $addressCreditStmt = $db->prepare('SELECT applied_fields FROM resource_address_enrichment WHERE resource_id=?');
+                $addressCreditStmt = db()->prepare('SELECT applied_fields FROM resource_address_enrichment WHERE resource_id=?');
                 $addressCreditStmt->execute([$resourceId]);
                 $addressCredit = json_decode((string)$addressCreditStmt->fetchColumn(), true);
                 $bulkAddressCredit = is_array($addressCredit) && count($addressCredit)>0;
