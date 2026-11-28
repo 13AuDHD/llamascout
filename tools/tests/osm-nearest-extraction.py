@@ -24,6 +24,14 @@ assert classify({"amenity":"drinking_water","drinking_water":"no"}) == set()
 assert classify({"amenity":"fuel","disused":"yes"}) == set()
 assert classify({"amenity":"charging_station","opening_hours":"closed"}) == set()
 
+assert classify({"amenity":"sanitary_dump_station"}) == {"dump_station"}
+assert classify({"amenity":"shower"}) == {"shower"}
+assert classify({"shop":"laundry"}) == {"laundry"}
+assert classify({"shop":"laundry","self_service":"no"}) == set()
+assert classify({"amenity":"waste_disposal"}) == {"trash"}
+assert classify({"amenity":"waste_basket"}) == set()
+assert classify({"amenity":"sanitary_dump_station","access":"private"}) == set()
+
 fixture = """<osm version="0.6" generator="test">
   <node id="1" version="1" lat="37.25" lon="-107.12">
     <tag k="place" v="town"/><tag k="name" v="Example Town"/>
