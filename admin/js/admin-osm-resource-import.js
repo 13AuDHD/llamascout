@@ -69,7 +69,7 @@
                 stop('Paused after saving the current step. Resume when ready.');
                 return;
             }
-            schedule(2500);
+            schedule(1250);
         } catch (error) {
             stop(error.message + ' Previously imported data remains available.');
         } finally {

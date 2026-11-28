@@ -6,6 +6,11 @@ require_once __DIR__ . '/osm-resource-pbf.php';
 
 final class LlamaOsmBrowserRetry extends RuntimeException {}
 
+// Browser-only limits. Keep the CLI worker's conservative 100-row batches.
+const LLAMA_OSM_BROWSER_RANGE_BYTES = 8388608;
+const LLAMA_OSM_BROWSER_ROWS = 500;
+const LLAMA_OSM_BROWSER_DECODE_SECONDS = 5.0;
+
 /** Fetch a bounded byte range from the fixed state source. No arbitrary URLs. */
 function llama_osm_browser_range(string $region,int $offset,int $length,string $validator=''): array
 {
@@ -64,8 +69,8 @@ function llama_osm_browser_range(string $region,int $offset,int $length,string $
     return ['data'=>$body,'size'=>$size,'validator'=>$actual];
 }
 
-/** Advance at most 100 mapped rows and a bounded number of compressed bytes. */
-function llama_osm_browser_slice(string $buffer,int $offset,int $total,int $skip): array
+/** Advance a bounded number of mapped rows and compressed bytes. */
+function llama_osm_browser_slice(string $buffer,int $offset,int $total,int $skip,int $rowLimit=LLAMA_OSM_BROWSER_ROWS): array
 {
     $start=microtime(true);
     $pos=0;
@@ -81,7 +86,7 @@ function llama_osm_browser_slice(string $buffer,int $offset,int $total,int $skip
         $seen=0;
         foreach (llama_pbf_block_rows(llama_pbf_unblob($frame['blob'])) as $row) {
             if ($seen++<$nextSkip) continue;
-            if (count($rows)===LLAMA_OSM_IMPORT_CHUNK_SIZE) {
+            if (count($rows)===$rowLimit) {
                 return ['offset'=>$offset+$pos,'row_offset'=>$seen-1,'rows'=>$rows];
             }
             $rows[]=$row;
@@ -89,7 +94,7 @@ function llama_osm_browser_slice(string $buffer,int $offset,int $total,int $skip
         if ($seen<$nextSkip) throw new RuntimeException('Saved block cursor is invalid. Restart this state.');
         $pos+=$frame['length'];
         $nextSkip=0;
-        if (count($rows)>=LLAMA_OSM_IMPORT_CHUNK_SIZE || microtime(true)-$start>=2.5) break;
+        if (count($rows)>=$rowLimit || microtime(true)-$start>=LLAMA_OSM_BROWSER_DECODE_SECONDS) break;
     }
     return ['offset'=>$offset+$pos,'row_offset'=>$nextSkip,'rows'=>$rows];
 }
@@ -140,7 +145,7 @@ function llama_osm_browser_step(PDO $db,?callable $fetch=null,?int $maxRows=null
         if (!$job) return ['done'=>true];
         if ($enforcePace) {
             $elapsed=$db->query('SELECT TIMESTAMPDIFF(SECOND,MAX(updated_at),UTC_TIMESTAMP()) FROM osm_resource_import_jobs')->fetchColumn();
-            if ($elapsed!==null && $elapsed!==false && (int)$elapsed<2) {
+            if ($elapsed!==null && $elapsed!==false && (int)$elapsed<1) {
                 throw new LlamaOsmBrowserRetry('Import cooling down; retry shortly.');
             }
         }
@@ -156,7 +161,7 @@ function llama_osm_browser_step(PDO $db,?callable $fetch=null,?int $maxRows=null
         $date=null;
         $range=null;
         if (!$finished) {
-            $range=$fetch($region,$offset,1048576,$validator);
+            $range=$fetch($region,$offset,$initialize?65536:LLAMA_OSM_BROWSER_RANGE_BYTES,$validator);
             if (!$initialize && ($range['size']!==$total || !hash_equals($validator,$range['validator']))) {
                 throw new RuntimeException('State source changed. Restart the state.');
             }
@@ -212,9 +217,17 @@ function llama_osm_browser_step(PDO $db,?callable $fetch=null,?int $maxRows=null
         } else {
             $rows=$slice['rows'];
             if ((int)$current['received_rows']+count($rows)>$maxRows) throw new RuntimeException('State exceeds the configured point import limit; existing data retained.');
-            $insert=$db->prepare('INSERT INTO osm_resource_import_stage
-                (region,osm_type,osm_id,service_type,name,latitude,longitude,snapshot_date) VALUES (?,?,?,?,?,?,?,?)');
-            foreach ($rows as $row) $insert->execute([$region,...llama_osm_resource_row($row),$current['snapshot_date']]);
+            // Single multi-row prepared INSERT per batch, not hundreds of
+            // individual database round trips. The cursor and all rows still
+            // commit together, and invalid/duplicate records still roll back.
+            if ($rows) {
+                $params=[];
+                foreach ($rows as $row) array_push($params,$region,...[...llama_osm_resource_row($row),$current['snapshot_date']]);
+                $values=implode(',',array_fill(0,count($rows),'(?,?,?,?,?,?,?,?)'));
+                $insert=$db->prepare('INSERT INTO osm_resource_import_stage
+                    (region,osm_type,osm_id,service_type,name,latitude,longitude,snapshot_date) VALUES ' . $values);
+                $insert->execute($params);
+            }
             $db->prepare("UPDATE osm_resource_import_jobs SET source_offset=?,source_row_offset=?,
                 received_rows=received_rows+?,message='Scanning state points in browser batches' WHERE region=? AND batch_id=?")
                 ->execute([$slice['offset'],$slice['row_offset'],count($rows),$region,$batch]);
