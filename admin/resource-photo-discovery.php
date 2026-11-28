@@ -64,7 +64,7 @@ $e=static fn($v)=>moderation_e((string)$v);
 require __DIR__.'/_header.php';
 ?>
 <section class="admin-panel">
-<header class="admin-panel-header"><div><p>Map Data</p><h2>Resource Photo Discovery</h2></div><a class="admin-button is-muted" href="/resource-enrichment.php">Back to Enrichment</a></header>
+<header class="admin-panel-header"><div><p>Map Data</p><h2>Resource Photo Discovery</h2></div><a class="admin-button" href="/resource-photo-pilot.php">Test Photo Coverage (20)</a> <a class="admin-button is-muted" href="/resource-enrichment.php">Back to Enrichment</a></header>
 <?php if ($error!==''): ?><p role="alert"><?= $e($error) ?></p><?php endif; ?>
 <?php if ($notice!==''): ?><p role="status"><?= $e($notice) ?></p><?php endif; ?>
 <?php if (!$ready): ?>
