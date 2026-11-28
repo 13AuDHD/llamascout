@@ -642,6 +642,12 @@ function admin_shell_nav_class(string $key, string $active): string
 
         <p class="admin-nav-label">Map Data</p>
 
+        <a class="<?= admin_shell_nav_class('resource-map-data', $adminActiveNav) ?>"
+           href="<?= moderation_e($adminUrl . '/resource-map-data.php') ?>">
+            <i aria-hidden="true"><?= llama_icon('map-pin') ?></i>
+            <span>Resources</span>
+        </a>
+
         <a
             class="<?= admin_shell_nav_class(
                 'cell-coverage',
