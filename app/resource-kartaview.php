@@ -119,6 +119,20 @@ function llama_kartaview_pick(array $photos,?callable $probe=null): array {
     return ['photo'=>null,'failures'=>$failures];
 }
 
+function llama_kartaview_retry_unusable(PDO $db,string $state=''): int {
+    $lock='llama-photo-discovery-'.substr(hash('sha256',(string)$db->query('SELECT DATABASE()')->fetchColumn()),0,32);
+    $stmt=$db->prepare('SELECT GET_LOCK(?,0)');$stmt->execute([$lock]);
+    if ((int)$stmt->fetchColumn()!==1) throw new RuntimeException('Pause photo discovery before resetting failed results.');
+    try {
+        $sql="DELETE k FROM resource_kartaview_discovery k JOIN resources r ON r.id=k.resource_id
+            WHERE k.status='unusable' AND r.is_active=1 AND r.parent_place_id IS NULL
+            AND NOT EXISTS (SELECT 1 FROM resource_images i WHERE i.resource_id=r.id)";
+        $params=[];
+        if ($state!=='') {$sql.=' AND r.state_region=?';$params[]=$state;}
+        $stmt=$db->prepare($sql);$stmt->execute($params);return $stmt->rowCount();
+    } finally {$db->prepare('SELECT RELEASE_LOCK(?)')->execute([$lock]);}
+}
+
 function llama_kartaview_step(PDO $db,string $state=''): array {
     if (!llama_kartaview_ready($db)) throw new RuntimeException('Run KartaView SQL first.');
     // Shared lock with Commons discovery; never race automatic photo insertion.
