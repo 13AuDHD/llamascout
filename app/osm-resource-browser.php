@@ -123,7 +123,7 @@ function llama_osm_browser_read_locked(PDO $db,array $job): array
     return $current;
 }
 
-function llama_osm_browser_step(PDO $db,?callable $fetch=null,?int $maxRows=null): array
+function llama_osm_browser_step(PDO $db,?callable $fetch=null,?int $maxRows=null,bool $enforcePace=true): array
 {
     if (!llama_osm_resource_browser_ready($db)) throw new RuntimeException('Run the browser import SQL migration first.');
     $fetch ??= 'llama_osm_browser_range';
@@ -138,6 +138,12 @@ function llama_osm_browser_step(PDO $db,?callable $fetch=null,?int $maxRows=null
     try {
         $job=llama_osm_browser_job($db);
         if (!$job) return ['done'=>true];
+        if ($enforcePace) {
+            $elapsed=$db->query('SELECT TIMESTAMPDIFF(SECOND,MAX(updated_at),UTC_TIMESTAMP()) FROM osm_resource_import_jobs')->fetchColumn();
+            if ($elapsed!==null && $elapsed!==false && (int)$elapsed<2) {
+                throw new LlamaOsmBrowserRetry('Import cooling down; retry shortly.');
+            }
+        }
         $region=$job['region'];
         $batch=$job['batch_id'];
         $initialize=$job['status']==='queued';
@@ -220,7 +226,7 @@ function llama_osm_browser_step(PDO $db,?callable $fetch=null,?int $maxRows=null
         return ['done'=>false,'job'=>llama_osm_browser_public($result)];
     } catch (Throwable $e) {
         if ($db->inTransaction()) $db->rollBack();
-        if ($job && !$e instanceof LlamaOsmBrowserRetry && !$e instanceof PDOException) {
+        if ($job && !($e instanceof LlamaOsmBrowserRetry) && !($e instanceof PDOException)) {
             // Keep the previous published snapshot. Restart clears staging
             // only after the next source header has been validated.
             $db->prepare("UPDATE osm_resource_import_jobs SET status='error',message=?
