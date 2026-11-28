@@ -9,7 +9,7 @@
     const popup = section.querySelector('[data-resource-map-popup]');
     const latitude = Number(element.dataset.latitude);
     const longitude = Number(element.dataset.longitude);
-    const initialZoom = Number(element.dataset.initialZoom) || 3;
+    const initialZoom = Number(element.dataset.initialZoom) || 17;
     if (typeof L === 'undefined' || !popup ||
         !element.dataset.latitude || !element.dataset.longitude ||
         !Number.isFinite(latitude) || !Number.isFinite(longitude) ||
@@ -57,7 +57,7 @@
     });
     local?.addEventListener('click', () => {
         marker.closePopup();
-        map.setView(coordinates, 15);
+        map.setView(coordinates, 19);
     });
     reset?.addEventListener('click', () => {
         marker.closePopup();

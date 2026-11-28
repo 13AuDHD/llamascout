@@ -36,7 +36,7 @@ $resourceMapCoordinateStatus = llama_coordinate_status(
                 data-latitude="<?= $resourceMapEscape($resource['latitude']) ?>"
                 data-longitude="<?= $resourceMapEscape($resource['longitude']) ?>"
                 data-name="<?= $resourceMapEscape($resourceMapName) ?>"
-                data-initial-zoom="3"></div>
+                data-initial-zoom="17"></div>
             <template data-resource-map-popup>
                 <article class="place-explorer-map-card resource-map-popup-card">
                     <?php if ($resourceMapPhoto !== ''): ?>
