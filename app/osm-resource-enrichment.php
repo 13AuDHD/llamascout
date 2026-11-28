@@ -152,7 +152,8 @@ function llama_enrichment_apply(PDO $db,array $object,array $source,string $regi
             json_encode($applied,JSON_THROW_ON_ERROR),$reason]);
 }
 
-function llama_enrichment_step(PDO $db,string $selection=''): array {
+function llama_enrichment_step(PDO $db,string $selection='',?callable $fetch=null): array {
+    $fetch ??= 'llama_osm_browser_range';
     if (!llama_enrichment_ready($db)) throw new RuntimeException('Run the enrichment SQL migration first.');
     if ($selection!=='' && !isset(llama_osm_resource_states()[$selection])) throw new InvalidArgumentException('Invalid state.');
     // Same lock as browser/CLI imports.
@@ -175,7 +176,7 @@ function llama_enrichment_step(PDO $db,string $selection=''): array {
         $stmt=$db->prepare("SELECT osm_type,osm_id,resource_id,source_snapshot FROM osm_resource_publications WHERE region=? AND disposition='published'");
         $stmt->execute([$region]); $wanted=[];
         while ($row=$stmt->fetch(PDO::FETCH_ASSOC)) $wanted[$row['osm_type']][(int)$row['osm_id']]=$row;
-        $range=llama_osm_browser_range($region,$offset,$offset===0?65536:8454148,$validator);
+        $range=$fetch($region,$offset,$offset===0?65536:8454148,$validator);
         if ($offset!==0 && ($range['size']!==$total || !hash_equals($validator,$range['validator']))) throw new RuntimeException('State source changed; restart this state.');
         $total=$range['size']; $validator=$range['validator']; $pos=0; $matches=[]; $start=microtime(true);
         if ($offset===0) {
