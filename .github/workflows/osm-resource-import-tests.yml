@@ -1,0 +1,56 @@
+name: OSM Resource Import Integration
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'app/osm-resource-import.php'
+      - 'app/osm-nearest-data.php'
+      - 'api/osm-resource-import-worker.php'
+      - 'admin/resource-map-data.php'
+      - 'tools/migrations/20261127_osm_resource_import.sql'
+      - 'tools/tests/osm-resource-import-mariadb.php'
+      - 'tools/send-osm-resource-snapshot.py'
+      - '.github/workflows/osm-resource-import.yml'
+      - '.github/workflows/osm-resource-import-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  staged-import:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: osm-import-test
+          MARIADB_ROOT_HOST: "%"
+          MARIADB_DATABASE: llama_osm_import_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "healthcheck.sh --connect --innodb_initialized"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PHP extensions if required
+        run: |
+          if ! php -m | grep -qi '^pdo_mysql$' || ! php -m | grep -qi '^mbstring$'; then
+            sudo apt-get update -qq
+            sudo apt-get install -y php-mysql php-mbstring
+          fi
+      - name: Syntax checks
+        run: |
+          php -l app/osm-resource-import.php
+          php -l api/osm-resource-import-worker.php
+          php -l admin/resource-map-data.php
+          python -m py_compile tools/send-osm-resource-snapshot.py
+      - name: Verify atomic refresh and retry behavior
+        env:
+          LLAMA_OSM_TEST_DSN: mysql:host=127.0.0.1;port=3306;dbname=llama_osm_import_test;charset=utf8mb4
+          LLAMA_OSM_TEST_USER: root
+          LLAMA_OSM_TEST_PASSWORD: osm-import-test
+        run: php tools/tests/osm-resource-import-mariadb.php

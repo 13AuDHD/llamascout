@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-const LLAMA_OSM_NEAREST_TYPES = ['town','fuel','ev_charging','alcohol_sales','propane','groceries','potable_water','toilet','hospital'];
+const LLAMA_OSM_NEAREST_TYPES = ['town','fuel','ev_charging','alcohol_sales','propane','groceries','potable_water','toilet','hospital','dump_station','shower','laundry','trash'];
 
 function llama_osm_nearest_region_valid(string $region): bool
 {

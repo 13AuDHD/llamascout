@@ -8,7 +8,7 @@ import math
 import re
 from pathlib import Path
 
-TYPES = {"town","fuel","ev_charging","alcohol_sales","propane","groceries","potable_water","toilet","hospital"}
+TYPES = {"town","fuel","ev_charging","alcohol_sales","propane","groceries","potable_water","toilet","hospital","dump_station","shower","laundry","trash"}
 
 def sql_text(value):
     # Hex literals avoid SQL quoting, SQL-mode and UTF-8 injection issues.
