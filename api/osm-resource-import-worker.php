@@ -24,8 +24,12 @@ try {
     $input = json_decode($body,true,32,JSON_THROW_ON_ERROR);
     if (!is_array($input) || array_is_list($input)) osm_worker_reply(['ok'=>false],400);
     if (!llama_osm_resource_ready(db())) osm_worker_reply(['ok'=>false,'error'=>'Import migration required.'],503);
-    $job = llama_osm_resource_worker(db(),$input);
+    $maxRows = (int)(llama_osm_resource_config()['max_state_rows'] ?? LLAMA_OSM_IMPORT_DEFAULT_MAX_ROWS);
+    $job = llama_osm_resource_paced_worker(db(),$input,$maxRows);
     osm_worker_reply(['ok'=>true,'status'=>$job['status'],'received'=>(int)$job['received_rows']]);
+} catch (LlamaOsmImportBusy $e) {
+    header('Retry-After: 2');
+    osm_worker_reply(['ok'=>false,'error'=>$e->getMessage()],429);
 } catch (InvalidArgumentException | JsonException $e) {
     osm_worker_reply(['ok'=>false,'error'=>$e->getMessage()],400);
 } catch (Throwable $e) {
