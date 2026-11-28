@@ -135,7 +135,7 @@ function llama_osm_publication_create(PDO $db,array $candidate,int $actor): int
          source_provider,source_external_id,source_url,source_updated_at,verified_at,created_by,updated_by,is_active)
         VALUES (?,?,?,?,?,?,?,'US','unknown','unknown','OpenStreetMap',?,?,?,NULL,?,?,1)");
     $insert->execute([$type,$primary,$name,$slug,$candidate['latitude'],$candidate['longitude'],$state,$identity,
-        'https://www.openstreetmap.org/'.$identity,$candidate['snapshot_date'].' 00:00:00',$actor ?: null,$actor ?: null]);
+        'https://www.openstreetmap.org/'.$identity,$candidate['snapshot_date'].' 00:00:00',null,$actor ?: null]);
     $id=(int)$db->lastInsertId();
     if ($id<1) throw new RuntimeException('Resource creation failed.');
     $insertService=$db->prepare("INSERT INTO resource_services (resource_id,service_type,status,fee_status,sort_order,is_active)
@@ -148,6 +148,11 @@ function llama_osm_publication_create(PDO $db,array $candidate,int $actor): int
 function llama_osm_publication_publish(PDO $db,string $region,string $category,array $identities,int $actor): array
 {
     if ($actor<1 || !$identities || count($identities)>LLAMA_OSM_PUBLICATION_BATCH) throw new InvalidArgumentException('Select up to 25 candidates.');
+    foreach ($identities as $identity) {
+        if (!is_string($identity) || !preg_match('~^(node|way|relation)/[1-9][0-9]{0,19}$~D',$identity)) {
+            throw new InvalidArgumentException('Invalid source feature selection.');
+        }
+    }
     $selected=array_fill_keys($identities,true);
     $lockName='llama-osm-publication-'.substr(hash('sha256',(string)$db->query('SELECT DATABASE()')->fetchColumn()),0,32);
     $lock=$db->prepare('SELECT GET_LOCK(?,0)');
