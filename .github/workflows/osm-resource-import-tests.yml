@@ -10,6 +10,12 @@ on:
       - 'tools/migrations/20261127_osm_resource_import.sql'
       - 'tools/tests/osm-resource-import-mariadb.php'
       - 'app/osm-resource-local.php'
+      - 'app/osm-resource-browser.php'
+      - 'app/osm-resource-pbf.php'
+      - 'admin/resource-map-data-step.php'
+      - 'admin/js/admin-osm-resource-import.js'
+      - 'tools/migrations/20261127_osm_browser_import.sql'
+      - 'tools/tests/osm-resource-browser-mariadb.php'
       - 'app/osm-resource-extract.py'
       - 'jobs/osm-resource-import.php'
       - '.github/workflows/osm-resource-import-tests.yml'
@@ -49,6 +55,10 @@ jobs:
           php -l api/osm-resource-import-worker.php
           php -l admin/resource-map-data.php
           php -l app/osm-resource-local.php
+          php -l app/osm-resource-browser.php
+          php -l app/osm-resource-pbf.php
+          php -l admin/resource-map-data-step.php
+          node --check admin/js/admin-osm-resource-import.js
           php -l jobs/osm-resource-import.php
           python -m py_compile app/osm-resource-extract.py
       - name: Verify atomic refresh and retry behavior
@@ -56,4 +66,6 @@ jobs:
           LLAMA_OSM_TEST_DSN: mysql:host=127.0.0.1;port=3306;dbname=llama_osm_import_test;charset=utf8mb4
           LLAMA_OSM_TEST_USER: root
           LLAMA_OSM_TEST_PASSWORD: osm-import-test
-        run: php tools/tests/osm-resource-import-mariadb.php
+        run: |
+          php tools/tests/osm-resource-import-mariadb.php
+          php tools/tests/osm-resource-browser-mariadb.php
