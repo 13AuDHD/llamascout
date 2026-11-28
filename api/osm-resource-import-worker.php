@@ -1,38 +1,8 @@
 <?php
 declare(strict_types=1);
-
-// Machine-only transport. No browser session, cookie, or arbitrary command.
-require_once dirname(__DIR__) . '/app/database.php';
-require_once dirname(__DIR__) . '/app/osm-resource-import.php';
-
+// Retired remote importer. Keep the old URL inert even on FTP deployments
+// that retain deleted files. State imports now run only from local CLI.
+http_response_code(410);
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
-function osm_worker_reply(array $result, int $status = 200): never {
-    http_response_code($status);
-    echo json_encode($result,JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_SLASHES);
-    exit;
-}
-if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') osm_worker_reply(['ok'=>false],405);
-try {
-    $key = (string)(llama_osm_resource_config()['worker_key'] ?? '');
-    $supplied = (string)($_SERVER['HTTP_X_LLAMA_OSM_KEY'] ?? '');
-    if (strlen($key)<32 || !hash_equals($key,$supplied)) osm_worker_reply(['ok'=>false],403);
-    $stream = fopen('php://input','rb');
-    $body = stream_get_contents($stream,1048577);
-    fclose($stream);
-    if ($body === false || strlen($body)>1048576) osm_worker_reply(['ok'=>false],413);
-    $input = json_decode($body,true,32,JSON_THROW_ON_ERROR);
-    if (!is_array($input) || array_is_list($input)) osm_worker_reply(['ok'=>false],400);
-    if (!llama_osm_resource_ready(db())) osm_worker_reply(['ok'=>false,'error'=>'Import migration required.'],503);
-    $maxRows = (int)(llama_osm_resource_config()['max_state_rows'] ?? LLAMA_OSM_IMPORT_DEFAULT_MAX_ROWS);
-    $job = llama_osm_resource_paced_worker(db(),$input,$maxRows);
-    osm_worker_reply(['ok'=>true,'status'=>$job['status'],'received'=>(int)$job['received_rows']]);
-} catch (LlamaOsmImportBusy $e) {
-    header('Retry-After: 2');
-    osm_worker_reply(['ok'=>false,'error'=>$e->getMessage()],429);
-} catch (InvalidArgumentException | JsonException $e) {
-    osm_worker_reply(['ok'=>false,'error'=>$e->getMessage()],400);
-} catch (Throwable $e) {
-    error_log('OSM resource import worker: ' . $e->getMessage());
-    osm_worker_reply(['ok'=>false,'error'=>'Import transaction failed.'],500);
-}
+echo json_encode(['ok'=>false,'error'=>'Remote import endpoint retired.']);

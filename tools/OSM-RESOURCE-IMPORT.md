@@ -1,32 +1,38 @@
-# Map Data > Resources: state import and refresh
+# Map Data > Resources: local state import and refresh
 
-This is the first stage of the Resource import workflow. All 50 US states and DC are tracked in Admin, including Colorado/Oregon snapshots imported manually using the older workflow. The existing reference export and nearest-service calculations keep working. Added source categories: RV dump stations, showers, laundromats, and waste disposal; existing potable water, propane, toilets, fuel, groceries, and EV charging are included. Priority order is the owner's camper-usefulness order.
+The Admin page tracks all 50 states plus DC and retains all previously imported snapshots. Buttons write directly into the primary MariaDB queue. No GitHub token, worker key, remote import endpoint, or Actions extraction is used. GitHub remains source control, CI and existing deployment only.
 
-## One-time setup
+## Server requirements and migration
 
-1. Merge and deploy the PR. Run `tools/migrations/20261127_osm_resource_import.sql` in the primary Llama Scout database (NOT RIDB, NPS, or cell coverage). Requires the existing `osm_nearest_services` table; does not modify existing imported rows.
-2. In GitHub, create a fine-grained personal access token restricted to the Llama Scout repository with Actions read/write and the required Metadata read permission. Do not give it Contents write or wider account permissions. The server uses it only to dispatch the fixed workflow on main. See https://docs.github.com/en/rest/actions/workflows#create-a-workflow-dispatch-event .
-3. Generate a long random worker key (e.g. 64 hex characters) in a password manager. Add a repository Actions secret named `LLAMA_OSM_WORKER_KEY` containing that key. See https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets .
-4. In the existing non-public `private/config.php` configuration array, add:
+The local PHP CLI job reads the same private/config.php and db() connection as the rest of Llama Scout. It runs independently of web requests. Existing queue/staging tables from 20261127_osm_resource_import.sql are reused; no new migration is needed. If those tables were never created, run that existing migration first.
 
-```php
-'osm_resource_import' => [
-    'github_token' => 'YOUR_FINE_GRAINED_TOKEN',
-    'worker_key' => 'YOUR_RANDOM_WORKER_KEY',
-],
+On the new Debian/Ubuntu DigitalOcean host, install the extraction dependencies once:
+
+```sh
+sudo apt-get update
+sudo apt-get install -y osmium-tool python3-venv curl coreutils
 ```
 
-Use the same worker key in the secret and the server config. Never commit either value, paste them into chat or expose them through client-side JavaScript. PHP cURL must be available. The worker only sends validated source reference rows to the fixed HTTPS Llama Scout endpoint.
+As the site user, create a private Python virtual environment and install the two extraction libraries with its pip: `python3 -m venv /path/to/private/osm-venv`, then `/path/to/private/osm-venv/bin/pip install osmium shapely`. Set the optional `osm_resource_import.python` setting in private/config.php to `/path/to/private/osm-venv/bin/python`. Alternatively use distribution-installed Python libraries with the default python3. PHP CLI must support PDO MySQL, mbstring and proc_open. Run the worker as the same site user that owns the private directory/config, not root. Adjust the absolute site path and PHP executable to the actual deployment.
 
-5. Open Admin > Map Data > Resources. Select Colorado and choose Import / refresh selected, then verify a successful snapshot replacement and the new category counts. Repeat with Oregon. Then Import all missing states, or select smaller sets to manage Actions quota. Refresh imported states queues all states that currently have snapshots. Page can be closed. Refresh status shows persisted progress. Restart selected jobs supersedes their batch identifiers; old workers cannot replace the new snapshot. Restarting does not cancel the old GitHub runner and may use extra minutes.
+```sh
+php /path/to/public_html/jobs/osm-resource-import.php --check
+```
 
-## Safety and scope
+When that succeeds, schedule the same job without --check, for example once every five minutes:
 
-- Extraction runs on GitHub rather than cPanel to avoid downloading gigabyte-scale raw PBF files into shared hosting. No manual artifact downloads or per-state SQL uploads. Only one state job runs per dispatch. A global database lock prevents concurrent worker writes even across separate dispatches. GitHub Actions usage limits/billing and shared-host request limits still apply. The pre-existing manual workflow is a fallback.
-- Worker requests are authenticated, limited to 100 records and 1 MB. They transfer deduplicated source identities in sequence, retry transient errors with backoff, and stage rows separately. The worker waits at least 2.5 seconds between chunks; the server rejects writes within two seconds of the last job mutation and returns a retryable 429 without sleeping on PHP. The complete regional snapshot replaces the live one transactionally only after row count and snapshot-date checks. Failure preserves older data. Late requests from superseded batches are rejected. Restart jobs that never start because credentials, workflow quotas or hosting restrictions prevent the worker from reaching Llama Scout.
-- Resource candidates are grouped by OSM feature type/id, not blindly combined by spatial proximity. Counts are mapped service rows, not verified Resources. A separate publication/duplicate-review workflow must connect candidates with existing native Resources, handle on-site Facilities, and allow Scout confirmation. No imported candidate is publicly published as a new Resource by this PR. No inferred access, operating status, fees or Scout verification.
-- Source data remains in the separate ODbL reference layer. https://llamascout.com/api/osm-nearest-data.php continues to provide regional source data. Preserve provenance and the ODbL obligations when designing publication; separate tables alone do not settle all share-alike questions.
+```cron
+*/5 * * * * /usr/bin/php /path/to/public_html/jobs/osm-resource-import.php >> /path/to/private/osm-resource-worker.log 2>&1
+```
 
-The default safety limit is 50,000 source rows per state (both the replacement and existing live snapshot). Larger states fail safely rather than attempting a large atomic transaction. Only after monitoring an initial import on the actual hosting environment, the owner can deliberately adjust the private config's `osm_resource_import.max_state_rows` (hard ceiling 200,000). This limit is a conservative guardrail, not a benchmark of Porkbun capacity. Start with Colorado alone, verify the site and database remain responsive, then expand. Do not run the legacy manual SQL importer alongside this worker.
+This is a server setup step, not an API credential. Each run processes at most one state; overlapping cron invocations exit without doing work. No need to leave the Admin page open. The local worker readiness status and job stages appear in Admin. If no worker is detected, the buttons still queue work, but it cannot start until the scheduler and local dependencies are installed. Do not launch raw PBF extraction on the current shared host without verifying CPU, storage quota, process permissions and hosting policy. Queueing a state does not itself perform an extraction.
 
-No automatic recurring refresh has been enabled. The Admin controls initiate imports/refreshes explicitly.
+Migrate the existing database, the private config, and site files; stop any old worker before starting the new one. If a state was interrupted during migration and its private snapshot was not copied, restart the selected state to supersede the old batch. Once cron is configured, start with Colorado alone and monitor the website/database before queuing all missing states. Existing Colorado/Oregon data stays readable during refresh. Old GitHub workflow credentials, if ever created, may be revoked; they are no longer referenced by the application.
+
+## Safety
+
+- Geofabrik state PBF downloads are performed locally, one state at a time. Source files and temporary files remain under the private directory. The worker checks free space before downloading, caps download size (default 4 GiB), limits download rate to 5 MiB/s, uses low CPU scheduling priority and hard subprocess timeouts. Free filesystem space may not reflect a shared-host account quota; this is not a guarantee of safety on Porkbun.
+- The same validated extractor provides the ten camper-priority categories plus existing nearest-service reference types. The same MariaDB staging tables, 100-row chunks, 2.5-second CLI pause, server-side global write lock and cooldown protect database writes. A complete state replaces its old snapshot atomically only after validation; old data remains on failure. Default state row limit remains 50,000, with a configurable ceiling of 200,000. Raw extraction itself can be resource-intensive, particularly for large states; monitor memory and disk. Keep enough disk and use host-level memory/CPU limits where appropriate.
+- Optional private config keys in osm_resource_import: python (executable), max_download_bytes (100 MiB to 8 GiB), max_state_rows (1 to 200,000). No secrets are required beyond the existing database configuration. Do not increase limits until a smaller state succeeds.
+- Local state jobs use fixed Geofabrik URLs, batch IDs, a private working directory, explicit SQL validation, and authenticated Admin/CSRF controls. There is no remote write API. The retired endpoint returns HTTP 410 even if an older FTP deploy left its file behind.
+- The public ODbL export continues to contain only the separate source reference layer. Resource candidate review, ownership/deduplication against Scout Resources and public publication remain a separate phase.
