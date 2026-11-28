@@ -99,7 +99,7 @@ require __DIR__ . '/_header.php';
         <p>Run the primary database migration 20261127_osm_resource_import.sql first. Existing imported regions will be retained.</p>
     <?php else: ?>
         <p><?= $imported ?> of <?= count($inventory) ?> regions imported. <?= $working ?> queued or importing. Existing Colorado and Oregon snapshots are recognized automatically.</p>
-        <p>Keep this page open while imports run. The browser requests one small batch at a time and saves progress in the database. You can pause, leave, or resume without starting over. No cron or API key required.</p>
+        <p>Keep this page open while imports run. The browser scans up to 8 MiB per request and saves up to 500 matching records in one SQL batch. Only one state is processed at a time. You can pause, leave, or resume without starting over. No cron or API key required.</p>
         <p>Shared-host mode imports mapped points. Previously imported mapped areas are retained; a future full server import will refresh both points and areas.</p>
         <?php if (!$browserReady): ?>
             <p role="alert"><strong>One SQL update required:</strong> run <code>20261127_osm_browser_import.sql</code> in the primary database and reload this page.</p>
@@ -170,6 +170,6 @@ require __DIR__ . '/_header.php';
 </section>
 <?php endif; ?>
 <?php if ($browserReady): ?>
-<script src="/js/admin-osm-resource-import.js?v=20261127-1" defer></script>
+<script src="/js/admin-osm-resource-import.js?v=20261127-2" defer></script>
 <?php endif; ?>
 <?php require __DIR__ . '/_footer.php'; ?>
