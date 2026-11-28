@@ -264,9 +264,6 @@
     border-color: var(--resource-accent);
     cursor: default;
 }
-.resource-map-section .resource-map-popup-card-body {
-    padding-right: 28px;
-}
 .resource-map-section .resource-map-popup-card .place-explorer-map-card-body {
     padding-right: 30px;
     overflow-wrap: anywhere;
