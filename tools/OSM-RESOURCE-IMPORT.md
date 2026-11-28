@@ -1,10 +1,18 @@
 # Map Data > Resources: local state import and refresh
 
-The Admin page tracks all 50 states plus DC and retains all previously imported snapshots. Buttons write directly into the primary MariaDB queue. No GitHub token, worker key, remote import endpoint, or Actions extraction is used. GitHub remains source control, CI and existing deployment only.
+The Admin page tracks all 50 states plus DC and retains all previously imported snapshots. The default shared-host mode processes the queue directly from the open Admin page. No cron, GitHub token, worker key, remote import endpoint, or Actions extraction is required for browser imports. GitHub remains source control, CI and existing deployment only.
 
-## Server requirements and migration
+## Current shared hosting: browser import
 
-The local PHP CLI job reads the same private/config.php and db() connection as the rest of Llama Scout. It runs independently of web requests. Existing queue/staging tables from 20261127_osm_resource_import.sql are reused; no new migration is needed. If those tables were never created, run that existing migration first.
+1. Run the existing Resource import migration if not already applied, then run `tools/migrations/20261127_osm_browser_import.sql` in the primary database. This only adds resume metadata to the existing jobs table.
+2. Open Admin > Map Data > Resources. Select a state and click Import / refresh selected. The page starts processing automatically, including any previously queued states. To process existing queued jobs, click Resume queued imports.
+3. Keep the page open. Each request reads a bounded HTTP byte range from the Geofabrik state PBF, decodes point features in PHP, stages at most 100 service records, and saves the exact byte and within-block row cursor. The browser waits at least 2.5 seconds before sending the next request. No command-line tools, cron, full state-file storage, or external credentials are used.
+4. Pause or close the page and resume later. The source file's version is verified on every range. If Geofabrik replaces the source between visits, restart the affected state; its old published records remain intact. Errors or incomplete scans cannot replace the old data. PHP needs cURL, zlib, mbstring and 64-bit integer support. The host must allow outbound HTTPS range requests. Real-state performance and host behavior must be verified on Colorado first.
+5. The shared-host reader imports OSM nodes only (all supported camper-priority tags), not way/relation geometries. Existing mapped areas are kept, not refreshed, during a point-only import. A full future server import refreshes both points and areas. These are reference candidates, not verified public Scout Resources.
+
+## Optional full server extraction after migration
+
+The optional local PHP CLI job reads the same private/config.php and db() connection as the rest of Llama Scout. It runs independently of web requests. Existing queue/staging tables from 20261127_osm_resource_import.sql are reused. The browser cursor migration remains compatible with the local worker. If those tables were never created, run that existing migration first.
 
 On the new Debian/Ubuntu DigitalOcean host, install the extraction dependencies once:
 
@@ -25,7 +33,7 @@ When that succeeds, schedule the same job without --check, for example once ever
 */5 * * * * /usr/bin/php /path/to/public_html/jobs/osm-resource-import.php >> /path/to/private/osm-resource-worker.log 2>&1
 ```
 
-This is a server setup step, not an API credential. Each run processes at most one state; overlapping cron invocations exit without doing work. No need to leave the Admin page open. The local worker readiness status and job stages appear in Admin. If no worker is detected, the buttons still queue work, but it cannot start until the scheduler and local dependencies are installed. Do not launch raw PBF extraction on the current shared host without verifying CPU, storage quota, process permissions and hosting policy. Queueing a state does not itself perform an extraction.
+This is a server setup step, not an API credential. Each run processes at most one state; overlapping cron invocations exit without doing work. No need to leave the Admin page open. Job stages appear in Admin. The scheduled worker can process unstarted jobs and its own interrupted jobs; it does not take over a partially scanned browser job. Resume that job in the browser or restart the state before switching to the full extractor. Do not launch the full CLI PBF extraction on the current shared host without verifying CPU, storage quota, process permissions and hosting policy; use the bounded browser path instead.
 
 Migrate the existing database, the private config, and site files; stop any old worker before starting the new one. If a state was interrupted during migration and its private snapshot was not copied, restart the selected state to supersede the old batch. Once cron is configured, start with Colorado alone and monitor the website/database before queuing all missing states. Existing Colorado/Oregon data stays readable during refresh. Old GitHub workflow credentials, if ever created, may be revoked; they are no longer referenced by the application.
 
