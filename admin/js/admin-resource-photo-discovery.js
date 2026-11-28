@@ -5,7 +5,7 @@
     const start = root.querySelector('[data-discovery-start]');
     const pause = root.querySelector('[data-discovery-pause]');
     const status = root.querySelector('[data-discovery-status]');
-    let running = false, pending = false, timer = null, count = 0, attached = 0, review = 0;
+    let running = false, pending = false, timer = null, count = 0, attached = 0, review = 0, unusable = 0;
     function controls() { start.disabled = running || pending; pause.disabled = !running; }
     function stop(message) {
         running = false;
@@ -33,7 +33,8 @@
             count++;
             if (result.status === 'attached') attached++;
             if (result.status === 'review') review++;
-            status.textContent = result.name + ': ' + result.status + '. ' + count + ' searched, ' + attached + ' attached, ' + review + ' to review this session.';
+            if (result.status === 'unusable') unusable++;
+            status.textContent = result.name + ': ' + result.status + '. ' + count + ' searched, ' + attached + ' attached, ' + review + ' to review, ' + unusable + ' unusable this session.' + (result.detail ? ' Last image: ' + result.detail : '');
             if (!running) { stop('Paused after saving the current result.'); return; }
             timer = setTimeout(step, 3000);
         } catch (error) { stop(error.message + ' Previous results are saved.'); }
@@ -41,7 +42,7 @@
     }
     start.addEventListener('click', () => {
         if (running || pending) return;
-        running = true; count = attached = review = 0; controls(); step();
+        running = true; count = attached = review = unusable = 0; controls(); step();
     });
     pause.addEventListener('click', () => stop(pending ? 'Pausing after the current search…' : 'Paused. Results saved.'));
     controls();
