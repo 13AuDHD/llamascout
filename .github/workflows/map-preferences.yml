@@ -1,0 +1,20 @@
+name: Map Preferences and Resource Filters
+on:
+  pull_request:
+    paths:
+      - 'map.php'
+      - 'js/map.js'
+      - 'js/map-preferences.js'
+      - 'css/map.css'
+      - 'tools/tests/map-preferences.cjs'
+      - '.github/workflows/map-preferences.yml'
+permissions:
+  contents: read
+jobs:
+  preferences:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: php -l map.php
+      - run: node --check js/map.js && node --check js/map-preferences.js
+      - run: node tools/tests/map-preferences.cjs
