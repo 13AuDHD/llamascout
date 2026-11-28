@@ -93,6 +93,8 @@ function llama_page_styles(string $scriptName = ''): array
 
     if (!$isAccount && $basename === 'resource.php') {
         $styles[] = 'place-detail.css';
+        $styles[] = 'site/features/place-map.css';
+        $styles[] = 'site/features/place-explorer.css';
         $styles[] = 'resource-detail.css';
     }
 
