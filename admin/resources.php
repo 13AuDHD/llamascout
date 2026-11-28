@@ -383,18 +383,21 @@ $editing =
 $showInventory = $tablesReady && !$editing && !$resourceSubmission;
 if ($showInventory) {
     $search = trim((string) ($_GET['q'] ?? ''));
-    $filterValue = trim((string) ($_GET['type'] ?? ''));
+    $filterValue = trim((string) ($_GET['service'] ?? ''));
     $state = trim((string) ($_GET['state'] ?? ''));
     $inventoryName = 'Resource';
     $inventoryUrl = '/resources.php';
     $submissionsUrl = '/submissions.php?kind=resource';
     $searchPlaceholder = 'Name, address, city, state, or ID';
-    $filterName = 'type';
-    $filterLabel = 'Type';
-    $filterPlaceholder = 'All types';
-    $filterOptions = llama_resource_types();
+    $filterName = 'service';
+    $filterLabel = 'Service';
+    $filterPlaceholder = 'All services';
+    $filterOptions = llama_resource_service_types();
+    if (!isset($filterOptions[$filterValue])) {
+        $filterValue = '';
+    }
     $states = admin_resources_states($db);
-    $resources = admin_resources_list($db, $search, $filterValue, $state);
+    $resources = admin_resources_list($db, $search, '', $state, $filterValue);
     $stockImage = $resources ? llama_contribution_photo_url($db) : '';
     $statuses = array_replace(llama_resource_statuses(), ['closed' => 'Unavailable']);
 
@@ -408,7 +411,7 @@ if ($showInventory) {
             'closed' => 'red',
             default => 'neutral',
         },
-        'services' => array_filter(array_map('llama_resource_service_type_label', [$row['first_service'], $row['second_service']])),
+        'services' => array_map('llama_resource_service_type_label', array_slice(array_values(array_unique(array_filter([$filterValue, $row['first_service'], $row['second_service']]))), 0, 2)),
         'image_url' => trim((string) ($row['featured_image'] ?? '')) === ''
             ? $stockImage
             : llama_photo_public_url((string) $row['featured_image']),
@@ -485,10 +488,6 @@ $e =
     <?= $e($error) ?>
 </div>
 <?php endif; ?>
-
-<p>
-    <a href="/admin/resource-ledger-readiness.php">Check Resource / Facility report-history readiness</a>
-</p>
 
 <?php if (!$tablesReady): ?>
 
