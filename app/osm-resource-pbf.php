@@ -211,6 +211,30 @@ function llama_pbf_node_rows(string $node,array $strings,int $granularity,int $l
     yield from llama_pbf_point_rows($id,$lat,$lon,$tags,$granularity,$latOffset,$lonOffset);
 }
 
+/**
+ * A block cannot contain a matching point if its string table does not
+ * contain any possible classifier key/value pair. False positives are fine:
+ * the ordinary classifier still decides which records qualify.
+ */
+function llama_pbf_block_may_match(array $strings): bool
+{
+    static $candidates = [
+        'amenity'=>['fuel','charging_station','drinking_water','toilets','sanitary_dump_station','shower','waste_disposal','hospital'],
+        'shop'=>['alcohol','wine','supermarket','convenience','grocery','laundry'],
+        'place'=>['city','town','village'],
+        'healthcare'=>['hospital'],
+        'fuel:propane'=>['yes'],
+        'propane'=>['yes'],
+        'drinking_water'=>['yes'],
+    ];
+    $present=array_fill_keys($strings,true);
+    foreach ($candidates as $key=>$values) {
+        if (!isset($present[$key])) continue;
+        foreach ($values as $value) if (isset($present[$value])) return true;
+    }
+    return false;
+}
+
 /** Ways and relations require a geometry index; do not guess their positions. */
 function llama_pbf_block_rows(string $block): Generator
 {
@@ -227,6 +251,7 @@ function llama_pbf_block_rows(string $block): Generator
         elseif ($field===20 && $wire===0) $lonOffset=$value;
     }
     if (($strings[0] ?? null)!=='' || $granularity<1 || $granularity>1000000000) throw new RuntimeException('Invalid PBF primitive block.');
+    if (!llama_pbf_block_may_match($strings)) return;
     foreach ($groups as $group) {
         foreach (llama_pbf_fields($group) as [$field,$wire,$value]) {
             if ($wire!==2) continue;
