@@ -128,9 +128,13 @@ function llama_resource_photo_discover_step(PDO $db,string $state=''): array {
         $tags=[];
         if (($r['source_provider'] ?? '')==='OpenStreetMap' && preg_match('~^(node|way|relation)/([1-9][0-9]{0,18})$~D',(string)$r['source_external_id'],$m)) {
             try {
-                $stmt=$db->prepare("SELECT tags,review_reason FROM osm_resource_enrichment_facts WHERE osm_type=? AND osm_id=?");
-                $stmt->execute([$m[1],$m[2]]);$facts=$stmt->fetch(PDO::FETCH_ASSOC);
-                if ($facts && !in_array($facts['review_reason'],['Resource identity or status changed','Resource coordinates edited since import','OSM node moved; confirm location','Source indicates changed access or closure'],true)) $tags=json_decode($facts['tags'],true) ?: [];
+                $stmt=$db->prepare("SELECT f.tags,f.review_reason,p.source_snapshot FROM osm_resource_enrichment_facts f JOIN osm_resource_publications p ON p.osm_type=f.osm_type AND p.osm_id=f.osm_id WHERE f.osm_type=? AND f.osm_id=? AND p.resource_id=? AND p.disposition='published'");
+                $stmt->execute([$m[1],$m[2],$r['id']]);$facts=$stmt->fetch(PDO::FETCH_ASSOC);
+                $baseline=$facts?json_decode($facts['source_snapshot'],true):null;
+                if ($facts && isset($baseline['latitude'],$baseline['longitude'])
+                    && abs((float)$r['latitude']-(float)$baseline['latitude'])<0.000001
+                    && abs((float)$r['longitude']-(float)$baseline['longitude'])<0.000001
+                    && !in_array($facts['review_reason'],['Resource identity or status changed','Resource coordinates edited since import','OSM node moved; confirm location','Source indicates changed access or closure'],true)) $tags=json_decode($facts['tags'],true) ?: [];
             } catch (PDOException $e) { /* Older enrichment migration is optional. */ }
         }
         $photos=llama_resource_photo_candidates($r,$tags);
