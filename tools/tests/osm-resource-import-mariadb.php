@@ -2,7 +2,7 @@
 declare(strict_types=1);
 $dsn = (string)getenv('LLAMA_OSM_TEST_DSN');
 if (!preg_match('/(?:^|;)dbname=llama_osm_import_test(?:;|$)/',$dsn)) throw new RuntimeException('Disposable test DB required.');
-require_once dirname(__DIR__,2) . '/app/osm-resource-import.php';
+require_once dirname(__DIR__,2) . '/app/osm-resource-local.php';
 $db = new PDO($dsn,(string)getenv('LLAMA_OSM_TEST_USER'),(string)getenv('LLAMA_OSM_TEST_PASSWORD'),[
     PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_EMULATE_PREPARES=>false,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC,
 ]);
@@ -74,5 +74,33 @@ $assert(llama_osm_resource_paced_worker($db,$command)['status']==='importing','R
 $run3 = static fn(string $action,array $input=[])=>llama_osm_resource_worker($db,['action'=>$action,'region'=>'colorado','batch_id'=>$batch3]+$input);
 $reject(static fn()=> $run3('chunk',['seq'=>0,'rows'=>array_fill(0,101,$row(5,'fuel','Fuel'))]));
 $run3('fail');
+// The Admin buttons must queue directly without any config or remote credentials.
+$assert(llama_osm_resource_queue($db,['oregon','arizona'])===['arizona','oregon'],'Queue states directly in database');
+$assert(llama_osm_resource_queue($db,['oregon'])===[],'Duplicate click leaves queued job intact');
+$oregon = llama_osm_resource_inventory($db)['oregon']['job'];
+$assert($oregon['status']==='queued','Admin queue persisted');
+$assert(llama_osm_resource_queue($db,['oregon'],true)===['oregon'],'Restart selected state');
+$job = llama_osm_resource_inventory($db)['oregon']['job'];
+$assert($job['batch_id']!==$oregon['batch_id'],'Restart supersedes old worker');
+$path = tempnam(sys_get_temp_dir(),'osm-local-');
+try {
+    $records = [];
+    for ($i=1;$i<=101;$i++) $records[]=$row(100+$i,'potable_water','Water '.$i);
+    $lines = [llama_osm_nearest_header('oregon',$date),...$records,$records[0],['end'=>true,'count'=>102]];
+    file_put_contents($path,implode("\n",array_map(static fn($line)=>json_encode($line,JSON_THROW_ON_ERROR),$lines))."\n");
+    $base = ['region'=>'oregon','batch_id'=>$job['batch_id']];
+    $direct = static fn(array $input)=>llama_osm_resource_worker($db,$input);
+    $direct($base+['action'=>'begin','snapshot_date'=>$date,'count'=>101]);
+    $direct($base+['action'=>'chunk','seq'=>0,'rows'=>array_slice($records,0,100)]);
+    $result = llama_osm_local_import_snapshot($db,$job,$path,50000,$direct);
+    $assert($result['status']==='complete' && (int)$result['received_rows']===101,'Local worker resumes staged snapshot directly in MariaDB');
+    $assert((int)$db->query("SELECT COUNT(*) FROM osm_nearest_services WHERE region='oregon'")->fetchColumn()===101,'Source duplicates removed');
+    llama_osm_resource_queue($db,['oregon']);
+    $newJob = llama_osm_resource_inventory($db)['oregon']['job'];
+    file_put_contents($path,implode("\n",array_map(static fn($line)=>json_encode($line,JSON_THROW_ON_ERROR),array_slice($lines,0,-1)))."\n");
+    $reject(static fn()=>llama_osm_local_import_snapshot($db,$newJob,$path,50000,$direct));
+    $assert(llama_osm_resource_inventory($db)['oregon']['job']['status']==='queued','Truncated file rejected before any write');
+    $assert((int)$db->query("SELECT COUNT(*) FROM osm_nearest_services WHERE region='oregon'")->fetchColumn()===101,'Existing region preserved');
+} finally { unlink($path); }
 $reject(static fn()=>llama_osm_resource_validate_regions(['../../private']));
 echo "PASS: state inventory, staged transfer, idempotent retries, atomic refresh, stale worker and older data protection.\n";
