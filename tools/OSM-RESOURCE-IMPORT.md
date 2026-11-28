@@ -10,10 +10,10 @@ On the new Debian/Ubuntu DigitalOcean host, install the extraction dependencies 
 
 ```sh
 sudo apt-get update
-sudo apt-get install -y osmium-tool python3-pyosmium python3-shapely curl coreutils
+sudo apt-get install -y osmium-tool python3-venv curl coreutils
 ```
 
-Some distributions name the PyOsmium package python3-osmium instead of python3-pyosmium; install the available package or install osmium and shapely into a private Python virtual environment. If using a venv, configure its python executable via the optional osm_resource_import.python setting in private/config.php. PHP CLI must support PDO MySQL, mbstring and proc_open. Run the worker as the same site user that owns the private directory/config, not root. Adjust the absolute site path and PHP executable to the actual deployment.
+As the site user, create a private Python virtual environment and install the two extraction libraries with its pip: `python3 -m venv /path/to/private/osm-venv`, then `/path/to/private/osm-venv/bin/pip install osmium shapely`. Set the optional `osm_resource_import.python` setting in private/config.php to `/path/to/private/osm-venv/bin/python`. Alternatively use distribution-installed Python libraries with the default python3. PHP CLI must support PDO MySQL, mbstring and proc_open. Run the worker as the same site user that owns the private directory/config, not root. Adjust the absolute site path and PHP executable to the actual deployment.
 
 ```sh
 php /path/to/public_html/jobs/osm-resource-import.php --check
