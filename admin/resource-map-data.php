@@ -117,6 +117,7 @@ require __DIR__ . '/_header.php';
 <?php if ($error !== ''): ?><p class="admin-panel" role="alert"><?= $e($error) ?></p><?php endif; ?>
 <section class="admin-panel">
     <header class="admin-panel-header"><div><p>OpenStreetMap reference data</p><h2>State imports and refreshes</h2></div>
+        <a class="admin-button" href="/resource-enrichment.php">Resource Enrichment</a>
         <a class="admin-button" href="/resource-map-data.php">Refresh status</a>
     </header>
     <?php if (!$ready): ?>
