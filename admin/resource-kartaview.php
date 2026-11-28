@@ -58,7 +58,7 @@ require __DIR__.'/_header.php';
 <div><img src="<?= $e($row['src']) ?>" alt="Nearby street view" loading="lazy" width="260"><p><a href="/resources.php?id=<?= (int)$row['id'] ?>"><?= $e($row['name']) ?></a></p><p><?= $e($row['caption']) ?></p></div>
 <?php endforeach; ?>
 </div>
-<script src="/js/admin-resource-photo-discovery.js?v=20261128-2" defer></script>
+<script src="/js/admin-resource-photo-discovery.js?v=20261128-3" defer></script>
 <?php endif; ?>
 </section>
 <?php require __DIR__.'/_footer.php'; ?>
