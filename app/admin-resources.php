@@ -679,6 +679,21 @@ function admin_resource_save(
 ): int {
     extract(llama_resource_prepare_input($db, $resourceId, $input), EXTR_SKIP);
 
+    // Source provenance is not an editable Scout observation. In particular,
+    // contribution forms may omit the Admin-only source fields.
+    if ($resourceId > 0) {
+        $origin = $db->prepare("SELECT source_provider,source_external_id,source_url,source_updated_at,verified_at
+            FROM resources WHERE id=? AND source_provider='OpenStreetMap'");
+        $origin->execute([$resourceId]);
+        if ($baseline = $origin->fetch(PDO::FETCH_ASSOC)) {
+            $clean['source_provider'] = $baseline['source_provider'];
+            $clean['source_external_id'] = $baseline['source_external_id'];
+            $sourceUrl = $baseline['source_url'];
+            $sourceUpdatedAt = $baseline['source_updated_at'];
+            if (!array_key_exists('verified_at',$input)) $verifiedAt = $baseline['verified_at'];
+        }
+    }
+
     $creating = $resourceId < 1;
 
     if (!$creating && !admin_resource_get($db, $resourceId)) {
