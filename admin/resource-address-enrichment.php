@@ -41,8 +41,8 @@ if ($ready && ($_SERVER['REQUEST_METHOD'] ?? '')==='POST') {
                 ->execute([json_encode(array_replace($previous,$applied),JSON_THROW_ON_ERROR),$missing?'partial':'filled',$id]);
             $notice=count($applied).' missing fields saved.';
         } elseif (($_POST['action'] ?? '')==='retry') {
-            // Preserve the existing attribution history; invalidate the lookup coordinates to queue a fresh attempt.
-            $db->prepare('UPDATE resource_address_enrichment SET latitude=IF(latitude=90,89,90) WHERE resource_id=?')->execute([$id]);
+            // Preserve attribution and original coordinates while queueing a fresh attempt.
+            $db->prepare("UPDATE resource_address_enrichment SET status='pending' WHERE resource_id=?")->execute([$id]);
             $notice='Resource queued for another lookup.';
         } else throw new RuntimeException('Invalid action.');
         $db->commit();
@@ -62,7 +62,7 @@ if ($ready) {
     if ($state!=='') {$where.=' AND r.state_region=?';$params[]=$state;}
     $join=' FROM resources r LEFT JOIN resource_address_enrichment e ON e.resource_id=r.id WHERE '.$where;
     $stmt=$db->prepare('SELECT COUNT(*)'.$join);$stmt->execute($params);$total=(int)$stmt->fetchColumn();
-    $stmt=$db->prepare('SELECT COUNT(*)'.$join.' AND (e.resource_id IS NULL OR e.latitude<>r.latitude OR e.longitude<>r.longitude)');$stmt->execute($params);$pending=(int)$stmt->fetchColumn();
+    $stmt=$db->prepare('SELECT COUNT(*)'.$join.' AND (e.resource_id IS NULL OR e.status=\'pending\' OR e.latitude<>r.latitude OR e.longitude<>r.longitude)');$stmt->execute($params);$pending=(int)$stmt->fetchColumn();
     $stmt=$db->prepare('SELECT r.*,e.status AS lookup_status,e.candidate,e.latitude AS lookup_lat,e.longitude AS lookup_lon'.$join.' ORDER BY r.id LIMIT 50 OFFSET '.(($page-1)*50));
     $stmt->execute($params);$rows=$stmt->fetchAll(PDO::FETCH_ASSOC);
     $used=(int)$db->query('SELECT requests FROM resource_address_daily_usage WHERE usage_date=UTC_DATE()')->fetchColumn();
@@ -87,7 +87,7 @@ require __DIR__.'/_header.php';
 </div>
 <p>Address data: <a href="https://www.geoapify.com/">Geoapify</a> / <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>. Review nearby building addresses before accepting.</p>
 <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Resource</th><th>Missing fields</th><th>Lookup / suggestions</th><th>Action</th></tr></thead><tbody>
-<?php foreach ($rows as $r): $valid=$r['lookup_status'] && $r['latitude']===$r['lookup_lat'] && $r['longitude']===$r['lookup_lon'];$candidate=$valid?json_decode($r['candidate'],true):[]; ?>
+<?php foreach ($rows as $r): $valid=$r['lookup_status'] && $r['lookup_status']!=='pending' && $r['latitude']===$r['lookup_lat'] && $r['longitude']===$r['lookup_lon'];$candidate=$valid?json_decode($r['candidate'],true):[]; ?>
 <tr><td><?= $e($r['name']) ?><br><?= $e($r['state_region']) ?><br><?= $e($r['latitude']) ?>, <?= $e($r['longitude']) ?></td>
 <td><?= $e(implode(', ',array_filter(array_keys(LLAMA_RESOURCE_ADDRESS_FIELDS),static fn($key)=>trim((string)($r[$key] ?? ''))===''))) ?></td>
 <td><?= $e($valid?$r['lookup_status']:'Pending') ?>
