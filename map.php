@@ -395,14 +395,30 @@ require __DIR__ . '/partials/cell-coverage-update-banner.php';
                             </span>
                         </div>
 
-                        <div class="map-resource-legend" aria-label="Resource marker icons">
-                            <span class="map-resource-legend-item" title="A water connection or filling point; drinking-water safety is not confirmed"><span class="map-resource-legend-symbol"><i class="map-resource-legend-icon is-service-water_fill" aria-hidden="true"></i></span>Water fill</span>
-                            <span class="map-resource-legend-item" title="RV waste disposal"><span class="map-resource-legend-symbol"><i class="map-resource-legend-icon is-service-dump_station" aria-hidden="true"></i></span>Dump station</span>
-                            <span class="map-resource-legend-item" title="Propane fill"><span class="map-resource-legend-symbol"><i class="map-resource-legend-icon is-service-propane" aria-hidden="true"></i></span>Propane</span>
-                            <span class="map-resource-legend-item" title="Firewood availability"><span class="map-resource-legend-symbol"><i class="map-resource-legend-icon is-service-firewood" aria-hidden="true"></i></span>Firewood</span>
-                            <span class="map-resource-legend-item" title="Fuel station"><span class="map-resource-legend-symbol"><i class="map-resource-legend-icon is-service-fuel" aria-hidden="true"></i></span>Fuel</span>
-                            <span class="map-resource-legend-item" title="Laundry facilities"><span class="map-resource-legend-symbol"><i class="map-resource-legend-icon is-service-laundry" aria-hidden="true"></i></span>Laundry</span>
-                            <span class="map-resource-legend-item" title="Convenience store or groceries"><span class="map-resource-legend-symbol"><i class="map-resource-legend-icon is-service-groceries" aria-hidden="true"></i></span>Convenience store</span>
+                        <div class="map-resource-legend" role="group" aria-label="Resource map filters">
+                            <?php
+                            $resourceFilters = [
+                                'water' => ['Water', 'water_fill', 'Water fill or mapped potable water; confirm drinking-water safety before use'],
+                                'dump_station' => ['Dump station', 'dump_station', 'RV waste disposal'],
+                                'shower' => ['Showers', 'shower', 'Showers'],
+                                'laundry' => ['Laundry', 'laundry', 'Laundry facilities'],
+                                'propane' => ['Propane', 'propane', 'Propane availability; confirm cylinder filling'],
+                                'toilet' => ['Restrooms', 'toilet', 'Restrooms'],
+                                'trash' => ['Trash', 'trash', 'Trash disposal'],
+                                'fuel' => ['Fuel', 'fuel', 'Fuel stations'],
+                                'groceries' => ['Groceries', 'groceries', 'Groceries or convenience store'],
+                                'ev_charging' => ['EV charging', 'ev_charging', 'EV charging'],
+                                'firewood' => ['Firewood', 'firewood', 'Firewood availability'],
+                                'other' => ['Other', 'other', 'Other services, recycling, air and ice'],
+                            ];
+                            foreach ($resourceFilters as $filter => [$label, $icon, $description]):
+                            ?>
+                                <button type="button" class="map-resource-legend-item" data-resource-filter="<?= htmlspecialchars($filter, ENT_QUOTES, 'UTF-8') ?>" aria-pressed="false" title="<?= htmlspecialchars($description, ENT_QUOTES, 'UTF-8') ?>">
+                                    <span class="map-resource-legend-symbol"><i class="map-resource-legend-icon is-service-<?= htmlspecialchars($icon, ENT_QUOTES, 'UTF-8') ?>" aria-hidden="true"></i></span><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?>
+                                </button>
+                            <?php endforeach; ?>
+                            <button type="button" class="map-resource-legend-item map-resource-filter-action" data-resource-show-all>Show all</button>
+                            <button type="button" class="map-resource-legend-item map-resource-filter-action" data-resource-hide-all>Hide all</button>
                         </div>
                     </div>
 
@@ -486,7 +502,8 @@ require __DIR__ . '/partials/cell-coverage-update-banner.php';
 </section>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="/js/map.js"></script>
+<script src="/js/map-preferences.js?v=20261127-1"></script>
+<script src="/js/map.js?v=20261127-1"></script>
 
 <?php if ($hasMapMemberAccess): ?>
     <script src="/js/map-land-overlays.js"></script>
