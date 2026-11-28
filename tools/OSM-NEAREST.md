@@ -2,31 +2,18 @@
 
 This is an independent ODbL reference layer, not a source of authored Scout answers or Resource/Facility records. The live lookup compares the closest mapped service within 100 straight-line miles from the actual Place coordinate against eligible standalone Scout Resources. Locate me and coordinate Search calculate distances and fill blank canonical Place Nearest Services selects; the named match and precise straight-line estimate appear below each automatically populated field. The Scout can review or edit the rounded distance before submitting. The current native fields store whole-mile choices (minimum 1 mile, or Over 20 miles), not the source name. No Site Nearest preview or report panel is needed. The first six categories retain Scout data even without OSM. Once regional data is imported, the additional town, alcohol sales and hospital categories can also return results. Missing data is not evidence that a service does not exist.
 
-## cPanel / phpMyAdmin
+## Admin import
 
-1. Back up the database, run `tools/migrations/20261127_osm_nearest_services.sql`, merge/deploy the PR.
-2. In GitHub Actions, choose **Extract OSM Nearest Services**, Run workflow, select main, enter `colorado`. This downloads the current Geofabrik state extract, keeps its referenced geometries, and packages a regional snapshot without accessing production.
-3. Download and unzip the GitHub artifact. In phpMyAdmin select the Llama Scout database and import the enclosed `colorado.sql.gz` as SQL. Do not split the file or continue after errors; the temporary staging table, lock and transaction require one database session. The importer requires temporary-table privileges. If the shared host upload or execution limit is exceeded, do not remove the guard; use the CLI alternative or arrange a host-side import.
-4. Verify the regional count and date using:
-   ```sql
-   SELECT region, MAX(snapshot_date) AS snapshot_date, COUNT(*) AS service_rows
-   FROM osm_nearest_services GROUP BY region ORDER BY region;
-   ```
-5. Test Add a Place with known coordinates and confirm its existing Nearest Services fields are automatically populated after Locate me or Search, with OpenStreetMap or Scout attribution and straight-line distances. Then repeat for neighboring states and eventually the remaining states. Geofabrik region names must match its US download listing; this workflow is intentionally per-state, not the whole-country PBF.
+Use **Admin > Map Data > Resources** and the local server worker described in [OSM-RESOURCE-IMPORT.md](OSM-RESOURCE-IMPORT.md). The old GitHub artifact workflow is retired. Existing snapshots and the nearest-service schema remain unchanged. The CLI worker reads the application's private database configuration and imports directly into MariaDB.
 
-Refresh a region by repeating the extraction and import. Older snapshots are refused, and missing records from the new snapshot are removed from that region. Adjacent extracts may contain the same OSM object; the lookup chooses one result per service category and never inserts those records into Scout tables.
+Verify imported state counts with:
 
-## CLI alternative (where PHP CLI and tools are installed)
-
-```sh
-python -m pip install osmium shapely
-# Download and filter a Geofabrik regional PBF, keeping referenced nodes/ways.
-# Use its actual replication snapshot date (not the date of an older cached file).
-python tools/extract-osm-nearest.py filtered.osm.pbf colorado.ndjson --region colorado --snapshot YYYY-MM-DD
-php tools/import-osm-nearest.php colorado.ndjson
+```sql
+SELECT region, MAX(snapshot_date) AS snapshot_date, COUNT(*) AS service_rows
+FROM osm_nearest_services GROUP BY region ORDER BY region;
 ```
 
-The deploy workflow deliberately excludes tools. Use a checked-out copy with the same private database configuration path or manually deploy the CLI script into the correct directory on a trusted host; never expose an import endpoint or credentials. The PHP importer rejects incomplete snapshots, validates rows, and atomically replaces one region. SQL alternative stages before replacing rows. If import reports an error, inspect the region counts before retrying.
+Test Add a Place at known coordinates. Existing Nearest Services fields should automatically populate after Locate me or Search. Refreshes replace only the completed regional source snapshot. Older snapshots are rejected; adjacent extracts may share OSM identities. The manual local extraction/SQL tools remain available for recovery, but must not be run concurrently with the scheduled worker.
 
 ## Data scope and limitations
 
