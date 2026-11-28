@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once dirname(__DIR__) . '/app/bootstrap.php';
-require_once dirname(__DIR__) . '/app/osm-resource-local.php';
+require_once dirname(__DIR__) . '/app/osm-resource-browser.php';
 
 $adminUser = moderation_require_admin();
 $adminPageTitle = 'Resources';
@@ -9,7 +9,8 @@ $adminPageEyebrow = 'Map Data';
 $adminActiveNav = 'resource-map-data';
 $db = db();
 $ready = llama_osm_resource_ready($db);
-$workerStatus = llama_osm_local_worker_status();
+$browserReady = $ready && llama_osm_resource_browser_ready($db);
+$autoRun = false;
 $notice = '';
 $error = '';
 $inventory = $ready ? llama_osm_resource_inventory($db) : [];
@@ -27,7 +28,10 @@ if ($ready && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         } elseif (!in_array($action,['selected','restart'],true)) {
             throw new InvalidArgumentException('Choose an import action.');
         }
+        if (!$browserReady) throw new RuntimeException('Run the browser import SQL migration first.');
+        if (!$regions && in_array($action,['selected','restart'],true)) throw new InvalidArgumentException('Select at least one state.');
         $queued = $regions ? llama_osm_resource_queue($db,$regions,$action === 'restart') : [];
+        $autoRun = true;
         $notice = $queued ? count($queued) . ' state(s) queued. Existing snapshots remain available during refresh.'
             : 'No additional states to queue. Select a state for a selected-state action; existing queued or importing states were left untouched.';
     } catch (PDOException $e) {
@@ -95,34 +99,40 @@ require __DIR__ . '/_header.php';
         <p>Run the primary database migration 20261127_osm_resource_import.sql first. Existing imported regions will be retained.</p>
     <?php else: ?>
         <p><?= $imported ?> of <?= count($inventory) ?> regions imported. <?= $working ?> queued or importing. Existing Colorado and Oregon snapshots are recognized automatically.</p>
-        <p>Imports run through the local server worker; you do not need to download files or leave this page open. Refresh replaces only the selected reference snapshot after every row is received. Imported rows are not Scout observations.</p>
-        <p>Buttons queue work directly in the primary database. The local scheduled worker processes the queue one state at a time. No API credentials are required.</p>
-        <?php if ($workerStatus === null): ?>
-            <p role="status"><strong>Local worker not detected.</strong> Imports can be queued now, but will not start until the scheduled server worker is installed and running.</p>
+        <p>Keep this page open while imports run. The browser requests one small batch at a time and saves progress in the database. You can pause, leave, or resume without starting over. No cron or API key required.</p>
+        <p>Shared-host mode imports mapped points. Previously imported mapped areas are retained; a future full server import will refresh both points and areas.</p>
+        <?php if (!$browserReady): ?>
+            <p role="alert"><strong>One SQL update required:</strong> run <code>20261127_osm_browser_import.sql</code> in the primary database and reload this page.</p>
         <?php else: ?>
-            <p role="status"><strong>Local worker: <?= $e(ucfirst($workerStatus['state'])) ?></strong> · <?= $e($workerStatus['message']) ?> Last status: <?= $e($workerStatus['at']) ?>.</p>
+            <div data-osm-import-controls data-auto-run="<?= $autoRun?'1':'0' ?>" data-csrf="<?= $e(moderation_csrf_token()) ?>">
+                <button type="button" class="admin-button is-primary" data-osm-resume>Resume queued imports</button>
+                <button type="button" class="admin-button" data-osm-pause disabled>Pause</button>
+                <p role="status" aria-live="polite" data-osm-status>Ready. Select states or resume queued imports.</p>
+                <progress data-osm-progress max="100" value="0" aria-label="Current state scan progress"></progress>
+                <noscript>JavaScript is required to run the paced browser import.</noscript>
+            </div>
         <?php endif; ?>
         <form method="post">
             <input type="hidden" name="csrf_token" value="<?= $e(moderation_csrf_token()) ?>">
             <div class="admin-panel-header">
-                <button class="admin-button is-primary" name="action" value="missing">Import all missing states</button>
-                <button class="admin-button" name="action" value="refresh">Refresh imported states</button>
-                <button class="admin-button" name="action" value="selected">Import / refresh selected</button>
-                <button class="admin-button" name="action" value="restart">Restart selected jobs</button>
+                <button class="admin-button is-primary" name="action" value="missing" <?= $browserReady?'':'disabled' ?>>Import all missing states</button>
+                <button class="admin-button" name="action" value="refresh" <?= $browserReady?'':'disabled' ?>>Refresh imported states</button>
+                <button class="admin-button" name="action" value="selected" <?= $browserReady?'':'disabled' ?>>Import / refresh selected</button>
+                <button class="admin-button" name="action" value="restart" <?= $browserReady?'':'disabled' ?>>Restart selected jobs</button>
             </div>
             <p>Restart selected supersedes previous jobs for those states; use only for stuck or failed jobs.</p>
             <div class="admin-table-wrap">
                 <table class="admin-table">
                     <thead><tr><th>Select</th><th>State</th><th>Imported snapshot</th><th>Reference rows</th><th>Job status</th><th>Received</th><th>Updated (UTC)</th><th></th></tr></thead>
                     <tbody><?php foreach ($inventory as $slug=>$state): $job=$state['job']; $snapshot=$state['snapshot']; ?>
-                        <tr>
+                        <tr data-osm-region="<?= $e($slug) ?>">
                             <td><input type="checkbox" name="regions[]" value="<?= $e($slug) ?>" aria-label="Select <?= $e($state['name']) ?>"></td>
                             <td><?= $e($state['name']) ?></td>
                             <td><?= $e($snapshot['snapshot_date'] ?? 'Not imported') ?></td>
                             <td><?= number_format((int)($snapshot['service_rows'] ?? 0)) ?></td>
-                            <td><?= $e(ucfirst((string)($job['status'] ?? ($snapshot?'Imported':'Missing')))) ?>
+                            <td data-osm-job-status><?= $e(ucfirst((string)($job['status'] ?? ($snapshot?'Imported':'Missing')))) ?>
                                 <?php if (!empty($job['message'])): ?><small><?= $e($job['message']) ?></small><?php endif; ?></td>
-                            <td><?= $job && (int)$job['expected_rows']>0 ? number_format((int)$job['received_rows']) . ' / ' . number_format((int)$job['expected_rows']) : '' ?></td>
+                            <td data-osm-received><?= $job ? number_format((int)$job['received_rows']) : '' ?></td>
                             <td><?= $e($job['updated_at'] ?? '') ?></td>
                             <td><a href="?region=<?= $e($slug) ?>#resource-candidates">View candidates</a></td>
                         </tr>
@@ -158,5 +168,8 @@ require __DIR__ . '/_header.php';
     </div>
     <small><a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors (ODbL)</a></small>
 </section>
+<?php endif; ?>
+<?php if ($browserReady): ?>
+<script src="/js/admin-osm-resource-import.js?v=20261127-1" defer></script>
 <?php endif; ?>
 <?php require __DIR__ . '/_footer.php'; ?>
