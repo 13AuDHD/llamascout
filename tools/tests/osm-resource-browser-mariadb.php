@@ -59,6 +59,7 @@ $insert->execute(['colorado','node',800,'fuel','Old point',37,-107,$old]);
 $insert->execute(['colorado','way',900,'fuel','Old mapped area',37,-107,$old]);
 $assert(llama_osm_resource_queue($db,['colorado'])===['colorado'],'Admin action queues without credentials');
 $live=static fn()=> $db->query("SELECT name FROM osm_nearest_services WHERE region='colorado' ORDER BY name")->fetchAll(PDO::FETCH_COLUMN);
+$db->exec("UPDATE osm_resource_import_jobs SET updated_at=UTC_TIMESTAMP()+INTERVAL 2 SECOND WHERE region='colorado'");
 try {
     llama_osm_browser_step($db,$fetch,50000);
     throw new LogicException('Cooldown not enforced');
@@ -80,7 +81,7 @@ llama_osm_browser_step($db,$fetch,50000,false);
 $changed=static fn($region,$offset,$length,$validator)=>['data'=>substr($file,$offset,$length),'size'=>strlen($file),'validator'=>'etag:"changed"'];
 try { llama_osm_browser_step($db,$changed,50000,false); throw new LogicException('Changed source accepted'); }
 catch (RuntimeException $e) { $assert(str_contains($e->getMessage(),'changed'),'Changed source rejected'); }
-$assert(count($live())===102,'Changed file preserves previous snapshot');
+$assert(count($live())===502,'Changed file preserves previous snapshot');
 $assert(llama_osm_resource_inventory($db)['colorado']['job']['status']==='error','Changed snapshot can be restarted');
 $assert(llama_pbf_services(['amenity'=>'sanitary_dump_station'])===['dump_station'],'Dump station');
 $assert(llama_pbf_services(['shop'=>'laundry','self_service'=>'no'])===[],'Non-self-service laundry exclusion');
