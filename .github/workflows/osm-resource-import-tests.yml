@@ -4,6 +4,12 @@ on:
     branches: [main]
     paths:
       - 'app/osm-resource-import.php'
+      - 'app/osm-resource-enrichment.php'
+      - 'admin/resource-enrichment*.php'
+      - 'admin/js/admin-resource-enrichment.js'
+      - 'api/osm-resource-enrichment.php'
+      - 'tools/migrations/20261128_osm_resource_enrichment.sql'
+      - 'tools/tests/osm-resource-enrichment-mariadb.php'
       - 'app/osm-nearest-data.php'
       - 'api/osm-resource-import-worker.php'
       - 'admin/resource-map-data.php'
@@ -63,6 +69,11 @@ jobs:
       - name: Syntax checks
         run: |
           php -l app/osm-resource-import.php
+          php -l app/osm-resource-enrichment.php
+          php -l admin/resource-enrichment.php
+          php -l admin/resource-enrichment-step.php
+          php -l api/osm-resource-enrichment.php
+          node --check admin/js/admin-resource-enrichment.js
           php -l api/osm-resource-import-worker.php
           php -l admin/resource-map-data.php
           php -l app/osm-resource-local.php
@@ -88,4 +99,5 @@ jobs:
           php tools/tests/osm-resource-import-mariadb.php
           php tools/tests/osm-resource-browser-mariadb.php
           php tools/tests/osm-resource-publication-mariadb.php
+          php tools/tests/osm-resource-enrichment-mariadb.php
           php tools/tests/resource-map-query-mariadb.php

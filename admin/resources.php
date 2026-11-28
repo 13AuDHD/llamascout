@@ -584,6 +584,27 @@ $e =
                         <a class="admin-button is-muted" href="<?= $e('https://www.google.com/search?q=' . rawurlencode($lookupName . ' ' . ($resource['city'] ?? '') . ' ' . ($resource['state_region'] ?? '') . ' ' . $lookupCoordinates)) ?>" target="_blank" rel="noopener noreferrer">Search business</a>
                     </div>
                     <p data-resource-lookup-status role="status" aria-live="polite"></p>
+                    <?php
+                    $bulkFacts = false;
+                    try {
+                        [$osmType, $osmId] = explode('/', $resource['source_external_id'], 2);
+                        $factsStmt = $db->prepare('SELECT snapshot_date,tags,applied_fields,review_reason FROM osm_resource_enrichment_facts WHERE osm_type=? AND osm_id=?');
+                        $factsStmt->execute([$osmType,$osmId]);
+                        $bulkFacts = $factsStmt->fetch(PDO::FETCH_ASSOC);
+                    } catch (PDOException $exception) {
+                        // Optional enrichment migration is not required for ordinary editing.
+                    }
+                    ?>
+                    <?php if ($bulkFacts): ?>
+                        <details>
+                            <summary>Bulk enrichment source details (<?= $e($bulkFacts['snapshot_date']) ?>)</summary>
+                            <?php if ($bulkFacts['review_reason']): ?><p><?= $e($bulkFacts['review_reason']) ?></p><?php endif; ?>
+                            <dl><?php foreach ((array) json_decode($bulkFacts['tags'],true) as $key=>$value): ?>
+                                <dt><?= $e($key) ?></dt><dd><?= $e($value) ?></dd>
+                            <?php endforeach; ?></dl>
+                        </details>
+                    <?php endif; ?>
+
                     <p>Sources: <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors</a> and <a href="https://www.geoapify.com/" target="_blank" rel="noopener noreferrer">Geoapify</a>.</p>
                 </div>
             </section>
