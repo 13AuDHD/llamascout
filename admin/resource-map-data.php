@@ -33,6 +33,9 @@ if ($ready && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         $queued = $regions ? llama_osm_resource_queue($db,$regions,$action === 'restart') : [];
         $notice = $queued ? count($queued) . ' state(s) queued. Existing snapshots remain available during refresh.'
             : 'No additional states to queue. Already running imports were left untouched.';
+    } catch (PDOException $e) {
+        llama_log_caught_exception($e,'admin.osm_resource_import');
+        $error = 'The database could not queue the import. Existing snapshots are unchanged.';
     } catch (InvalidArgumentException | RuntimeException $e) {
         $error = $e->getMessage();
     } catch (Throwable $e) {
