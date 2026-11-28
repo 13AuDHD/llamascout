@@ -54,7 +54,10 @@
         },
         saveView(storage, value) {
             if (!value || !Number.isFinite(value.lng)) return;
-            const normalized = {...value, lng: ((value.lng + 180) % 360 + 360) % 360 - 180};
+            // Preserve valid coordinates exactly; wrap only world-copy longitudes.
+            const lng = value.lng >= -180 && value.lng <= 180
+                ? value.lng : ((value.lng + 180) % 360 + 360) % 360 - 180;
+            const normalized = {...value, lng};
             if (validView(normalized)) write(storage, viewKey, normalized);
         },
         readFilters(storage) { return cleanFilters(read(storage, filtersKey)); },
