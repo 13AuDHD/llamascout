@@ -153,11 +153,13 @@ try {
     fwrite(STDOUT,$region . ': imported ' . (int)$result['received_rows'] . " reference records.\n");
 } catch (Throwable $e) {
     $exit = 1;
-    if ($db instanceof PDO && $job && llama_osm_local_job_current($db,$job)) {
+    if ($db instanceof PDO && $job) {
         try {
+            if (llama_osm_local_job_current($db,$job)) {
             llama_osm_resource_worker($db,['region'=>$job['region'],'batch_id'=>$job['batch_id'],'action'=>'fail']);
             $db->prepare("UPDATE osm_resource_import_jobs SET message=? WHERE region=? AND batch_id=? AND status='error'")
                 ->execute(['Local worker failed while ' . $phase . '; see server worker log. Retry this state.',$job['region'],$job['batch_id']]);
+            }
         } catch (Throwable $ignored) {}
     }
     if ($root) {
