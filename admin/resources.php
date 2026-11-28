@@ -8,6 +8,7 @@ require_once dirname(__DIR__) . '/app/admin-users.php';
 require_once dirname(__DIR__) . '/app/resource-submissions.php';
 require_once dirname(__DIR__) . '/app/contribution-presentation.php';
 require_once __DIR__ . '/_dashboard.php';
+require_once dirname(__DIR__) . '/app/resource-address-enrichment.php';
 
 $adminUser = moderation_require_admin();
 $db = db();
@@ -185,6 +186,12 @@ if (
                 $location = $returnPlaceId > 0
                     ? '/place.php?id=' . $returnPlaceId . '&mode=resource&resource_id=' . $resourceId . '&resource_saved=1'
                     : '/resources.php?id=' . $resourceId . '&saved=1';
+                if ($returnPlaceId === 0 && !empty($_POST['save_next_address'])) {
+                    $next = $db->prepare("SELECT r.id FROM resources r WHERE r.id>? AND r.is_active=1 AND r.parent_place_id IS NULL AND ".llama_resource_address_missing()." ORDER BY r.id LIMIT 1");
+                    $next->execute([$resourceId]);
+                    $nextId = (int)$next->fetchColumn();
+                    $location = $nextId > 0 ? '/resources.php?id='.$nextId.'&address_queue=1&saved=1' : '/resource-address-enrichment.php';
+                }
                 header('Location: ' . $location, true, 303);
 
                 exit;
@@ -520,7 +527,7 @@ $e =
         </div>
 
         <?php if ($editing && !$resourceSubmission): ?>
-            <a class="admin-button is-muted" href="/resources.php">Back to Resources</a>
+            <a class="admin-button is-muted" href="<?= !empty($_GET['address_queue']) ? '/resource-address-enrichment.php' : '/resources.php' ?>"><?= !empty($_GET['address_queue']) ? 'Back to missing addresses' : 'Back to Resources' ?></a>
         <?php endif; ?>
     </header>
 
@@ -697,6 +704,9 @@ $e =
             >
                 <?= $resourceSubmission ? 'Approve and Publish' : 'Save ' . $adminResourceLabel ?>
             </button>
+            <?php if (!$resourceSubmission && !$adminFacilityForm && !empty($_GET['address_queue'])): ?>
+                <button class="admin-button" type="submit" name="save_next_address" value="1">Save &amp; next incomplete Resource</button>
+            <?php endif; ?>
         </div>
     </form>
 
@@ -756,6 +766,7 @@ $e =
 <?php // Resource photos are managed only in the shared Resource editor above. ?>
 
 <?php if ($showInventory): ?>
+    <p><a class="admin-button" href="/resource-address-enrichment.php">Missing Resource addresses</a></p>
     <?php require __DIR__ . '/partials/place-inventory.php'; ?>
 <?php endif; ?>
 
