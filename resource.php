@@ -435,6 +435,9 @@ require __DIR__ . '/partials/header.php';
 </header>
 
 <div class="place-detail-container resource-detail-body">
+<?php if (($heroImage['source_provider'] ?? '') === 'KartaView'): ?>
+    <p class="resource-photo-credit">Nearby street view, not a verified Resource photo. <?= htmlspecialchars((string)($heroImage['caption'] ?? ''),ENT_QUOTES,'UTF-8') ?> · <a href="https://creativecommons.org/licenses/by-sa/4.0/">License</a> · <a href="<?= htmlspecialchars((string)$heroImage['source_url'],ENT_QUOTES,'UTF-8') ?>" target="_blank" rel="noopener noreferrer">View location on KartaView</a></p>
+<?php endif; ?>
 <?php if (($heroImage['source_provider'] ?? '') === 'Wikimedia Commons'
     && str_starts_with((string)($heroImage['source_url'] ?? ''),'https://commons.wikimedia.org/wiki/File:')): ?>
     <p class="resource-photo-credit">Hero photo: <a href="<?= htmlspecialchars($heroImage['source_url'],ENT_QUOTES,'UTF-8') ?>" target="_blank" rel="noopener noreferrer"><?= htmlspecialchars((string)($heroImage['caption'] ?? 'Wikimedia Commons'),ENT_QUOTES,'UTF-8') ?></a> · Wikimedia Commons (display thumbnail)</p>
@@ -595,7 +598,7 @@ require __DIR__ . '/partials/header.php';
                     implode(', ', $addressParts),
                     ENT_QUOTES,
                     'UTF-8'
-                ) ?><?php if ($bulkAddressCredit): ?> <small>Address data: <a href="https://www.geoapify.com/">Geoapify</a> / <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a></small><?php endif; ?></dd>
+                ) ?><?php if ($bulkAddressCredit): ?> <small>Coordinate-derived address (approximate): <a href="https://www.geoapify.com/">Geoapify</a> / <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a></small><?php endif; ?></dd>
             </div>
             <?php endif; ?>
 
@@ -767,7 +770,7 @@ foreach ($resourceReport['groups'] as $group) {
                 class="place-photo-thumb<?= !empty($image['is_featured']) ? ' is-featured' : '' ?>"
                 type="button"
                 data-gallery-open="<?= (int) $index ?>"
-                <?php if (($image['source_provider'] ?? '') === 'Wikimedia Commons'): ?>
+                <?php if (in_array(($image['source_provider'] ?? ''),['Wikimedia Commons','KartaView'],true)): ?>
                     data-photo-credit="<?= htmlspecialchars((string)($image['caption'] ?? 'Wikimedia Commons'),ENT_QUOTES,'UTF-8') ?>"
                 <?php endif; ?>
                 aria-label="Open <?= $isFacility ? 'Facility' : 'Resource' ?> photo <?= (int) $index + 1 ?>"
@@ -802,6 +805,9 @@ foreach ($resourceReport['groups'] as $group) {
         <?php endforeach; ?>
     </div>
     <?php foreach ($images as $index=>$image): ?>
+        <?php if (($image['source_provider'] ?? '') === 'KartaView'): ?>
+            <p class="resource-photo-credit">Photo <?= (int)$index+1 ?>: <?= htmlspecialchars((string)($image['caption'] ?? ''),ENT_QUOTES,'UTF-8') ?> · <a href="https://creativecommons.org/licenses/by-sa/4.0/">License</a> · <a href="<?= htmlspecialchars((string)$image['source_url'],ENT_QUOTES,'UTF-8') ?>" target="_blank" rel="noopener noreferrer">KartaView location</a></p>
+        <?php endif; ?>
         <?php if (($image['source_provider'] ?? '') === 'Wikimedia Commons' && str_starts_with((string)($image['source_url'] ?? ''),'https://commons.wikimedia.org/wiki/File:')): ?>
             <p class="resource-photo-credit">Photo <?= (int)$index+1 ?>: <a href="<?= htmlspecialchars($image['source_url'],ENT_QUOTES,'UTF-8') ?>" target="_blank" rel="noopener noreferrer"><?= htmlspecialchars((string)($image['caption'] ?? 'Wikimedia Commons'),ENT_QUOTES,'UTF-8') ?></a> · Wikimedia Commons (display thumbnail)</p>
         <?php endif; ?>

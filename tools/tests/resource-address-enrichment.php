@@ -9,7 +9,7 @@ $assert($c['automatic']['street_address']==='42 Main St','Close numbered buildin
 $assert(!isset($c['automatic']['state_region']),'Existing state preserved');
 $assert($c['automatic']['city']==='Durango','City filled');
 $raw['distance']=90;$c=llama_resource_address_candidate($r,$raw);
-$assert(!isset($c['automatic']['street_address']) && isset($c['fields']['street_address']),'Distant street candidate review only');
+$assert($c['automatic']['street_address']==='42 Main St','Best available nearby address automatically saved');
 $raw['state']='Utah';$raw['state_code']='UT';$c=llama_resource_address_candidate($r,$raw);
 $assert($c['automatic']===[],'Conflicting state blocked');
 $assert(llama_resource_address_candidate($r,[])['automatic']===[],'No result does not invent data');

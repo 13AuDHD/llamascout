@@ -40,10 +40,8 @@ function llama_resource_address_candidate(array $r,array $raw): array {
         && $type==='building';
     $auto=[];
     if ($countryOk && $stateOk) {
-        // Reverse geocoding may identify a neighboring building; only close, high-confidence numbered building matches qualify.
+        // Admin requested the same best available address as the manual coordinate search.
         foreach ($fields as $field=>$value) {
-            if ($field==='street_address' && !$street) continue;
-            if ($field==='postal_code' && ($distance===null || $distance>1000)) continue;
             if (trim((string)($r[$field] ?? ''))==='') $auto[$field]=$value;
         }
     }
@@ -69,13 +67,47 @@ function llama_resource_address_apply(PDO $db,array $r,array $fields): array {
     return $applied;
 }
 
+/** Reuse previously paid-for results, including partial results, before calling Geoapify again. */
+function llama_resource_address_cached(PDO $db,string $state): ?array {
+    $sql="SELECT r.*,e.candidate,e.applied_fields FROM resources r JOIN resource_address_enrichment e ON e.resource_id=r.id
+        AND e.latitude=r.latitude AND e.longitude=r.longitude
+        WHERE r.is_active=1 AND r.parent_place_id IS NULL AND ".llama_resource_address_missing()."
+        AND e.status IN ('partial','review','none')
+        AND JSON_EXTRACT(e.candidate,'$.bulk_policy_v2') IS NULL";
+    $params=[];
+    if ($state!=='') {$sql.=' AND r.state_region=?';$params[]=$state;}
+    $db->beginTransaction();
+    $stmt=$db->prepare($sql.' ORDER BY r.id LIMIT 100 FOR UPDATE'); $stmt->execute($params);
+    $rows=$stmt->fetchAll(PDO::FETCH_ASSOC);
+    if (!$rows) {$db->commit();return null;}
+    $count=0;$appliedCount=0;
+    foreach ($rows as $r) {
+        $candidate=json_decode($r['candidate'],true,32,JSON_THROW_ON_ERROR);
+        $previous=json_decode($r['applied_fields'],true,32,JSON_THROW_ON_ERROR);
+        $fields=$candidate['fields'] ?? [];
+        // Retain the explicit state/country conflict guard. No existing value is replaced.
+        $applied=($candidate['reason'] ?? '')==='Country or state mismatch'?[]:llama_resource_address_apply($db,$r,$fields);
+        $candidate['bulk_policy_v2']=true;
+        $final=array_replace($r,$applied);
+        $missing=array_filter(array_keys(LLAMA_RESOURCE_ADDRESS_FIELDS),static fn($key)=>trim((string)($final[$key] ?? ''))==='');
+        $history=array_replace((array)$previous,$applied);
+        $status=!$missing?'filled':($history?'partial':($fields?'review':'none'));
+        $db->prepare('UPDATE resource_address_enrichment SET candidate=?,applied_fields=?,status=? WHERE resource_id=?')
+            ->execute([json_encode($candidate,JSON_THROW_ON_ERROR),json_encode((object)$history,JSON_THROW_ON_ERROR),$status,$r['id']]);
+        $count++;$appliedCount+=count($applied);
+    }
+    $db->commit();
+    return ['done'=>false,'name'=>'Previously retrieved addresses','status'=>'saved','processed'=>$count,'field_count'=>$appliedCount,'applied'=>[]];
+}
+
 function llama_resource_address_step(PDO $db,string $state=''): array {
     if (!llama_resource_address_ready($db)) throw new RuntimeException('Run the address enrichment SQL first.');
-    llama_address_geoapify_key();
     $lock='llama-address-enrichment-'.substr(hash('sha256',(string)$db->query('SELECT DATABASE()')->fetchColumn()),0,32);
     $stmt=$db->prepare('SELECT GET_LOCK(?,0)');$stmt->execute([$lock]);
     if ((int)$stmt->fetchColumn()!==1) throw new RuntimeException('Another address lookup is running.');
     try {
+        $cached=llama_resource_address_cached($db,$state);
+        if ($cached!==null) return $cached;
         $sql="SELECT r.* FROM resources r LEFT JOIN resource_address_enrichment e ON e.resource_id=r.id
             WHERE r.is_active=1 AND r.parent_place_id IS NULL AND ".llama_resource_address_missing()."
             AND (e.resource_id IS NULL OR e.status='pending' OR e.latitude<>r.latitude OR e.longitude<>r.longitude)";
@@ -83,6 +115,7 @@ function llama_resource_address_step(PDO $db,string $state=''): array {
         if ($state!=='') {$sql.=' AND r.state_region=?';$params[]=$state;}
         $stmt=$db->prepare($sql.' ORDER BY r.id LIMIT 1');$stmt->execute($params);$r=$stmt->fetch(PDO::FETCH_ASSOC);
         if (!$r) return ['done'=>true];
+        llama_address_geoapify_key();
         $db->exec('INSERT IGNORE INTO resource_address_daily_usage (usage_date,requests) VALUES (UTC_DATE(),0)');
         $stmt=$db->prepare('UPDATE resource_address_daily_usage SET requests=requests+1 WHERE usage_date=UTC_DATE() AND requests<?');
         $stmt->execute([LLAMA_RESOURCE_ADDRESS_DAILY_LIMIT]);
@@ -91,6 +124,7 @@ function llama_resource_address_step(PDO $db,string $state=''): array {
         $data=llama_address_geoapify_request('reverse',['lat'=>(float)$r['latitude'],'lon'=>(float)$r['longitude'],'limit'=>1]);
         if (!isset($data['results']) || !is_array($data['results'])) throw new RuntimeException('Unexpected address provider response; resume to retry.');
         $candidate=llama_resource_address_candidate($r,$data['results'][0] ?? []);
+        $candidate['bulk_policy_v2']=true;
         $db->beginTransaction();
         $stmt=$db->prepare('SELECT * FROM resources WHERE id=? AND is_active=1 AND parent_place_id IS NULL FOR UPDATE');
         $stmt->execute([$r['id']]);$fresh=$stmt->fetch(PDO::FETCH_ASSOC);
