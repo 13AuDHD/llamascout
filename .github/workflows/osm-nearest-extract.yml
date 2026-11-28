@@ -47,8 +47,8 @@ jobs:
           snapshot="${timestamp:0:10}"
           [[ "$snapshot" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]
           osmium tags-filter source.osm.pbf -o filtered.osm.pbf \
-            'nwr/amenity=fuel,charging_station,drinking_water,toilets,hospital' \
-            'nwr/shop=alcohol,wine,supermarket,grocery,convenience' \
+            'nwr/amenity=fuel,charging_station,drinking_water,toilets,hospital,sanitary_dump_station,shower,waste_disposal' \
+            'nwr/shop=alcohol,wine,supermarket,grocery,convenience,laundry' \
             'nwr/place=city,town,village' 'nwr/healthcare=hospital' \
             'nwr/drinking_water=yes' 'nwr/fuel:propane=yes' 'nwr/propane=yes'
           mkdir -p output
