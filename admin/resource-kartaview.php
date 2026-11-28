@@ -12,6 +12,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? '')==='POST') {
     try {
         if (!moderation_verify_csrf((string)($_POST['csrf_token'] ?? ''))) throw new RuntimeException('Session expired. Reload Admin.');
         if (session_status()===PHP_SESSION_ACTIVE) session_write_close();
+        if (($_POST['action'] ?? '')==='retry_unusable') {
+            echo json_encode(['ok'=>true,'reset'=>llama_kartaview_retry_unusable($db,$state)],JSON_THROW_ON_ERROR); exit;
+        }
         echo json_encode(['ok'=>true]+llama_kartaview_step($db,$state),JSON_THROW_ON_ERROR|JSON_INVALID_UTF8_SUBSTITUTE);
     } catch (Throwable $e) {
         http_response_code(400);
@@ -48,6 +51,7 @@ require __DIR__.'/_header.php';
 <div data-photo-discovery data-endpoint="/resource-kartaview.php" data-csrf="<?= $e(moderation_csrf_token()) ?>" data-state="<?= $e($state) ?>">
 <button type="button" class="admin-button" data-discovery-start>Find and attach street photos / resume</button>
 <button type="button" class="admin-button is-muted" data-discovery-pause disabled>Pause</button>
+<button type="button" class="admin-button is-muted" data-discovery-retry>Retry unusable images</button>
 <a class="admin-button is-muted" href="?state=<?= $e(rawurlencode($state)) ?>">Refresh results</a>
 <p data-discovery-status role="status" aria-live="polite">Keep this page open during processing. Each result is saved separately.</p>
 </div>
