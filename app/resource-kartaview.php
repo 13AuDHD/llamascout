@@ -81,7 +81,10 @@ function llama_kartaview_step(PDO $db,string $state=''): array {
         if (!$r) return ['done'=>true];
         // Persist attempts including failures. Public API documents 100 requests per hour.
         $db->exec('DELETE FROM resource_kartaview_requests WHERE requested_at<CURRENT_TIMESTAMP-INTERVAL 1 HOUR');
-        if ((int)$db->query('SELECT COUNT(*) FROM resource_kartaview_requests')->fetchColumn()>=LLAMA_KARTAVIEW_HOURLY_LIMIT) return ['done'=>true,'limit'=>true];
+        if ((int)$db->query('SELECT COUNT(*) FROM resource_kartaview_requests')->fetchColumn()>=LLAMA_KARTAVIEW_HOURLY_LIMIT) {
+            $wait=(int)$db->query('SELECT TIMESTAMPDIFF(SECOND,CURRENT_TIMESTAMP,MIN(requested_at)+INTERVAL 1 HOUR) FROM resource_kartaview_requests')->fetchColumn();
+            return ['done'=>true,'limit'=>true,'retry_after'=>max(5,$wait+5)];
+        }
         $db->exec('INSERT INTO resource_kartaview_requests () VALUES ()');
         $result=llama_kartaview_candidates($r);
         $photo=null;
