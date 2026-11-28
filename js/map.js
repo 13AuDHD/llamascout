@@ -1610,48 +1610,33 @@ popupAnchor: [0, -42]
 
     function renderResourceMarkers() {
         // Resource requests do not rebuild every Place marker or close its popup.
-        const old = new Set([...markerByResource.values(), ...clusterMarkers]);
-        old.forEach(marker => map.removeLayer(marker));
-        markers = markers.filter(marker => !old.has(marker));
+        const previous = new Map([...markerByResource.entries()].map(([resource,marker]) => [resource.id,{resource,marker}]));
+        const discarded = new Set(clusterMarkers);
         markerByResource.clear();
         clusterMarkers = [];
         filteredResources = resources.filter(resourceMatches);
-        filteredResources.forEach(
-            (resource) => {
-                const coordinates =
-                    resourceCoordinates(resource);
-
-                if (!coordinates) {
-                    return;
-                }
-
-                const marker =
-                    L.marker(
-                        coordinates,
-                        {
-                            icon:
-                                resourceMarkerIcon(
-                                    resource
-                                )
-                        }
-                    );
-
-                marker.bindPopup(
-                    resourcePopupHtml(
-                        resource
-                    )
-                );
-
+        for (const resource of filteredResources) {
+            const coords = resourceCoordinates(resource);
+            if (!coords) continue;
+            const prior = previous.get(resource.id);
+            let marker;
+            if (prior && JSON.stringify(prior.resource) === JSON.stringify(resource)) {
+                // Keep the same marker and popup when it is still in view.
+                marker = prior.marker;
+                const position = marker.getLatLng();
+                if (position.lat !== coords[0] || position.lng !== coords[1]) marker.setLatLng(coords);
+                previous.delete(resource.id);
+            } else {
+                marker = L.marker(coords,{icon:resourceMarkerIcon(resource)});
+                marker.bindPopup(resourcePopupHtml(resource));
                 marker.addTo(map);
-
                 markers.push(marker);
-
-                markerByResource.set(
-                    resource,
-                    marker
-                );
             }
-        );
+            markerByResource.set(resource,marker);
+        }
+        for (const {marker} of previous.values()) discarded.add(marker);
+        discarded.forEach(marker => map.removeLayer(marker));
+        markers = markers.filter(marker => !discarded.has(marker));
 
         for (const cluster of resourceClusters) {
             const coords = resourceCoordinates(cluster);
@@ -1773,7 +1758,7 @@ popupAnchor: [0, -42]
         renderViewportCards();
     }
 
-    function scheduleResourceLoad() {
+    function scheduleResourceLoad(clear = true) {
         window.clearTimeout(resourceTimer);
         const requestId = ++resourceRequestId;
         resourceRequest?.abort();
@@ -1781,7 +1766,12 @@ popupAnchor: [0, -42]
         if (!placesLoaded) return;
         if (!resourceFilters.length) { clearResourceResults(); return; }
         if (map.getZoom() < 7) { clearResourceResults('Zoom in to see Resources'); return; }
-        clearResourceResults('Loading Resources…');
+        if (clear || (map.getZoom() < 10) !== (resourceMode === 'clusters')) {
+            clearResourceResults('Loading Resources…');
+        } else {
+            resourceStatus = 'Loading Resources…';
+            renderViewportCards();
+        }
         resourceTimer = window.setTimeout(() => loadEnabledResources(requestId), 200);
     }
 
@@ -1973,7 +1963,7 @@ popupAnchor: [0, -42]
     map.on('moveend', () => {
         if (!placesLoaded) return;
         renderViewportCards();
-        scheduleResourceLoad();
+        scheduleResourceLoad(false);
     });
 
     loadPlaces();
