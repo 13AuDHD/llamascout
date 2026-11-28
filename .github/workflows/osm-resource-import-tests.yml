@@ -6,6 +6,10 @@ on:
       - 'app/osm-resource-import.php'
       - 'app/osm-resource-enrichment.php'
       - 'app/resource-address-enrichment.php'
+      - 'app/resource-kartaview.php'
+      - 'admin/resource-kartaview.php'
+      - 'tools/tests/resource-kartaview.php'
+      - 'tools/migrations/20261128_resource_kartaview.sql'
       - 'admin/resource-address-enrichment.php'
       - 'admin/js/admin-resource-address-enrichment.js'
       - 'admin/resources.php'
@@ -84,6 +88,9 @@ jobs:
           php -l app/osm-resource-import.php
           php -l app/osm-resource-enrichment.php
           php -l app/resource-address-enrichment.php
+          php -l app/resource-kartaview.php
+          php -l admin/resource-kartaview.php
+          php tools/tests/resource-kartaview.php
           php -l admin/resource-address-enrichment.php
           php -l admin/resources.php
           node --check admin/js/admin-resource-address-enrichment.js
