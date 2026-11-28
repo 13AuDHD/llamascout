@@ -4,7 +4,6 @@ declare(strict_types=1);
 require_once __DIR__ . '/osm-resource-import.php';
 require_once __DIR__ . '/resources.php';
 
-const LLAMA_OSM_PUBLICATION_LIMIT = 250;
 const LLAMA_OSM_PUBLICATION_BATCH = 25;
 
 function llama_osm_publication_categories(): array
@@ -144,10 +143,10 @@ function llama_osm_publication_create(PDO $db,array $candidate,int $actor): int
     return $id;
 }
 
-/** Explicit Admin approval, 25 candidates at a time, capped until map loading scales. */
-function llama_osm_publication_publish(PDO $db,string $region,string $category,array $identities,int $actor): array
+/** Explicit Admin approval, 25 candidates per transaction, no nationwide cap. */
+function llama_osm_publication_publish(PDO $db,string $region,string $category,array $identities,int $actor,bool $all=false): array
 {
-    if ($actor<1 || !$identities || count($identities)>LLAMA_OSM_PUBLICATION_BATCH) throw new InvalidArgumentException('Select up to 25 candidates.');
+    if ($actor<1 || (!$all && !$identities) || count($identities)>LLAMA_OSM_PUBLICATION_BATCH) throw new InvalidArgumentException('Select up to 25 candidates.');
     foreach ($identities as $identity) {
         if (!is_string($identity) || !preg_match('~^(node|way|relation)/[1-9][0-9]{0,19}$~D',$identity)) {
             throw new InvalidArgumentException('Invalid source feature selection.');
@@ -160,23 +159,18 @@ function llama_osm_publication_publish(PDO $db,string $region,string $category,a
     if ((int)$lock->fetchColumn()!==1) throw new RuntimeException('Another publication batch is running.');
     try {
         $db->beginTransaction();
-        $counts=llama_osm_publication_counts($db);
-        $remaining=max(0,LLAMA_OSM_PUBLICATION_LIMIT-$counts['published']);
-        if (!$remaining) throw new RuntimeException('Pilot publication limit reached. Expand map loading before publishing more.');
         $rows=llama_osm_publication_candidates($db,$region,$category);
         $result=['published'=>0,'review'=>0];
         $decision=$db->prepare('INSERT INTO osm_resource_publications
             (osm_type,osm_id,region,source_snapshot,disposition,resource_id,reason) VALUES (?,?,?,?,?,?,?)');
         foreach ($rows as $row) {
             $identity=$row['osm_type'].'/'.$row['osm_id'];
-            if (!isset($selected[$identity])) continue;
-            if ($remaining===0) break;
+            if (!$all && !isset($selected[$identity])) continue;
             $reason=llama_osm_publication_conflict($db,$row);
             $id=null;
             if ($reason===null) {
                 $id=llama_osm_publication_create($db,$row,$actor);
                 $result['published']++;
-                $remaining--;
             } else $result['review']++;
             $decision->execute([$row['osm_type'],$row['osm_id'],$region,
                 json_encode(llama_osm_publication_baseline($row),JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE),

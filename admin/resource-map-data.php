@@ -13,9 +13,9 @@ $ready = llama_osm_resource_ready($db);
 $browserReady = $ready && llama_osm_resource_browser_ready($db);
 $autoRun = false;
 $publicationReady = $ready && llama_osm_publication_ready($db);
-$publicationRegion = (string)($_POST['publication_region'] ?? $_GET['publication_region'] ?? 'colorado');
+$publicationRegion = (string)($_POST['publication_region'] ?? $_GET['publication_region'] ?? $_GET['region'] ?? 'colorado');
 if (!isset(llama_osm_resource_states()[$publicationRegion])) $publicationRegion = 'colorado';
-$publicationCategory = (string)($_POST['publication_category'] ?? $_GET['publication_category'] ?? '');
+$publicationCategory = (string)($_POST['publication_category'] ?? $_GET['publication_category'] ?? $_GET['category'] ?? '');
 if (!isset(llama_osm_publication_categories()[$publicationCategory])) $publicationCategory = '';
 $notice = '';
 $error = '';
@@ -26,7 +26,9 @@ if ($ready && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             throw new InvalidArgumentException('Session expired. Reload this page.');
         }
         $action = (string)($_POST['action'] ?? '');
-        if ($action === 'publish_resources') {
+        if ($action === 'preview_publication') {
+            // Preview changes filters only; it never queues or publishes anything.
+        } elseif ($action === 'publish_resources') {
             if (!$publicationReady) throw new RuntimeException('Run the Resource publication SQL migration first.');
             $result = llama_osm_publication_publish($db,$publicationRegion,$publicationCategory,
                 (array)($_POST['candidate_ids'] ?? []),(int)($adminUser['id'] ?? 0));
@@ -49,19 +51,19 @@ if ($ready && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         }
     } catch (PDOException $e) {
         llama_log_caught_exception($e,'admin.osm_resource_import');
-        $error = 'The database could not queue the import. Existing snapshots are unchanged.';
+        $error = 'The database could not complete this action. Existing committed data is unchanged.';
     } catch (InvalidArgumentException | RuntimeException $e) {
         $error = $e->getMessage();
     } catch (Throwable $e) {
         llama_log_caught_exception($e,'admin.osm_resource_import');
-        $error = 'The import could not be queued. Existing snapshots are unchanged.';
+        $error = 'The action could not be completed. Existing committed data is unchanged.';
     }
     $inventory = llama_osm_resource_inventory($db);
 }
 $priorities = llama_osm_resource_priorities();
-$region = (string)($_GET['region'] ?? 'colorado');
+$region = (string)($_GET['region'] ?? $publicationRegion);
 if (!isset(llama_osm_resource_states()[$region])) $region = 'colorado';
-$category = (string)($_GET['category'] ?? '');
+$category = (string)($_GET['category'] ?? $publicationCategory);
 if ($category !== '' && !isset($priorities[$category])) $category = '';
 $counts = [];
 $candidates = [];
@@ -100,7 +102,7 @@ if ($ready) {
     $candidates = $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 $publicationCounts = $publicationReady ? llama_osm_publication_counts($db) : ['published'=>0,'review'=>0];
-$publicationRows = $publicationReady && $publicationCounts['published'] < LLAMA_OSM_PUBLICATION_LIMIT
+$publicationRows = $publicationReady
     ? llama_osm_publication_candidates($db,$publicationRegion,$publicationCategory) : [];
 $reviewRows = [];
 if ($publicationReady) {
@@ -156,7 +158,7 @@ require __DIR__ . '/_header.php';
                                 <?php if (!empty($job['message'])): ?><small><?= $e($job['message']) ?></small><?php endif; ?></td>
                             <td data-osm-received><?= $job ? number_format((int)$job['received_rows']) : '' ?></td>
                             <td><?= $e($job['updated_at'] ?? '') ?></td>
-                            <td><a href="?region=<?= $e($slug) ?>#resource-candidates">View candidates</a></td>
+                            <td><a href="?region=<?= $e($slug) ?>&amp;category=<?= $e($category) ?>&amp;publication_region=<?= $e($slug) ?>&amp;publication_category=<?= $e($publicationCategory) ?>#resource-publication">View candidates</a></td>
                         </tr>
                     <?php endforeach; ?></tbody>
                 </table>
@@ -170,19 +172,22 @@ require __DIR__ . '/_header.php';
     <?php if (!$publicationReady): ?>
         <p>Run <code>20261127_osm_resource_publication.sql</code> in the primary database to enable publication. Existing imports are preserved.</p>
     <?php else: ?>
-        <p><strong><?= number_format($publicationCounts['published']) ?> / <?= LLAMA_OSM_PUBLICATION_LIMIT ?> pilot Resources published</strong> · <?= number_format($publicationCounts['review']) ?> held for review.</p>
-        <p>Publish up to 25 selected candidates at a time. Each source feature becomes one editable Resource with its mapped priority services. Existing Resources and nearby Places are never overwritten. The temporary nationwide pilot cap protects the current public map until viewport loading is ready.</p>
-        <form method="get" action="/resource-map-data.php#resource-publication">
+        <p><strong><?= number_format($publicationCounts['published']) ?> Resources published</strong> · <?= number_format($publicationCounts['review']) ?> held for review.</p>
+        <p>Publish up to 25 selected candidates at a time. Each source feature becomes one editable Resource with its mapped priority services. Existing Resources and nearby Places are never overwritten. There is no nationwide publication cap. The public map loads only matching Resources in the current area.</p>
+        <form method="post" action="/resource-map-data.php#resource-publication" data-publication-preview>
+            <input type="hidden" name="csrf_token" value="<?= $e(moderation_csrf_token()) ?>">
+            <input type="hidden" name="action" value="preview_publication">
             <label>State <select name="publication_region"><?php foreach (llama_osm_resource_states() as $slug=>$name): ?>
                 <option value="<?= $e($slug) ?>" <?= $slug===$publicationRegion?'selected':'' ?>><?= $e($name) ?></option>
             <?php endforeach; ?></select></label>
-            <label>Service <select name="publication_category"><option value="">All seven priority services</option>
+            <label>Service <select name="publication_category"><option value="" <?= $publicationCategory===''?'selected':'' ?>>All seven priority services</option>
                 <?php foreach (llama_osm_publication_categories() as $key=>$type): ?>
                     <option value="<?= $e($key) ?>" <?= $publicationCategory===$key?'selected':'' ?>><?= $e($priorities[$key]) ?></option>
                 <?php endforeach; ?>
             </select></label>
             <button class="admin-button">Preview candidates</button>
         </form>
+        <p>Showing <?= $e(llama_osm_resource_states()[$publicationRegion]) ?> / <?= $e($priorities[$publicationCategory] ?? 'all seven priority services') ?>.</p>
         <?php if ($publicationRows): ?>
         <form method="post" action="/resource-map-data.php#resource-publication">
             <input type="hidden" name="csrf_token" value="<?= $e(moderation_csrf_token()) ?>">
@@ -203,7 +208,15 @@ require __DIR__ . '/_header.php';
             <button class="admin-button is-primary" name="action" value="publish_resources">Publish selected eligible Resources</button>
         </form>
         <?php else: ?>
-            <p><?= $publicationCounts['published']>=LLAMA_OSM_PUBLICATION_LIMIT?'Pilot cap reached.':'No undecided candidates match this state and service.' ?></p>
+            <p>No undecided candidates match <?= $e(llama_osm_resource_states()[$publicationRegion]) ?> / <?= $e($priorities[$publicationCategory] ?? 'all seven priority services') ?>.</p>
+        <?php endif; ?>
+        <?php if ($publicationRows): ?>
+            <div data-resource-bulk-publication data-region="<?= $e($publicationRegion) ?>" data-category="<?= $e($publicationCategory) ?>" data-csrf="<?= $e(moderation_csrf_token()) ?>">
+                <p>Publish all eligible candidates for this state and service in batches of 25. Keep this page open; pause and resume without losing published records.</p>
+                <button type="button" class="admin-button is-primary" data-publication-start>Publish all matching candidates</button>
+                <button type="button" class="admin-button" data-publication-pause disabled>Pause publication</button>
+                <p role="status" aria-live="polite" data-publication-status></p>
+            </div>
         <?php endif; ?>
         <?php if ($reviewRows): ?>
             <h3>Held for review</h3>
@@ -219,11 +232,11 @@ require __DIR__ . '/_header.php';
 </section>
 <section class="admin-panel" id="resource-candidates">
     <header class="admin-panel-header"><div><p>Imported reference inventory</p><h2>Resource candidates</h2></div></header>
-    <form method="get" action="/resource-map-data.php#resource-candidates">
+    <form method="get" action="/resource-map-data.php#resource-candidates" data-inventory-preview>
         <label>State <select name="region"><?php foreach (llama_osm_resource_states() as $slug=>$name): ?>
             <option value="<?= $e($slug) ?>" <?= $slug===$region?'selected':'' ?>><?= $e($name) ?></option>
         <?php endforeach; ?></select></label>
-        <label>Service <select name="category"><option value="">All priority services</option><?php foreach ($priorities as $key=>$name): ?>
+        <label>Service <select name="category"><option value="" <?= $category===''?'selected':'' ?>>All priority services</option><?php foreach ($priorities as $key=>$name): ?>
             <option value="<?= $e($key) ?>" <?= $key===$category?'selected':'' ?>><?= $e($name) ?> (<?= number_format((int)($counts[$key] ?? 0)) ?>)</option>
         <?php endforeach; ?></select></label>
         <button class="admin-button">View</button>
@@ -245,5 +258,8 @@ require __DIR__ . '/_header.php';
 <?php endif; ?>
 <?php if ($browserReady): ?>
 <script src="/js/admin-osm-resource-import.js?v=20261127-2" defer></script>
+<?php endif; ?>
+<?php if ($publicationReady): ?>
+<script src="/js/admin-osm-resource-publication.js?v=20261128-1" defer></script>
 <?php endif; ?>
 <?php require __DIR__ . '/_footer.php'; ?>
