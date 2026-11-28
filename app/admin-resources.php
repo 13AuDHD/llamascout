@@ -31,7 +31,7 @@ function admin_resources_tables_ready(PDO $db): bool
     }
 }
 
-function admin_resources_list(PDO $db, string $search = '', string $type = '', string $state = ''): array
+function admin_resources_list(PDO $db, string $search = '', string $type = '', string $state = '', string $service = ''): array
 {
     $where = ['1 = 1'];
     $params = [];
@@ -46,6 +46,12 @@ function admin_resources_list(PDO $db, string $search = '', string $type = '', s
     if (isset(llama_resource_types()[$type])) {
         $where[] = 'r.resource_type = ?';
         $params[] = $type;
+    }
+
+    if (isset(llama_resource_service_types()[$service])) {
+        $where[] = 'EXISTS (SELECT 1 FROM resource_services matched
+            WHERE matched.resource_id = r.id AND matched.is_active = 1 AND matched.service_type = ?)';
+        $params[] = $service;
     }
 
     if ($state !== '') {
