@@ -1367,6 +1367,20 @@ html[data-reduced-motion="true"] .map-locate-button.is-locating .map-locate-icon
     --resource-icon: url('/assets/icons/basket.svg');
 }
 
+.map-resource-cluster {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    border: 3px solid #fff;
+    border-radius: 50%;
+    background: var(--resource-accent);
+    color: #fff;
+    font-size: .75rem;
+    font-weight: 800;
+    box-shadow: 0 3px 9px rgba(0, 0, 0, .35);
+}
+
 .map-resource-marker-shell {
     border: 0;
     background: transparent;
