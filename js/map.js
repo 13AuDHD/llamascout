@@ -79,11 +79,35 @@
     let userLocationMarker = null;
 
     const MAP_MAX_ZOOM = 20;
+    const preferences = window.LlamaMapPreferences;
+    let storage = null;
+    try { storage = window.localStorage; } catch (_) { /* browser blocked storage */ }
+    const savedView = preferences.readView(storage);
+    let resourceFilters = preferences.readFilters(storage);
+    const filterButtons = [...document.querySelectorAll('[data-resource-filter]')];
+    const showAllResources = document.querySelector('[data-resource-show-all]');
+    const hideAllResources = document.querySelector('[data-resource-hide-all]');
+    let resourcesLoaded = false;
+    let resourcesLoading = null;
+    let placesLoaded = false;
+    let viewTouched = false;
 
     const map = L.map(mapElement, {
         maxZoom: MAP_MAX_ZOOM,
         zoomControl: false
-    }).setView([37.3, -107.4], 7);
+    }).setView(savedView ? [savedView.lat, savedView.lng] : [37.3, -107.4], savedView ? savedView.zoom : 7);
+
+    function rememberView() {
+        const center = map.getCenter();
+        preferences.saveView(storage, {lat: center.lat, lng: center.lng, zoom: map.getZoom()});
+    }
+    map.on('moveend', () => {
+        viewTouched = true;
+        rememberView();
+    });
+    window.addEventListener('pagehide', () => {
+        if (viewTouched || savedView) rememberView();
+    });
 
     window.LlamaScoutMap = Object.freeze({
         map,
@@ -559,7 +583,8 @@
 
         const serviceType =
             String(
-                resource?.marker_service_type
+                preferences.matchingService(resource, resourceFilters)
+                || resource?.marker_service_type
                 || fallbackService
             )
                 .trim()
@@ -585,6 +610,7 @@
 
 
     const resourceMatches = (resource) => {
+        if (!preferences.matchingService(resource, resourceFilters)) return false;
         const search =
             String(
                 controls.search?.value
@@ -1720,37 +1746,86 @@ popupAnchor: [0, -42]
     };
 
 
+    function syncResourceButtons() {
+        for (const button of filterButtons) {
+            button.setAttribute('aria-pressed', resourceFilters.includes(button.dataset.resourceFilter) ? 'true' : 'false');
+        }
+        if (showAllResources) showAllResources.disabled = resourceFilters.length === Object.keys(preferences.groups).length;
+        if (hideAllResources) hideAllResources.disabled = resourceFilters.length === 0;
+    }
+
+    // Temporary lazy load of the existing bounded pilot inventory. The next
+    // change will replace this all-inventory endpoint with viewport queries.
+    async function loadEnabledResources() {
+        if (!resourceFilters.length || resourcesLoaded || resourcesLoading) return resourcesLoading;
+        resourcesLoading = (async () => {
+            try {
+                const response = await fetch('/api/resources.php', {
+                    cache: 'no-store', credentials: 'same-origin', headers: {'Accept': 'application/json'}
+                });
+                if (!response.ok) throw new Error('Unable to load Resources.');
+                const data = await response.json();
+                if (!data.ok || !Array.isArray(data.resources)) throw new Error('Unexpected Resources response.');
+                resources = data.resources;
+                resourcesLoaded = true;
+                if (placesLoaded) render(false);
+            } catch (error) {
+                console.error('Llama Scout Resources:', error);
+                if (controls.status) controls.status.textContent = 'Resources could not be loaded. Toggle a Resource filter to retry.';
+            } finally {
+                resourcesLoading = null;
+            }
+        })();
+        return resourcesLoading;
+    }
+
+    function setResourceFilters(next) {
+        resourceFilters = next;
+        preferences.saveFilters(storage, next);
+        syncResourceButtons();
+        if (placesLoaded) {
+            render(false);
+            if (resourceFilters.length) loadEnabledResources();
+        }
+    }
+
+    // Never prompt for device location automatically, and never replace a
+    // remembered map or a viewport the visitor already interacted with.
+    async function locateInitially() {
+        if (savedView || viewTouched || !navigator.permissions?.query || !navigator.geolocation) return;
+        try {
+            const permission = await navigator.permissions.query({name:'geolocation'});
+            if (permission.state !== 'granted' || viewTouched) return;
+            navigator.geolocation.getCurrentPosition(position => {
+                if (viewTouched) return;
+                const lat = Number(position.coords.latitude);
+                const lng = Number(position.coords.longitude);
+                if (Number.isFinite(lat) && Math.abs(lat) <= 85.051129 && Number.isFinite(lng) && Math.abs(lng) <= 180) {
+                    map.setView([lat, lng], 10, {animate:false});
+                }
+            }, () => {}, {enableHighAccuracy:false, timeout:5000, maximumAge:300000});
+        } catch (_) { /* keep the default map view */ }
+    }
+
+    filterButtons.forEach(button => button.addEventListener('click', () => {
+        const key = button.dataset.resourceFilter;
+        setResourceFilters(resourceFilters.includes(key) ? resourceFilters.filter(value => value !== key) : [...resourceFilters,key]);
+    }));
+    showAllResources?.addEventListener('click', () => setResourceFilters(Object.keys(preferences.groups)));
+    hideAllResources?.addEventListener('click', () => setResourceFilters([]));
+    syncResourceButtons();
+
     async function loadPlaces() {
         if (controls.status) {
             controls.status.textContent = 'Loading Places...';
         }
 
         try {
-            const [
-                response,
-                resourceResponse
-            ] = await Promise.all([
-                fetch(
-                    '/api/places.php',
-                    {
-                        cache: 'no-store',
-                        credentials: 'same-origin',
-                        headers: {
-                            'Accept': 'application/json'
-                        }
-                    }
-                ),
-                fetch(
-                    '/api/resources.php',
-                    {
-                        cache: 'no-store',
-                        credentials: 'same-origin',
-                        headers: {
-                            'Accept': 'application/json'
-                        }
-                    }
-                ).catch(() => null)
-            ]);
+            const response = await fetch('/api/places.php', {
+                cache: 'no-store',
+                credentials: 'same-origin',
+                headers: {'Accept': 'application/json'}
+            });
 
             if (!response.ok) {
                 throw new Error('Unable to load Places.');
@@ -1761,26 +1836,6 @@ popupAnchor: [0, -42]
 
             if (!data.ok || !Array.isArray(data.places)) {
                 throw new Error('Unexpected Places response.');
-            }
-
-            let resourceData = {
-                ok: false,
-                resources: []
-            };
-
-            if (
-                resourceResponse
-                && resourceResponse.ok
-            ) {
-                try {
-                    resourceData =
-                        await resourceResponse.json();
-                } catch (error) {
-                    console.error(
-                        'Llama Scout Resource map data:',
-                        error
-                    );
-                }
             }
 
             syncMapAccess(
@@ -1805,16 +1860,14 @@ popupAnchor: [0, -42]
 
             places = data.places;
 
-            resources =
-                resourceData.ok
-                && Array.isArray(
-                    resourceData.resources
-                )
-                    ? resourceData.resources
-                    : [];
-
             populateFilters();
-            render(true);
+            placesLoaded = true;
+            // Loading the dataset must not fit the entire country over a
+            // remembered viewport or over a pan made during the request.
+            render(false);
+            if (resourceFilters.length) loadEnabledResources();
+            locateInitially();
+
 
         } catch (error) {
             console.error('Llama Scout map:', error);
@@ -1871,10 +1924,7 @@ popupAnchor: [0, -42]
     });
 
     map.on('moveend', () => {
-        if (!places.length) {
-            return;
-        }
-
+        if (!placesLoaded) return;
         renderViewportCards();
     });
 
