@@ -13,6 +13,8 @@ LABELS = {
     "alcohol_sales": "Liquor store", "propane": "Propane",
     "groceries": "Grocery store", "potable_water": "Drinking water",
     "toilet": "Public toilet", "hospital": "Hospital",
+    "dump_station": "RV dump station", "shower": "Public shower",
+    "laundry": "Laundry", "trash": "Waste disposal",
 }
 
 def services(tags):
@@ -44,6 +46,14 @@ def services(tags):
         result.add("potable_water")
     if amenity == "toilets":
         result.add("toilet")
+    if amenity == "sanitary_dump_station":
+        result.add("dump_station")
+    if amenity == "shower":
+        result.add("shower")
+    if shop == "laundry" and tags.get("self_service") != "no":
+        result.add("laundry")
+    if amenity == "waste_disposal":
+        result.add("trash")
     if amenity == "hospital" or tags.get("healthcare") == "hospital":
         result.add("hospital")
     return result
