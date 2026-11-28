@@ -233,8 +233,6 @@ require __DIR__ . '/_header.php';
 <section class="admin-panel" id="resource-candidates">
     <header class="admin-panel-header"><div><p>Imported reference inventory</p><h2>Resource candidates</h2></div></header>
     <form method="get" action="/resource-map-data.php#resource-candidates" data-inventory-preview>
-        <input type="hidden" name="publication_region" value="<?= $e($publicationRegion) ?>">
-        <input type="hidden" name="publication_category" value="<?= $e($publicationCategory) ?>">
         <label>State <select name="region"><?php foreach (llama_osm_resource_states() as $slug=>$name): ?>
             <option value="<?= $e($slug) ?>" <?= $slug===$region?'selected':'' ?>><?= $e($name) ?></option>
         <?php endforeach; ?></select></label>
