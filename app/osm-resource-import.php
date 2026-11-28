@@ -78,38 +78,16 @@ function llama_osm_resource_inventory(PDO $db): array
     return $states;
 }
 
-/** Only dispatch the fixed repository workflow. Tokens never reach the browser. */
-function llama_osm_resource_dispatch(array $regions, string $batch, string $token): void
-{
-    if ($token === '' || !function_exists('curl_init')) throw new RuntimeException('Configure the GitHub dispatch credential and PHP cURL first.');
-    $curl = curl_init('https://api.github.com/repos/13audhd/llamascout/actions/workflows/osm-resource-import.yml/dispatches');
-    curl_setopt_array($curl, [
-        CURLOPT_POST=>true, CURLOPT_RETURNTRANSFER=>true, CURLOPT_CONNECTTIMEOUT=>10, CURLOPT_TIMEOUT=>25,
-        CURLOPT_HTTPHEADER=>['Accept: application/vnd.github+json','Authorization: Bearer ' . $token,
-            'X-GitHub-Api-Version: 2022-11-28','Content-Type: application/json','User-Agent: LlamaScout-OSM-Importer'],
-        CURLOPT_POSTFIELDS=>json_encode(['ref'=>'main','inputs'=>['regions'=>json_encode($regions,JSON_THROW_ON_ERROR),'batch_id'=>$batch]],JSON_THROW_ON_ERROR),
-    ]);
-    $body = curl_exec($curl);
-    $status = (int) curl_getinfo($curl,CURLINFO_RESPONSE_CODE);
-    curl_close($curl);
-    if ($body === false || !in_array($status,[200,204],true)) throw new RuntimeException('Extraction dispatch was not confirmed (HTTP ' . $status . '). Check the credential and retry selected states.');
-}
-
 function llama_osm_resource_queue(PDO $db, array $regions, bool $restart = false): array
 {
     $regions = llama_osm_resource_validate_regions($regions);
-    $config = llama_osm_resource_config();
-    $token = trim((string) ($config['github_token'] ?? ''));
-    if ($token === '' || strlen((string) ($config['worker_key'] ?? '')) < 32) {
-        throw new RuntimeException('Configure the import worker and GitHub dispatch token first.');
-    }
     $batch = bin2hex(random_bytes(16));
     $queued = [];
     $db->beginTransaction();
     try {
         $read = $db->prepare('SELECT status FROM osm_resource_import_jobs WHERE region=? FOR UPDATE');
         $write = $db->prepare("INSERT INTO osm_resource_import_jobs (region,batch_id,status,message)
-            VALUES (?,?,'queued','Waiting for extraction')
+            VALUES (?,?,'queued','Waiting for local import worker')
             ON DUPLICATE KEY UPDATE batch_id=VALUES(batch_id),status='queued',snapshot_date=NULL,
             expected_rows=0,received_rows=0,next_chunk=0,message=VALUES(message),updated_at=UTC_TIMESTAMP()");
         foreach ($regions as $region) {
@@ -121,17 +99,6 @@ function llama_osm_resource_queue(PDO $db, array $regions, bool $restart = false
         $db->commit();
     } catch (Throwable $e) {
         if ($db->inTransaction()) $db->rollBack();
-        throw $e;
-    }
-    if (!$queued) return [];
-    try {
-        llama_osm_resource_dispatch($queued,$batch,$token);
-    } catch (Throwable $e) {
-        // A lost dispatch response is ambiguous. A worker that has already
-        // started continues; an explicitly restarted batch supersedes old workers.
-        $stmt = $db->prepare("UPDATE osm_resource_import_jobs SET message='Dispatch not confirmed; restart selected if no worker starts'
-            WHERE batch_id=? AND status='queued'");
-        $stmt->execute([$batch]);
         throw $e;
     }
     return $queued;
@@ -161,7 +128,7 @@ const LLAMA_OSM_IMPORT_CHUNK_SIZE = 100;
 final class LlamaOsmImportBusy extends RuntimeException {}
 
 /**
- * Global transport guard, including separately dispatched workflows. Do not
+ * Global database write guard, including separately started local workers. Do not
  * occupy a PHP worker waiting for another import or sleeping between batches.
  * All successful mutations advance the persisted job timestamp.
  */
@@ -207,7 +174,7 @@ function llama_osm_resource_worker(PDO $db, array $input, int $maxRows = LLAMA_O
         if ($action === 'fail') {
             if ($job['status'] !== 'complete') {
                 $clear->execute([$region]);
-                $db->prepare("UPDATE osm_resource_import_jobs SET status='error',message='Extraction or transfer failed; retry this state' WHERE region=?")->execute([$region]);
+                $db->prepare("UPDATE osm_resource_import_jobs SET status='error',message='Local extraction or import failed; retry this state' WHERE region=?")->execute([$region]);
             }
         } elseif ($action === 'begin') {
             $date = (string)($input['snapshot_date'] ?? '');
