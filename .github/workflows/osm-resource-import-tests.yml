@@ -92,6 +92,7 @@ jobs:
           php -l app/resource-address-enrichment.php
           php -l admin/resource-address-enrichment.php
           php -l admin/resources.php
+          php -l app/admin-resources.php
           node --check admin/js/admin-resource-address-enrichment.js
           php tools/tests/resource-address-enrichment.php
           php -l resource.php

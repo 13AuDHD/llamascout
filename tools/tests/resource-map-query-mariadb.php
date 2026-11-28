@@ -49,3 +49,23 @@ $assert($r['count']===2,'Wrapped world bounds');
 try { llama_resource_map_query($db,array_replace($q,['services'=>'bad'])); throw new LogicException('Invalid type accepted'); }
 catch (InvalidArgumentException $e) {}
 echo "PASS: viewport filtering, limit, unique clusters, search, dateline and Facility exclusion.\n";
+
+// Admin inventory must match services independently of a Resource's primary type.
+require_once dirname(__DIR__,2).'/app/admin-resources.php';
+$laundryId=$insert('Service filter laundromat',37,-107,['laundry','shower','propane']);
+$stationId=$insert('Service filter fuel station',37,-107,['fuel','propane']);
+$inactiveServiceId=$insert('Service filter inactive shower',37,-107,['laundry']);
+$service->execute([$inactiveServiceId,'shower',0]);
+$db->prepare("UPDATE resources SET resource_type='laundry',state_region='Colorado' WHERE id IN (?,?)")->execute([$laundryId,$inactiveServiceId]);
+$db->prepare("UPDATE resources SET resource_type='fuel_station',state_region='Utah' WHERE id=?")->execute([$stationId]);
+$rows=admin_resources_list($db,'Service filter','','','shower');
+$assert(array_map('intval',array_column($rows,'id'))===[$laundryId],'Shower matches laundromat and excludes disabled service');
+$rows=admin_resources_list($db,'Service filter','','','propane');
+$assert(count($rows)===2 && count(array_unique(array_column($rows,'id')))===2,'Propane matches distinct multi-service Resources regardless of primary type');
+$rows=admin_resources_list($db,'Service filter','','Utah','propane');
+$assert(array_map('intval',array_column($rows,'id'))===[$stationId],'State and search combine with service filter');
+$rows=admin_resources_list($db,'Service filter','','','');
+$assert(count($rows)===3,'All services leaves inventory unfiltered');
+$rows=admin_resources_list($db,'Service filter','laundry','');
+$assert(count($rows)===2,'Existing primary-type query callers remain compatible');
+echo "PASS: Admin Resource service filtering and combined search.\n";
