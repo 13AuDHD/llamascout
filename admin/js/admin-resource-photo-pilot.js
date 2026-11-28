@@ -71,6 +71,7 @@
                 body.append(row);
                 summary.textContent = Object.entries(totals).map(([key,v]) => run.providers[key]+': '+v.eligible+'/'+(v.checked-v.errors)+' with candidates; '+v.raw+' with raw hits; '+v.errors+' errors').join(' | ');
                 status.textContent = checked+' of '+total+' source requests completed.';
+                if (result.pause) { status.textContent = 'Provider requested a pause. Stopped without changing Resources. Partial results are shown.'; return; }
                 if (checked < total) await new Promise(resolve=>setTimeout(resolve,1800));
             }
             status.textContent = 'Test complete. Review candidate images for actual Resource relevance before choosing a provider.';
