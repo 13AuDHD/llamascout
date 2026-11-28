@@ -28,10 +28,10 @@
                 stop(result.limit ? 'Daily bulk request limit reached. Resume after the next UTC day.' : 'All pending addresses checked. Refresh queue for remaining missing fields.');
                 return;
             }
-            checked++; fields += result.applied.length;
+            checked += result.processed || 1; fields += result.field_count ?? result.applied.length;
             status.textContent = result.name + ': ' + result.status + '. ' + checked + ' checked, ' + fields + ' fields saved this session.';
             if (!running) { stop('Paused after saving the current result.'); return; }
-            timer = setTimeout(step,1500);
+            timer = setTimeout(step,result.processed ? 100 : 1500);
         } catch(error) { stop(error.message+' Previous results are saved.'); }
         finally { pending = false; controls(); }
     }
