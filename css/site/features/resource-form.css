@@ -420,13 +420,29 @@ fieldset.resource-experience-question {
     flex-wrap: wrap;
     gap: 8px 14px;
 }
-.resource-experience-choices > label {
-    display: inline-flex;
+.resource-experience-choices > label,
+.admin-user-action-box .resource-experience-choices > label {
+    display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
+    min-width: 0;
+    max-width: 100%;
+    flex: 1 1 135px;
     font-size: .85rem;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
 }
-.resource-experience-choices input {
+.resource-experience-choices input[type="checkbox"],
+.admin-user-action-box .resource-experience-choices input[type="checkbox"] {
+    appearance: auto;
+    -webkit-appearance: checkbox;
+    width: 18px;
+    min-width: 18px;
+    height: 18px;
+    min-height: 18px;
+    margin: 0;
+    padding: 0;
+    flex: 0 0 18px;
     accent-color: var(--resource-accent);
 }
 @media (max-width: 690px) {

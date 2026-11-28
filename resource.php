@@ -577,6 +577,17 @@ require __DIR__ . '/partials/header.php';
             </div>
             <?php endif; ?>
 
+            <?php
+            $bulkAddressCredit = false;
+            try {
+                $addressCreditStmt = db()->prepare('SELECT applied_fields FROM resource_address_enrichment WHERE resource_id=?');
+                $addressCreditStmt->execute([$resourceId]);
+                $addressCredit = json_decode((string)$addressCreditStmt->fetchColumn(), true);
+                $bulkAddressCredit = is_array($addressCredit) && count($addressCredit)>0;
+            } catch (PDOException $exception) {
+                // Optional migration; existing Resources still render.
+            }
+            ?>
             <?php if ($addressParts): ?>
             <div>
                 <dt>Address</dt>
@@ -584,7 +595,7 @@ require __DIR__ . '/partials/header.php';
                     implode(', ', $addressParts),
                     ENT_QUOTES,
                     'UTF-8'
-                ) ?></dd>
+                ) ?><?php if ($bulkAddressCredit): ?> <small>Address data: <a href="https://www.geoapify.com/">Geoapify</a> / <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a></small><?php endif; ?></dd>
             </div>
             <?php endif; ?>
 
