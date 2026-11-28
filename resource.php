@@ -701,6 +701,10 @@ require __DIR__ . '/partials/header.php';
 
 </section>
 
+<?php if (!$isFacility): ?>
+    <?php require __DIR__ . '/partials/resources/location-map.php'; ?>
+<?php endif; ?>
+
 <?php
 // This read-only projection preserves the Resource / linked-Facility target
 // identity while deriving question labels, options, and answer states from the
