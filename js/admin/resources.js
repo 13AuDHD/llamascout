@@ -227,6 +227,7 @@
             const original = coordinates.value;
             const blanks = Object.keys(fields).filter(name =>
                 form.elements[name] && !form.elements[name].value.trim());
+            const originalHoursMode = form.elements.hours_mode?.value;
             button.disabled = true;
             status.textContent = 'Looking up the original OpenStreetMap record and address…';
             try {
@@ -262,7 +263,14 @@
                 if (approximate.length) messages.push('Verify coordinate-based results: ' + approximate.join(', ') + '. These may describe a nearby address.');
                 if (!result.osm_found) messages.push('Original OpenStreetMap record unavailable or removed.');
                 if (!result.reverse_found) messages.push('Coordinate address lookup unavailable.');
-                if (result.opening_hours) messages.push('OSM opening hours (review and enter in Details): ' + result.opening_hours);
+                if (result.opening_hours === '24/7' && originalHoursMode === 'unknown'
+                    && form.elements.hours_mode?.value === 'unknown') {
+                    form.elements.hours_mode.value = '24_hours';
+                    form.elements.hours_mode.dispatchEvent(new Event('change'));
+                    messages.push('Filled 24-hour opening schedule from OSM.');
+                } else if (result.opening_hours) {
+                    messages.push('OSM opening hours (review in Details): ' + result.opening_hours);
+                }
                 messages.push('Existing values were preserved. Review before saving.');
                 status.textContent = messages.join(' ');
             } catch (error) {
