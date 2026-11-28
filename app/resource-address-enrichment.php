@@ -78,7 +78,7 @@ function llama_resource_address_step(PDO $db,string $state=''): array {
     try {
         $sql="SELECT r.* FROM resources r LEFT JOIN resource_address_enrichment e ON e.resource_id=r.id
             WHERE r.is_active=1 AND r.parent_place_id IS NULL AND ".llama_resource_address_missing()."
-            AND (e.resource_id IS NULL OR e.latitude<>r.latitude OR e.longitude<>r.longitude)";
+            AND (e.resource_id IS NULL OR e.status='pending' OR e.latitude<>r.latitude OR e.longitude<>r.longitude)";
         $params=[];
         if ($state!=='') {$sql.=' AND r.state_region=?';$params[]=$state;}
         $stmt=$db->prepare($sql.' ORDER BY r.id LIMIT 1');$stmt->execute($params);$r=$stmt->fetch(PDO::FETCH_ASSOC);
@@ -104,7 +104,7 @@ function llama_resource_address_step(PDO $db,string $state=''): array {
         $status=!$missing?'filled':($applied?'partial':($candidate['fields']?'review':'none'));
         $stmt=$db->prepare('INSERT INTO resource_address_enrichment (resource_id,latitude,longitude,status,candidate,applied_fields)
             VALUES (?,?,?,?,?,?) ON DUPLICATE KEY UPDATE latitude=VALUES(latitude),longitude=VALUES(longitude),status=VALUES(status),
-            candidate=VALUES(candidate),applied_fields=VALUES(applied_fields),updated_at=CURRENT_TIMESTAMP');
+            candidate=VALUES(candidate),applied_fields=JSON_MERGE_PATCH(applied_fields,VALUES(applied_fields)),updated_at=CURRENT_TIMESTAMP');
         $stmt->execute([$r['id'],$r['latitude'],$r['longitude'],$status,json_encode($candidate,JSON_THROW_ON_ERROR|JSON_INVALID_UTF8_SUBSTITUTE),json_encode($applied,JSON_THROW_ON_ERROR)]);
         $db->commit();
         return ['done'=>false,'id'=>$r['id'],'name'=>$r['name'],'status'=>$status,'applied'=>array_keys($applied)];
