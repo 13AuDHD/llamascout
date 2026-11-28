@@ -93,10 +93,7 @@ require __DIR__.'/_header.php';
 <td><?= $e($valid?$r['lookup_status']:'Pending') ?>
 <?php if ($candidate): ?><p><?= $e($candidate['label'] ?? '') ?> · <?= $e($candidate['reason'] ?? '') ?></p>
 <form method="post"><input type="hidden" name="csrf_token" value="<?= $e(moderation_csrf_token()) ?>"><input type="hidden" name="state" value="<?= $e($state) ?>"><input type="hidden" name="resource_id" value="<?= (int)$r['id'] ?>">
-<?php $hasSuggestion=false; foreach (($candidate['fields'] ?? []) as $key=>$value): if (trim((string)($r[$key] ?? ''))!=='') continue; $hasSuggestion=true; ?>
-<label><input type="checkbox" name="fields[]" value="<?= $e($key) ?>"> <?= $e($key) ?>: <?= $e($value) ?></label><br>
-<?php endforeach; ?>
-<?php if ($hasSuggestion): ?><button class="admin-button" name="action" value="approve">Save selected</button><?php endif; ?>
+<p>Available fields are applied by the bulk address job; no individual approval needed.</p>
 <button class="admin-button is-muted" name="action" value="retry">Retry lookup</button></form><?php endif; ?></td>
 <td><a class="admin-button" href="/resources.php?id=<?= (int)$r['id'] ?>&amp;address_queue=1">Edit Resource</a></td></tr>
 <?php endforeach; ?>
