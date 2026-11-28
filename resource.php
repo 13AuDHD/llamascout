@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/app/bootstrap.php';
 require_once __DIR__ . '/app/resources.php';
 require_once __DIR__ . '/app/resource-report-current-read.php';
+require_once __DIR__ . '/app/contribution-presentation.php';
 
 $slug =
     trim(
@@ -79,6 +80,14 @@ $images =
 $heroImage =
     $images[0]
     ?? [];
+
+// Display-only fallback: never create a gallery row or count the stock photo.
+if (trim((string) ($heroImage['src'] ?? '')) === '') {
+    $heroImage = [
+        'src' => llama_contribution_photo_url(db()),
+        'alt_text' => 'Llama Scout default image',
+    ];
+}
 
 $services =
     array_values(
